@@ -24,7 +24,7 @@ jobs:
         with:
           workspaces: src-tauri
       - run: pnpm install --frozen-lockfile
-      - run: pnpm test
+      - run: pnpm test:coverage
       - run: pnpm build
       - run: cargo fmt --check
         working-directory: src-tauri
