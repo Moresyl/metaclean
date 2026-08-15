@@ -50,6 +50,9 @@ fn sensitive_xml_count(xml: &str) -> usize {
         "Template",
         "TotalTime",
         "trackRevisions",
+        "generator",
+        "editing-duration",
+        "editing-cycles",
     ];
     names
         .iter()
@@ -83,6 +86,9 @@ fn strip_sensitive_xml(xml: &str) -> (String, usize) {
         "Template",
         "TotalTime",
         "trackRevisions",
+        "generator",
+        "editing-duration",
+        "editing-cycles",
     ] {
         let pair = Regex::new(&format!(
             r"(?is)<(?:[\w-]+:)?{}(?:\s[^>]*)?>.*?</(?:[\w-]+:)?{}\s*>",
@@ -145,7 +151,7 @@ pub fn inspect(data: &[u8]) -> Result<Vec<Finding>> {
         if file.read_to_string(&mut xml).is_err() {
             continue;
         }
-        if name.starts_with("docProps/") || name.ends_with("settings.xml") {
+        if name.starts_with("docProps/") || name.ends_with("settings.xml") || name == "meta.xml" {
             metadata += sensitive_xml_count(&xml);
         }
         if name.ends_with("document.xml") {
@@ -194,7 +200,10 @@ pub fn clean(data: &[u8]) -> Result<(Vec<u8>, Vec<Finding>)> {
         if name.ends_with(".xml") || name.ends_with(".rels") {
             if let Ok(xml) = std::str::from_utf8(&content) {
                 let mut cleaned = xml.to_owned();
-                if name.starts_with("docProps/") || name.ends_with("settings.xml") {
+                if name.starts_with("docProps/")
+                    || name.ends_with("settings.xml")
+                    || name == "meta.xml"
+                {
                     cleaned = strip_sensitive_xml(&cleaned).0;
                 }
                 if name.ends_with("document.xml") {
@@ -247,5 +256,29 @@ mod tests {
             .unwrap();
         assert!(!xml.contains("old"));
         assert!(xml.contains("new"));
+    }
+
+    #[test]
+    fn removes_odt_generator() {
+        let mut writer = ZipWriter::new(Cursor::new(Vec::new()));
+        let options = SimpleFileOptions::default();
+        writer.start_file("mimetype", options).unwrap();
+        writer
+            .write_all(b"application/vnd.oasis.opendocument.text")
+            .unwrap();
+        writer.start_file("meta.xml", options).unwrap();
+        writer.write_all(br#"<office:document-meta><meta:generator>Claude Writer</meta:generator><meta:editing-cycles>7</meta:editing-cycles></office:document-meta>"#).unwrap();
+        let data = writer.finish().unwrap().into_inner();
+        let (cleaned, findings) = clean(&data).unwrap();
+        assert!(!findings.is_empty());
+        let mut archive = ZipArchive::new(Cursor::new(cleaned)).unwrap();
+        let mut meta = String::new();
+        archive
+            .by_name("meta.xml")
+            .unwrap()
+            .read_to_string(&mut meta)
+            .unwrap();
+        assert!(!meta.contains("Claude"));
+        assert!(!meta.contains("editing-cycles"));
     }
 }
