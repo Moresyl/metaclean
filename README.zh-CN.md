@@ -15,6 +15,13 @@
 
 统计型文本水印、像素域水印、视频、旧版二进制 Office 文件和未知二进制格式明确不在处理范围内。
 
+## 桌面体验
+
+- 支持批量拖拽和系统原生文件选择器
+- 可为 18 类受支持扩展名启用 Windows 资源管理器菜单（Windows 11 位于“显示更多选项”中）
+- 关闭主窗口后驻留系统托盘；右键托盘图标可重新打开或彻底退出
+- 保留原生最小化/最大化按钮，并持久保存中英文、输出方式和本地处理记录
+
 ## 安全策略
 
 - 单文件最大 256 MiB，Office 解压总量最大 512 MiB
@@ -33,10 +40,13 @@ pnpm tauri dev
 
 ```powershell
 pnpm test
+pnpm test:coverage
 pnpm build
 cargo test --manifest-path src-tauri/Cargo.toml
 pnpm tauri build
 ```
+
+推送版本标签后，GitHub Actions 会生成 Windows NSIS/MSI、Apple Silicon 与 Intel 双架构 macOS DMG，以及 Linux DEB/RPM/AppImage。macOS 签名和公证需要配置发布工作流中列出的 Apple 密钥。
 
 ## 责任使用
 

@@ -15,6 +15,13 @@ A local-first desktop app that scans and removes private metadata, Office revisi
 
 Statistical text watermarks, pixel-domain watermarks, video, legacy binary Office files, and unknown binary formats are intentionally out of scope.
 
+## Desktop experience
+
+- Drop multiple files or open them from the native file picker
+- Optional Windows File Explorer command for all 18 supported extensions (under **Show more options** on Windows 11)
+- Closing the main window keeps MetaClean in the system tray; right-click the tray icon to reopen or exit
+- Native minimize/maximize controls, persistent Chinese/English UI, output mode, and local cleanup history
+
 ## Safety
 
 - 256 MiB input cap; 512 MiB expanded Office archive cap
@@ -33,10 +40,13 @@ pnpm tauri dev
 
 ```powershell
 pnpm test
+pnpm test:coverage
 pnpm build
 cargo test --manifest-path src-tauri/Cargo.toml
 pnpm tauri build
 ```
+
+Tagged releases build NSIS/MSI for Windows, DMG for both Apple Silicon and Intel macOS, and DEB/RPM/AppImage for Linux through GitHub Actions. macOS signing and notarization require the Apple secrets documented in the release workflow.
 
 ## Responsible use
 
