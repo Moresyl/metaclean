@@ -95,6 +95,7 @@ pnpm tauri build                                # platform installers
 Pushing a version tag builds the whole matrix through GitHub Actions: NSIS and MSI for Windows, DMG for Apple Silicon and Intel macOS, and DEB/RPM/AppImage for Linux. macOS signing and notarization need the Apple secrets documented in the release workflow; without them the macOS job still produces unsigned bundles.
 
 Test coverage and release evidence are tracked in [VALIDATION.md](VALIDATION.md).
+Release changes are recorded in [CHANGELOG.md](CHANGELOG.md).
 
 ## Contributing
 
