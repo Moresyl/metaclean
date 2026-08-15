@@ -24,6 +24,9 @@ tempfile = "3"
 thiserror = "2"
 zip = { version = "4", default-features = false, features = ["deflate"] }
 
+[target.'cfg(windows)'.dependencies]
+winreg = "0.55"
+
 [profile.dev]
 debug = 0
 

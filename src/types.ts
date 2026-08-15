@@ -44,3 +44,9 @@ export interface HistoryEntry {
   mode: CleanMode;
   results: CleanResult[];
 }
+
+export interface ContextMenuStatus {
+  available: boolean;
+  enabled: boolean;
+  detail: string;
+}

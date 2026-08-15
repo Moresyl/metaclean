@@ -10,8 +10,10 @@ import SettingsPage from "./components/SettingsPage";
 import { entryFromPath, mergeEntries } from "./lib/files";
 import type { CleanMode, FileEntry, HistoryEntry, Page } from "./types";
 import type { CleanResult, ScanReport } from "./types";
+import { useI18n } from "./lib/i18n";
 
 export default function App() {
+  const { text } = useI18n();
   const [page, setPage] = useState<Page>("clean");
   const [entries, setEntries] = useState<FileEntry[]>([]);
   const [mode, setModeState] = useState<CleanMode>(() => localStorage.getItem("metaclean.outputMode") === "replace" ? "replace" : "copy");
@@ -29,6 +31,9 @@ export default function App() {
     void import("@tauri-apps/api/webview").then(({ getCurrentWebview }) => getCurrentWebview().onDragDropEvent((event) => {
       if (event.payload.type === "drop") addEntries(event.payload.paths.map(entryFromPath));
     })).then((unlisten) => { dispose = unlisten; }).catch(() => undefined);
+    void import("@tauri-apps/api/core").then(({ invoke }) => invoke<string[]>("get_launch_paths"))
+      .then((paths) => { if (paths.length) addEntries(paths.map(entryFromPath)); })
+      .catch(() => undefined);
     return () => dispose?.();
   }, [addEntries]);
 
@@ -36,15 +41,16 @@ export default function App() {
 
   async function scan() {
     const paths = entries.flatMap((entry) => entry.path ? [entry.path] : []);
-    if (paths.length !== entries.length) { setMessage("浏览器模式无法取得完整路径，请在桌面应用中选择文件。"); return; }
+    if (paths.length !== entries.length) { setMessage(text("浏览器模式无法取得完整路径，请在桌面应用中选择文件。", "Browser mode cannot access full paths. Choose files in the desktop app.")); return; }
     setBusy(true); setMessage(undefined); setEntries((current) => current.map((entry) => ({ ...entry, status: "scanning" })));
     try {
       const { invoke } = await import("@tauri-apps/api/core");
       const reports = await invoke<ScanReport[]>("scan_files", { paths });
       const byPath = new Map(reports.map((report) => [report.path, report]));
       setEntries((current) => current.map((entry) => { const report = entry.path ? byPath.get(entry.path) : undefined; return { ...entry, report, status: report?.error ? "error" : "scanned" }; }));
-      setMessage(`扫描完成：${reports.reduce((total, report) => total + report.findings.reduce((sum, finding) => sum + finding.count, 0), 0)} 项痕迹等待确认。`);
-    } catch (error) { setEntries((current) => current.map((entry) => ({ ...entry, status: "error" }))); setMessage(`扫描失败：${String(error)}`); }
+      const count = reports.reduce((total, report) => total + report.findings.reduce((sum, finding) => sum + finding.count, 0), 0);
+      setMessage(text(`扫描完成：${count} 项痕迹等待确认。`, `Scan complete: ${count} trace(s) await confirmation.`));
+    } catch (error) { setEntries((current) => current.map((entry) => ({ ...entry, status: "error" }))); setMessage(text(`扫描失败：${String(error)}`, `Scan failed: ${String(error)}`)); }
     finally { setBusy(false); }
   }
 
@@ -58,9 +64,9 @@ export default function App() {
       setEntries((current) => current.map((entry) => ({ ...entry, status: entry.path && byPath.get(entry.path)?.success ? "clean" : "error" })));
       const successes = results.filter((result) => result.success);
       const failures = results.length - successes.length;
-      setMessage(`${successes.length} 个文件清理完成${failures ? `，${failures} 个失败` : ""}。${successes[0]?.outputPath ? ` 输出：${successes[0].outputPath}` : ""}`);
+      setMessage(text(`${successes.length} 个文件清理完成${failures ? `，${failures} 个失败` : ""}。${successes[0]?.outputPath ? ` 输出：${successes[0].outputPath}` : ""}`, `${successes.length} file(s) cleaned${failures ? `; ${failures} failed` : ""}.${successes[0]?.outputPath ? ` Output: ${successes[0].outputPath}` : ""}`));
       saveHistory([{ id: crypto.randomUUID(), createdAt: new Date().toISOString(), mode, results }, ...history]);
-    } catch (error) { setMessage(`清理失败：${String(error)}`); }
+    } catch (error) { setMessage(text(`清理失败：${String(error)}`, `Cleanup failed: ${String(error)}`)); }
     finally { setBusy(false); }
   }
 
@@ -68,10 +74,10 @@ export default function App() {
     <div className="app-shell">
       <Sidebar page={page} onNavigate={setPage} />
       <main className="workspace">
-        <header className="topbar"><div><h1>{page === "clean" ? "文件净化" : page === "history" ? "处理记录" : page === "privacy" ? "隐私说明" : "设置"}</h1><p>{page === "clean" ? "清除文件里的隐私痕迹，分享前更安心" : "MetaClean · 纯本地文件隐私工具"}</p></div></header>
+        <header className="topbar"><div><h1>{page === "clean" ? text("文件净化", "Clean files") : page === "history" ? text("处理记录", "History") : page === "privacy" ? text("隐私说明", "Privacy") : text("设置", "Settings")}</h1><p>{page === "clean" ? text("清除文件里的隐私痕迹，分享前更安心", "Remove private traces before sharing") : text("MetaClean · 纯本地文件隐私工具", "MetaClean · Local file privacy tool")}</p></div></header>
         {page === "clean" ? <div className="content-grid">
           <div className="main-column">
-            <div className="notice"><Sparkles size={15} /><span><strong>所有处理均在本机完成。</strong>MetaClean 不上传、不保存、也不分析你的文件内容。</span></div>
+            <div className="notice"><Sparkles size={15} /><span><strong>{text("所有处理均在本机完成。", "All processing happens locally. ")}</strong>{text("MetaClean 不上传、不保存、也不分析你的文件内容。", "MetaClean never uploads, stores, or analyzes your file content.")}</span></div>
             {message ? <div className="result-message" role="status">{message}</div> : null}
             <DropZone onAdd={addEntries} />
             <FileQueue entries={entries} onClear={() => setEntries([])} onRemove={(id) => setEntries((current) => current.filter((entry) => entry.id !== id))} />

@@ -102,6 +102,37 @@ fn scrub_dictionary(dictionary: &mut Dictionary) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn incremental_pdf_with_stale_info() -> Vec<u8> {
+        let objects: &[&[u8]] = &[
+            b"<< /Type /Catalog /Pages 2 0 R >>",
+            b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+            b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 200 200] >>",
+            b"<< /Producer (Claude Opus) /Creator (Anthropic Claude) >>",
+        ];
+        let mut output = b"%PDF-1.4\n".to_vec();
+        let mut offsets = Vec::new();
+        for (index, object) in objects.iter().enumerate() {
+            offsets.push(output.len());
+            output.extend_from_slice(format!("{} 0 obj\n", index + 1).as_bytes());
+            output.extend_from_slice(object);
+            output.extend_from_slice(b"\nendobj\n");
+        }
+        let first_xref = output.len();
+        output.extend_from_slice(b"xref\n0 5\n0000000000 65535 f \n");
+        for offset in offsets {
+            output.extend_from_slice(format!("{offset:010} 00000 n \n").as_bytes());
+        }
+        output.extend_from_slice(
+            format!(
+                "trailer\n<< /Size 5 /Root 1 0 R /Info 4 0 R >>\nstartxref\n{first_xref}\n%%EOF\n"
+            )
+            .as_bytes(),
+        );
+        let second_xref = output.len();
+        output.extend_from_slice(format!("xref\n0 1\n0000000000 65535 f \ntrailer\n<< /Size 5 /Root 1 0 R /Prev {first_xref} >>\nstartxref\n{second_xref}\n%%EOF\n").as_bytes());
+        output
+    }
     #[test]
     fn removes_info_and_rewrites_pdf() {
         let mut doc = Document::with_version("1.5");
@@ -114,5 +145,15 @@ mod tests {
         let result = Document::load_mem(&cleaned).unwrap();
         assert!(result.trailer.get(b"Info").is_err());
         assert!(!cleaned.windows(5).any(|window| window == b"Alice"));
+    }
+
+    #[test]
+    fn drops_metadata_bytes_from_incremental_history() {
+        let source = incremental_pdf_with_stale_info();
+        assert!(source.windows(6).any(|window| window == b"Claude"));
+        let (cleaned, _) = clean(&source).unwrap();
+        assert!(!cleaned.windows(6).any(|window| window == b"Claude"));
+        assert!(!cleaned.windows(9).any(|window| window == b"Anthropic"));
+        Document::load_mem(&cleaned).unwrap();
     }
 }

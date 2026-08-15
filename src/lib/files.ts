@@ -1,6 +1,6 @@
 import type { FileEntry } from "../types";
 
-const IMAGE_EXTENSIONS = new Set(["jpg", "jpeg", "png", "webp", "tiff", "heic"]);
+const IMAGE_EXTENSIONS = new Set(["jpg", "jpeg", "png", "webp"]);
 const DOCUMENT_EXTENSIONS = new Set(["docx", "xlsx", "pptx", "odt"]);
 const TEXT_EXTENSIONS = new Set(["txt", "md", "html", "svg"]);
 

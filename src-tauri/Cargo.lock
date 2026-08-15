@@ -1970,6 +1970,7 @@ dependencies = [
  "tauri-plugin-dialog",
  "tempfile",
  "thiserror 2.0.20",
+ "winreg",
  "zip",
 ]
 

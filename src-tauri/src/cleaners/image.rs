@@ -56,6 +56,7 @@ fn jpeg_segments(data: &[u8]) -> Result<Vec<(u8, &[u8], std::ops::Range<usize>)>
     }
     let mut result = Vec::new();
     let mut offset = 2;
+    let mut terminated = false;
     while offset + 1 < data.len() {
         if data[offset] != 0xFF {
             break;
@@ -70,6 +71,7 @@ fn jpeg_segments(data: &[u8]) -> Result<Vec<(u8, &[u8], std::ops::Range<usize>)>
         let marker = data[offset];
         offset += 1;
         if marker == 0xDA || marker == 0xD9 {
+            terminated = true;
             break;
         }
         if matches!(marker, 0x01 | 0xD0..=0xD7) {
@@ -88,6 +90,11 @@ fn jpeg_segments(data: &[u8]) -> Result<Vec<(u8, &[u8], std::ops::Range<usize>)>
             start..offset + length,
         ));
         offset += length;
+    }
+    if !terminated {
+        return Err(CleanError::InvalidFormat(
+            "JPEG 缺少图像数据或结束标记".into(),
+        ));
     }
     Ok(result)
 }
@@ -119,6 +126,7 @@ fn png_chunks(data: &[u8]) -> Result<Vec<([u8; 4], std::ops::Range<usize>)>> {
     }
     let mut chunks = Vec::new();
     let mut offset = 8;
+    let mut has_iend = false;
     while offset + 12 <= data.len() {
         let length = u32::from_be_bytes(data[offset..offset + 4].try_into().unwrap()) as usize;
         let end = offset
@@ -131,8 +139,12 @@ fn png_chunks(data: &[u8]) -> Result<Vec<([u8; 4], std::ops::Range<usize>)>> {
         chunks.push((kind, offset..end));
         offset = end;
         if &kind == b"IEND" {
+            has_iend = true;
             break;
         }
+    }
+    if !has_iend {
+        return Err(CleanError::InvalidFormat("PNG 缺少 IEND 块".into()));
     }
     Ok(chunks)
 }
@@ -199,14 +211,18 @@ fn webp_chunks(data: &[u8]) -> Result<Vec<([u8; 4], std::ops::Range<usize>)>> {
     if data.len() < 12 || &data[..4] != b"RIFF" || &data[8..12] != b"WEBP" {
         return Err(CleanError::InvalidFormat("不是有效 WebP".into()));
     }
+    let declared = u32::from_le_bytes(data[4..8].try_into().unwrap()) as usize + 8;
+    if declared != data.len() {
+        return Err(CleanError::InvalidFormat("WebP RIFF 长度不匹配".into()));
+    }
     let mut chunks = Vec::new();
     let mut offset = 12;
-    while offset + 8 <= data.len() {
+    while offset + 8 <= declared {
         let length = u32::from_le_bytes(data[offset + 4..offset + 8].try_into().unwrap()) as usize;
         let end = offset
             .checked_add(8 + length + (length & 1))
             .ok_or_else(|| CleanError::InvalidFormat("WebP 块长度溢出".into()))?;
-        if end > data.len() {
+        if end > declared {
             return Err(CleanError::InvalidFormat("WebP 块越界".into()));
         }
         chunks.push((data[offset..offset + 4].try_into().unwrap(), offset..end));
@@ -253,6 +269,36 @@ mod tests {
     }
     #[test]
     fn rejects_truncated_png() {
-        assert!(inspect_png(b"\x89PNG\r\n\x1a\n\0").is_ok());
+        assert!(inspect_png(b"\x89PNG\r\n\x1a\n\0").is_err());
+    }
+
+    fn png_chunk(kind: &[u8; 4], payload: &[u8]) -> Vec<u8> {
+        let mut output = Vec::new();
+        output.extend_from_slice(&(payload.len() as u32).to_be_bytes());
+        output.extend_from_slice(kind);
+        output.extend_from_slice(payload);
+        output.extend_from_slice(&[0, 0, 0, 0]);
+        output
+    }
+
+    #[test]
+    fn strips_png_text_chunks() {
+        let mut source = PNG_SIGNATURE.to_vec();
+        source.extend(png_chunk(b"tEXt", b"Author\0Alice"));
+        source.extend(png_chunk(b"IEND", b""));
+        let (cleaned, findings) = clean_png(&source).unwrap();
+        assert_eq!(findings[0].count, 1);
+        assert!(!cleaned.windows(4).any(|window| window == b"tEXt"));
+    }
+
+    #[test]
+    fn strips_webp_exif_and_updates_size() {
+        let mut source = b"RIFF\0\0\0\0WEBP".to_vec();
+        source.extend_from_slice(b"EXIF\x04\0\0\0data");
+        let size = (source.len() - 8) as u32;
+        source[4..8].copy_from_slice(&size.to_le_bytes());
+        let (cleaned, findings) = clean_webp(&source).unwrap();
+        assert_eq!(findings[0].count, 1);
+        assert_eq!(cleaned, b"RIFF\x04\0\0\0WEBP");
     }
 }

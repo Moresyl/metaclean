@@ -8,6 +8,7 @@ describe("classifyFile", () => {
     ["paper.pdf", "pdf"],
     ["notes.md", "text"],
     ["archive.zip", "unknown"],
+    ["raw.tiff", "unknown"],
   ] as const)("classifies %s", (name, expected) => {
     expect(classifyFile(name)).toBe(expected);
   });
