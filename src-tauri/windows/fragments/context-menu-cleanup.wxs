@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+  <Fragment>
+    <DirectoryRef Id="TARGETDIR">
+      <Component Id="MetaCleanContextMenuCleanup" Guid="*" Win64="yes">
+        <RegistryValue Root="HKCU" Key="Software\MetaClean" Name="InstallerCleanup" Type="integer" Value="1" KeyPath="yes" />
+        <RemoveRegistryKey Id="RemoveMetaCleanContext0" Root="HKCU" Key="Software\Classes\SystemFileAssociations\.jpg\shell\MetaClean" Action="removeOnUninstall" />
+        <RemoveRegistryKey Id="RemoveMetaCleanContext1" Root="HKCU" Key="Software\Classes\SystemFileAssociations\.jpeg\shell\MetaClean" Action="removeOnUninstall" />
+        <RemoveRegistryKey Id="RemoveMetaCleanContext2" Root="HKCU" Key="Software\Classes\SystemFileAssociations\.png\shell\MetaClean" Action="removeOnUninstall" />
+        <RemoveRegistryKey Id="RemoveMetaCleanContext3" Root="HKCU" Key="Software\Classes\SystemFileAssociations\.webp\shell\MetaClean" Action="removeOnUninstall" />
+        <RemoveRegistryKey Id="RemoveMetaCleanContext4" Root="HKCU" Key="Software\Classes\SystemFileAssociations\.docx\shell\MetaClean" Action="removeOnUninstall" />
+        <RemoveRegistryKey Id="RemoveMetaCleanContext5" Root="HKCU" Key="Software\Classes\SystemFileAssociations\.xlsx\shell\MetaClean" Action="removeOnUninstall" />
+        <RemoveRegistryKey Id="RemoveMetaCleanContext6" Root="HKCU" Key="Software\Classes\SystemFileAssociations\.pptx\shell\MetaClean" Action="removeOnUninstall" />
+        <RemoveRegistryKey Id="RemoveMetaCleanContext7" Root="HKCU" Key="Software\Classes\SystemFileAssociations\.odt\shell\MetaClean" Action="removeOnUninstall" />
+        <RemoveRegistryKey Id="RemoveMetaCleanContext8" Root="HKCU" Key="Software\Classes\SystemFileAssociations\.pdf\shell\MetaClean" Action="removeOnUninstall" />
+        <RemoveRegistryKey Id="RemoveMetaCleanContext9" Root="HKCU" Key="Software\Classes\SystemFileAssociations\.txt\shell\MetaClean" Action="removeOnUninstall" />
+        <RemoveRegistryKey Id="RemoveMetaCleanContext10" Root="HKCU" Key="Software\Classes\SystemFileAssociations\.md\shell\MetaClean" Action="removeOnUninstall" />
+        <RemoveRegistryKey Id="RemoveMetaCleanContext11" Root="HKCU" Key="Software\Classes\SystemFileAssociations\.markdown\shell\MetaClean" Action="removeOnUninstall" />
+        <RemoveRegistryKey Id="RemoveMetaCleanContext12" Root="HKCU" Key="Software\Classes\SystemFileAssociations\.html\shell\MetaClean" Action="removeOnUninstall" />
+        <RemoveRegistryKey Id="RemoveMetaCleanContext13" Root="HKCU" Key="Software\Classes\SystemFileAssociations\.htm\shell\MetaClean" Action="removeOnUninstall" />
+        <RemoveRegistryKey Id="RemoveMetaCleanContext14" Root="HKCU" Key="Software\Classes\SystemFileAssociations\.svg\shell\MetaClean" Action="removeOnUninstall" />
+        <RemoveRegistryKey Id="RemoveMetaCleanContext15" Root="HKCU" Key="Software\Classes\SystemFileAssociations\.xml\shell\MetaClean" Action="removeOnUninstall" />
+        <RemoveRegistryKey Id="RemoveMetaCleanContext16" Root="HKCU" Key="Software\Classes\SystemFileAssociations\.json\shell\MetaClean" Action="removeOnUninstall" />
+        <RemoveRegistryKey Id="RemoveMetaCleanContext17" Root="HKCU" Key="Software\Classes\SystemFileAssociations\.csv\shell\MetaClean" Action="removeOnUninstall" />
+      </Component>
+    </DirectoryRef>
+  </Fragment>
+</Wix>

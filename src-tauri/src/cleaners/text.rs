@@ -26,8 +26,34 @@ fn emoji_glue(chars: &[char], index: usize) -> bool {
         return false;
     }
     let previous = chars[index - 1] as u32;
-    previous >= 0x1F000
-        || (current == 0x200D && index + 1 < chars.len() && chars[index + 1] as u32 >= 0x1F000)
+    let is_emoji_base = |code: u32| matches!(code, 0x2300..=0x23FF | 0x2600..=0x27BF | 0x1F000..=0x1FAFF | 0x00A9 | 0x00AE | 0x203C | 0x2049 | 0x2122 | 0x2139);
+    is_emoji_base(previous)
+        || (current == 0x200D
+            && index + 1 < chars.len()
+            && (is_emoji_base(chars[index + 1] as u32) || previous == 0xFE0F))
+}
+
+fn script_glue(chars: &[char], index: usize) -> bool {
+    let current = chars[index] as u32;
+    let in_range = |code: u32, start: u32, end: u32| (start..=end).contains(&code);
+    if index > 0 && index + 1 < chars.len() && matches!(current, 0x200C | 0x200D) {
+        let previous = chars[index - 1] as u32;
+        let next = chars[index + 1] as u32;
+        return [(0x0590, 0x08FF), (0x0900, 0x0DFF), (0x1780, 0x18AF)]
+            .iter()
+            .any(|&(start, end)| in_range(previous, start, end) && in_range(next, start, end));
+    }
+    if index == 0 || index + 1 >= chars.len() {
+        return false;
+    }
+    let previous = chars[index - 1] as u32;
+    let next = chars[index + 1] as u32;
+    match current {
+        0x180B..=0x180D => in_range(previous, 0x1800, 0x18AF) || in_range(next, 0x1800, 0x18AF),
+        0x17B4 | 0x17B5 => in_range(previous, 0x1780, 0x17FF) || in_range(next, 0x1780, 0x17FF),
+        0x115F | 0x1160 => in_range(previous, 0x1100, 0x11FF) || in_range(next, 0x1100, 0x11FF),
+        _ => false,
+    }
 }
 
 pub fn inspect(value: &str) -> Vec<Finding> {
@@ -36,7 +62,7 @@ pub fn inspect(value: &str) -> Vec<Finding> {
     let mut spaces = 0;
     for (index, character) in chars.iter().enumerate() {
         let code = *character as u32;
-        if is_invisible(code) && !emoji_glue(&chars, index) {
+        if is_invisible(code) && !emoji_glue(&chars, index) && !script_glue(&chars, index) {
             invisible += 1;
         } else if space_replacement(code) {
             spaces += 1;
@@ -70,7 +96,7 @@ pub fn clean(value: &str) -> (String, Vec<Finding>) {
         .enumerate()
         .filter_map(|(index, character)| {
             let code = *character as u32;
-            if is_invisible(code) && !emoji_glue(&chars, index) {
+            if is_invisible(code) && !emoji_glue(&chars, index) && !script_glue(&chars, index) {
                 None
             } else if space_replacement(code) {
                 Some(' ')
@@ -96,6 +122,19 @@ mod tests {
     #[test]
     fn preserves_emoji_joiners() {
         let source = "👨\u{200d}👩\u{200d}👧";
+        assert_eq!(clean(source).0, source);
+    }
+
+    #[test]
+    fn preserves_emoji_variation_selectors() {
+        for source in ["❤️", "✈️"] {
+            assert_eq!(clean(source).0, source);
+        }
+    }
+
+    #[test]
+    fn preserves_joiners_inside_complex_scripts() {
+        let source = "می\u{200c}روم";
         assert_eq!(clean(source).0, source);
     }
 

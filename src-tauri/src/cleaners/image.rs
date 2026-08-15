@@ -104,13 +104,8 @@ pub fn clean_jpeg(data: &[u8]) -> Result<(Vec<u8>, Vec<Finding>)> {
     let segments = jpeg_segments(data)?;
     let mut output = Vec::with_capacity(data.len());
     let mut cursor = 0;
-    for (marker, payload, range) in segments {
-        let remove = matches!(marker, 0xEB | 0xED | 0xFE)
-            || marker == 0xE1
-                && (payload.starts_with(b"Exif\0\0")
-                    || payload
-                        .windows(3)
-                        .any(|window| window.eq_ignore_ascii_case(b"xmp")));
+    for (marker, _payload, range) in segments {
+        let remove = matches!(marker, 0xE1 | 0xEB | 0xED | 0xFE);
         if remove {
             output.extend_from_slice(&data[cursor..range.start]);
             cursor = range.end;

@@ -110,20 +110,29 @@ fn strip_sensitive_xml(xml: &str) -> (String, usize) {
 }
 
 fn accept_word_revisions(xml: &str) -> (String, usize) {
-    let deletion = Regex::new(r"(?is)<(?:w:)?del(?:\s[^>]*)?>.*?</(?:w:)?del\s*>").unwrap();
-    let insertion = Regex::new(r"(?is)<(?:w:)?ins(?:\s[^>]*)?>(.*?)</(?:w:)?ins\s*>").unwrap();
-    let count = deletion.find_iter(xml).count() + insertion.find_iter(xml).count();
-    let without_deletions = deletion.replace_all(xml, "");
-    (
-        insertion.replace_all(&without_deletions, "$1").into_owned(),
-        count,
-    )
+    let deletion =
+        Regex::new(r"(?is)<(?:w:)?(?:del|moveFrom)(?:\s[^>]*)?>.*?</(?:w:)?(?:del|moveFrom)\s*>")
+            .unwrap();
+    let insertion =
+        Regex::new(r"(?is)<(?:w:)?(?:ins|moveTo)(?:\s[^>]*)?>(.*?)</(?:w:)?(?:ins|moveTo)\s*>")
+            .unwrap();
+    let property_change = Regex::new(r"(?is)<(?:w:)?(?:rPr|pPr|tblPr|trPr|tcPr|sectPr|numbering)Change(?:\s[^>]*)?>.*?</(?:w:)?(?:rPr|pPr|tblPr|trPr|tcPr|sectPr|numbering)Change\s*>").unwrap();
+    let anchors = Regex::new(r"(?is)<(?:w:)?(?:commentRangeStart|commentRangeEnd|commentReference|moveFromRangeStart|moveFromRangeEnd|moveToRangeStart|moveToRangeEnd)(?:\s[^>]*)?/\s*>").unwrap();
+    let count = deletion.find_iter(xml).count()
+        + insertion.find_iter(xml).count()
+        + property_change.find_iter(xml).count()
+        + anchors.find_iter(xml).count();
+    let output = deletion.replace_all(xml, "");
+    let output = insertion.replace_all(&output, "$1");
+    let output = property_change.replace_all(&output, "");
+    (anchors.replace_all(&output, "").into_owned(), count)
 }
 
 fn is_comment_part(name: &str) -> bool {
     let lower = name.to_ascii_lowercase();
     lower.contains("comments")
         || lower.contains("commentauthors")
+        || lower.starts_with("xl/persons/")
         || lower.starts_with("customxml/")
 }
 
@@ -154,11 +163,8 @@ pub fn inspect(data: &[u8]) -> Result<Vec<Finding>> {
         if name.starts_with("docProps/") || name.ends_with("settings.xml") || name == "meta.xml" {
             metadata += sensitive_xml_count(&xml);
         }
-        if name.ends_with("document.xml") {
-            revisions += Regex::new(r"(?is)<(?:w:)?(?:ins|del)(?:\s|>)")
-                .unwrap()
-                .find_iter(&xml)
-                .count();
+        if name.starts_with("word/") {
+            revisions += accept_word_revisions(&xml).1;
         }
     }
     let mut findings = Vec::new();
@@ -206,7 +212,7 @@ pub fn clean(data: &[u8]) -> Result<(Vec<u8>, Vec<Finding>)> {
                 {
                     cleaned = strip_sensitive_xml(&cleaned).0;
                 }
-                if name.ends_with("document.xml") {
+                if name.starts_with("word/") {
                     cleaned = accept_word_revisions(&cleaned).0;
                 }
                 if name.ends_with(".rels") || name == "[Content_Types].xml" {
@@ -280,5 +286,16 @@ mod tests {
             .unwrap();
         assert!(!meta.contains("Claude"));
         assert!(!meta.contains("editing-cycles"));
+    }
+
+    #[test]
+    fn cleans_revisions_and_comment_anchors_in_headers() {
+        let xml = r#"<w:hdr><w:moveFrom><w:r><w:t>old</w:t></w:r></w:moveFrom><w:moveTo><w:r><w:t>new</w:t></w:r></w:moveTo><w:pPrChange><w:pPr/></w:pPrChange><w:commentRangeStart w:id="1"/><w:commentReference w:id="1"/></w:hdr>"#;
+        let (cleaned, count) = accept_word_revisions(xml);
+        assert!(count >= 4);
+        assert!(!cleaned.contains("old"));
+        assert!(cleaned.contains("new"));
+        assert!(!cleaned.contains("PrChange"));
+        assert!(!cleaned.contains("comment"));
     }
 }

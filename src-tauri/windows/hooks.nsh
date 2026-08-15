@@ -1,0 +1,21 @@
+!macro NSIS_HOOK_PREUNINSTALL
+  SetRegView 64
+  DeleteRegKey HKCU "Software\Classes\SystemFileAssociations\.jpg\shell\MetaClean"
+  DeleteRegKey HKCU "Software\Classes\SystemFileAssociations\.jpeg\shell\MetaClean"
+  DeleteRegKey HKCU "Software\Classes\SystemFileAssociations\.png\shell\MetaClean"
+  DeleteRegKey HKCU "Software\Classes\SystemFileAssociations\.webp\shell\MetaClean"
+  DeleteRegKey HKCU "Software\Classes\SystemFileAssociations\.docx\shell\MetaClean"
+  DeleteRegKey HKCU "Software\Classes\SystemFileAssociations\.xlsx\shell\MetaClean"
+  DeleteRegKey HKCU "Software\Classes\SystemFileAssociations\.pptx\shell\MetaClean"
+  DeleteRegKey HKCU "Software\Classes\SystemFileAssociations\.odt\shell\MetaClean"
+  DeleteRegKey HKCU "Software\Classes\SystemFileAssociations\.pdf\shell\MetaClean"
+  DeleteRegKey HKCU "Software\Classes\SystemFileAssociations\.txt\shell\MetaClean"
+  DeleteRegKey HKCU "Software\Classes\SystemFileAssociations\.md\shell\MetaClean"
+  DeleteRegKey HKCU "Software\Classes\SystemFileAssociations\.markdown\shell\MetaClean"
+  DeleteRegKey HKCU "Software\Classes\SystemFileAssociations\.html\shell\MetaClean"
+  DeleteRegKey HKCU "Software\Classes\SystemFileAssociations\.htm\shell\MetaClean"
+  DeleteRegKey HKCU "Software\Classes\SystemFileAssociations\.svg\shell\MetaClean"
+  DeleteRegKey HKCU "Software\Classes\SystemFileAssociations\.xml\shell\MetaClean"
+  DeleteRegKey HKCU "Software\Classes\SystemFileAssociations\.json\shell\MetaClean"
+  DeleteRegKey HKCU "Software\Classes\SystemFileAssociations\.csv\shell\MetaClean"
+!macroend

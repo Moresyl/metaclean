@@ -38,6 +38,7 @@ export default function App() {
   }, [addEntries]);
 
   const scanned = entries.length > 0 && entries.every((entry) => entry.status === "scanned" || entry.status === "clean" || entry.status === "error");
+  const cleanableEntries = entries.filter((entry) => entry.status === "scanned" && (entry.report?.findings.length ?? 0) > 0);
 
   async function scan() {
     const paths = entries.flatMap((entry) => entry.path ? [entry.path] : []);
@@ -55,7 +56,8 @@ export default function App() {
   }
 
   async function clean() {
-    const paths = entries.flatMap((entry) => entry.path ? [entry.path] : []);
+    const paths = cleanableEntries.flatMap((entry) => entry.path ? [entry.path] : []);
+    if (!paths.length) return;
     setBusy(true); setMessage(undefined);
     try {
       const { invoke } = await import("@tauri-apps/api/core");
@@ -82,7 +84,7 @@ export default function App() {
             <DropZone onAdd={addEntries} />
             <FileQueue entries={entries} onClear={() => setEntries([])} onRemove={(id) => setEntries((current) => current.filter((entry) => entry.id !== id))} />
           </div>
-          <CleanOptions mode={mode} onModeChange={setMode} disabled={!entries.length} scanned={scanned} busy={busy} onAction={() => void (scanned ? clean() : scan())} />
+          <CleanOptions mode={mode} onModeChange={setMode} disabled={!entries.length} scanned={scanned} hasFindings={cleanableEntries.length > 0} busy={busy} onAction={() => void (scanned ? clean() : scan())} />
         </div> : page === "history" ? <HistoryPage entries={history} onClear={() => saveHistory([])} /> : page === "privacy" ? <PrivacyPage /> : <SettingsPage mode={mode} onModeChange={setMode} />}
       </main>
     </div>
