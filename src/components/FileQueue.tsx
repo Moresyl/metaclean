@@ -15,7 +15,14 @@ export default function FileQueue({ entries, onRemove, onClear }: FileQueueProps
         <div className="file-list">
           {entries.map((entry) => {
             const Icon = icons[entry.kind];
-            return <div className="file-row" key={entry.id}><div className="file-kind"><Icon size={17} /></div><div className="file-name"><strong>{entry.name}</strong><span>{entry.kind === "unknown" ? "暂不支持" : "等待扫描"}</span></div><button aria-label={`移除 ${entry.name}`} type="button" onClick={() => onRemove(entry.id)}><X size={15} /></button></div>;
+            const findingCount = entry.report?.findings.reduce((total, finding) => total + finding.count, 0) ?? 0;
+            const status = entry.report?.error
+              ? entry.report.error
+              : entry.status === "scanning" ? "正在扫描…"
+              : entry.status === "clean" ? "清理完成"
+              : entry.status === "scanned" ? (findingCount ? `发现 ${findingCount} 项痕迹` : "未发现隐私痕迹")
+              : entry.kind === "unknown" ? "格式将在扫描时确认" : "等待扫描";
+            return <div className={`file-row ${entry.status}`} key={entry.id}><div className="file-kind"><Icon size={17} /></div><div className="file-name"><strong>{entry.name}</strong><span>{status}</span>{entry.report?.findings.length ? <div className="finding-tags">{entry.report.findings.map((finding) => <em key={finding.category}>{finding.label} · {finding.count}</em>)}</div> : null}</div><button aria-label={`移除 ${entry.name}`} type="button" onClick={() => onRemove(entry.id)}><X size={15} /></button></div>;
           })}
         </div>
       )}

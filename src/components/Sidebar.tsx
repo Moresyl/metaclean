@@ -1,13 +1,14 @@
 import { FileCheck2, History, Settings, ShieldCheck } from "lucide-react";
+import type { Page } from "../types";
 
-const navigation = [
-  { label: "文件净化", icon: FileCheck2, active: true },
-  { label: "处理记录", icon: History, active: false },
-  { label: "隐私说明", icon: ShieldCheck, active: false },
-  { label: "设置", icon: Settings, active: false },
+const navigation: Array<{ page: Page; label: string; icon: typeof FileCheck2 }> = [
+  { page: "clean", label: "文件净化", icon: FileCheck2 },
+  { page: "history", label: "处理记录", icon: History },
+  { page: "privacy", label: "隐私说明", icon: ShieldCheck },
+  { page: "settings", label: "设置", icon: Settings },
 ];
 
-export default function Sidebar() {
+export default function Sidebar({ page, onNavigate }: { page: Page; onNavigate: (page: Page) => void }) {
   return (
     <aside className="sidebar">
       <div className="brand">
@@ -15,8 +16,8 @@ export default function Sidebar() {
         <div><strong>MetaClean</strong><span>文件隐私净化器</span></div>
       </div>
       <nav aria-label="主导航">
-        {navigation.map(({ label, icon: Icon, active }) => (
-          <button className={`nav-item ${active ? "active" : ""}`} key={label} type="button">
+        {navigation.map(({ page: target, label, icon: Icon }) => (
+          <button className={`nav-item ${page === target ? "active" : ""}`} key={target} type="button" onClick={() => onNavigate(target)}>
             <Icon size={17} strokeWidth={1.8} />{label}
           </button>
         ))}

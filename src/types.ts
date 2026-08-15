@@ -6,5 +6,41 @@ export interface FileEntry {
   path?: string;
   size?: number;
   kind: "image" | "document" | "pdf" | "text" | "unknown";
-  status: "ready" | "scanning" | "clean";
+  status: "ready" | "scanning" | "scanned" | "clean" | "error";
+  report?: ScanReport;
+}
+
+export interface Finding {
+  category: string;
+  label: string;
+  count: number;
+  severity: "privacy" | "provenance" | "informational";
+}
+
+export interface ScanReport {
+  path: string;
+  name: string;
+  format: string;
+  size: number;
+  supported: boolean;
+  findings: Finding[];
+  error?: string;
+}
+
+export interface CleanResult {
+  sourcePath: string;
+  outputPath?: string;
+  backupPath?: string;
+  removed: Finding[];
+  success: boolean;
+  error?: string;
+}
+
+export type Page = "clean" | "history" | "privacy" | "settings";
+
+export interface HistoryEntry {
+  id: string;
+  createdAt: string;
+  mode: CleanMode;
+  results: CleanResult[];
 }
