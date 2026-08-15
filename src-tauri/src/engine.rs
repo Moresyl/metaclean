@@ -305,4 +305,30 @@ mod tests {
         fs::write(&source, [0, 1, 2]).unwrap();
         assert!(!clean_file(&source, &OutputMode::Copy).success);
     }
+
+    #[test]
+    #[ignore = "requires METACLEAN_OFFICE_SAMPLE_DIR with DOCX/XLSX/PPTX/ODT fixtures"]
+    fn cleans_external_office_validation_samples() {
+        let root = PathBuf::from(
+            std::env::var("METACLEAN_OFFICE_SAMPLE_DIR")
+                .expect("METACLEAN_OFFICE_SAMPLE_DIR must point to validation fixtures"),
+        );
+        for name in ["sample.docx", "sample.xlsx", "sample.pptx", "sample.odt"] {
+            let source = root.join(name);
+            let report = scan_file(&source);
+            assert!(report.supported, "{}: {:?}", name, report.error);
+            assert!(
+                !report.findings.is_empty(),
+                "{name}: expected metadata findings"
+            );
+            let result = clean_file(&source, &OutputMode::Copy);
+            assert!(result.success, "{}: {:?}", name, result.error);
+            let output = PathBuf::from(result.output_path.expect("cleaned output path"));
+            assert!(
+                output.exists(),
+                "{}: output was not written",
+                output.display()
+            );
+        }
+    }
 }
