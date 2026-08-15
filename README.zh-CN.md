@@ -2,7 +2,16 @@
 
 [English](README.md)
 
+[![CI](https://github.com/Moresyl/metaclean/actions/workflows/ci.yml/badge.svg)](https://github.com/Moresyl/metaclean/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/Moresyl/metaclean?include_prereleases)](https://github.com/Moresyl/metaclean/releases)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Rust](https://img.shields.io/badge/core-Rust-orange.svg)](src-tauri)
+
 纯本地文件隐私净化器。扫描并清除文件中的 EXIF/GPS、Office 文档属性与修订、PDF 元数据，以及不可见 Unicode 字符。
+
+## 下载
+
+请从 [GitHub Releases](https://github.com/Moresyl/metaclean/releases/latest) 下载最新 Windows、macOS 或 Linux 安装包。无需 Python、Perl、ExifTool 或云端账号。
 
 ## 支持范围
 

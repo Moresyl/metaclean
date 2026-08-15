@@ -2,7 +2,16 @@
 
 [简体中文](README.zh-CN.md)
 
+[![CI](https://github.com/Moresyl/metaclean/actions/workflows/ci.yml/badge.svg)](https://github.com/Moresyl/metaclean/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/Moresyl/metaclean?include_prereleases)](https://github.com/Moresyl/metaclean/releases)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Rust](https://img.shields.io/badge/core-Rust-orange.svg)](src-tauri)
+
 A local-first desktop app that scans and removes private metadata, Office revisions, PDF properties, and invisible Unicode before you share files.
+
+## Download
+
+Download the latest Windows, macOS or Linux package from [GitHub Releases](https://github.com/Moresyl/metaclean/releases/latest). No Python, Perl, ExifTool or cloud account is required.
 
 ## Supported formats
 

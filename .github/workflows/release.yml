@@ -63,5 +63,5 @@ jobs:
           tagName: v__VERSION__
           releaseName: MetaClean v__VERSION__
           releaseBody: See README.md and README.zh-CN.md for supported formats and safety guarantees.
-          releaseDraft: true
+          releaseDraft: false
           prerelease: false

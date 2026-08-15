@@ -2,7 +2,9 @@
 name = "metaclean"
 version = "0.1.0"
 description = "Offline file privacy cleaner"
-authors = ["Moresl"]
+authors = ["Moresyl"]
+license = "MIT"
+repository = "https://github.com/Moresyl/metaclean"
 edition = "2021"
 
 [lib]
