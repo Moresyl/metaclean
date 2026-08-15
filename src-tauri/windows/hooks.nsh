@@ -18,4 +18,5 @@
   DeleteRegKey HKCU "Software\Classes\SystemFileAssociations\.xml\shell\MetaClean"
   DeleteRegKey HKCU "Software\Classes\SystemFileAssociations\.json\shell\MetaClean"
   DeleteRegKey HKCU "Software\Classes\SystemFileAssociations\.csv\shell\MetaClean"
+  DeleteRegKey HKCU "Software\moresl\MetaClean"
 !macroend
