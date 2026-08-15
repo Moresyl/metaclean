@@ -24,6 +24,7 @@ jobs:
         with:
           workspaces: src-tauri
       - run: pnpm install --frozen-lockfile
+      - run: pnpm audit --audit-level moderate --registry=https://registry.npmjs.org
       - run: pnpm test:coverage
       - run: pnpm build
       - run: cargo fmt --check
@@ -32,4 +33,7 @@ jobs:
         working-directory: src-tauri
       - run: cargo install cargo-llvm-cov --locked
       - run: cargo llvm-cov --fail-under-lines 80
+        working-directory: src-tauri
+      - run: cargo install cargo-audit --locked
+      - run: cargo audit
         working-directory: src-tauri

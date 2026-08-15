@@ -21,6 +21,7 @@ This file records evidence, not intent. A row is complete only when the named ar
 - Frontend: 23 tests. Statements 90.15%, branches 81.04%, functions 87.20%, lines 95.96%.
 - Rust: 27 regular tests plus one opt-in external Office compatibility test. Regions 80.93%, lines 80.99%.
 - CI fails below 80% for all frontend coverage dimensions and below 80% Rust line coverage.
+- npm's official audit endpoint reports no known frontend vulnerabilities. RustSec reports no known Rust vulnerabilities after upgrading `lopdf` to 0.44 and `quick-xml` to 0.41.
 - Production frontend build, Rust formatting and Rust tests pass locally.
 
 ## Windows release artifacts
