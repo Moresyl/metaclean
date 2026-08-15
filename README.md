@@ -9,6 +9,10 @@
 
 A local-first desktop app that scans and removes private metadata, Office revisions, PDF properties, and invisible Unicode before you share files.
 
+## Screenshot
+
+![MetaClean desktop interface showing the local file privacy cleaning workflow](assets/metaclean-screenshot.png)
+
 ## Download
 
 Download the latest Windows, macOS or Linux package from [GitHub Releases](https://github.com/Moresyl/metaclean/releases/latest). No Python, Perl, ExifTool or cloud account is required.

@@ -9,6 +9,10 @@
 
 纯本地文件隐私净化器。扫描并清除文件中的 EXIF/GPS、Office 文档属性与修订、PDF 元数据，以及不可见 Unicode 字符。
 
+## 软件界面
+
+![MetaClean 本地文件隐私净化器桌面界面](assets/metaclean-screenshot.png)
+
 ## 下载
 
 请从 [GitHub Releases](https://github.com/Moresyl/metaclean/releases/latest) 下载最新 Windows、macOS 或 Linux 安装包。无需 Python、Perl、ExifTool 或云端账号。
