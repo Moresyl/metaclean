@@ -225,6 +225,51 @@ pub fn scan_paths(paths: &[String]) -> Vec<ScanReport> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn detects_all_supported_signatures_and_names() {
+        let cases = [
+            (
+                "photo.bin",
+                b"\xff\xd8\xffrest".as_slice(),
+                Format::Jpeg,
+                "JPEG",
+            ),
+            ("photo.bin", b"\x89PNG\r\n\x1a\nrest", Format::Png, "PNG"),
+            ("photo.bin", b"RIFF\x04\0\0\0WEBP", Format::Webp, "WebP"),
+            ("file.bin", b"%PDF-1.7", Format::Pdf, "PDF"),
+            ("file.docx", b"PKarchive", Format::Office, "Office"),
+            ("file.md", b"plain text", Format::Text, "Text"),
+            ("file.bin", b"unknown", Format::Unsupported, "Unsupported"),
+        ];
+        for (name, data, expected, label) in cases {
+            let detected = detect(Path::new(name), data);
+            assert_eq!(detected, expected);
+            assert_eq!(format_name(detected), label);
+        }
+        assert_eq!(extension(Path::new("PHOTO.JPEG")), "jpeg");
+    }
+
+    #[test]
+    fn scan_reports_missing_invalid_and_multiple_paths() {
+        let dir = tempfile::tempdir().unwrap();
+        let missing = dir.path().join("missing.txt");
+        let report = scan_file(&missing);
+        assert!(!report.supported);
+        assert!(report.error.is_some());
+
+        let valid = dir.path().join("valid.txt");
+        fs::write(&valid, "clean").unwrap();
+        let paths = vec![
+            valid.to_string_lossy().into_owned(),
+            missing.to_string_lossy().into_owned(),
+        ];
+        let reports = scan_paths(&paths);
+        assert_eq!(reports.len(), 2);
+        assert!(reports[0].supported);
+        assert!(!reports[1].supported);
+    }
+
     #[test]
     fn scan_and_clean_text_copy() {
         let dir = tempfile::tempdir().unwrap();

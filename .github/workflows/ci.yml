@@ -26,6 +26,10 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm test
       - run: pnpm build
-      - run: cargo fmt --manifest-path src-tauri/Cargo.toml --check
-      - run: cargo test --manifest-path src-tauri/Cargo.toml
-
+      - run: cargo fmt --check
+        working-directory: src-tauri
+      - run: cargo test
+        working-directory: src-tauri
+      - run: cargo install cargo-llvm-cov --locked
+      - run: cargo llvm-cov --fail-under-lines 80
+        working-directory: src-tauri

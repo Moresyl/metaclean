@@ -94,6 +94,44 @@ mod tests {
     use super::*;
 
     #[test]
+    fn validates_regular_files_and_rejects_directories_and_large_files() {
+        let dir = tempfile::tempdir().unwrap();
+        let file = dir.path().join("regular.txt");
+        fs::write(&file, b"ok").unwrap();
+        assert_eq!(validate_input(&file).unwrap().len(), 2);
+        assert!(matches!(
+            validate_input(dir.path()),
+            Err(CleanError::InvalidFormat(_))
+        ));
+
+        let large = dir.path().join("large.bin");
+        let handle = fs::File::create(&large).unwrap();
+        handle.set_len(MAX_INPUT_BYTES + 1).unwrap();
+        assert!(matches!(
+            validate_input(&large),
+            Err(CleanError::TooLarge(_))
+        ));
+    }
+
+    #[test]
+    fn generates_backup_and_unique_collision_paths() {
+        let dir = tempfile::tempdir().unwrap();
+        let source = dir.path().join("report.pdf");
+        assert_eq!(backup_path(&source), dir.path().join("report.pdf.bak"));
+
+        let preferred = dir.path().join("report.cleaned.pdf");
+        fs::write(&preferred, b"existing").unwrap();
+        assert_eq!(
+            unique_path(preferred),
+            dir.path().join("report.cleaned-2.pdf")
+        );
+
+        let no_extension = dir.path().join("output");
+        fs::write(&no_extension, b"existing").unwrap();
+        assert_eq!(unique_path(no_extension), dir.path().join("output-2"));
+    }
+
+    #[test]
     fn generates_cleaned_name_before_extension() {
         assert_eq!(
             cleaned_path(Path::new("report.pdf")),
