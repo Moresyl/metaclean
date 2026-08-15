@@ -23,3 +23,9 @@ regex = "1"
 tempfile = "3"
 thiserror = "2"
 zip = { version = "4", default-features = false, features = ["deflate"] }
+
+[profile.dev]
+debug = 0
+
+[profile.test]
+debug = 0
