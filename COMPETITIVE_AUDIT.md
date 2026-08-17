@@ -22,13 +22,15 @@ implementation and tests.
 | Format breadth | 90+ ExifTool writer formats including video/RAW | 26 explicitly supported extensions; images, audio, MP4/QuickTime video, Office, PDF and text | Gap remains |
 | Localization | 25 selectable locales, with many non-English catalogs reporting partial coverage | 26 complete interface locales; system detection, persisted selection, tested static/dynamic coverage and Arabic RTL | Exceeds on count and completeness |
 | Theme selection | System/dark-mode controls | System, light and dark modes with pre-render initialization and persistence | Exceeds on explicit control |
-| Installed-app E2E matrix | Unit and installed-app E2E across three OS families | Unit/coverage gates and local Windows installer evidence | Gap remains |
+| Installed-app E2E matrix | Unit and installed-app E2E across three OS families | E2E-featured desktop binaries launch and pass startup/navigation, locale/RTL, persisted theme and Rust IPC scenarios on Windows, Ubuntu and macOS in CI #19 | Parity on OS matrix; narrower scenario count |
 
 ## Release boundary
 
 The current MetaClean branch is stronger on irreversible PDF cleaning, Office
 revisions, text/AI traces, atomic backup semantics, Windows shell integration,
-secure version discovery and explicit theme control. ExifCleaner still leads on
-broad ExifTool-backed format coverage, localization count and installed-app E2E
-breadth. Future work should close those rows without weakening MetaClean's
-fail-closed format policy.
+secure version discovery, localization completeness and explicit theme control.
+It now matches the three-family installed-app CI matrix while keeping the test
+driver absent from production builds. ExifCleaner still leads on broad
+ExifTool-backed format coverage and total E2E scenario count. Future format
+work must preserve MetaClean's fail-closed policy instead of accepting formats
+whose metadata cannot be removed safely and irreversibly.

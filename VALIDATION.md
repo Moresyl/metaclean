@@ -20,7 +20,7 @@ This file records evidence, not intent. A row is complete only when the named ar
 
 - Frontend: 62 tests. Statements 94.49%, branches 87.65%, functions 94.96%, lines 97.67%.
 - Rust: 51 regular tests plus one ignored external Office compatibility test. Core regions 81.22%, lines 80.77% after excluding Tauri/platform glue (`lib`, `main`, data-only `models` and `shell_integration`) from the line threshold; cleaners, intake, engine and safe I/O remain included.
-- Installed desktop E2E: 4 WebdriverIO scenarios pass against the E2E-featured Windows binary, covering startup/navigation, all 26 locale options and Arabic RTL, theme persistence across a real webview reload, and the Rust `scan_files` IPC boundary. CI contains the same embedded-driver job for Windows, macOS and Linux/Xvfb.
+- Installed desktop E2E: 4 WebdriverIO scenarios pass against E2E-featured Windows, macOS and Linux/Xvfb binaries, covering startup/navigation, all 26 locale options and Arabic RTL, theme persistence across a real webview reload, and the Rust `scan_files` IPC boundary. GitHub CI #19 completed the base gate and all three desktop jobs successfully in 8m58s: `https://github.com/Moresyl/metaclean/actions/runs/32031760324`.
 - CI fails below 80% for all frontend coverage dimensions and below 80% Rust core line coverage.
 - npm's official audit endpoint reports no unmitigated dependency vulnerability. WebdriverIO currently inherits `extract-zip` 2.0.1, whose upstream has no fixed release for GHSA-jmr9-qjv8-65gv; `patches/extract-zip@2.0.1.patch` rejects out-of-root symlink targets and `pnpm test:supply-chain` proves a malicious archive cannot create the link before CI applies the narrow audit exemption. Patched `glob` and `serialize-javascript` versions are forced through workspace overrides.
 - `cargo audit` reports no blocking vulnerability and exits successfully. It emits 17 allowed warnings from inherited GTK/Tauri and Unicode dependency families, including RUSTSEC-2024-0429 in `glib`; these are tracked upstream rather than represented as resolved.
@@ -35,4 +35,3 @@ This file records evidence, not intent. A row is complete only when the named ar
 
 1. Open cleaned DOCX/XLSX/PPTX/ODT samples in current Word and WPS builds. LibreOffice 26.2.5 validation is complete.
 2. Provide Apple Developer signing/notarization credentials and verify both DMGs with Gatekeeper.
-3. Confirm the new three-platform installed-app E2E matrix on GitHub Actions; local Windows execution is complete.
