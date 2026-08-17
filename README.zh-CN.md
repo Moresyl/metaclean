@@ -92,12 +92,14 @@ pnpm tauri dev      # 以开发模式运行
 
 ```bash
 pnpm test:coverage                              # 前端测试，覆盖率不低于 80%
+pnpm test:supply-chain                          # 已修补依赖的安全回归测试
 pnpm build                                      # 类型检查 + 生产构建
 cargo test --manifest-path src-tauri/Cargo.toml # Rust 内核测试
+pnpm test:e2e:build && pnpm test:e2e             # 真实桌面程序 E2E
 pnpm tauri build                                # 各平台安装包
 ```
 
-推送版本标签后，GitHub Actions 会构建完整矩阵：Windows 的 NSIS 与 MSI、macOS 的 Apple Silicon 与 Intel 双 DMG、Linux 的 DEB/RPM/AppImage。macOS 签名与公证需要配置发布工作流中列出的 Apple 密钥；未配置时 macOS 任务仍会产出未签名安装包。
+每次分支构建还会在 Windows、macOS 和 Linux 启动 E2E 专用桌面二进制；内嵌 WebDriver 与测试命令受 Cargo feature 隔离，不会进入生产包。推送版本标签后，GitHub Actions 会构建完整发布矩阵：Windows 的 NSIS 与 MSI、macOS 的 Apple Silicon 与 Intel 双 DMG、Linux 的 DEB/RPM/AppImage。macOS 签名与公证需要配置发布工作流中列出的 Apple 密钥；未配置时 macOS 任务仍会产出未签名安装包。
 
 测试覆盖率与发布验收证据记录在 [VALIDATION.md](VALIDATION.md)。
 

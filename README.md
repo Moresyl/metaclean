@@ -92,12 +92,14 @@ Run the full check suite before opening a pull request:
 
 ```bash
 pnpm test:coverage                              # frontend tests, 80% floor
+pnpm test:supply-chain                          # patched dependency regression
 pnpm build                                      # typecheck + production bundle
 cargo test --manifest-path src-tauri/Cargo.toml # Rust core tests
+pnpm test:e2e:build && pnpm test:e2e             # real desktop app E2E
 pnpm tauri build                                # platform installers
 ```
 
-Pushing a version tag builds the whole matrix through GitHub Actions: NSIS and MSI for Windows, DMG for Apple Silicon and Intel macOS, and DEB/RPM/AppImage for Linux. macOS signing and notarization need the Apple secrets documented in the release workflow; without them the macOS job still produces unsigned bundles.
+Every branch build also launches an E2E-only desktop binary on Windows, macOS and Linux. Its embedded WebDriver and test commands are gated behind a Cargo feature and are absent from production bundles. Pushing a version tag builds the whole release matrix through GitHub Actions: NSIS and MSI for Windows, DMG for Apple Silicon and Intel macOS, and DEB/RPM/AppImage for Linux. macOS signing and notarization need the Apple secrets documented in the release workflow; without them the macOS job still produces unsigned bundles.
 
 Test coverage and release evidence are tracked in [VALIDATION.md](VALIDATION.md).
 Release changes are recorded in [CHANGELOG.md](CHANGELOG.md).

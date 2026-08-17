@@ -25,7 +25,11 @@ jobs:
         with:
           workspaces: src-tauri
       - run: pnpm install --frozen-lockfile
-      - run: pnpm audit --audit-level moderate --registry=https://registry.npmjs.org
+      - name: Verify extract-zip security patch
+        run: pnpm test:supply-chain
+      - name: Audit dependencies
+        # GHSA-jmr9-qjv8-65gv is fixed by patches/extract-zip@2.0.1.patch and tested above.
+        run: pnpm audit --audit-level moderate --ignore GHSA-jmr9-qjv8-65gv --registry=https://registry.npmjs.org
       - run: pnpm test:coverage
       - run: pnpm build
       - run: cargo fmt --check
@@ -38,3 +42,38 @@ jobs:
       - run: cargo install cargo-audit --locked
       - run: cargo audit
         working-directory: src-tauri
+
+  desktop-e2e:
+    name: Desktop E2E (${{ matrix.os }})
+    needs: test
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-22.04, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 10.32.1
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+      - name: Install Linux system dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential libssl-dev libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev xvfb
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test:e2e:build
+      - name: Run desktop E2E
+        if: runner.os != 'Linux'
+        run: pnpm test:e2e
+      - name: Run desktop E2E under Xvfb
+        if: runner.os == 'Linux'
+        run: xvfb-run --auto-servernum pnpm test:e2e

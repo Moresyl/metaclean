@@ -11,7 +11,7 @@ This file records evidence, not intent. A row is complete only when the named ar
 | M0: PDF structural rewrite | Complete | `drops_metadata_bytes_from_incremental_history` proves old Info metadata bytes are absent after full `lopdf` serialization. |
 | M0: image/media format decision | Complete | JPEG, PNG, WebP and GIF; MP3, WAV and FLAC; and MP4/MOV/M4V/M4A have container-level cleanup and malformed-input tests. ISO BMFF cleanup preserves file length and media offsets. TIFF, HEIC, RAW and unimplemented media containers are explicitly unsupported rather than being modified unsafely. |
 | M0: Office package integrity | Partial | Real DOCX/XLSX/PPTX/ODT samples were cleaned and successfully opened/exported by LibreOffice 26.2.5. Current Word and WPS executables are unavailable on this machine, so those two applications remain unverified. |
-| M1: desktop MVP | Complete | Batch drag/drop, recursive file/folder intake, native pickers, per-file scan reports, safe-copy/replace modes, forced backup, atomic writes, version discovery and twenty-six complete interface locales are implemented and tested. Every non-source catalog covers all 111 static strings and 13 dynamic message paths; Arabic direction switching has an app-level test. |
+| M1: desktop MVP | Complete | Batch drag/drop, recursive file/folder intake, native pickers, per-file scan reports, safe-copy/replace modes, forced backup, atomic writes, version discovery and twenty-six complete interface locales are implemented and tested. Every non-source catalog covers all 111 static strings and 13 dynamic message paths; Arabic direction switching has unit and installed-app E2E coverage. |
 | M2: Office/PDF/shell integration | Complete | DOCX/XLSX/PPTX/ODT/PDF cleaners, 26-extension Windows Explorer integration and launch-path handling are covered by unit and installer tests. |
 | M3: Windows release | Complete | Optimized v0.2.0 NSIS and MSI packages build locally and were published by the successful GitHub release matrix. The release executable starts, remains running for a six-second smoke window and exposes the expected `MetaClean` main-window title. The v0.1.0 installer lifecycle test previously proved install, tray behavior, shell registration cleanup and uninstall cleanup; the same WiX/NSIS integration is retained and expanded to 22 extensions. |
 | M3: macOS/Linux release | Partial | The successful v0.2.0 GitHub matrix published Intel and Apple Silicon DMGs plus DEB/RPM/AppImage packages. Apple signing/notarization secrets are unavailable, so the DMGs are currently unsigned and Gatekeeper verification remains external. |
@@ -20,10 +20,11 @@ This file records evidence, not intent. A row is complete only when the named ar
 
 - Frontend: 62 tests. Statements 94.49%, branches 87.65%, functions 94.96%, lines 97.67%.
 - Rust: 51 regular tests plus one ignored external Office compatibility test. Core regions 81.22%, lines 80.77% after excluding Tauri/platform glue (`lib`, `main`, data-only `models` and `shell_integration`) from the line threshold; cleaners, intake, engine and safe I/O remain included.
+- Installed desktop E2E: 4 WebdriverIO scenarios pass against the E2E-featured Windows binary, covering startup/navigation, all 26 locale options and Arabic RTL, theme persistence across a real webview reload, and the Rust `scan_files` IPC boundary. CI contains the same embedded-driver job for Windows, macOS and Linux/Xvfb.
 - CI fails below 80% for all frontend coverage dimensions and below 80% Rust core line coverage.
-- npm's official audit endpoint reports no known frontend vulnerabilities.
+- npm's official audit endpoint reports no unmitigated dependency vulnerability. WebdriverIO currently inherits `extract-zip` 2.0.1, whose upstream has no fixed release for GHSA-jmr9-qjv8-65gv; `patches/extract-zip@2.0.1.patch` rejects out-of-root symlink targets and `pnpm test:supply-chain` proves a malicious archive cannot create the link before CI applies the narrow audit exemption. Patched `glob` and `serialize-javascript` versions are forced through workspace overrides.
 - `cargo audit` reports no blocking vulnerability and exits successfully. It emits 17 allowed warnings from inherited GTK/Tauri and Unicode dependency families, including RUSTSEC-2024-0429 in `glib`; these are tracked upstream rather than represented as resolved.
-- Production frontend build, Rust all-target tests, Rust formatting, JavaScript/TypeScript linting and both coverage gates pass locally.
+- Production frontend build, TypeScript checking, Rust tests, Rust formatting and both coverage gates pass locally. The production bundle contains no WebdriverIO plugin marker; both Rust test plugins are optional and registered only by the `e2e` Cargo feature.
 
 ## Windows release artifacts
 
@@ -34,4 +35,4 @@ This file records evidence, not intent. A row is complete only when the named ar
 
 1. Open cleaned DOCX/XLSX/PPTX/ODT samples in current Word and WPS builds. LibreOffice 26.2.5 validation is complete.
 2. Provide Apple Developer signing/notarization credentials and verify both DMGs with Gatekeeper.
-3. Repeat installed-app interaction and installer-lifecycle automation for v0.2.0 when the Windows Computer Use helper is available; current evidence covers build output and process-level startup, not automated page-by-page UI interaction.
+3. Confirm the new three-platform installed-app E2E matrix on GitHub Actions; local Windows execution is complete.

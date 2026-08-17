@@ -6,10 +6,14 @@ import { I18nProvider } from "./lib/i18n";
 import { UpdateProvider } from "./contexts/UpdateContext";
 import { initializeTheme, ThemeProvider } from "./contexts/ThemeContext";
 
-const initialTheme = initializeTheme();
+async function bootstrap() {
+  if (import.meta.env.MODE === "e2e") await import("@wdio/tauri-plugin");
+  const initialTheme = initializeTheme();
+  ReactDOM.createRoot(document.getElementById("root")!).render(
+    <React.StrictMode>
+      <ThemeProvider initialMode={initialTheme}><I18nProvider><UpdateProvider><App /></UpdateProvider></I18nProvider></ThemeProvider>
+    </React.StrictMode>,
+  );
+}
 
-ReactDOM.createRoot(document.getElementById("root")!).render(
-  <React.StrictMode>
-    <ThemeProvider initialMode={initialTheme}><I18nProvider><UpdateProvider><App /></UpdateProvider></I18nProvider></ThemeProvider>
-  </React.StrictMode>,
-);
+void bootstrap();

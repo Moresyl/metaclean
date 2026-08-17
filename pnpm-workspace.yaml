@@ -1,0 +1,9 @@
+auditConfig:
+  ignoreCves:
+    - GHSA-jmr9-qjv8-65gv
+
+overrides:
+  glob@10.4.5: 10.5.0
+  serialize-javascript@6.0.2: 7.0.5
+patchedDependencies:
+  extract-zip@2.0.1: patches/extract-zip@2.0.1.patch
