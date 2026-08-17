@@ -1,0 +1,289 @@
+export const LOCALES = [
+  { code: "zh", nativeName: "简体中文", htmlLang: "zh-CN" },
+  { code: "zh-TW", nativeName: "繁體中文", htmlLang: "zh-TW" },
+  { code: "en", nativeName: "English", htmlLang: "en" },
+  { code: "ja", nativeName: "日本語", htmlLang: "ja" },
+  { code: "ko", nativeName: "한국어", htmlLang: "ko" },
+] as const;
+
+export type Locale = (typeof LOCALES)[number]["code"];
+
+export const SOURCE_STRINGS = [
+  "256 MiB maximum per file",
+  "Add files to see scan status here",
+  "All processing happens locally. ",
+  "Appearance",
+  "Atomic temporary-file output",
+  "Audio",
+  "Audio metadata",
+  "Audio tags and artwork",
+  "Author / generator / AI metadata",
+  "Browser mode cannot access full paths. Choose files in the desktop app.",
+  "Changes apply immediately.",
+  "Check automatically after launch",
+  "Check now",
+  "Checking File Explorer integration…",
+  "Checking the latest stable GitHub release…",
+  "Checks GitHub Releases only; no files or usage data are sent.",
+  "Choose files",
+  "Choose folder",
+  "Clean files",
+  "Cleaned",
+  "Clear",
+  "Clear history",
+  "Completed cleanup jobs will appear here.",
+  "Confirm and clean",
+  "Create .bak, then atomically replace the original",
+  "Creates a backup before cleaning",
+  "Dark",
+  "Default output mode",
+  "Disable",
+  "Document authors and revisions",
+  "Download",
+  "Drop files to clean",
+  "Enable",
+  "Fidelity options",
+  "File privacy cleaner",
+  "File queue",
+  "Files never leave this device",
+  "Files stay local",
+  "Follow the system or keep a fixed light or dark theme.",
+  "Format will be checked during scan",
+  "History",
+  "History stays on this device and never stores file content.",
+  "Image metadata",
+  "Images",
+  "Invisible Unicode",
+  "JPEG, PNG, WebP and GIF metadata; MP3, WAV and FLAC audio tags; MP4, MOV, M4V and M4A user data, XMP and location; DOCX, XLSX, PPTX and ODT properties/comments; PDF properties and XMP; invisible Unicode and generator metadata in TXT, Markdown, HTML and SVG files.",
+  "Keep only information needed for display and file management, never GPS, author, or provenance metadata.",
+  "Keep the original and create a .cleaned copy",
+  "Language",
+  "Light",
+  "Local only",
+  "MetaClean has clear, verifiable processing boundaries.",
+  "MetaClean never uploads, stores, or analyzes your file content.",
+  "MetaClean · Local file privacy tool",
+  "No history yet",
+  "No privacy traces found",
+  "No traces to clean",
+  "Office privacy trace",
+  "Only listed traces will be removed.",
+  "Output mode",
+  "PDF properties / XMP",
+  "Preserve JPEG display orientation",
+  "Preserve access and modification times",
+  "Preserve file timestamps",
+  "Preserve photo orientation",
+  "Privacy",
+  "Process authorized content",
+  "Provenance marker",
+  "Rebuilds a minimal orientation-only EXIF segment; all other EXIF/GPS data is removed.",
+  "Recommended; keeps the original",
+  "Refuses symlink writes",
+  "Remove private traces before sharing",
+  "Replace original",
+  "Replace with backup",
+  "Replacement always creates a backup",
+  "Safe copy",
+  "Safety guarantees",
+  "Save a safe copy",
+  "Scan before cleaning",
+  "Scan privacy traces",
+  "Scan privacy traces first, then confirm cleanup",
+  "Scanning is read-only and changes nothing.",
+  "Scanning is read-only. Files change only after explicit confirmation.",
+  "Scanning…",
+  "Scans for",
+  "Settings",
+  "Settings are saved locally.",
+  "Software updates",
+  "Statistical text watermarks, pixel-domain watermarks and legacy binary Office formats are out of scope.",
+  "Supported scope",
+  "System",
+  "Text",
+  "The default strategy for newly added files.",
+  "The local Rust engine scans and cleans files with no upload API or cloud processing. Update checks only request GitHub Releases.",
+  "Unusual whitespace",
+  "Update available",
+  "Use this tool for privacy and file hygiene, not fraud, false provenance, or unauthorized content.",
+  "Video",
+  "Video user data and location",
+  "Waiting to scan",
+  "When disabled, MetaClean remains fully offline until you check manually.",
+  "When disabled, output files use the cleanup time.",
+  "Windows context menu",
+  "Working…",
+  "file(s)",
+  "properties and XMP",
+  "succeeded",
+  "Enabled for supported file types. On Windows 11, use Show more options.",
+  "Enable the File Explorer command for supported types. On Windows 11, it appears under Show more options.",
+  "Context-menu integration is available on Windows only.",
+  "Main navigation",
+] as const;
+
+const ZH_TW = [
+  "每個檔案上限 256 MiB", "新增檔案後，掃描狀態會顯示於此", "所有處理都在本機完成。 ", "外觀", "原子式暫存檔輸出",
+  "音訊", "音訊中繼資料", "音訊標籤與封面", "作者／產生器／AI 中繼資料", "瀏覽器模式無法取得完整路徑。請在桌面應用程式中選擇檔案。",
+  "切換後立即生效。", "啟動後自動檢查", "立即檢查", "正在檢查檔案總管整合…", "正在檢查 GitHub 最新穩定版本…",
+  "只檢查 GitHub Releases；不會傳送檔案或使用資料。", "選擇檔案", "選擇資料夾", "清理檔案", "已清理",
+  "清空", "清空記錄", "完成清理後，結果會顯示於此。", "確認並開始清理", "建立 .bak 後再原子式取代原始檔案",
+  "清理前會建立備份", "深色", "預設輸出方式", "停用", "文件作者與修訂",
+  "下載", "拖入要清理的檔案", "啟用", "保真選項", "檔案隱私清理工具",
+  "檔案佇列", "檔案永遠不會離開此裝置", "檔案保留在本機", "跟隨系統，或固定使用淺色／深色主題。", "掃描時將確認格式",
+  "處理記錄", "記錄只保存在此裝置，不包含檔案內容。", "圖片中繼資料", "圖片", "不可見 Unicode",
+  "JPEG、PNG、WebP 與 GIF 中繼資料；MP3、WAV 與 FLAC 音訊標籤；MP4、MOV、M4V 與 M4A 使用者資料、XMP 與位置；DOCX、XLSX、PPTX 與 ODT 屬性／批註；PDF 屬性與 XMP；TXT、Markdown、HTML 與 SVG 中的不可見 Unicode 與產生器中繼資料。",
+  "只保留顯示和檔案管理所需資訊，不保留 GPS、作者或來源中繼資料。", "保留原始檔案並建立 .cleaned 副本", "語言", "淺色", "僅限本機",
+  "MetaClean 的處理邊界清楚且可驗證。", "MetaClean 不會上傳、儲存或分析您的檔案內容。", "MetaClean · 本機檔案隱私工具", "尚無處理記錄", "未發現隱私痕跡",
+  "沒有需要清理的痕跡", "Office 隱私痕跡", "只會移除報告中列出的痕跡。", "輸出方式", "PDF 屬性／XMP",
+  "保留 JPEG 顯示方向", "保留存取和修改時間", "保留檔案時間戳記", "保留照片方向", "隱私",
+  "處理您有權處理的內容", "來源標記", "將方向重建為最小的僅方向 EXIF 區段；其餘 EXIF／GPS 資料全部移除。", "建議；保留原始檔案", "拒絕寫入符號連結",
+  "分享前移除隱私痕跡", "取代原始檔案", "取代並備份", "取代模式一律建立備份", "安全副本",
+  "安全保證", "儲存為安全副本", "先掃描再清理", "掃描隱私痕跡", "先掃描隱私痕跡，再確認是否清理",
+  "掃描是唯讀操作，不會變更任何內容。", "掃描階段為唯讀；只有明確確認後才會變更檔案。", "正在掃描…", "將偵測", "設定",
+  "設定會自動保存在本機。", "軟體更新", "統計型文字浮水印、像素域浮水印和舊版二進位 Office 格式不在處理範圍內。", "目前支援範圍", "跟隨系統",
+  "文字", "每次新增檔案時使用的預設策略。", "本機 Rust 引擎會掃描並清理檔案，沒有上傳 API 或雲端處理。更新檢查只會請求 GitHub Releases。", "異常空白字元", "有可用更新",
+  "此工具僅用於隱私與檔案衛生，不應用於詐欺、偽造來源或未授權內容。", "影片", "影片使用者資料與位置", "等待掃描", "停用後，MetaClean 會保持完全離線，直到您手動檢查。",
+  "停用後，輸出檔案會使用清理時間。", "Windows 右鍵選單", "處理中…", "個檔案", "屬性與 XMP", "成功",
+  "已為支援的檔案類型啟用。Windows 11 請使用「顯示更多選項」。", "為支援的類型啟用檔案總管命令。在 Windows 11 中會顯示於「顯示更多選項」。", "右鍵選單整合僅適用於 Windows。", "主要導覽",
+] as const;
+
+const JA = [
+  "1ファイル最大256 MiB", "ファイルを追加するとスキャン状態がここに表示されます", "すべての処理はローカルで行われます。 ", "外観", "一時ファイルによるアトミック出力",
+  "音声", "音声メタデータ", "音声タグとアートワーク", "作成者／生成ツール／AIメタデータ", "ブラウザモードでは完全なパスを取得できません。デスクトップアプリでファイルを選択してください。",
+  "変更はすぐに反映されます。", "起動後に自動確認", "今すぐ確認", "エクスプローラー連携を確認中…", "GitHubの最新安定版を確認中…",
+  "GitHub Releasesのみを確認し、ファイルや利用データは送信しません。", "ファイルを選択", "フォルダーを選択", "ファイルをクリーン", "クリーン済み",
+  "クリア", "履歴を消去", "クリーン処理が完了すると結果がここに表示されます。", "確認してクリーン", ".bakを作成してから元のファイルをアトミックに置換",
+  "クリーン前にバックアップを作成", "ダーク", "既定の出力モード", "無効化", "文書の作成者と変更履歴",
+  "ダウンロード", "クリーンするファイルをドロップ", "有効化", "再現性オプション", "ファイルプライバシークリーナー",
+  "ファイルキュー", "ファイルがこのデバイスから外へ出ることはありません", "ファイルはローカルに保持", "システムに合わせるか、ライト／ダークテーマに固定します。", "スキャン時に形式を確認します",
+  "履歴", "履歴はこのデバイスだけに保存され、ファイル内容は記録しません。", "画像メタデータ", "画像", "不可視Unicode",
+  "JPEG、PNG、WebP、GIFのメタデータ、MP3、WAV、FLACの音声タグ、MP4、MOV、M4V、M4Aのユーザーデータ・XMP・位置情報、DOCX、XLSX、PPTX、ODTのプロパティ／コメント、PDFのプロパティとXMP、TXT、Markdown、HTML、SVGの不可視Unicodeと生成ツールメタデータ。",
+  "表示とファイル管理に必要な情報だけを保持し、GPS、作成者、出所メタデータは保持しません。", "元のファイルを保持して.cleanedコピーを作成", "言語", "ライト", "ローカルのみ",
+  "MetaCleanの処理範囲は明確で検証可能です。", "MetaCleanはファイル内容をアップロード、保存、分析しません。", "MetaClean · ローカルファイルプライバシーツール", "履歴はまだありません", "プライバシー痕跡は見つかりませんでした",
+  "クリーンする痕跡はありません", "Officeプライバシー痕跡", "レポートに表示された痕跡だけを削除します。", "出力モード", "PDFプロパティ／XMP",
+  "JPEGの表示方向を保持", "アクセス時刻と更新時刻を保持", "ファイルのタイムスタンプを保持", "写真の向きを保持", "プライバシー",
+  "権限のあるコンテンツのみを処理", "出所マーカー", "向きだけを含む最小EXIFセグメントを再構築し、その他のEXIF／GPSデータはすべて削除します。", "推奨：元のファイルを保持", "シンボリックリンクへの書き込みを拒否",
+  "共有前にプライバシー痕跡を削除", "元のファイルを置換", "置換してバックアップ", "置換時は必ずバックアップを作成", "安全なコピー",
+  "安全性の保証", "安全なコピーとして保存", "スキャンしてからクリーン", "プライバシー痕跡をスキャン", "先にプライバシー痕跡をスキャンし、確認後にクリーンします",
+  "スキャンは読み取り専用で、何も変更しません。", "スキャンは読み取り専用です。明示的な確認後にのみファイルを変更します。", "スキャン中…", "スキャン対象", "設定",
+  "設定はローカルに自動保存されます。", "ソフトウェア更新", "統計的テキスト透かし、画素領域透かし、旧式バイナリOffice形式は対象外です。", "対応範囲", "システム",
+  "テキスト", "新しく追加したファイルに使う既定の方針です。", "ローカルのRustエンジンがファイルをスキャン・クリーンし、アップロードAPIやクラウド処理はありません。更新確認はGitHub Releasesだけにアクセスします。", "異常な空白文字", "更新があります",
+  "このツールはプライバシーとファイル衛生のために使用し、詐欺、出所偽装、無許可コンテンツには使用しないでください。", "動画", "動画のユーザーデータと位置情報", "スキャン待ち", "無効にすると、手動で確認するまでMetaCleanは完全にオフラインのままです。",
+  "無効にすると、出力ファイルにはクリーン処理時刻が使用されます。", "Windowsコンテキストメニュー", "処理中…", "ファイル", "プロパティとXMP", "成功",
+  "対応するファイル形式で有効です。Windows 11では「その他のオプションを表示」を使用してください。", "対応形式のエクスプローラーコマンドを有効にします。Windows 11では「その他のオプションを表示」にあります。", "コンテキストメニュー連携はWindowsでのみ利用できます。", "メインナビゲーション",
+] as const;
+
+const KO = [
+  "파일당 최대 256 MiB", "파일을 추가하면 스캔 상태가 여기에 표시됩니다", "모든 처리는 로컬에서 이루어집니다. ", "화면 모드", "임시 파일을 사용한 원자적 출력",
+  "오디오", "오디오 메타데이터", "오디오 태그와 앨범 아트", "작성자 / 생성기 / AI 메타데이터", "브라우저 모드에서는 전체 경로를 가져올 수 없습니다. 데스크톱 앱에서 파일을 선택하세요.",
+  "변경 사항은 즉시 적용됩니다.", "실행 후 자동 확인", "지금 확인", "파일 탐색기 통합 확인 중…", "GitHub 최신 안정 버전 확인 중…",
+  "GitHub Releases만 확인하며 파일이나 사용 데이터는 전송하지 않습니다.", "파일 선택", "폴더 선택", "파일 정리", "정리됨",
+  "비우기", "기록 지우기", "정리 작업을 완료하면 결과가 여기에 표시됩니다.", "확인 후 정리", ".bak을 만든 뒤 원본 파일을 원자적으로 교체",
+  "정리 전에 백업 생성", "어둡게", "기본 출력 방식", "비활성화", "문서 작성자와 수정 내역",
+  "다운로드", "정리할 파일을 놓으세요", "활성화", "보존 옵션", "파일 개인정보 정리 도구",
+  "파일 대기열", "파일은 이 장치를 벗어나지 않습니다", "파일은 로컬에 유지됩니다", "시스템 설정을 따르거나 밝은/어두운 테마로 고정합니다.", "스캔할 때 형식을 확인합니다",
+  "기록", "기록은 이 장치에만 저장되며 파일 내용은 저장하지 않습니다.", "이미지 메타데이터", "이미지", "보이지 않는 Unicode",
+  "JPEG, PNG, WebP, GIF 메타데이터; MP3, WAV, FLAC 오디오 태그; MP4, MOV, M4V, M4A 사용자 데이터, XMP 및 위치; DOCX, XLSX, PPTX, ODT 속성/주석; PDF 속성과 XMP; TXT, Markdown, HTML, SVG의 보이지 않는 Unicode 및 생성기 메타데이터.",
+  "표시와 파일 관리에 필요한 정보만 유지하며 GPS, 작성자 또는 출처 메타데이터는 보존하지 않습니다.", "원본을 유지하고 .cleaned 사본 생성", "언어", "밝게", "로컬 전용",
+  "MetaClean의 처리 범위는 명확하고 검증할 수 있습니다.", "MetaClean은 파일 내용을 업로드, 저장 또는 분석하지 않습니다.", "MetaClean · 로컬 파일 개인정보 보호 도구", "아직 처리 기록이 없습니다", "개인정보 흔적을 찾지 못했습니다",
+  "정리할 흔적이 없습니다", "Office 개인정보 흔적", "보고서에 표시된 흔적만 제거합니다.", "출력 방식", "PDF 속성 / XMP",
+  "JPEG 표시 방향 유지", "접근 및 수정 시간 유지", "파일 타임스탬프 유지", "사진 방향 유지", "개인정보",
+  "권한이 있는 콘텐츠만 처리", "출처 표시", "방향 정보만 담은 최소 EXIF 세그먼트를 다시 만들고 나머지 EXIF/GPS 데이터는 모두 제거합니다.", "권장: 원본 유지", "심볼릭 링크 쓰기 거부",
+  "공유 전에 개인정보 흔적 제거", "원본 파일 교체", "교체 후 백업", "교체 모드는 항상 백업 생성", "안전한 사본",
+  "안전 보장", "안전한 사본으로 저장", "스캔 후 정리", "개인정보 흔적 스캔", "먼저 개인정보 흔적을 스캔한 뒤 확인하고 정리합니다",
+  "스캔은 읽기 전용이며 아무것도 변경하지 않습니다.", "스캔은 읽기 전용입니다. 명시적으로 확인한 뒤에만 파일이 변경됩니다.", "스캔 중…", "검사 항목", "설정",
+  "설정은 로컬에 자동 저장됩니다.", "소프트웨어 업데이트", "통계형 텍스트 워터마크, 픽셀 영역 워터마크 및 기존 바이너리 Office 형식은 지원 범위에 포함되지 않습니다.", "지원 범위", "시스템",
+  "텍스트", "새로 추가한 파일에 사용할 기본 전략입니다.", "로컬 Rust 엔진이 파일을 스캔하고 정리하며 업로드 API나 클라우드 처리는 없습니다. 업데이트 확인은 GitHub Releases만 요청합니다.", "비정상 공백 문자", "업데이트 있음",
+  "이 도구는 개인정보 보호와 파일 위생을 위해 사용하며 사기, 출처 위조 또는 권한 없는 콘텐츠에 사용하지 마세요.", "비디오", "비디오 사용자 데이터와 위치", "스캔 대기", "비활성화하면 수동으로 확인할 때까지 MetaClean은 완전히 오프라인으로 유지됩니다.",
+  "비활성화하면 출력 파일에 정리 시간이 사용됩니다.", "Windows 상황에 맞는 메뉴", "처리 중…", "개 파일", "속성과 XMP", "성공",
+  "지원되는 파일 형식에 활성화되었습니다. Windows 11에서는 '더 많은 옵션 표시'를 사용하세요.", "지원되는 형식에 파일 탐색기 명령을 활성화합니다. Windows 11에서는 '더 많은 옵션 표시' 아래에 있습니다.", "상황에 맞는 메뉴 통합은 Windows에서만 사용할 수 있습니다.", "주 탐색",
+] as const;
+
+function makeCatalog(values: readonly string[]): ReadonlyMap<string, string> {
+  if (values.length !== SOURCE_STRINGS.length) {
+    throw new Error(`Locale has ${values.length} strings; expected ${SOURCE_STRINGS.length}`);
+  }
+  return new Map(SOURCE_STRINGS.map((source, index) => [source, values[index]]));
+}
+
+const CATALOGS: Partial<Record<Locale, ReadonlyMap<string, string>>> = {
+  "zh-TW": makeCatalog(ZH_TW),
+  ja: makeCatalog(JA),
+  ko: makeCatalog(KO),
+};
+
+type DynamicRule = readonly [RegExp, (match: RegExpExecArray) => string];
+
+const DYNAMIC_RULES: Partial<Record<Locale, readonly DynamicRule[]>> = {
+  "zh-TW": [
+    [/^Added (\d+) file\(s\); skipped (\d+)\.(.*)$/u, (m) => `已新增 ${m[1]} 個檔案，跳過 ${m[2]} 項。${m[3]}`],
+    [/^Could not expand the selected paths: (.*)$/u, (m) => `無法展開所選路徑：${m[1]}`],
+    [/^Scan complete: (\d+) trace\(s\) await confirmation\.$/u, (m) => `掃描完成：${m[1]} 項痕跡等待確認。`],
+    [/^Scan failed: (.*)$/u, (m) => `掃描失敗：${m[1]}`],
+    [/^(\d+) file\(s\) cleaned(?:; (\d+) failed)?\.(?: Output: (.*))?$/u, (m) => `${m[1]} 個檔案清理完成${m[2] ? `，${m[2]} 個失敗` : ""}。${m[3] ? ` 輸出：${m[3]}` : ""}`],
+    [/^Cleanup failed: (.*)$/u, (m) => `清理失敗：${m[1]}`],
+    [/^Version (.*) is available$/u, (m) => `發現新版本 ${m[1]}`],
+    [/^(\d+) trace\(s\) found$/u, (m) => `發現 ${m[1]} 項痕跡`],
+    [/^Remove (.*)$/u, (m) => `移除 ${m[1]}`],
+    [/^Version (.*) is installed; (.*) is available\.$/u, (m) => `目前為 ${m[1]}，可更新至 ${m[2]}。`],
+    [/^Version (.*) is up to date\.$/u, (m) => `目前的 ${m[1]} 已是最新版本。`],
+    [/^Update check failed: (.*)$/u, (m) => `更新檢查失敗：${m[1]}`],
+  ],
+  ja: [
+    [/^Added (\d+) file\(s\); skipped (\d+)\.(.*)$/u, (m) => `${m[1]}個のファイルを追加し、${m[2]}件をスキップしました。${m[3]}`],
+    [/^Could not expand the selected paths: (.*)$/u, (m) => `選択したパスを展開できませんでした：${m[1]}`],
+    [/^Scan complete: (\d+) trace\(s\) await confirmation\.$/u, (m) => `スキャン完了：${m[1]}件の痕跡が確認待ちです。`],
+    [/^Scan failed: (.*)$/u, (m) => `スキャン失敗：${m[1]}`],
+    [/^(\d+) file\(s\) cleaned(?:; (\d+) failed)?\.(?: Output: (.*))?$/u, (m) => `${m[1]}個のファイルをクリーンしました${m[2] ? `、${m[2]}個は失敗` : ""}。${m[3] ? ` 出力：${m[3]}` : ""}`],
+    [/^Cleanup failed: (.*)$/u, (m) => `クリーン失敗：${m[1]}`],
+    [/^Version (.*) is available$/u, (m) => `新しいバージョン${m[1]}があります`],
+    [/^(\d+) trace\(s\) found$/u, (m) => `${m[1]}件の痕跡が見つかりました`],
+    [/^Remove (.*)$/u, (m) => `${m[1]}を削除`],
+    [/^Version (.*) is installed; (.*) is available\.$/u, (m) => `現在は${m[1]}です。${m[2]}に更新できます。`],
+    [/^Version (.*) is up to date\.$/u, (m) => `バージョン${m[1]}は最新です。`],
+    [/^Update check failed: (.*)$/u, (m) => `更新確認に失敗しました：${m[1]}`],
+  ],
+  ko: [
+    [/^Added (\d+) file\(s\); skipped (\d+)\.(.*)$/u, (m) => `파일 ${m[1]}개를 추가하고 ${m[2]}개를 건너뛰었습니다.${m[3]}`],
+    [/^Could not expand the selected paths: (.*)$/u, (m) => `선택한 경로를 확장할 수 없습니다: ${m[1]}`],
+    [/^Scan complete: (\d+) trace\(s\) await confirmation\.$/u, (m) => `스캔 완료: 흔적 ${m[1]}개가 확인을 기다립니다.`],
+    [/^Scan failed: (.*)$/u, (m) => `스캔 실패: ${m[1]}`],
+    [/^(\d+) file\(s\) cleaned(?:; (\d+) failed)?\.(?: Output: (.*))?$/u, (m) => `파일 ${m[1]}개 정리 완료${m[2] ? `, ${m[2]}개 실패` : ""}.${m[3] ? ` 출력: ${m[3]}` : ""}`],
+    [/^Cleanup failed: (.*)$/u, (m) => `정리 실패: ${m[1]}`],
+    [/^Version (.*) is available$/u, (m) => `새 버전 ${m[1]} 사용 가능`],
+    [/^(\d+) trace\(s\) found$/u, (m) => `흔적 ${m[1]}개 발견`],
+    [/^Remove (.*)$/u, (m) => `${m[1]} 제거`],
+    [/^Version (.*) is installed; (.*) is available\.$/u, (m) => `현재 ${m[1]}이며 ${m[2]}로 업데이트할 수 있습니다.`],
+    [/^Version (.*) is up to date\.$/u, (m) => `버전 ${m[1]}이 최신입니다.`],
+    [/^Update check failed: (.*)$/u, (m) => `업데이트 확인 실패: ${m[1]}`],
+  ],
+};
+
+export function isLocale(value: string | null): value is Locale {
+  return LOCALES.some(({ code }) => code === value);
+}
+
+export function initialLocale(stored: string | null, browserLanguage: string | undefined): Locale {
+  if (isLocale(stored)) return stored;
+  const normalized = browserLanguage?.toLowerCase() ?? "";
+  if (normalized.startsWith("zh-tw") || normalized.startsWith("zh-hk") || normalized.startsWith("zh-mo") || normalized.startsWith("zh-hant")) return "zh-TW";
+  const language = normalized.split("-")[0];
+  return isLocale(language) ? language : "en";
+}
+
+export function htmlLanguage(locale: Locale): string {
+  return LOCALES.find(({ code }) => code === locale)?.htmlLang ?? "en";
+}
+
+export function translate(locale: Locale, zh: string, en: string): string {
+  if (locale === "zh") return zh;
+  if (locale === "en") return en;
+  const exact = CATALOGS[locale]?.get(en);
+  if (exact) return exact;
+  for (const [pattern, render] of DYNAMIC_RULES[locale] ?? []) {
+    const match = pattern.exec(en);
+    if (match) return render(match);
+  }
+  return en;
+}

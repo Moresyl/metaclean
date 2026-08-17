@@ -28,10 +28,19 @@ describe("App", () => {
   it("switches the complete navigation to English", () => {
     renderApp();
     fireEvent.click(screen.getByRole("button", { name: "设置" }));
-    fireEvent.click(screen.getByRole("button", { name: "English" }));
+    fireEvent.change(screen.getByRole("combobox", { name: "界面语言" }), { target: { value: "en" } });
     expect(screen.getByRole("button", { name: "Clean files" })).toBeInTheDocument();
     expect(screen.getByText("Default output mode")).toBeInTheDocument();
     expect(localStorage.getItem("metaclean.locale")).toBe("en");
+  });
+
+  it("switches all primary navigation labels to Japanese", () => {
+    renderApp();
+    fireEvent.click(screen.getByRole("button", { name: "设置" }));
+    fireEvent.change(screen.getByRole("combobox", { name: "界面语言" }), { target: { value: "ja" } });
+    expect(screen.getByRole("button", { name: "ファイルをクリーン" })).toBeInTheDocument();
+    expect(screen.getByText("既定の出力モード")).toBeInTheDocument();
+    expect(document.documentElement.lang).toBe("ja");
   });
 
   it("scans native launch files, cleans findings, and stores history", async () => {

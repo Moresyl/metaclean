@@ -1,6 +1,7 @@
-import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { htmlLanguage, initialLocale, translate, type Locale } from "./locales";
 
-export type Locale = "zh" | "en";
+export type { Locale } from "./locales";
 
 interface I18nValue {
   locale: Locale;
@@ -11,11 +12,19 @@ interface I18nValue {
 const I18nContext = createContext<I18nValue | null>(null);
 
 export function I18nProvider({ children }: { children: ReactNode }) {
-  const [locale, setLocaleState] = useState<Locale>(() => localStorage.getItem("metaclean.locale") === "en" ? "en" : "zh");
+  const [locale, setLocaleState] = useState<Locale>(() => {
+    let stored: string | null = null;
+    try { stored = localStorage.getItem("metaclean.locale"); } catch { /* use system locale */ }
+    return initialLocale(stored, navigator.language);
+  });
+  useEffect(() => {
+    document.documentElement.lang = htmlLanguage(locale);
+    document.documentElement.dir = "ltr";
+  }, [locale]);
   const value = useMemo<I18nValue>(() => ({
     locale,
-    setLocale: (next) => { localStorage.setItem("metaclean.locale", next); setLocaleState(next); },
-    text: (zh, en) => locale === "zh" ? zh : en,
+    setLocale: (next) => { try { localStorage.setItem("metaclean.locale", next); } catch { /* state still updates */ } setLocaleState(next); },
+    text: (zh, en) => translate(locale, zh, en),
   }), [locale]);
   return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>;
 }

@@ -18,7 +18,7 @@ export default function Sidebar({ page, onNavigate }: { page: Page; onNavigate: 
         <div className="brand-mark">M</div>
         <div><strong>MetaClean</strong><span>{text("文件隐私净化器", "File privacy cleaner")}</span></div>
       </div>
-      <nav aria-label="主导航">
+      <nav aria-label={text("主导航", "Main navigation")}>
         {navigation.map(({ page: target, label, icon: Icon }) => (
           <button className={`nav-item ${page === target ? "active" : ""}`} key={target} type="button" onClick={() => onNavigate(target)}>
             <Icon size={17} strokeWidth={1.8} />{labels[target] ?? label}
