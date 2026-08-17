@@ -27,6 +27,8 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - name: Verify extract-zip security patch
         run: pnpm test:supply-chain
+      - name: Verify format manifests
+        run: pnpm test:formats
       - name: Audit dependencies
         run: pnpm audit --audit-level moderate --registry=https://registry.npmjs.org
       - run: pnpm test:coverage

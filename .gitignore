@@ -1,4 +1,5 @@
 /node_modules
+/vendor/*/node_modules/
 /dist
 /coverage
 /src-tauri/target

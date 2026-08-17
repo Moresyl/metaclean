@@ -19,7 +19,7 @@ implementation and tests.
 | Text/AI traces | Not a primary capability | Invisible Unicode, private-use characters, front matter, HTML/SVG generator and AI attributes | Exceeds |
 | Desktop integration | File/folder picker and drag/drop | Adds Windows Explorer context commands and tray workflow | Exceeds on Windows |
 | Version discovery | No polling; manual Releases link | Optional startup/manual stable-release discovery with official-link validation | Exceeds |
-| Format breadth | 90+ ExifTool writer formats including video/RAW | 26 explicitly supported extensions; images, audio, MP4/QuickTime video, Office, PDF and text | Gap remains |
+| Format breadth | 90+ ExifTool writer formats including video/RAW | 47 explicitly supported extensions; safe native cleaning across images, audio, 17 ISO BMFF/QuickTime aliases, Office, PDF and 16 UTF-8 text/markup formats | Gap remains in raw count; unsafe RAW/HEIC intake is intentionally refused |
 | Localization | 25 selectable locales, with many non-English catalogs reporting partial coverage | 26 complete interface locales; system detection, persisted selection, tested static/dynamic coverage and Arabic RTL | Exceeds on count and completeness |
 | Theme selection | System/dark-mode controls | System, light and dark modes with pre-render initialization and persistence | Exceeds on explicit control |
 | Installed-app E2E matrix | Unit and installed-app E2E across three OS families | E2E-featured desktop binaries launch and pass startup/navigation, locale/RTL, persisted theme and Rust IPC scenarios on Windows, Ubuntu and macOS in CI #19 | Parity on OS matrix; narrower scenario count |
@@ -30,7 +30,9 @@ The current MetaClean branch is stronger on irreversible PDF cleaning, Office
 revisions, text/AI traces, atomic backup semantics, Windows shell integration,
 secure version discovery, localization completeness and explicit theme control.
 It now matches the three-family installed-app CI matrix while keeping the test
-driver absent from production builds. ExifCleaner still leads on broad
-ExifTool-backed format coverage and total E2E scenario count. Future format
-work must preserve MetaClean's fail-closed policy instead of accepting formats
-whose metadata cannot be removed safely and irreversibly.
+driver absent from production builds. Its explicit intake grew from 26 to 47
+extensions without routing unknown binary formats through a generic rewrite.
+ExifCleaner still leads on raw ExifTool-backed format count and total E2E
+scenario count. Future format work must preserve MetaClean's fail-closed policy
+instead of accepting formats whose metadata cannot be removed safely and
+irreversibly.

@@ -77,9 +77,19 @@ fn supported_brand(brand: &[u8]) -> bool {
             | b"M4A "
             | b"M4V "
             | b"MSNV"
+            | b"F4A "
+            | b"F4B "
+            | b"F4P "
+            | b"F4V "
+            | b"3gp1"
+            | b"3gp2"
+            | b"3gp3"
             | b"3gp4"
             | b"3gp5"
             | b"3gp6"
+            | b"3gp7"
+            | b"3gp8"
+            | b"3gp9"
             | b"3g2a"
             | b"3g2b"
     )
@@ -283,6 +293,16 @@ mod tests {
     #[test]
     fn accepts_video_brands_and_rejects_image_brands() {
         assert!(is_iso_media(&sample()));
+        for brand in [
+            b"F4A ", b"F4B ", b"F4P ", b"F4V ", b"3gp1", b"3gp2", b"3gp3", b"3gp4", b"3gp5",
+            b"3gp6", b"3gp7", b"3gp8", b"3gp9", b"3g2a", b"3g2b",
+        ] {
+            let media = atom(
+                b"ftyp",
+                &[brand.as_slice(), b"\0\0\0\0", brand.as_slice()].concat(),
+            );
+            assert!(is_iso_media(&media), "{:?}", brand);
+        }
         let heic = atom(b"ftyp", b"heic\0\0\0\0heicmif1");
         assert!(!is_iso_media(&heic));
     }

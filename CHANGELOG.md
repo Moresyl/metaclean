@@ -15,18 +15,29 @@ All notable changes to MetaClean are documented here. The project follows
   East and Southeast Asia, Greek and Arabic. System-language detection,
   persisted selection, dynamic status messages and Arabic right-to-left layout
   are covered by automated completeness tests.
+- Safe aliases for JPEG (`.jpe`), 13 additional ISO BMFF/QuickTime container
+  extensions and seven UTF-8 text/markup extensions, increasing explicit intake
+  from 26 to 47 extensions without enabling unsafe RAW or HEIC rewrites.
+- Real installed-desktop E2E jobs on Windows, macOS and Linux/Xvfb, covering
+  startup/navigation, all locales and Arabic RTL, persisted theme state and the
+  Rust IPC boundary.
 
 ### Changed
 
 - GitHub Actions now use their current Node 24-compatible major versions.
 - CI runs for branch pushes and pull requests without duplicating the complete
   test suite for version-tag pushes.
-- Windows Explorer integration now covers all 26 supported extensions.
+- Windows Explorer integration and both NSIS/MSI uninstall paths now cover all
+  47 supported extensions. CI verifies their manifests remain identical to the
+  Rust intake and frontend classification lists.
 
 ### Security
 
 - MP4/QuickTime parsing validates atom bounds, nesting depth, compatible brands
   and required media structure before writing; malformed containers fail closed.
+- WebdriverIO's vulnerable transitive archive extractor is replaced by a
+  repository-owned patched package with an out-of-root symlink regression test;
+  dependency audit reports no known npm vulnerability.
 
 ## [0.2.0] - 2026-08-17
 

@@ -6,30 +6,51 @@
         <RegistryValue Root="HKCU" Key="Software\MetaClean" Name="InstallerCleanup" Type="integer" Value="1" KeyPath="yes" />
         <RemoveRegistryKey Id="RemoveMetaCleanContext0" Root="HKCU" Key="Software\Classes\SystemFileAssociations\.jpg\shell\MetaClean" Action="removeOnUninstall" />
         <RemoveRegistryKey Id="RemoveMetaCleanContext1" Root="HKCU" Key="Software\Classes\SystemFileAssociations\.jpeg\shell\MetaClean" Action="removeOnUninstall" />
-        <RemoveRegistryKey Id="RemoveMetaCleanContext2" Root="HKCU" Key="Software\Classes\SystemFileAssociations\.png\shell\MetaClean" Action="removeOnUninstall" />
-        <RemoveRegistryKey Id="RemoveMetaCleanContext3" Root="HKCU" Key="Software\Classes\SystemFileAssociations\.webp\shell\MetaClean" Action="removeOnUninstall" />
-        <RemoveRegistryKey Id="RemoveMetaCleanContext4" Root="HKCU" Key="Software\Classes\SystemFileAssociations\.docx\shell\MetaClean" Action="removeOnUninstall" />
-        <RemoveRegistryKey Id="RemoveMetaCleanContext5" Root="HKCU" Key="Software\Classes\SystemFileAssociations\.xlsx\shell\MetaClean" Action="removeOnUninstall" />
-        <RemoveRegistryKey Id="RemoveMetaCleanContext6" Root="HKCU" Key="Software\Classes\SystemFileAssociations\.pptx\shell\MetaClean" Action="removeOnUninstall" />
-        <RemoveRegistryKey Id="RemoveMetaCleanContext7" Root="HKCU" Key="Software\Classes\SystemFileAssociations\.odt\shell\MetaClean" Action="removeOnUninstall" />
-        <RemoveRegistryKey Id="RemoveMetaCleanContext8" Root="HKCU" Key="Software\Classes\SystemFileAssociations\.pdf\shell\MetaClean" Action="removeOnUninstall" />
-        <RemoveRegistryKey Id="RemoveMetaCleanContext9" Root="HKCU" Key="Software\Classes\SystemFileAssociations\.txt\shell\MetaClean" Action="removeOnUninstall" />
-        <RemoveRegistryKey Id="RemoveMetaCleanContext10" Root="HKCU" Key="Software\Classes\SystemFileAssociations\.md\shell\MetaClean" Action="removeOnUninstall" />
-        <RemoveRegistryKey Id="RemoveMetaCleanContext11" Root="HKCU" Key="Software\Classes\SystemFileAssociations\.markdown\shell\MetaClean" Action="removeOnUninstall" />
-        <RemoveRegistryKey Id="RemoveMetaCleanContext12" Root="HKCU" Key="Software\Classes\SystemFileAssociations\.html\shell\MetaClean" Action="removeOnUninstall" />
-        <RemoveRegistryKey Id="RemoveMetaCleanContext13" Root="HKCU" Key="Software\Classes\SystemFileAssociations\.htm\shell\MetaClean" Action="removeOnUninstall" />
-        <RemoveRegistryKey Id="RemoveMetaCleanContext14" Root="HKCU" Key="Software\Classes\SystemFileAssociations\.svg\shell\MetaClean" Action="removeOnUninstall" />
-        <RemoveRegistryKey Id="RemoveMetaCleanContext15" Root="HKCU" Key="Software\Classes\SystemFileAssociations\.xml\shell\MetaClean" Action="removeOnUninstall" />
-        <RemoveRegistryKey Id="RemoveMetaCleanContext16" Root="HKCU" Key="Software\Classes\SystemFileAssociations\.json\shell\MetaClean" Action="removeOnUninstall" />
-        <RemoveRegistryKey Id="RemoveMetaCleanContext17" Root="HKCU" Key="Software\Classes\SystemFileAssociations\.csv\shell\MetaClean" Action="removeOnUninstall" />
-        <RemoveRegistryKey Id="RemoveMetaCleanContext18" Root="HKCU" Key="Software\Classes\SystemFileAssociations\.gif\shell\MetaClean" Action="removeOnUninstall" />
-        <RemoveRegistryKey Id="RemoveMetaCleanContext19" Root="HKCU" Key="Software\Classes\SystemFileAssociations\.mp3\shell\MetaClean" Action="removeOnUninstall" />
-        <RemoveRegistryKey Id="RemoveMetaCleanContext20" Root="HKCU" Key="Software\Classes\SystemFileAssociations\.wav\shell\MetaClean" Action="removeOnUninstall" />
-        <RemoveRegistryKey Id="RemoveMetaCleanContext21" Root="HKCU" Key="Software\Classes\SystemFileAssociations\.flac\shell\MetaClean" Action="removeOnUninstall" />
-        <RemoveRegistryKey Id="RemoveMetaCleanContext22" Root="HKCU" Key="Software\Classes\SystemFileAssociations\.mp4\shell\MetaClean" Action="removeOnUninstall" />
-        <RemoveRegistryKey Id="RemoveMetaCleanContext23" Root="HKCU" Key="Software\Classes\SystemFileAssociations\.mov\shell\MetaClean" Action="removeOnUninstall" />
-        <RemoveRegistryKey Id="RemoveMetaCleanContext24" Root="HKCU" Key="Software\Classes\SystemFileAssociations\.m4v\shell\MetaClean" Action="removeOnUninstall" />
-        <RemoveRegistryKey Id="RemoveMetaCleanContext25" Root="HKCU" Key="Software\Classes\SystemFileAssociations\.m4a\shell\MetaClean" Action="removeOnUninstall" />
+        <RemoveRegistryKey Id="RemoveMetaCleanContext2" Root="HKCU" Key="Software\Classes\SystemFileAssociations\.jpe\shell\MetaClean" Action="removeOnUninstall" />
+        <RemoveRegistryKey Id="RemoveMetaCleanContext3" Root="HKCU" Key="Software\Classes\SystemFileAssociations\.png\shell\MetaClean" Action="removeOnUninstall" />
+        <RemoveRegistryKey Id="RemoveMetaCleanContext4" Root="HKCU" Key="Software\Classes\SystemFileAssociations\.webp\shell\MetaClean" Action="removeOnUninstall" />
+        <RemoveRegistryKey Id="RemoveMetaCleanContext5" Root="HKCU" Key="Software\Classes\SystemFileAssociations\.gif\shell\MetaClean" Action="removeOnUninstall" />
+        <RemoveRegistryKey Id="RemoveMetaCleanContext6" Root="HKCU" Key="Software\Classes\SystemFileAssociations\.mp3\shell\MetaClean" Action="removeOnUninstall" />
+        <RemoveRegistryKey Id="RemoveMetaCleanContext7" Root="HKCU" Key="Software\Classes\SystemFileAssociations\.wav\shell\MetaClean" Action="removeOnUninstall" />
+        <RemoveRegistryKey Id="RemoveMetaCleanContext8" Root="HKCU" Key="Software\Classes\SystemFileAssociations\.flac\shell\MetaClean" Action="removeOnUninstall" />
+        <RemoveRegistryKey Id="RemoveMetaCleanContext9" Root="HKCU" Key="Software\Classes\SystemFileAssociations\.mp4\shell\MetaClean" Action="removeOnUninstall" />
+        <RemoveRegistryKey Id="RemoveMetaCleanContext10" Root="HKCU" Key="Software\Classes\SystemFileAssociations\.mov\shell\MetaClean" Action="removeOnUninstall" />
+        <RemoveRegistryKey Id="RemoveMetaCleanContext11" Root="HKCU" Key="Software\Classes\SystemFileAssociations\.m4v\shell\MetaClean" Action="removeOnUninstall" />
+        <RemoveRegistryKey Id="RemoveMetaCleanContext12" Root="HKCU" Key="Software\Classes\SystemFileAssociations\.m4a\shell\MetaClean" Action="removeOnUninstall" />
+        <RemoveRegistryKey Id="RemoveMetaCleanContext13" Root="HKCU" Key="Software\Classes\SystemFileAssociations\.3g2\shell\MetaClean" Action="removeOnUninstall" />
+        <RemoveRegistryKey Id="RemoveMetaCleanContext14" Root="HKCU" Key="Software\Classes\SystemFileAssociations\.3gp\shell\MetaClean" Action="removeOnUninstall" />
+        <RemoveRegistryKey Id="RemoveMetaCleanContext15" Root="HKCU" Key="Software\Classes\SystemFileAssociations\.3gp2\shell\MetaClean" Action="removeOnUninstall" />
+        <RemoveRegistryKey Id="RemoveMetaCleanContext16" Root="HKCU" Key="Software\Classes\SystemFileAssociations\.3gpp\shell\MetaClean" Action="removeOnUninstall" />
+        <RemoveRegistryKey Id="RemoveMetaCleanContext17" Root="HKCU" Key="Software\Classes\SystemFileAssociations\.f4a\shell\MetaClean" Action="removeOnUninstall" />
+        <RemoveRegistryKey Id="RemoveMetaCleanContext18" Root="HKCU" Key="Software\Classes\SystemFileAssociations\.f4b\shell\MetaClean" Action="removeOnUninstall" />
+        <RemoveRegistryKey Id="RemoveMetaCleanContext19" Root="HKCU" Key="Software\Classes\SystemFileAssociations\.f4p\shell\MetaClean" Action="removeOnUninstall" />
+        <RemoveRegistryKey Id="RemoveMetaCleanContext20" Root="HKCU" Key="Software\Classes\SystemFileAssociations\.f4v\shell\MetaClean" Action="removeOnUninstall" />
+        <RemoveRegistryKey Id="RemoveMetaCleanContext21" Root="HKCU" Key="Software\Classes\SystemFileAssociations\.lrv\shell\MetaClean" Action="removeOnUninstall" />
+        <RemoveRegistryKey Id="RemoveMetaCleanContext22" Root="HKCU" Key="Software\Classes\SystemFileAssociations\.m4b\shell\MetaClean" Action="removeOnUninstall" />
+        <RemoveRegistryKey Id="RemoveMetaCleanContext23" Root="HKCU" Key="Software\Classes\SystemFileAssociations\.m4p\shell\MetaClean" Action="removeOnUninstall" />
+        <RemoveRegistryKey Id="RemoveMetaCleanContext24" Root="HKCU" Key="Software\Classes\SystemFileAssociations\.mqv\shell\MetaClean" Action="removeOnUninstall" />
+        <RemoveRegistryKey Id="RemoveMetaCleanContext25" Root="HKCU" Key="Software\Classes\SystemFileAssociations\.qt\shell\MetaClean" Action="removeOnUninstall" />
+        <RemoveRegistryKey Id="RemoveMetaCleanContext26" Root="HKCU" Key="Software\Classes\SystemFileAssociations\.docx\shell\MetaClean" Action="removeOnUninstall" />
+        <RemoveRegistryKey Id="RemoveMetaCleanContext27" Root="HKCU" Key="Software\Classes\SystemFileAssociations\.xlsx\shell\MetaClean" Action="removeOnUninstall" />
+        <RemoveRegistryKey Id="RemoveMetaCleanContext28" Root="HKCU" Key="Software\Classes\SystemFileAssociations\.pptx\shell\MetaClean" Action="removeOnUninstall" />
+        <RemoveRegistryKey Id="RemoveMetaCleanContext29" Root="HKCU" Key="Software\Classes\SystemFileAssociations\.odt\shell\MetaClean" Action="removeOnUninstall" />
+        <RemoveRegistryKey Id="RemoveMetaCleanContext30" Root="HKCU" Key="Software\Classes\SystemFileAssociations\.pdf\shell\MetaClean" Action="removeOnUninstall" />
+        <RemoveRegistryKey Id="RemoveMetaCleanContext31" Root="HKCU" Key="Software\Classes\SystemFileAssociations\.txt\shell\MetaClean" Action="removeOnUninstall" />
+        <RemoveRegistryKey Id="RemoveMetaCleanContext32" Root="HKCU" Key="Software\Classes\SystemFileAssociations\.md\shell\MetaClean" Action="removeOnUninstall" />
+        <RemoveRegistryKey Id="RemoveMetaCleanContext33" Root="HKCU" Key="Software\Classes\SystemFileAssociations\.markdown\shell\MetaClean" Action="removeOnUninstall" />
+        <RemoveRegistryKey Id="RemoveMetaCleanContext34" Root="HKCU" Key="Software\Classes\SystemFileAssociations\.html\shell\MetaClean" Action="removeOnUninstall" />
+        <RemoveRegistryKey Id="RemoveMetaCleanContext35" Root="HKCU" Key="Software\Classes\SystemFileAssociations\.htm\shell\MetaClean" Action="removeOnUninstall" />
+        <RemoveRegistryKey Id="RemoveMetaCleanContext36" Root="HKCU" Key="Software\Classes\SystemFileAssociations\.xhtml\shell\MetaClean" Action="removeOnUninstall" />
+        <RemoveRegistryKey Id="RemoveMetaCleanContext37" Root="HKCU" Key="Software\Classes\SystemFileAssociations\.svg\shell\MetaClean" Action="removeOnUninstall" />
+        <RemoveRegistryKey Id="RemoveMetaCleanContext38" Root="HKCU" Key="Software\Classes\SystemFileAssociations\.xml\shell\MetaClean" Action="removeOnUninstall" />
+        <RemoveRegistryKey Id="RemoveMetaCleanContext39" Root="HKCU" Key="Software\Classes\SystemFileAssociations\.json\shell\MetaClean" Action="removeOnUninstall" />
+        <RemoveRegistryKey Id="RemoveMetaCleanContext40" Root="HKCU" Key="Software\Classes\SystemFileAssociations\.csv\shell\MetaClean" Action="removeOnUninstall" />
+        <RemoveRegistryKey Id="RemoveMetaCleanContext41" Root="HKCU" Key="Software\Classes\SystemFileAssociations\.tsv\shell\MetaClean" Action="removeOnUninstall" />
+        <RemoveRegistryKey Id="RemoveMetaCleanContext42" Root="HKCU" Key="Software\Classes\SystemFileAssociations\.yaml\shell\MetaClean" Action="removeOnUninstall" />
+        <RemoveRegistryKey Id="RemoveMetaCleanContext43" Root="HKCU" Key="Software\Classes\SystemFileAssociations\.yml\shell\MetaClean" Action="removeOnUninstall" />
+        <RemoveRegistryKey Id="RemoveMetaCleanContext44" Root="HKCU" Key="Software\Classes\SystemFileAssociations\.log\shell\MetaClean" Action="removeOnUninstall" />
+        <RemoveRegistryKey Id="RemoveMetaCleanContext45" Root="HKCU" Key="Software\Classes\SystemFileAssociations\.srt\shell\MetaClean" Action="removeOnUninstall" />
+        <RemoveRegistryKey Id="RemoveMetaCleanContext46" Root="HKCU" Key="Software\Classes\SystemFileAssociations\.vtt\shell\MetaClean" Action="removeOnUninstall" />
         <RemoveRegistryKey Id="RemoveMetaCleanInstallState" Root="HKCU" Key="Software\moresl\MetaClean" Action="removeOnUninstall" />
         <RemoveRegistryKey Id="RemoveMetaCleanCleanupState" Root="HKCU" Key="Software\MetaClean" Action="removeOnUninstall" />
       </Component>

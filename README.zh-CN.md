@@ -48,15 +48,15 @@ MetaClean 把这些统统找出来并清除——全过程只在你自己的电�
 
 | 格式 | 扩展名 | 清理内容 |
 | --- | --- | --- |
-| JPEG | `.jpg` `.jpeg` | EXIF/GPS、XMP、IPTC、图片注释、JUMBF/C2PA 段 |
+| JPEG | `.jpg` `.jpeg` `.jpe` | EXIF/GPS、XMP、IPTC、图片注释、JUMBF/C2PA 段 |
 | PNG | `.png` | EXIF、文本元数据、C2PA/JUMBF 块 |
 | WebP | `.webp` | EXIF、XMP、C2PA 块 |
 | GIF | `.gif` | 注释与 XMP 应用元数据，不重新编码动画帧 |
 | 音频 | `.mp3` `.wav` `.flac` | ID3/APEv2、RIFF INFO/XMP/BWF/iXML、FLAC Vorbis 评论、封面与 XMP |
-| 视频 | `.mp4` `.mov` `.m4v` `.m4a` | ISO BMFF/QuickTime 用户数据、XMP、作者与位置原子，不移动媒体字节 |
+| ISO 媒体 | `.mp4` `.mov` `.m4v` `.m4a` `.3g2` `.3gp` `.3gp2` `.3gpp` `.f4a` `.f4b` `.f4p` `.f4v` `.lrv` `.m4b` `.m4p` `.mqv` `.qt` | ISO BMFF/QuickTime 用户数据、XMP、作者与位置原子，不移动媒体字节 |
 | Office | `.docx` `.xlsx` `.pptx` `.odt` | 作者与应用属性、批注、自定义 XML；DOCX 修订会被固化——接受插入内容，移除删除标记内容 |
 | PDF | `.pdf` | 移除 Info 字典与 XMP，再完整重序列化，丢弃残留在增量更新历史里的元数据 |
-| 文本与标记 | `.txt` `.md` `.markdown` `.html` `.htm` `.svg` `.xml` `.json` `.csv` | 不可见 Unicode，以及 Markdown Front Matter、HTML、SVG 中的作者/生成器信息 |
+| 文本与标记 | `.txt` `.md` `.markdown` `.html` `.htm` `.xhtml` `.svg` `.xml` `.json` `.csv` `.tsv` `.yaml` `.yml` `.log` `.srt` `.vtt` | 不可见 Unicode，以及 Markdown Front Matter、HTML/XHTML、SVG 中的作者/生成器信息 |
 
 **明确不做的事：** 统计型文本水印、像素域水印、不受支持的视频容器、旧版二进制 Office 文件（`.doc` / `.xls` / `.ppt`）以及未知二进制格式。遇到这些，MetaClean 会直接拒绝，而不是冒险改坏你的文件。
 
@@ -73,7 +73,7 @@ MetaClean 把这些统统找出来并清除——全过程只在你自己的电�
 
 - 支持批量拖入文件或文件夹，也可以用系统原生选择器递归导入目录
 - 四个页面：**文件净化**、**处理记录**、**隐私说明**、**设置**
-- 可选的 Windows 资源管理器右键菜单，覆盖全部 26 种受支持扩展名（Windows 11 上位于**显示更多选项**中）
+- 可选的 Windows 资源管理器右键菜单，覆盖全部 47 种受支持扩展名（Windows 11 上位于**显示更多选项**中）
 - 关闭窗口后驻留系统托盘，右键托盘图标可重新打开或彻底退出
 - 默认保留 JPEG 显示方向与文件时间戳，但不会保留其他私密 EXIF 字段
 - 通过 GitHub Releases 发现稳定版，启动检查可以单独关闭
@@ -92,6 +92,7 @@ pnpm tauri dev      # 以开发模式运行
 
 ```bash
 pnpm test:coverage                              # 前端测试，覆盖率不低于 80%
+pnpm test:formats                               # 扩展名清单一致性检查
 pnpm test:supply-chain                          # 已修补依赖的安全回归测试
 pnpm build                                      # 类型检查 + 生产构建
 cargo test --manifest-path src-tauri/Cargo.toml # Rust 内核测试

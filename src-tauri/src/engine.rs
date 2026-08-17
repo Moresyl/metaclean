@@ -29,6 +29,23 @@ enum Format {
     Unsupported,
 }
 
+pub const SUPPORTED_EXTENSIONS: &[&str] = &[
+    "jpg", "jpeg", "jpe", "png", "webp", "gif", "mp3", "wav", "flac", "mp4", "mov", "m4v", "m4a",
+    "3g2", "3gp", "3gp2", "3gpp", "f4a", "f4b", "f4p", "f4v", "lrv", "m4b", "m4p", "mqv", "qt",
+    "docx", "xlsx", "pptx", "odt", "pdf", "txt", "md", "markdown", "html", "htm", "xhtml", "svg",
+    "xml", "json", "csv", "tsv", "yaml", "yml", "log", "srt", "vtt",
+];
+
+const ISO_MEDIA_EXTENSIONS: &[&str] = &[
+    "mp4", "mov", "m4v", "m4a", "3g2", "3gp", "3gp2", "3gpp", "f4a", "f4b", "f4p", "f4v", "lrv",
+    "m4b", "m4p", "mqv", "qt",
+];
+
+const TEXT_EXTENSIONS: &[&str] = &[
+    "txt", "md", "markdown", "html", "htm", "xhtml", "svg", "xml", "json", "csv", "tsv", "yaml",
+    "yml", "log", "srt", "vtt",
+];
+
 fn extension(path: &Path) -> String {
     path.extension()
         .and_then(|value| value.to_str())
@@ -37,35 +54,7 @@ fn extension(path: &Path) -> String {
 }
 
 pub fn has_supported_extension(path: &Path) -> bool {
-    matches!(
-        extension(path).as_str(),
-        "jpg"
-            | "jpeg"
-            | "png"
-            | "webp"
-            | "gif"
-            | "mp3"
-            | "wav"
-            | "flac"
-            | "mp4"
-            | "mov"
-            | "m4v"
-            | "m4a"
-            | "docx"
-            | "xlsx"
-            | "pptx"
-            | "odt"
-            | "pdf"
-            | "txt"
-            | "md"
-            | "markdown"
-            | "html"
-            | "htm"
-            | "svg"
-            | "xml"
-            | "json"
-            | "csv"
-    )
+    SUPPORTED_EXTENSIONS.contains(&extension(path).as_str())
 }
 
 fn detect(path: &Path, data: &[u8]) -> Format {
@@ -91,7 +80,7 @@ fn detect(path: &Path, data: &[u8]) -> Format {
         return Format::Flac;
     }
     let ext = extension(path);
-    if matches!(ext.as_str(), "mp4" | "mov" | "m4v" | "m4a") && video::is_iso_media(data) {
+    if ISO_MEDIA_EXTENSIONS.contains(&ext.as_str()) && video::is_iso_media(data) {
         return Format::IsoMedia;
     }
     if data.starts_with(b"%PDF-") {
@@ -100,11 +89,7 @@ fn detect(path: &Path, data: &[u8]) -> Format {
     if data.starts_with(b"PK") && matches!(ext.as_str(), "docx" | "xlsx" | "pptx" | "odt") {
         return Format::Office;
     }
-    if matches!(
-        ext.as_str(),
-        "txt" | "md" | "markdown" | "html" | "htm" | "svg" | "xml" | "json" | "csv"
-    ) && std::str::from_utf8(data).is_ok()
-    {
+    if TEXT_EXTENSIONS.contains(&ext.as_str()) && std::str::from_utf8(data).is_ok() {
         return Format::Text;
     }
     Format::Unsupported
@@ -426,16 +411,32 @@ mod tests {
 
     #[test]
     fn recognizes_every_supported_intake_extension() {
-        for extension in [
-            "jpg", "jpeg", "png", "webp", "gif", "mp3", "wav", "flac", "docx", "xlsx", "pptx",
-            "odt", "pdf", "txt", "md", "markdown", "html", "htm", "svg", "xml", "json", "csv",
-            "mp4", "mov", "m4v", "m4a",
-        ] {
+        assert_eq!(SUPPORTED_EXTENSIONS.len(), 47);
+        for extension in SUPPORTED_EXTENSIONS {
             assert!(has_supported_extension(Path::new(&format!(
                 "file.{extension}"
             ))));
         }
         assert!(!has_supported_extension(Path::new("video.mkv")));
+    }
+
+    #[test]
+    fn detects_every_iso_media_and_utf8_text_alias() {
+        let iso_media = b"\0\0\0\x18ftypisom\0\0\0\0isommp42";
+        for extension in ISO_MEDIA_EXTENSIONS {
+            assert_eq!(
+                detect(Path::new(&format!("movie.{extension}")), iso_media),
+                Format::IsoMedia,
+                "{extension}"
+            );
+        }
+        for extension in TEXT_EXTENSIONS {
+            assert_eq!(
+                detect(Path::new(&format!("note.{extension}")), b"plain UTF-8 text"),
+                Format::Text,
+                "{extension}"
+            );
+        }
     }
 
     #[test]
@@ -496,6 +497,41 @@ mod tests {
             assert!(
                 cleaned_report.findings.is_empty(),
                 "{name}: metadata remained"
+            );
+        }
+    }
+
+    #[test]
+    fn scans_and_cleans_every_iso_and_text_alias_through_the_engine() {
+        let dir = tempfile::tempdir().unwrap();
+        let video = supported_media_samples()
+            .into_iter()
+            .find(|(name, _)| *name == "movie.mp4")
+            .unwrap()
+            .1;
+        for extension in ISO_MEDIA_EXTENSIONS {
+            let source = dir.path().join(format!("movie.{extension}"));
+            fs::write(&source, &video).unwrap();
+            let report = scan_file(&source);
+            assert!(report.supported, "{extension}: {:?}", report.error);
+            let result = clean_file_with_options(&source, &OutputMode::Copy, true, true);
+            assert!(result.success, "{extension}: {:?}", result.error);
+            let cleaned = scan_file(Path::new(result.output_path.as_deref().unwrap()));
+            assert!(cleaned.supported, "{extension}: {:?}", cleaned.error);
+            assert!(cleaned.findings.is_empty(), "{extension}");
+        }
+
+        for extension in TEXT_EXTENSIONS {
+            let source = dir.path().join(format!("note.{extension}"));
+            fs::write(&source, "a\u{200b}b").unwrap();
+            let report = scan_file(&source);
+            assert!(report.supported, "{extension}: {:?}", report.error);
+            let result = clean_file_with_options(&source, &OutputMode::Copy, true, true);
+            assert!(result.success, "{extension}: {:?}", result.error);
+            assert_eq!(
+                fs::read_to_string(result.output_path.unwrap()).unwrap(),
+                "ab",
+                "{extension}"
             );
         }
     }

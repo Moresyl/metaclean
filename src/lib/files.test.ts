@@ -1,22 +1,29 @@
 import { describe, expect, it } from "vitest";
-import { classifyFile, entryFromPath, mergeEntries } from "./files";
+import { classifyFile, entryFromFile, entryFromPath, mergeEntries } from "./files";
 
 describe("classifyFile", () => {
-  it.each([
-    ["photo.JPG", "image"],
-    ["animation.gif", "image"],
-    ["recording.MP3", "audio"],
-    ["voice.wav", "audio"],
-    ["album.flac", "audio"],
-    ["movie.MP4", "video"],
-    ["clip.mov", "video"],
-    ["report.docx", "document"],
-    ["paper.pdf", "pdf"],
-    ["notes.md", "text"],
-    ["archive.zip", "unknown"],
-    ["raw.tiff", "unknown"],
-  ] as const)("classifies %s", (name, expected) => {
+  const groups = {
+    image: ["jpg", "jpeg", "jpe", "png", "webp", "gif"],
+    audio: ["mp3", "wav", "flac"],
+    video: ["mp4", "mov", "m4v", "m4a", "3g2", "3gp", "3gp2", "3gpp", "f4a", "f4b", "f4p", "f4v", "lrv", "m4b", "m4p", "mqv", "qt"],
+    document: ["docx", "xlsx", "pptx", "odt"],
+    pdf: ["pdf"],
+    text: ["txt", "md", "markdown", "html", "htm", "xhtml", "svg", "xml", "json", "csv", "tsv", "yaml", "yml", "log", "srt", "vtt"],
+  } as const;
+  const supportedCases = Object.entries(groups).flatMap(([kind, extensions]) =>
+    extensions.map((extension) => [`sample.${extension.toUpperCase()}`, kind] as const),
+  );
+
+  it("defines exactly 47 supported extensions", () => {
+    expect(supportedCases).toHaveLength(47);
+  });
+
+  it.each(supportedCases)("classifies %s case-insensitively", (name, expected) => {
     expect(classifyFile(name)).toBe(expected);
+  });
+
+  it.each(["archive.zip", "raw.tiff", "no-extension"])("rejects unsupported %s", (name) => {
+    expect(classifyFile(name)).toBe("unknown");
   });
 });
 
@@ -24,11 +31,34 @@ describe("entryFromPath", () => {
   it("supports Windows paths", () => {
     expect(entryFromPath("C:\\work\\photo.png")).toMatchObject({ name: "photo.png", kind: "image" });
   });
+
+  it("falls back to the supplied value when no path segment exists", () => {
+    expect(entryFromPath("")).toMatchObject({ name: "", path: "", kind: "unknown" });
+  });
+});
+
+describe("entryFromFile", () => {
+  it("uses stable file metadata for the id", () => {
+    const file = new File(["hello"], "note.yaml", { lastModified: 123 });
+    expect(entryFromFile(file)).toMatchObject({
+      id: "note.yaml:5:123",
+      name: "note.yaml",
+      size: 5,
+      kind: "text",
+      status: "ready",
+    });
+  });
 });
 
 describe("mergeEntries", () => {
   it("keeps the first entry when ids repeat", () => {
     const entry = entryFromPath("C:\\photo.png");
     expect(mergeEntries([entry], [entry])).toHaveLength(1);
+  });
+
+  it("preserves order while appending only new ids", () => {
+    const first = entryFromPath("first.jpg");
+    const second = entryFromPath("second.mp4");
+    expect(mergeEntries([first], [first, second])).toEqual([first, second]);
   });
 });

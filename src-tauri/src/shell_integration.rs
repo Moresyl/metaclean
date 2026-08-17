@@ -24,44 +24,17 @@ mod platform {
     use winreg::{enums::HKEY_CURRENT_USER, RegKey};
 
     use super::ContextMenuStatus;
+    use crate::engine::SUPPORTED_EXTENSIONS;
 
-    const EXTENSIONS: &[&str] = &[
-        ".jpg",
-        ".jpeg",
-        ".png",
-        ".webp",
-        ".gif",
-        ".mp3",
-        ".wav",
-        ".flac",
-        ".mp4",
-        ".mov",
-        ".m4v",
-        ".m4a",
-        ".docx",
-        ".xlsx",
-        ".pptx",
-        ".odt",
-        ".pdf",
-        ".txt",
-        ".md",
-        ".markdown",
-        ".html",
-        ".htm",
-        ".svg",
-        ".xml",
-        ".json",
-        ".csv",
-    ];
     const VERB: &str = "MetaClean";
 
     fn verb_path(extension: &str) -> String {
-        format!(r"Software\Classes\SystemFileAssociations\{extension}\shell\{VERB}")
+        format!(r"Software\Classes\SystemFileAssociations\.{extension}\shell\{VERB}")
     }
 
     pub fn status() -> ContextMenuStatus {
         let classes = RegKey::predef(HKEY_CURRENT_USER);
-        let enabled = EXTENSIONS
+        let enabled = SUPPORTED_EXTENSIONS
             .iter()
             .all(|extension| classes.open_subkey(verb_path(extension)).is_ok());
         ContextMenuStatus {
@@ -79,7 +52,7 @@ mod platform {
         let executable = env::current_exe()?;
         let executable = executable.to_string_lossy();
         let classes = RegKey::predef(HKEY_CURRENT_USER);
-        for extension in EXTENSIONS {
+        for extension in SUPPORTED_EXTENSIONS {
             let (verb, _) = classes.create_subkey(verb_path(extension))?;
             verb.set_value("", &"使用 MetaClean 扫描 / Scan with MetaClean")?;
             verb.set_value("Icon", &format!(r#""{executable}""#))?;
@@ -91,7 +64,7 @@ mod platform {
 
     pub fn remove() -> io::Result<ContextMenuStatus> {
         let classes = RegKey::predef(HKEY_CURRENT_USER);
-        for extension in EXTENSIONS {
+        for extension in SUPPORTED_EXTENSIONS {
             match classes.delete_subkey_all(verb_path(extension)) {
                 Ok(()) => {}
                 Err(error) if error.kind() == io::ErrorKind::NotFound => {}

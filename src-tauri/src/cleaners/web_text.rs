@@ -35,7 +35,7 @@ fn markdown_pattern() -> Regex {
 pub fn inspect(value: &str, extension: &str) -> Vec<Finding> {
     let mut findings = text::inspect(value);
     let metadata = match extension {
-        "html" | "htm" => html_patterns()
+        "html" | "htm" | "xhtml" => html_patterns()
             .iter()
             .map(|pattern| pattern.find_iter(value).count())
             .sum(),
@@ -58,7 +58,7 @@ pub fn clean(value: &str, extension: &str) -> (String, Vec<Finding>) {
     let findings = inspect(value, extension);
     let mut output = value.to_owned();
     match extension {
-        "html" | "htm" => {
+        "html" | "htm" | "xhtml" => {
             for pattern in html_patterns() {
                 output = pattern.replace_all(&output, "").into_owned();
             }
@@ -94,6 +94,7 @@ mod tests {
         assert!(!cleaned.contains("ChatGPT"));
         assert!(!cleaned.contains("data-ai"));
         assert_eq!(findings[0].count, 2);
+        assert!(!clean(source, "xhtml").0.contains("ChatGPT"));
     }
     #[test]
     fn removes_svg_metadata_but_preserves_drawing() {
