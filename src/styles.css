@@ -52,14 +52,14 @@ body { margin: 0; min-width: 760px; min-height: 100vh; overflow: hidden; backgro
 button { font: inherit; }
 button:focus-visible { outline: 2px solid var(--green); outline-offset: 2px; }
 .app-shell { display: grid; grid-template-columns: 208px minmax(0, 1fr); height: 100vh; }
-.sidebar { background: var(--sidebar); border-right: 1px solid var(--border); padding: 22px 14px 16px; display: flex; flex-direction: column; }
+.sidebar { background: var(--sidebar); border-inline-end: 1px solid var(--border); padding: 22px 14px 16px; display: flex; flex-direction: column; }
 .brand { display: flex; align-items: center; gap: 10px; padding: 0 9px 24px; }
 .brand-mark { width: 32px; height: 32px; display: grid; place-items: center; border-radius: 9px; background: var(--green-action); color: white; font-weight: 800; }
 .brand strong, .brand span { display: block; }
 .brand strong { font-size: 14px; letter-spacing: -.02em; }
 .brand span { color: var(--muted); font-size: 10px; margin-top: 2px; }
 .sidebar nav { display: grid; gap: 4px; }
-.nav-item { border: 0; background: transparent; color: var(--nav-text); border-radius: 7px; padding: 10px 11px; display: flex; align-items: center; gap: 10px; font-size: 12px; font-weight: 600; cursor: pointer; text-align: left; }
+.nav-item { border: 0; background: transparent; color: var(--nav-text); border-radius: 7px; padding: 10px 11px; display: flex; align-items: center; gap: 10px; font-size: 12px; font-weight: 600; cursor: pointer; text-align: start; }
 .nav-item:hover { background: var(--nav-hover); color: var(--text); }
 .nav-item.active { background: var(--green-soft); color: var(--green-dark); }
 .local-note { margin-top: auto; display: flex; gap: 8px; align-items: flex-start; color: var(--green-dark); padding: 12px 9px 4px; font-size: 10px; line-height: 1.45; }
@@ -106,13 +106,13 @@ button:focus-visible { outline: 2px solid var(--green); outline-offset: 2px; }
 .finding-tags em { font-style: normal; font-size: 8px; color: var(--green-dark); background: var(--green-soft); border-radius: 3px; padding: 2px 5px; }
 .options-card { padding: 16px; position: sticky; top: 18px; }
 .eyebrow { color: var(--muted); font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; margin-bottom: 9px; }
-.mode-option { width: 100%; border: 1px solid var(--border); background: var(--surface); border-radius: 7px; padding: 10px; display: flex; align-items: flex-start; gap: 9px; color: var(--nav-text); text-align: left; cursor: pointer; margin-top: 7px; }
+.mode-option { width: 100%; border: 1px solid var(--border); background: var(--surface); border-radius: 7px; padding: 10px; display: flex; align-items: flex-start; gap: 9px; color: var(--nav-text); text-align: start; cursor: pointer; margin-top: 7px; }
 .mode-option.selected { border-color: #89b29c; background: var(--surface-hover); color: var(--green-dark); box-shadow: 0 0 0 1px var(--green-soft) inset; }
 .mode-option strong, .mode-option small { display: block; }.mode-option strong { font-size: 11px; }.mode-option small { color: var(--muted); font-size: 9px; margin-top: 3px; }
 .privacy-options { display: grid; gap: 7px; margin-top: 12px; }.privacy-options label { display: flex; align-items: center; gap: 7px; color: var(--nav-text); font-size: 9px; cursor: pointer; }.privacy-options input, .fidelity-options input { accent-color: var(--green); }
 .option-divider { height: 1px; background: var(--border-soft); margin: 16px 0; }
 .scan-summary > span { font-size: 10px; color: var(--muted); font-weight: 700; }
-.scan-summary ul { margin: 9px 0 16px; padding-left: 17px; color: var(--muted); font-size: 10px; line-height: 1.9; }
+.scan-summary ul { margin: 9px 0 16px; padding-inline-start: 17px; color: var(--muted); font-size: 10px; line-height: 1.9; }
 .scan-summary li::marker { color: #75a189; }
 .scan-button { width: 100%; padding: 10px 12px; }
 .scan-button:disabled { background: var(--border); color: var(--muted); cursor: not-allowed; }
@@ -138,13 +138,13 @@ button:focus-visible { outline: 2px solid var(--green); outline-offset: 2px; }
 .settings-actions { display: flex; gap: 7px; flex-shrink: 0; }.settings-actions button { border: 1px solid var(--border); background: var(--surface); color: var(--green-dark); border-radius: 6px; padding: 7px 10px; display: flex; align-items: center; gap: 5px; font-size: 10px; font-weight: 650; cursor: pointer; }.settings-actions button:disabled { opacity: .45; cursor: default; }
 .update-toggle { margin-top: 14px; padding-top: 13px; border-top: 1px solid var(--border-soft); display: flex; align-items: flex-start; gap: 9px; color: var(--nav-text); font-size: 10px; cursor: pointer; }.update-toggle input { accent-color: var(--green); }.update-toggle strong, .update-toggle small { display: block; }.update-toggle small { margin-top: 3px; color: var(--muted); line-height: 1.5; }
 .fidelity-options { display: grid; gap: 10px; margin-top: 13px; }.fidelity-options label { border-radius: 7px; background: var(--surface-muted); padding: 11px; display: flex; align-items: flex-start; gap: 9px; color: var(--nav-text); font-size: 10px; cursor: pointer; }.fidelity-options strong, .fidelity-options small { display: block; }.fidelity-options small { margin-top: 3px; color: var(--muted); line-height: 1.5; }
-.locale-switch select { min-width: 145px; border: 1px solid var(--border); background: var(--surface); border-radius: 6px; color: var(--text); padding: 7px 30px 7px 10px; font: inherit; font-size: 11px; cursor: pointer; }
+.locale-switch select { min-width: 145px; border: 1px solid var(--border); background: var(--surface); border-radius: 6px; color: var(--text); padding-block: 7px; padding-inline: 10px 30px; font: inherit; font-size: 11px; cursor: pointer; }
 .locale-switch select:focus-visible { outline: 2px solid var(--green-action); outline-offset: 2px; }
 .theme-choices { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 13px; }
 .theme-choices button { border: 1px solid var(--border); background: var(--surface); color: var(--nav-text); border-radius: 7px; padding: 10px; display: flex; align-items: center; justify-content: center; gap: 7px; font-size: 10px; font-weight: 650; cursor: pointer; }
 .theme-choices button.selected { border-color: #89b29c; background: var(--green-soft); color: var(--green-dark); box-shadow: 0 0 0 1px var(--green-soft) inset; }
 .settings-choices { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 14px; }
-.settings-choices button { border: 1px solid var(--border); background: var(--surface); border-radius: 8px; padding: 13px; display: flex; gap: 10px; color: var(--nav-text); text-align: left; cursor: pointer; }
+.settings-choices button { border: 1px solid var(--border); background: var(--surface); border-radius: 8px; padding: 13px; display: flex; gap: 10px; color: var(--nav-text); text-align: start; cursor: pointer; }
 .settings-choices button.selected { border-color: #89b29c; background: var(--surface-hover); color: var(--green-dark); }
 .settings-choices strong, .settings-choices small { display: block; }.settings-choices strong { font-size: 11px; }.settings-choices small { color: var(--muted); font-size: 9px; margin-top: 4px; }
 .safety-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 13px; }.safety-grid span { padding: 10px; border-radius: 6px; background: var(--surface-muted); color: var(--nav-text); font-size: 10px; display: flex; gap: 6px; align-items: center; }

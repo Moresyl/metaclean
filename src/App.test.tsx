@@ -43,6 +43,15 @@ describe("App", () => {
     expect(document.documentElement.lang).toBe("ja");
   });
 
+  it("switches the document direction for Arabic", () => {
+    renderApp();
+    fireEvent.click(screen.getByRole("button", { name: "设置" }));
+    fireEvent.change(screen.getByRole("combobox", { name: "界面语言" }), { target: { value: "ar" } });
+    expect(screen.getByRole("button", { name: "تنظيف الملفات" })).toBeInTheDocument();
+    expect(document.documentElement.lang).toBe("ar");
+    expect(document.documentElement.dir).toBe("rtl");
+  });
+
   it("scans native launch files, cleans findings, and stores history", async () => {
     invokeMock.mockImplementation((command: string) => {
       if (command === "get_launch_paths") return Promise.resolve(["C:\\work\\notes.txt"]);

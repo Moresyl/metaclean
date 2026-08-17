@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { SOURCE_STRINGS, hasStaticTranslation, htmlLanguage, initialLocale, isLocale, translate, type Locale } from "./locales";
+import { SOURCE_STRINGS, hasStaticTranslation, htmlLanguage, initialLocale, isLocale, textDirection, translate, type Locale } from "./locales";
 
 describe("locales", () => {
   it("accepts only published locale codes", () => {
@@ -12,12 +12,13 @@ describe("locales", () => {
     expect(initialLocale("ja", "de-DE")).toBe("ja");
     expect(initialLocale(null, "zh-Hant-HK")).toBe("zh-TW");
     expect(initialLocale(null, "ko-KR")).toBe("ko");
+    expect(initialLocale(null, "ar-SA")).toBe("ar");
     expect(initialLocale(null, "pt-BR")).toBe("pt-BR");
     expect(initialLocale(null, "xx-YY")).toBe("en");
   });
 
   it("has a complete translation for every published non-source catalog", () => {
-    for (const locale of ["zh-TW", "cs", "da", "de", "es", "fr", "id", "it", "ja", "ko", "ms", "nb", "nl", "pl", "pt", "pt-BR", "ro", "ru", "sk", "sv", "tr", "uk"] satisfies Locale[]) {
+    for (const locale of ["ar", "zh-TW", "cs", "da", "de", "el", "es", "fr", "id", "it", "ja", "ko", "ms", "nb", "nl", "pl", "pt", "pt-BR", "ro", "ru", "sk", "sv", "tr", "uk"] satisfies Locale[]) {
       for (const source of SOURCE_STRINGS) {
         expect(hasStaticTranslation(locale, source), `${locale}: ${source}`).toBe(true);
       }
@@ -28,6 +29,8 @@ describe("locales", () => {
     expect(translate("zh", "设置", "Settings")).toBe("设置");
     expect(translate("en", "设置", "Settings")).toBe("Settings");
     expect(htmlLanguage("zh-TW")).toBe("zh-TW");
+    expect(textDirection("ar")).toBe("rtl");
+    expect(textDirection("en")).toBe("ltr");
     expect(htmlLanguage("invalid" as Locale)).toBe("en");
     expect(hasStaticTranslation("zh", "Settings")).toBe(true);
     expect(hasStaticTranslation("en", "Settings")).toBe(true);
@@ -57,7 +60,7 @@ describe("locales", () => {
       "Version 0.2.0 is up to date.",
       "Update check failed: offline",
     ];
-    for (const locale of ["zh-TW", "cs", "da", "de", "es", "fr", "id", "it", "ja", "ko", "ms", "nb", "nl", "pl", "pt", "pt-BR", "ro", "ru", "sk", "sv", "tr", "uk"] satisfies Locale[]) {
+    for (const locale of ["ar", "zh-TW", "cs", "da", "de", "el", "es", "fr", "id", "it", "ja", "ko", "ms", "nb", "nl", "pl", "pt", "pt-BR", "ro", "ru", "sk", "sv", "tr", "uk"] satisfies Locale[]) {
       for (const message of messages) {
         expect(translate(locale, "", message), `${locale}: ${message}`).not.toBe(message);
       }
