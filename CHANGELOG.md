@@ -3,6 +3,19 @@
 All notable changes to MetaClean are documented here. The project follows
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- System, light and dark interface themes with local persistence and
+  no-flash initialization before React renders.
+
+### Changed
+
+- GitHub Actions now use their current Node 24-compatible major versions.
+- CI runs for branch pushes and pull requests without duplicating the complete
+  test suite for version-tag pushes.
+
 ## [0.2.0] - 2026-08-17
 
 ### Added
@@ -64,3 +77,4 @@ All notable changes to MetaClean are documented here. The project follows
 
 [0.1.0]: https://github.com/Moresyl/metaclean/releases/tag/v0.1.0
 [0.2.0]: https://github.com/Moresyl/metaclean/compare/v0.1.0...v0.2.0
+[Unreleased]: https://github.com/Moresyl/metaclean/compare/v0.2.0...HEAD

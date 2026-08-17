@@ -13,12 +13,12 @@ This file records evidence, not intent. A row is complete only when the named ar
 | M0: Office package integrity | Partial | Real DOCX/XLSX/PPTX/ODT samples were cleaned and successfully opened/exported by LibreOffice 26.2.5. Current Word and WPS executables are unavailable on this machine, so those two applications remain unverified. |
 | M1: desktop MVP | Complete | Batch drag/drop, recursive file/folder intake, native pickers, per-file scan reports, safe-copy/replace modes, forced backup, atomic writes, version discovery and Chinese/English UI are implemented and tested. |
 | M2: Office/PDF/shell integration | Complete | DOCX/XLSX/PPTX/ODT/PDF cleaners, 22-extension Windows Explorer integration and launch-path handling are covered by unit and installer tests. |
-| M3: Windows release | Complete | Optimized v0.2.0 NSIS and MSI packages build. The release executable starts, remains running for a six-second smoke window and exposes the expected `MetaClean` main-window title. The v0.1.0 installer lifecycle test previously proved install, tray behavior, shell registration cleanup and uninstall cleanup; the same WiX/NSIS integration is retained and expanded to 22 extensions. |
-| M3: macOS/Linux release | Partial | GitHub Actions defines Intel and Apple Silicon DMG plus DEB/RPM/AppImage jobs. The remote and v0.1.0 release exist, but the v0.2.0 matrix has not run yet and Apple signing/notarization secrets are unavailable locally. |
+| M3: Windows release | Complete | Optimized v0.2.0 NSIS and MSI packages build locally and were published by the successful GitHub release matrix. The release executable starts, remains running for a six-second smoke window and exposes the expected `MetaClean` main-window title. The v0.1.0 installer lifecycle test previously proved install, tray behavior, shell registration cleanup and uninstall cleanup; the same WiX/NSIS integration is retained and expanded to 22 extensions. |
+| M3: macOS/Linux release | Partial | The successful v0.2.0 GitHub matrix published Intel and Apple Silicon DMGs plus DEB/RPM/AppImage packages. Apple signing/notarization secrets are unavailable, so the DMGs are currently unsigned and Gatekeeper verification remains external. |
 
 ## Automated quality gates
 
-- Frontend: 48 tests. Statements 89.24%, branches 82.55%, functions 83.62%, lines 94.56%.
+- Frontend: 52 tests. Statements 89.50%, branches 82.85%, functions 83.07%, lines 95.16%.
 - Rust: 48 regular tests plus one ignored external Office compatibility test. Core regions 80.76%, lines 80.53% after excluding Tauri/platform glue (`lib`, `main`, data-only `models` and `shell_integration`) from the line threshold; cleaners, intake, engine and safe I/O remain included.
 - CI fails below 80% for all frontend coverage dimensions and below 80% Rust core line coverage.
 - npm's official audit endpoint reports no known frontend vulnerabilities.
@@ -33,6 +33,5 @@ This file records evidence, not intent. A row is complete only when the named ar
 ## Remaining external release gates
 
 1. Open cleaned DOCX/XLSX/PPTX/ODT samples in current Word and WPS builds. LibreOffice 26.2.5 validation is complete.
-2. Run the v0.2.0 GitHub release matrix and retain successful macOS/Linux job and artifact evidence.
-3. Provide Apple Developer signing/notarization credentials and verify both DMGs with Gatekeeper.
-4. Repeat installed-app interaction and installer-lifecycle automation for v0.2.0 when the Windows Computer Use helper is available; current evidence covers build output and process-level startup, not automated page-by-page UI interaction.
+2. Provide Apple Developer signing/notarization credentials and verify both DMGs with Gatekeeper.
+3. Repeat installed-app interaction and installer-lifecycle automation for v0.2.0 when the Windows Computer Use helper is available; current evidence covers build output and process-level startup, not automated page-by-page UI interaction.

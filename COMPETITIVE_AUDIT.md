@@ -21,7 +21,7 @@ implementation and tests.
 | Version discovery | No polling; manual Releases link | Optional startup/manual stable-release discovery with official-link validation | Exceeds |
 | Format breadth | 90+ ExifTool writer formats including video/RAW | 22 explicitly supported extensions; images, audio, Office, PDF and text | Gap remains |
 | Localization | 25 locales | Simplified Chinese and English | Gap remains |
-| Theme selection | System/dark-mode controls | Current light interface | Gap remains |
+| Theme selection | System/dark-mode controls | System, light and dark modes with pre-render initialization and persistence | Exceeds on explicit control |
 | Installed-app E2E matrix | Unit and installed-app E2E across three OS families | Unit/coverage gates and local Windows installer evidence | Gap remains |
 
 ## Release boundary

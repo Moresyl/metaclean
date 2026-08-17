@@ -9,6 +9,7 @@ import SettingsPage from "./SettingsPage";
 import { I18nProvider, useI18n } from "../lib/i18n";
 import type { FileEntry, HistoryEntry } from "../types";
 import { UpdateProvider } from "../contexts/UpdateContext";
+import { ThemeProvider } from "../contexts/ThemeContext";
 
 const openMock = vi.hoisted(() => vi.fn());
 const invokeMock = vi.hoisted(() => vi.fn());
@@ -22,7 +23,7 @@ vi.mock("../lib/update", () => ({
   checkForUpdate: checkForUpdateMock,
 }));
 
-const wrap = (node: React.ReactNode) => render(<I18nProvider><UpdateProvider>{node}</UpdateProvider></I18nProvider>);
+const wrap = (node: React.ReactNode) => render(<ThemeProvider initialMode="light"><I18nProvider><UpdateProvider>{node}</UpdateProvider></I18nProvider></ThemeProvider>);
 
 beforeEach(() => {
   openMock.mockReset();
@@ -175,6 +176,14 @@ describe("desktop components", () => {
     invokeMock.mockResolvedValue({ available: false, enabled: false, detail: "仅 Windows" });
     wrap(<SettingsPage mode="replace" onModeChange={vi.fn()} preserveTimestamps onPreserveTimestampsChange={vi.fn()} preserveOrientation onPreserveOrientationChange={vi.fn()} />);
     expect(await screen.findByRole("button", { name: "启用" })).toBeDisabled();
+  });
+
+  it("persists the selected interface theme", async () => {
+    invokeMock.mockResolvedValue({ available: false, enabled: false, detail: "仅 Windows" });
+    wrap(<SettingsPage mode="copy" onModeChange={vi.fn()} preserveTimestamps onPreserveTimestampsChange={vi.fn()} preserveOrientation onPreserveOrientationChange={vi.fn()} />);
+    fireEvent.click(screen.getByRole("button", { name: "深色" }));
+    await waitFor(() => expect(localStorage.getItem("metaclean.theme")).toBe("dark"));
+    expect(document.documentElement.dataset.theme).toBe("dark");
   });
 
   it("rejects i18n usage outside its provider", () => {

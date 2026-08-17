@@ -76,7 +76,7 @@ Grab the latest package from [GitHub Releases](https://github.com/Moresyl/metacl
 - Closing the window keeps MetaClean in the system tray; right-click the tray icon to reopen or exit
 - Preserves JPEG display orientation and file timestamps by default without retaining private EXIF fields
 - Finds stable updates through GitHub Releases, with automatic checks independently switchable off
-- Chinese/English UI, output mode, fidelity options, and local cleanup history persist between sessions
+- Chinese/English UI, system/light/dark theme, output mode, fidelity options, and local cleanup history persist between sessions
 
 ## Build from source
 

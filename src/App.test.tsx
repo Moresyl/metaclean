@@ -3,13 +3,14 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import App from "./App";
 import { I18nProvider } from "./lib/i18n";
 import { UpdateProvider } from "./contexts/UpdateContext";
+import { ThemeProvider } from "./contexts/ThemeContext";
 
 vi.mock("@tauri-apps/api/webview", () => ({ getCurrentWebview: () => ({ onDragDropEvent: () => Promise.resolve(() => undefined) }) }));
 const invokeMock = vi.hoisted(() => vi.fn());
 vi.mock("@tauri-apps/api/core", () => ({ invoke: invokeMock }));
 
 describe("App", () => {
-  const renderApp = () => render(<I18nProvider><UpdateProvider><App /></UpdateProvider></I18nProvider>);
+  const renderApp = () => render(<ThemeProvider initialMode="light"><I18nProvider><UpdateProvider><App /></UpdateProvider></I18nProvider></ThemeProvider>);
   beforeEach(() => invokeMock.mockImplementation((command?: string) => command === "get_launch_paths" || command === undefined ? Promise.resolve([]) : command === "expand_paths" ? Promise.resolve({ files: [], skippedCount: 0, issues: [], limitReached: false }) : Promise.reject(new Error(`unexpected ${command}`))));
   it("starts with scanning disabled", () => {
     renderApp();
