@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { SOURCE_STRINGS, htmlLanguage, initialLocale, isLocale, translate, type Locale } from "./locales";
+import { SOURCE_STRINGS, hasStaticTranslation, htmlLanguage, initialLocale, isLocale, translate, type Locale } from "./locales";
 
 describe("locales", () => {
   it("accepts only published locale codes", () => {
@@ -16,9 +16,9 @@ describe("locales", () => {
   });
 
   it("has a complete translation for every published non-source catalog", () => {
-    for (const locale of ["zh-TW", "ja", "ko"] satisfies Locale[]) {
+    for (const locale of ["zh-TW", "de", "es", "fr", "ja", "ko"] satisfies Locale[]) {
       for (const source of SOURCE_STRINGS) {
-        expect(translate(locale, "中文占位", source), `${locale}: ${source}`).not.toBe(source);
+        expect(hasStaticTranslation(locale, source), `${locale}: ${source}`).toBe(true);
       }
     }
   });
@@ -50,7 +50,7 @@ describe("locales", () => {
       "Version 0.2.0 is up to date.",
       "Update check failed: offline",
     ];
-    for (const locale of ["zh-TW", "ja", "ko"] satisfies Locale[]) {
+    for (const locale of ["zh-TW", "de", "es", "fr", "ja", "ko"] satisfies Locale[]) {
       for (const message of messages) {
         expect(translate(locale, "", message), `${locale}: ${message}`).not.toBe(message);
       }

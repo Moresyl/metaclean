@@ -11,9 +11,10 @@ All notable changes to MetaClean are documented here. The project follows
   no-flash initialization before React renders.
 - Native MP4, MOV, M4V and M4A privacy cleaning for ISO BMFF/QuickTime user
   data, XMP, author and location atoms without re-encoding or moving media.
-- Complete Traditional Chinese, Japanese and Korean interface catalogs, with
-  system-language detection, persisted selection and localized dynamic status
-  messages. Simplified Chinese and English remain fully supported.
+- Complete Traditional Chinese, German, Spanish, French, Japanese and Korean
+  interface catalogs, with system-language detection, persisted selection and
+  localized dynamic status messages. Simplified Chinese and English remain
+  fully supported.
 
 ### Changed
 
