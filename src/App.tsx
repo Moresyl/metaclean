@@ -22,6 +22,7 @@ export default function App() {
   const [preserveTimestamps, setPreserveTimestampsState] = useState(() => localStorage.getItem("metaclean.preserveTimestamps") !== "false");
   const [preserveOrientation, setPreserveOrientationState] = useState(() => localStorage.getItem("metaclean.preserveOrientation") !== "false");
   const [preserveColorProfile, setPreserveColorProfileState] = useState(() => localStorage.getItem("metaclean.preserveColorProfile") !== "false");
+  const [removeExtendedAttributes, setRemoveExtendedAttributesState] = useState(() => localStorage.getItem("metaclean.removeExtendedAttributes") === "true");
   const [history, setHistory] = useState<HistoryEntry[]>(() => {
     try { return JSON.parse(localStorage.getItem("metaclean.history") ?? "[]") as HistoryEntry[]; } catch { return []; }
   });
@@ -49,6 +50,7 @@ export default function App() {
   const setPreserveTimestamps = useCallback((next: boolean) => { setPreserveTimestampsState(next); localStorage.setItem("metaclean.preserveTimestamps", String(next)); }, []);
   const setPreserveOrientation = useCallback((next: boolean) => { setPreserveOrientationState(next); localStorage.setItem("metaclean.preserveOrientation", String(next)); }, []);
   const setPreserveColorProfile = useCallback((next: boolean) => { setPreserveColorProfileState(next); localStorage.setItem("metaclean.preserveColorProfile", String(next)); }, []);
+  const setRemoveExtendedAttributes = useCallback((next: boolean) => { setRemoveExtendedAttributesState(next); localStorage.setItem("metaclean.removeExtendedAttributes", String(next)); }, []);
   const saveHistory = useCallback((next: HistoryEntry[]) => { const limited = next.slice(0, 100); setHistory(limited); localStorage.setItem("metaclean.history", JSON.stringify(limited)); }, []);
 
   useEffect(() => {
@@ -62,8 +64,28 @@ export default function App() {
     return () => dispose?.();
   }, [addNativePaths]);
 
+  useEffect(() => {
+    let dispose: (() => void) | undefined;
+    void import("@tauri-apps/api/event").then(({ listen }) => listen<Page>("menu:navigate", (event) => {
+      if (["clean", "history", "privacy", "settings"].includes(event.payload)) setPage(event.payload);
+    })).then((unlisten) => { dispose = unlisten; }).catch(() => undefined);
+    return () => dispose?.();
+  }, []);
+
+  useEffect(() => {
+    const navigateWithShortcut = (event: KeyboardEvent) => {
+      if (!(event.ctrlKey || event.metaKey) || event.altKey) return;
+      const destination = ({ "1": "clean", "2": "history", "3": "privacy", "4": "settings" } as const)[event.key];
+      if (!destination) return;
+      event.preventDefault();
+      setPage(destination);
+    };
+    window.addEventListener("keydown", navigateWithShortcut);
+    return () => window.removeEventListener("keydown", navigateWithShortcut);
+  }, []);
+
   const scanned = entries.length > 0 && entries.every((entry) => entry.status === "scanned" || entry.status === "clean" || entry.status === "error");
-  const cleanableEntries = entries.filter((entry) => entry.status === "scanned" && actionableFindingCount(entry.report, preserveColorProfile) > 0);
+  const cleanableEntries = entries.filter((entry) => entry.status === "scanned" && actionableFindingCount(entry.report, preserveColorProfile, removeExtendedAttributes) > 0);
 
   async function scan() {
     const paths = entries.flatMap((entry) => entry.path ? [entry.path] : []);
@@ -86,7 +108,7 @@ export default function App() {
     setBusy(true); setMessage(undefined);
     try {
       const { invoke } = await import("@tauri-apps/api/core");
-      const results = await invoke<CleanResult[]>("clean_files", { request: { paths, mode, preserveTimestamps, preserveOrientation, preserveColorProfile } });
+      const results = await invoke<CleanResult[]>("clean_files", { request: { paths, mode, preserveTimestamps, preserveOrientation, preserveColorProfile, removeExtendedAttributes } });
       const byPath = new Map(results.map((result) => [result.sourcePath, result]));
       setEntries((current) => current.map((entry) => {
         const result = entry.path ? byPath.get(entry.path) : undefined;
@@ -119,10 +141,10 @@ export default function App() {
             <div className="notice"><Sparkles size={15} /><span><strong>{text("所有处理均在本机完成。", "All processing happens locally. ")}</strong>{text("MetaClean 不上传、不保存、也不分析你的文件内容。", "MetaClean never uploads, stores, or analyzes your file content.")}</span></div>
             {message ? <div className="result-message" role="status">{message}</div> : null}
             <DropZone onAdd={addEntries} onAddNativePaths={addNativePaths} />
-            <FileQueue entries={entries} preserveColorProfile={preserveColorProfile} onClear={() => setEntries([])} onRemove={(id) => setEntries((current) => current.filter((entry) => entry.id !== id))} onReveal={(path) => void reveal(path)} />
+            <FileQueue entries={entries} preserveColorProfile={preserveColorProfile} removeExtendedAttributes={removeExtendedAttributes} onClear={() => setEntries([])} onRemove={(id) => setEntries((current) => current.filter((entry) => entry.id !== id))} onReveal={(path) => void reveal(path)} />
           </div>
-          <CleanOptions mode={mode} onModeChange={setMode} preserveTimestamps={preserveTimestamps} onPreserveTimestampsChange={setPreserveTimestamps} preserveOrientation={preserveOrientation} onPreserveOrientationChange={setPreserveOrientation} preserveColorProfile={preserveColorProfile} onPreserveColorProfileChange={setPreserveColorProfile} disabled={!entries.length} scanned={scanned} hasFindings={cleanableEntries.length > 0} busy={busy} onAction={() => void (scanned ? clean() : scan())} />
-        </div> : page === "history" ? <HistoryPage entries={history} onClear={() => saveHistory([])} /> : page === "privacy" ? <PrivacyPage /> : <SettingsPage mode={mode} onModeChange={setMode} preserveTimestamps={preserveTimestamps} onPreserveTimestampsChange={setPreserveTimestamps} preserveOrientation={preserveOrientation} onPreserveOrientationChange={setPreserveOrientation} preserveColorProfile={preserveColorProfile} onPreserveColorProfileChange={setPreserveColorProfile} />}
+          <CleanOptions mode={mode} onModeChange={setMode} preserveTimestamps={preserveTimestamps} onPreserveTimestampsChange={setPreserveTimestamps} preserveOrientation={preserveOrientation} onPreserveOrientationChange={setPreserveOrientation} preserveColorProfile={preserveColorProfile} onPreserveColorProfileChange={setPreserveColorProfile} removeExtendedAttributes={removeExtendedAttributes} onRemoveExtendedAttributesChange={setRemoveExtendedAttributes} disabled={!entries.length} scanned={scanned} hasFindings={cleanableEntries.length > 0} busy={busy} onAction={() => void (scanned ? clean() : scan())} />
+        </div> : page === "history" ? <HistoryPage entries={history} onClear={() => saveHistory([])} /> : page === "privacy" ? <PrivacyPage /> : <SettingsPage mode={mode} onModeChange={setMode} preserveTimestamps={preserveTimestamps} onPreserveTimestampsChange={setPreserveTimestamps} preserveOrientation={preserveOrientation} onPreserveOrientationChange={setPreserveOrientation} preserveColorProfile={preserveColorProfile} onPreserveColorProfileChange={setPreserveColorProfile} removeExtendedAttributes={removeExtendedAttributes} onRemoveExtendedAttributesChange={setRemoveExtendedAttributes} />}
       </main>
     </div>
   );

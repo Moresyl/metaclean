@@ -78,6 +78,8 @@ Grab the latest package from [GitHub Releases](https://github.com/Moresyl/metacl
 - Closing the window keeps MetaClean in the system tray; right-click the tray icon to reopen or exit
 - Stable queue sorting by name, extension, source/output size or finding count, with per-file size savings and reveal-in-folder actions for completed outputs
 - Preserves JPEG display orientation, ICC/sRGB color profiles and file timestamps by default, with independent removal controls
+- Preserves every macOS extended attribute by default; an explicit opt-in removes only six known download/provenance attributes and leaves Finder data, resource forks, tags, and custom attributes intact
+- Native application menus, `Ctrl/Cmd+1…4` navigation accelerators, and persisted window size, position, and maximized state
 - Finds stable updates through GitHub Releases, with automatic checks independently switchable off
 - Twenty-six complete interface languages spanning Europe, Asia and Arabic RTL; system/light/dark theme, output mode, fidelity options, and local cleanup history persist between sessions
 

@@ -1,5 +1,11 @@
 import assert from "node:assert/strict";
 
+async function openSettingsPage() {
+  const navigation = await $$(".sidebar nav button");
+  await navigation[3].click();
+  await $(".locale-switch select").waitForDisplayed();
+}
+
 describe("MetaClean desktop application", () => {
   before(async () => {
     const [mainWindow] = await browser.getWindowHandles();
@@ -15,9 +21,15 @@ describe("MetaClean desktop application", () => {
     assert.equal(await $(".scan-button").isEnabled(), false);
   });
 
+  it("supports keyboard navigation across the desktop shell", async () => {
+    await browser.tauri.execute(() => window.dispatchEvent(new KeyboardEvent("keydown", { key: "4", ctrlKey: true })));
+    await $(".locale-switch select").waitForDisplayed();
+    await browser.tauri.execute(() => window.dispatchEvent(new KeyboardEvent("keydown", { key: "1", ctrlKey: true })));
+    await $(".scan-button").waitForDisplayed();
+  });
+
   it("ships every locale and applies right-to-left layout", async () => {
-    const navigation = await $$(".sidebar nav button");
-    await navigation[3].click();
+    await openSettingsPage();
 
     const locale = await $(".locale-switch select");
     await locale.waitForDisplayed();
@@ -36,7 +48,32 @@ describe("MetaClean desktop application", () => {
     assert.deepEqual(documentLanguage, { lang: "ar", dir: "rtl" });
   });
 
+  it("exposes named controls and landmark structure to assistive technology", async () => {
+    await browser.tauri.execute(() => localStorage.setItem("metaclean.locale", "en"));
+    await browser.refresh();
+    await $(".app-shell").waitForDisplayed();
+    const accessibility = await browser.tauri.execute(() => ({
+      language: document.documentElement.lang,
+      mainCount: document.querySelectorAll("main").length,
+      navigationName: document.querySelector("nav")?.getAttribute("aria-label"),
+      unnamedButtons: [...document.querySelectorAll("button")].filter((button) =>
+        !(button.getAttribute("aria-label") || button.textContent?.trim() || button.getAttribute("title")),
+      ).length,
+      unlabeledInputs: [...document.querySelectorAll("input:not([type='file']), select")].filter((input) =>
+        !(input.getAttribute("aria-label") || input.closest("label")),
+      ).length,
+    }));
+    assert.deepEqual(accessibility, {
+      language: "en",
+      mainCount: 1,
+      navigationName: "Main navigation",
+      unnamedButtons: 0,
+      unlabeledInputs: 0,
+    });
+  });
+
   it("persists an explicit theme across a real desktop reload", async () => {
+    await openSettingsPage();
     const darkTheme = await $(".theme-choices button:nth-child(3)");
     await darkTheme.click();
 
@@ -47,16 +84,20 @@ describe("MetaClean desktop application", () => {
     assert.equal(await $("html").getAttribute("data-theme"), "dark");
   });
 
-  it("persists the ICC fidelity preference across a real desktop reload", async () => {
+  it("persists ICC and macOS xattr fidelity preferences across a real desktop reload", async () => {
     await browser.tauri.execute(() => localStorage.setItem("metaclean.preserveColorProfile", "true"));
+    await browser.tauri.execute(() => localStorage.setItem("metaclean.removeExtendedAttributes", "false"));
     await browser.refresh();
     await $(".app-shell").waitForDisplayed();
     const navigation = await $$(".sidebar nav button");
     await navigation[3].click();
     const fidelity = await $$(".fidelity-options input");
     assert.equal(await fidelity[1].isSelected(), true);
+    assert.equal(await fidelity[2].isSelected(), false);
     await fidelity[1].click();
+    await fidelity[2].click();
     await browser.waitUntil(async () => await browser.tauri.execute(() => localStorage.getItem("metaclean.preserveColorProfile")) === "false");
+    await browser.waitUntil(async () => await browser.tauri.execute(() => localStorage.getItem("metaclean.removeExtendedAttributes")) === "true");
 
     await browser.refresh();
     await $(".app-shell").waitForDisplayed();
@@ -64,6 +105,7 @@ describe("MetaClean desktop application", () => {
     await refreshedNavigation[3].click();
     const refreshedFidelity = await $$(".fidelity-options input");
     assert.equal(await refreshedFidelity[1].isSelected(), false);
+    assert.equal(await refreshedFidelity[2].isSelected(), true);
   });
 
   it("crosses the Tauri IPC boundary without modifying user files", async () => {
@@ -72,5 +114,27 @@ describe("MetaClean desktop application", () => {
     });
 
     assert.deepEqual(reports, []);
+  });
+
+  it("fails closed for missing input across scan and cleanup IPC", async () => {
+    const missingPath = process.platform === "win32" ? "Z:\\metaclean-missing-input.txt" : "/tmp/metaclean-missing-input.txt";
+    const outcome = await browser.tauri.execute(({ core }, path) => Promise.all([
+      core.invoke("scan_files", { paths: [path] }),
+      core.invoke("clean_files", {
+        request: {
+          paths: [path],
+          mode: "copy",
+          preserveTimestamps: true,
+          preserveOrientation: true,
+          preserveColorProfile: true,
+          removeExtendedAttributes: false,
+        },
+      }),
+    ]), missingPath);
+    assert.equal(outcome[0][0].supported, false);
+    assert.ok(outcome[0][0].error);
+    assert.equal(outcome[1][0].success, false);
+    assert.ok(outcome[1][0].error);
+    assert.equal(outcome[1][0].outputPath, null);
   });
 });

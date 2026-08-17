@@ -47,6 +47,8 @@ pub struct CleanRequest {
     pub preserve_orientation: bool,
     #[serde(default = "default_true")]
     pub preserve_color_profile: bool,
+    #[serde(default)]
+    pub remove_extended_attributes: bool,
 }
 
 fn default_true() -> bool {

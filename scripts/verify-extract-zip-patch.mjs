@@ -5,8 +5,20 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import archiver from "archiver";
 import extract from "extract-zip";
+import { deepmerge, deepmergeInto } from "deepmerge-ts";
 
 const root = await mkdtemp(join(tmpdir(), "metaclean-extract-zip-"));
+
+const left = {};
+left.self = left;
+const right = {};
+right.self = right;
+assert.doesNotThrow(() => deepmerge(left, right));
+const target = {};
+target.self = target;
+const source = {};
+source.self = source;
+assert.doesNotThrow(() => deepmergeInto(target, source));
 
 async function writeArchive(archivePath, populate) {
   await new Promise((resolve, reject) => {

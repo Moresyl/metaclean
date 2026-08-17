@@ -8,6 +8,7 @@ overrides:
   extract-zip: link:vendor/extract-zip
   glob@10.4.5: 10.5.0
   serialize-javascript@6.0.2: 7.0.5
+  deepmerge-ts: 8.0.0
 
 importers:
 
@@ -74,6 +75,9 @@ importers:
       archiver:
         specifier: ^7.0.1
         version: 7.0.1
+      deepmerge-ts:
+        specifier: 8.0.0
+        version: 8.0.0
       extract-zip:
         specifier: link:vendor/extract-zip
         version: link:vendor/extract-zip
@@ -1625,8 +1629,8 @@ packages:
     resolution: {integrity: sha512-h5k/5U50IJJFpzfL6nO9jaaumfjO/f2NjK/oYB2Djzm4p9L+3T9qWpZqZ2hAbLPuuYq9wrU08WQyBTL5GbPk5Q==}
     engines: {node: '>=6'}
 
-  deepmerge-ts@7.1.6:
-    resolution: {integrity: sha512-gQhL1ksGBLQbHeAo47YU6cs2ahd3Pv+8PFYoWogNZbQnNwQyOh9Ad5kbeHFiWwbKdeWQJ5Z7Y7mwb9ew2hXBLw==}
+  deepmerge-ts@8.0.0:
+    resolution: {integrity: sha512-ICNjaP0ML+eSdEpJYQC46XiAn/UjAdwbEl0dE8p85ZTeNDinN4Kd4+9jS4OSAuH7st6eC7rQhsqTF5zIDaUm2g==}
     engines: {node: '>=16.0.0'}
 
   defaults@1.0.4:
@@ -3966,7 +3970,7 @@ snapshots:
       '@wdio/logger': 9.29.1
       '@wdio/types': 9.30.1
       '@wdio/utils': 9.30.1
-      deepmerge-ts: 7.1.6
+      deepmerge-ts: 8.0.0
       glob: 10.5.0
       import-meta-resolve: 4.2.0
       jiti: 2.7.0
@@ -4116,7 +4120,7 @@ snapshots:
       '@wdio/logger': 9.29.1
       '@wdio/types': 9.30.1
       '@wdio/utils': 9.30.1
-      deepmerge-ts: 7.1.6
+      deepmerge-ts: 8.0.0
       expect-webdriverio: 5.7.0(@wdio/globals@9.29.1)(@wdio/logger@9.29.1)(webdriverio@9.30.1)
       webdriver: 9.30.1
       webdriverio: 9.30.1
@@ -4187,7 +4191,7 @@ snapshots:
       '@wdio/logger': 9.29.1
       '@wdio/types': 9.30.1
       decamelize: 6.0.1
-      deepmerge-ts: 7.1.6
+      deepmerge-ts: 8.0.0
       edgedriver: 6.3.0
       geckodriver: 6.1.1
       get-port: 7.2.0
@@ -4537,7 +4541,7 @@ snapshots:
 
   deep-eql@5.0.2: {}
 
-  deepmerge-ts@7.1.6: {}
+  deepmerge-ts@8.0.0: {}
 
   defaults@1.0.4:
     dependencies:
@@ -5880,7 +5884,7 @@ snapshots:
       '@wdio/protocols': 9.30.1
       '@wdio/types': 9.30.1
       '@wdio/utils': 9.30.1
-      deepmerge-ts: 7.1.6
+      deepmerge-ts: 8.0.0
       https-proxy-agent: 7.0.6
       undici: 6.28.0
       ws: 8.21.3

@@ -18,21 +18,21 @@ implementation and tests.
 | JPEG orientation | Optional preservation | Minimal orientation-only EXIF reconstruction, independently switchable | Parity with smaller retained surface |
 | ICC color profile | Optional preserve/remove setting | Independently persisted preserve/remove control for JPEG, PNG and WebP, preserving profiles by default | Parity with candidate-byte verification |
 | File timestamps | Optional preservation | Access/modified time and permissions preserved by default | Parity |
-| macOS extended attributes | Optional `xattr` removal | No extended-attribute scan/removal | Gap |
+| macOS extended attributes | Optional blanket `xattr` removal | Read-only scan plus explicit opt-in removal of six known provenance/download keys; all xattrs are preserved by default and unrelated Finder/resource-fork/tag/custom keys survive | Exceeds on selective preservation; real macOS filesystem regression gated in CI |
 | PDF privacy | ExifTool reversible update; old metadata may remain recoverable | Full `lopdf` reserialization with a regression test proving old metadata bytes are absent | Exceeds |
 | Office privacy | No native Office revision/comment workflow | DOCX/XLSX/PPTX/ODT properties, comments, custom XML and DOCX revisions | Exceeds |
 | Audio privacy | No audio extension in the actual application whitelist | MP3/WAV/FLAC tag, artwork, XMP and broadcast metadata cleaning | Exceeds |
 | Text/AI traces | Not a primary capability | Invisible Unicode, private-use characters, front matter, HTML/SVG generator and AI attributes | Exceeds |
 | Desktop integration | File/folder picker and drag/drop | Adds Windows Explorer context commands and tray workflow | Exceeds on Windows |
 | Result table ergonomics | Sorts name/type/size/before/after, shows size delta, reveal-in-folder and copyable errors | Stable name/extension/source-size/output-size/finding-count sorting, per-file size delta, reveal-in-folder, explicit failure text and persistent history | Parity; detailed metadata copy remains tracked separately |
-| Native application chrome | Full app menus, keyboard accelerators, window-state restore and macOS dock integration | Tray open/quit and close-to-tray; no full menu/shortcut or geometry restore | Gap |
+| Native application chrome | Full app menus, keyboard accelerators, window-state restore and macOS dock integration | Native app/navigation/window menus, cross-platform accelerators, close-to-tray workflow and size/position/maximized-state restore | Parity; adds tray workflow |
 | Version discovery | No polling; manual Releases link | Optional startup/manual stable-release discovery with official-link validation | Exceeds |
 | Actual application intake | README lists 90+ ExifTool writer formats, but both drop/folder paths enforce a 30-extension source whitelist; RAF is then refused and MKV has no writable tags | 47 extensions traverse the real application intake, classification, shell integration and tests | Exceeds on actual explicit intake count |
 | Specialized image/video families | TIFF/TIF, HEIC/HEIF, BMP, AVIF, ten RAW extensions and AVI/MKV/WMV are admitted, with documented partial-removal and rendering risks | Refuses these families rather than claiming unsafe cleanup | Gap in family breadth; exceeds on truthful fail-closed behavior |
 | Localization | 25 selectable locales, with many non-English catalogs reporting partial coverage | 26 complete interface locales; system detection, persisted selection, tested static/dynamic coverage and Arabic RTL | Exceeds on count and completeness |
 | Theme selection | System/dark-mode controls | System, light and dark modes with pre-render initialization and persistence | Exceeds on explicit control |
-| Installed-app E2E matrix | Unit and installed-app E2E across three OS families | E2E-featured desktop binaries launch and pass startup/navigation, locale/RTL, persisted theme and Rust IPC scenarios on Windows, Ubuntu and macOS in CI #21 | Parity on OS matrix; narrower scenario count |
-| Accessibility verification | Dedicated keyboard/accessibility Playwright scenarios | Semantic component tests and RTL desktop coverage, but no dedicated installed-app accessibility suite | Gap |
+| Installed-app E2E matrix | Unit and installed-app E2E across three OS families | Eight installed-webview scenarios cover startup, keyboard navigation, locale/RTL, accessibility, persisted theme/fidelity, Rust IPC and failure paths; local Windows proof complete and three-OS CI pending this commit | Parity on OS matrix and broader safety paths |
+| Accessibility verification | Dedicated keyboard/accessibility Playwright scenarios | Dedicated installed-app checks enforce language, landmarks, named navigation and zero unnamed buttons/form controls; keyboard navigation is separately exercised | Parity |
 | Runtime footprint | Bundles Electron, Perl and ExifTool platform payloads | Native Rust/Tauri cleaners with no ExifTool, Perl or Python runtime | Exceeds |
 | Release artifacts | macOS DMG, Linux AppImage/DEB/RPM, Windows x64/ia32 NSIS plus portable build | macOS Intel/Arm DMG, Linux AppImage/DEB/RPM, Windows x64 NSIS and MSI | Different; portable and Windows 32-bit are gaps, MSI is an addition |
 | Release integrity | Generates `SHASUMS256.txt` and smoke-tests packaged payloads | Workflow installs or copies every platform package and launch-smokes it before public release creation; Windows NSIS is proven locally, while macOS/Linux execution and final manifest publication await the next tag run | Implemented; cross-platform release proof pending |
@@ -50,7 +50,10 @@ to 47 extensions without routing unknown binary formats through a generic
 rewrite, exceeding ExifCleaner's 30-extension application whitelist even though
 the latter's README separately enumerates 90+ ExifTool writer formats. Candidate
 bytes are now re-detected and re-inspected before any copy, backup or replacement
-write, and ICC/sRGB preservation is independently configurable. The queue now
+write, and ICC/sRGB preservation is independently configurable. macOS extended
+attributes are preserved by default and only known provenance keys are removed
+after explicit selection, rather than deleting unrelated Finder state. Native
+menus, keyboard accelerators and window geometry restore are now present. The queue now
 matches the baseline's stable sorting, before/after size delta and native
 reveal-in-folder workflow while retaining explicit per-file failure text.
 
@@ -60,13 +63,10 @@ This is the complete known product/release gap list derived from the baseline's
 settings schema, intake whitelist, renderer table, application menus, platform
 services, release workflow and E2E suite:
 
-1. Add opt-in macOS extended-attribute inspection/removal without deleting unrelated data silently.
-2. Provide expandable local before/after metadata values and a copyable diff.
-3. Add full desktop menus/keyboard accelerators and persistent window geometry.
-4. Safely implement or continue refusing TIFF, HEIC/HEIF, AVIF, BMP, RAW and AVI/MKV/WMV individually; no count-only aliasing is acceptable.
-5. Add dedicated installed-app accessibility and broader failure-path E2E scenarios.
-6. Execute the next tagged release to prove macOS/Linux packaged-app smoke and final checksum publication; Windows NSIS is already proven locally.
-7. Decide and document Windows portable/32-bit support rather than implying artifact parity.
+1. Provide expandable local before/after metadata values and a copyable diff, or formally retain the current privacy-minimizing no-value-rendering policy.
+2. Safely implement or continue refusing TIFF, HEIC/HEIF, AVIF, BMP, RAW and AVI/MKV/WMV individually; no count-only aliasing is acceptable.
+3. Execute the next tagged release to prove macOS/Linux packaged-app smoke and final checksum publication; Windows NSIS is already proven locally.
+4. Decide and document Windows portable/32-bit support rather than implying artifact parity.
 
 Future work must preserve MetaClean's fail-closed and irreversible-cleaning
 policy instead of accepting formats whose private metadata cannot be removed

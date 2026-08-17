@@ -26,9 +26,14 @@ export function classifyFile(name: string): FileEntry["kind"] {
 export function actionableFindingCount(
   report: ScanReport | undefined,
   preserveColorProfile: boolean,
+  removeExtendedAttributes = false,
 ): number {
   return report?.findings
-    .filter((finding) => finding.category !== "color_profile" || !preserveColorProfile)
+    .filter((finding) => {
+      if (finding.category === "color_profile") return !preserveColorProfile;
+      if (finding.category === "macos_xattr") return removeExtendedAttributes;
+      return true;
+    })
     .reduce((total, finding) => total + finding.count, 0) ?? 0;
 }
 

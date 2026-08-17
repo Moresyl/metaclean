@@ -4,7 +4,7 @@ import type { FileEntry } from "../types";
 import { useI18n } from "../lib/i18n";
 import { actionableFindingCount } from "../lib/files";
 
-interface FileQueueProps { entries: FileEntry[]; preserveColorProfile: boolean; onRemove: (id: string) => void; onClear: () => void; onReveal: (path: string) => void }
+interface FileQueueProps { entries: FileEntry[]; preserveColorProfile: boolean; removeExtendedAttributes: boolean; onRemove: (id: string) => void; onClear: () => void; onReveal: (path: string) => void }
 
 type SortKey = "name" | "type" | "sourceSize" | "outputSize" | "findings";
 
@@ -27,7 +27,7 @@ function formatBytes(bytes: number) {
   return `${value >= 10 ? value.toFixed(0) : value.toFixed(1)} ${unit}`;
 }
 
-export default function FileQueue({ entries, preserveColorProfile, onRemove, onClear, onReveal }: FileQueueProps) {
+export default function FileQueue({ entries, preserveColorProfile, removeExtendedAttributes, onRemove, onClear, onReveal }: FileQueueProps) {
   const { locale, text } = useI18n();
   const [sortKey, setSortKey] = useState<SortKey>("name");
   const [descending, setDescending] = useState(false);
@@ -37,7 +37,7 @@ export default function FileQueue({ entries, preserveColorProfile, onRemove, onC
       type: [extension(left.entry.name), extension(right.entry.name)],
       sourceSize: [left.entry.report?.size ?? left.entry.result?.sourceSize ?? left.entry.size, right.entry.report?.size ?? right.entry.result?.sourceSize ?? right.entry.size],
       outputSize: [left.entry.result?.outputSize, right.entry.result?.outputSize],
-      findings: [actionableFindingCount(left.entry.report, preserveColorProfile), actionableFindingCount(right.entry.report, preserveColorProfile)],
+      findings: [actionableFindingCount(left.entry.report, preserveColorProfile, removeExtendedAttributes), actionableFindingCount(right.entry.report, preserveColorProfile, removeExtendedAttributes)],
     };
     const [leftValue, rightValue] = values[sortKey];
     if (leftValue === undefined || rightValue === undefined) {
@@ -48,7 +48,7 @@ export default function FileQueue({ entries, preserveColorProfile, onRemove, onC
       ? leftValue.localeCompare(String(rightValue), locale, { numeric: true, sensitivity: "base" })
       : leftValue - Number(rightValue);
     return comparison === 0 ? left.index - right.index : descending ? -comparison : comparison;
-  }).map(({ entry }) => entry), [descending, entries, locale, preserveColorProfile, sortKey]);
+  }).map(({ entry }) => entry), [descending, entries, locale, preserveColorProfile, removeExtendedAttributes, sortKey]);
   const findingLabel = (category: string, fallback: string) => ({
     unicode: text("不可见 Unicode 字符", "Invisible Unicode"),
     unicode_space: text("异常空白字符", "Unusual whitespace"),
@@ -60,6 +60,7 @@ export default function FileQueue({ entries, preserveColorProfile, onRemove, onC
     pdf_metadata: text("PDF 文档属性 / XMP", "PDF properties / XMP"),
     document_metadata: text("作者 / 生成器 / AI 元数据", "Author / generator / AI metadata"),
     color_profile: "ICC / sRGB",
+    macos_xattr: "macOS · xattr",
   } as Record<string, string>)[category] ?? fallback;
   return (
     <section className="queue-card">
@@ -70,7 +71,7 @@ export default function FileQueue({ entries, preserveColorProfile, onRemove, onC
         <div className="file-list">
           {sortedEntries.map((entry) => {
             const Icon = icons[entry.kind];
-            const findingCount = actionableFindingCount(entry.report, preserveColorProfile);
+            const findingCount = actionableFindingCount(entry.report, preserveColorProfile, removeExtendedAttributes);
             const sourceSize = entry.result?.sourceSize ?? entry.report?.size ?? entry.size;
             const outputSize = entry.result?.outputSize;
             const sizeDelta = sourceSize !== undefined && outputSize !== undefined ? sourceSize - outputSize : undefined;

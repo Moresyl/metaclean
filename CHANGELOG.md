@@ -7,6 +7,13 @@ All notable changes to MetaClean are documented here. The project follows
 
 ### Added
 
+- Native desktop menus and navigation accelerators, persisted window size,
+  position and maximized state, plus dedicated installed-app accessibility and
+  fail-closed IPC scenarios.
+- Opt-in macOS provenance-attribute removal. All extended attributes are
+  preserved by default; removal is restricted to six known download,
+  quarantine and provenance keys, with unrelated attributes retained and a
+  real macOS filesystem regression in CI.
 - Stable queue sorting by name, extension, source/output size or actionable
   finding count, plus per-file before/after size deltas and a scoped native
   reveal-in-folder action for completed outputs.
@@ -43,6 +50,9 @@ All notable changes to MetaClean are documented here. The project follows
 
 ### Security
 
+- WebdriverIO's `deepmerge-ts` chain is forced to 8.0.0, which adds bounded
+  circular-reference handling for CVE-2026-40345; the supply-chain gate runs
+  both vulnerable recursive-object public API shapes.
 - The production WebView now enforces an explicit local-only Content Security
   Policy. A CI regression gate rejects missing policy, `unsafe-eval`, and
   unbounded network sources.

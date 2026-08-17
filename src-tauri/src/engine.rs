@@ -6,10 +6,10 @@ use std::{
 use crate::{
     cleaners::{image, media, office, pdf, video, web_text},
     error::{display_path, CleanError, Result},
-    models::{CleanResult, Finding, OutputMode, ScanReport},
+    models::{CleanResult, Finding, FindingSeverity, OutputMode, ScanReport},
     safe_io::{
-        atomic_write_with_metadata, backup_path, cleaned_path, unique_path, validate_input,
-        FileMetadataSnapshot,
+        atomic_write_with_metadata, backup_path, cleaned_path, privacy_extended_attribute_count,
+        unique_path, validate_input, FileMetadataSnapshot,
     },
 };
 
@@ -110,6 +110,15 @@ fn format_name(format: Format) -> &'static str {
         Format::Text => "Text",
         Format::Unsupported => "Unsupported",
     }
+}
+
+fn extended_attribute_finding(count: usize) -> Option<Finding> {
+    (count > 0).then(|| Finding {
+        category: "macos_xattr".into(),
+        label: "macOS provenance attributes".into(),
+        count,
+        severity: FindingSeverity::Informational,
+    })
 }
 
 fn inspect_data(path: &Path, format: Format, data: &[u8]) -> Result<Vec<Finding>> {
@@ -247,13 +256,27 @@ pub fn scan_file(path: &Path) -> ScanReport {
     };
     let format = detect(path, &data);
     match inspect_data(path, format, &data) {
-        Ok(findings) => base(
-            format_name(format).into(),
-            metadata.len(),
-            format != Format::Unsupported,
-            findings,
-            None,
-        ),
+        Ok(mut findings) => match privacy_extended_attribute_count(path) {
+            Ok(count) => {
+                if let Some(finding) = extended_attribute_finding(count) {
+                    findings.push(finding);
+                }
+                base(
+                    format_name(format).into(),
+                    metadata.len(),
+                    format != Format::Unsupported,
+                    findings,
+                    None,
+                )
+            }
+            Err(error) => base(
+                format_name(format).into(),
+                metadata.len(),
+                false,
+                findings,
+                Some(error.to_string()),
+            ),
+        },
         Err(error) => base(
             format_name(format).into(),
             metadata.len(),
@@ -270,6 +293,7 @@ pub fn clean_file_with_options(
     preserve_timestamps: bool,
     preserve_orientation: bool,
     preserve_color_profile: bool,
+    remove_extended_attributes: bool,
 ) -> CleanResult {
     let fail = |error: String| CleanResult {
         source_path: display_path(source),
@@ -285,13 +309,16 @@ pub fn clean_file_with_options(
         Ok(metadata) => metadata,
         Err(error) => return fail(error.to_string()),
     };
-    let metadata_snapshot = FileMetadataSnapshot::from_metadata(&source_metadata);
+    let metadata_snapshot = match FileMetadataSnapshot::capture(source, &source_metadata) {
+        Ok(snapshot) => snapshot,
+        Err(error) => return fail(error.to_string()),
+    };
     let data = match fs::read(source) {
         Ok(value) => value,
         Err(error) => return fail(error.to_string()),
     };
     let format = detect(source, &data);
-    let (cleaned, removed) = match clean_data(
+    let (cleaned, mut removed) = match clean_data(
         source,
         format,
         &data,
@@ -301,6 +328,12 @@ pub fn clean_file_with_options(
         Ok(value) => value,
         Err(error) => return fail(error.to_string()),
     };
+    let extended_attribute_count = metadata_snapshot.privacy_extended_attribute_count();
+    if remove_extended_attributes {
+        if let Some(finding) = extended_attribute_finding(extended_attribute_count) {
+            removed.push(finding);
+        }
+    }
     if let Err(error) = verify_cleaned_data(
         source,
         format,
@@ -315,7 +348,7 @@ pub fn clean_file_with_options(
         OutputMode::Replace => {
             let backup = unique_path(backup_path(source));
             if let Err(error) =
-                atomic_write_with_metadata(&backup, &data, Some(&metadata_snapshot), true)
+                atomic_write_with_metadata(&backup, &data, Some(&metadata_snapshot), true, false)
             {
                 return fail(format!("创建备份失败：{error}"));
             }
@@ -327,6 +360,7 @@ pub fn clean_file_with_options(
         &cleaned,
         Some(&metadata_snapshot),
         preserve_timestamps,
+        remove_extended_attributes,
     ) {
         return CleanResult {
             source_path: display_path(source),
@@ -361,6 +395,15 @@ pub fn scan_paths(paths: &[String]) -> Vec<ScanReport> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn builds_only_nonempty_extended_attribute_findings() {
+        assert!(extended_attribute_finding(0).is_none());
+        let finding = extended_attribute_finding(2).unwrap();
+        assert_eq!(finding.category, "macos_xattr");
+        assert_eq!(finding.count, 2);
+        assert_eq!(finding.severity, FindingSeverity::Informational);
+    }
 
     fn chunk(kind: &[u8; 4], payload: &[u8], big_endian: bool) -> Vec<u8> {
         let mut output = Vec::new();
@@ -544,13 +587,15 @@ mod tests {
         let report = scan_file(&source);
         assert_eq!(report.findings[0].category, "color_profile");
 
-        let preserved = clean_file_with_options(&source, &OutputMode::Copy, true, true, true);
+        let preserved =
+            clean_file_with_options(&source, &OutputMode::Copy, true, true, true, false);
         assert!(preserved.success, "{:?}", preserved.error);
         assert!(preserved.removed.is_empty());
         let preserved_report = scan_file(Path::new(preserved.output_path.as_deref().unwrap()));
         assert_eq!(preserved_report.findings[0].category, "color_profile");
 
-        let stripped = clean_file_with_options(&source, &OutputMode::Copy, true, true, false);
+        let stripped =
+            clean_file_with_options(&source, &OutputMode::Copy, true, true, false, false);
         assert!(stripped.success, "{:?}", stripped.error);
         assert_eq!(stripped.removed[0].category, "color_profile");
         assert!(
@@ -587,7 +632,7 @@ mod tests {
         fs::write(&source, "a\u{200b}b").unwrap();
         let report = scan_file(&source);
         assert_eq!(report.findings[0].count, 1);
-        let result = clean_file_with_options(&source, &OutputMode::Copy, true, true, true);
+        let result = clean_file_with_options(&source, &OutputMode::Copy, true, true, true, false);
         assert!(result.success);
         assert_eq!(result.source_size, Some(5));
         assert_eq!(result.output_size, Some(2));
@@ -607,7 +652,8 @@ mod tests {
             let report = scan_file(&source);
             assert!(report.supported, "{name}: {:?}", report.error);
             assert!(!report.findings.is_empty(), "{name}: expected metadata");
-            let result = clean_file_with_options(&source, &OutputMode::Copy, true, true, true);
+            let result =
+                clean_file_with_options(&source, &OutputMode::Copy, true, true, true, false);
             assert!(result.success, "{name}: {:?}", result.error);
             let output = PathBuf::from(result.output_path.unwrap());
             assert!(output.exists());
@@ -637,7 +683,8 @@ mod tests {
             fs::write(&source, &video).unwrap();
             let report = scan_file(&source);
             assert!(report.supported, "{extension}: {:?}", report.error);
-            let result = clean_file_with_options(&source, &OutputMode::Copy, true, true, true);
+            let result =
+                clean_file_with_options(&source, &OutputMode::Copy, true, true, true, false);
             assert!(result.success, "{extension}: {:?}", result.error);
             let cleaned = scan_file(Path::new(result.output_path.as_deref().unwrap()));
             assert!(cleaned.supported, "{extension}: {:?}", cleaned.error);
@@ -649,7 +696,8 @@ mod tests {
             fs::write(&source, "a\u{200b}b").unwrap();
             let report = scan_file(&source);
             assert!(report.supported, "{extension}: {:?}", report.error);
-            let result = clean_file_with_options(&source, &OutputMode::Copy, true, true, true);
+            let result =
+                clean_file_with_options(&source, &OutputMode::Copy, true, true, true, false);
             assert!(result.success, "{extension}: {:?}", result.error);
             assert_eq!(
                 fs::read_to_string(result.output_path.unwrap()).unwrap(),
@@ -675,7 +723,10 @@ mod tests {
             let report = scan_file(&source);
             assert!(!report.supported);
             assert!(report.error.is_some());
-            assert!(!clean_file_with_options(&source, &OutputMode::Copy, true, true, true).success);
+            assert!(
+                !clean_file_with_options(&source, &OutputMode::Copy, true, true, true, false)
+                    .success
+            );
             assert!(!cleaned_path(&source).exists());
         }
     }
@@ -684,7 +735,8 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let source = dir.path().join("note.txt");
         fs::write(&source, "a\u{200b}b").unwrap();
-        let result = clean_file_with_options(&source, &OutputMode::Replace, true, true, true);
+        let result =
+            clean_file_with_options(&source, &OutputMode::Replace, true, true, true, false);
         assert!(result.success);
         assert_eq!(fs::read_to_string(&source).unwrap(), "ab");
         assert_eq!(
@@ -700,14 +752,16 @@ mod tests {
         fs::write(&source, "a\u{200b}b").unwrap();
         let old = filetime::FileTime::from_unix_time(1_600_000_000, 0);
         filetime::set_file_mtime(&source, old).unwrap();
-        let preserved = clean_file_with_options(&source, &OutputMode::Copy, true, true, true);
+        let preserved =
+            clean_file_with_options(&source, &OutputMode::Copy, true, true, true, false);
         let preserved_metadata = fs::metadata(preserved.output_path.unwrap()).unwrap();
         assert_eq!(
             filetime::FileTime::from_last_modification_time(&preserved_metadata),
             old
         );
 
-        let refreshed = clean_file_with_options(&source, &OutputMode::Copy, false, true, true);
+        let refreshed =
+            clean_file_with_options(&source, &OutputMode::Copy, false, true, true, false);
         let refreshed_metadata = fs::metadata(refreshed.output_path.unwrap()).unwrap();
         assert_ne!(
             filetime::FileTime::from_last_modification_time(&refreshed_metadata),
@@ -719,7 +773,9 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let source = dir.path().join("data.bin");
         fs::write(&source, [0, 1, 2]).unwrap();
-        assert!(!clean_file_with_options(&source, &OutputMode::Copy, true, true, true).success);
+        assert!(
+            !clean_file_with_options(&source, &OutputMode::Copy, true, true, true, false).success
+        );
     }
 
     #[test]
@@ -737,7 +793,8 @@ mod tests {
                 !report.findings.is_empty(),
                 "{name}: expected metadata findings"
             );
-            let result = clean_file_with_options(&source, &OutputMode::Copy, true, true, true);
+            let result =
+                clean_file_with_options(&source, &OutputMode::Copy, true, true, true, false);
             assert!(result.success, "{}: {:?}", name, result.error);
             let output = PathBuf::from(result.output_path.expect("cleaned output path"));
             assert!(

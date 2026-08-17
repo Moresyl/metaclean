@@ -42,6 +42,18 @@ describe("App", () => {
     expect(localStorage.getItem("metaclean.locale")).toBe("en");
   });
 
+  it("navigates every primary page with desktop accelerators", () => {
+    renderApp();
+    fireEvent.keyDown(window, { key: "4", ctrlKey: true });
+    expect(screen.getByText("默认输出方式")).toBeInTheDocument();
+    fireEvent.keyDown(window, { key: "2", metaKey: true });
+    expect(screen.getByText("还没有处理记录")).toBeInTheDocument();
+    fireEvent.keyDown(window, { key: "3", ctrlKey: true });
+    expect(screen.getByText("文件纯本地处理")).toBeInTheDocument();
+    fireEvent.keyDown(window, { key: "1", ctrlKey: true });
+    expect(screen.getByRole("button", { name: "扫描隐私痕迹" })).toBeInTheDocument();
+  });
+
   it("switches all primary navigation labels to Japanese", () => {
     renderApp();
     fireEvent.click(screen.getByRole("button", { name: "设置" }));
@@ -75,7 +87,7 @@ describe("App", () => {
     await screen.findByText("发现 1 项痕迹");
     fireEvent.click(screen.getByRole("button", { name: "确认并开始清理" }));
     await screen.findByText(/1 个文件清理完成/);
-    expect(invokeMock).toHaveBeenCalledWith("clean_files", { request: expect.objectContaining({ preserveColorProfile: true }) });
+    expect(invokeMock).toHaveBeenCalledWith("clean_files", { request: expect.objectContaining({ preserveColorProfile: true, removeExtendedAttributes: false }) });
     expect(JSON.parse(localStorage.getItem("metaclean.history") ?? "[]")).toHaveLength(1);
     fireEvent.click(screen.getByRole("button", { name: "C:\\work\\notes.cleaned.txt" }));
     await waitFor(() => expect(revealMock).toHaveBeenCalledWith("C:\\work\\notes.cleaned.txt"));
@@ -99,6 +111,25 @@ describe("App", () => {
     fireEvent.click(screen.getByRole("button", { name: "设置" }));
     fireEvent.click(screen.getByRole("checkbox", { name: /图片 · ICC \/ sRGB/ }));
     expect(localStorage.getItem("metaclean.preserveColorProfile")).toBe("false");
+    fireEvent.click(screen.getByRole("button", { name: "文件净化" }));
+    expect(screen.getByRole("button", { name: "确认并开始清理" })).toBeEnabled();
+  });
+
+  it("keeps macOS provenance attributes by default and removes them only after explicit selection", async () => {
+    invokeMock.mockImplementation((command: string) => {
+      if (command === "get_launch_paths") return Promise.resolve(["/Users/test/report.pdf"]);
+      if (command === "expand_paths") return Promise.resolve({ files: ["/Users/test/report.pdf"], skippedCount: 0, issues: [], limitReached: false });
+      if (command === "scan_files") return Promise.resolve([{ path: "/Users/test/report.pdf", name: "report.pdf", format: "PDF", size: 4, supported: true, findings: [{ category: "macos_xattr", label: "macOS provenance attributes", count: 2, severity: "informational" }] }]);
+      if (command === "get_context_menu_status") return Promise.resolve({ available: false, enabled: false, detail: "仅 Windows" });
+      return Promise.reject(new Error(`unexpected ${command}`));
+    });
+    renderApp();
+    await screen.findByText("report.pdf");
+    fireEvent.click(screen.getByRole("button", { name: "扫描隐私痕迹" }));
+    expect(await screen.findByRole("button", { name: "没有需要清理的痕迹" })).toBeDisabled();
+    fireEvent.click(screen.getByRole("button", { name: "设置" }));
+    fireEvent.click(screen.getByRole("checkbox", { name: /macOS · xattr/ }));
+    expect(localStorage.getItem("metaclean.removeExtendedAttributes")).toBe("true");
     fireEvent.click(screen.getByRole("button", { name: "文件净化" }));
     expect(screen.getByRole("button", { name: "确认并开始清理" })).toBeEnabled();
   });

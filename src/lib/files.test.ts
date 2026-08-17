@@ -73,6 +73,7 @@ describe("actionableFindingCount", () => {
     findings: [
       { category: "image_metadata", label: "EXIF", count: 2, severity: "privacy" as const },
       { category: "color_profile", label: "ICC", count: 1, severity: "informational" as const },
+      { category: "macos_xattr", label: "macOS xattr", count: 2, severity: "informational" as const },
     ],
   };
 
@@ -82,6 +83,10 @@ describe("actionableFindingCount", () => {
 
   it("includes a profile that the user chose to remove", () => {
     expect(actionableFindingCount(report, false)).toBe(3);
+  });
+
+  it("includes only the macOS attributes explicitly selected for removal", () => {
+    expect(actionableFindingCount(report, true, true)).toBe(4);
   });
 
   it("handles an unscanned file", () => {

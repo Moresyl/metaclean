@@ -5,3 +5,4 @@ overrides:
   extract-zip: link:vendor/extract-zip
   glob@10.4.5: 10.5.0
   serialize-javascript@6.0.2: 7.0.5
+  deepmerge-ts: 8.0.0

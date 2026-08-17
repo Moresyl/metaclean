@@ -44,6 +44,7 @@
     "@wdio/tauri-plugin": "^1.3.0",
     "@wdio/tauri-service": "^1.3.0",
     "archiver": "^7.0.1",
+    "deepmerge-ts": "8.0.0",
     "extract-zip": "workspace:*",
     "jsdom": "^29.1.0",
     "typescript": "^5.9.3",
