@@ -1,7 +1,8 @@
 # MetaClean competitive audit
 
-Baseline audited on 2026-08-17 against `szTheory/exifcleaner` commit
-`3e94dcf0014a7853b36db992be4ff53a1827d5b3` (2026-08-03).
+Baseline audited on 2026-08-17 against ExifCleaner 4.2.0 at
+`szTheory/exifcleaner` commit `3e94dcf0014a7853b36db992be4ff53a1827d5b3`
+(2026-08-03). The audit reads implementation and tests, not only README claims.
 
 This is an evidence ledger, not a claim that every competitor feature is
 already matched. A row is complete only when the repository contains the named
@@ -11,18 +12,32 @@ implementation and tests.
 |---|---|---|---|
 | Safe copy and replacement | Save-as-copy option | Safe copy by default; replacement always creates a backup and uses atomic output | Exceeds |
 | Folder recursion | Recursive file/folder intake | Recursive picker and drag/drop with skip reasons, symlink refusal, 64-level and 10,000-file limits | Exceeds on safety |
-| Metadata inspection | Before/after metadata diff | Read-only per-file findings before confirmation; no private values rendered | Different privacy-first design |
+| Unsupported intake accounting | Folder summaries count skipped files and unreadable roots | Counts every skipped item, returns the first concrete issue and reports when a safety limit is reached | Exceeds on bounded failure reporting |
+| Metadata inspection | Expandable before/after tag values, grouped diff and copy-all | Read-only category/count findings before confirmation; no private values rendered | Gap: detailed local diff is absent |
+| Runtime cleanup verification | Reads metadata after processing and distinguishes cleaned, unchanged, refused and verification-failed outcomes | Native cleaners are regression-tested but the application does not yet re-inspect the exact candidate bytes before commit | Gap |
 | JPEG orientation | Optional preservation | Minimal orientation-only EXIF reconstruction, independently switchable | Parity with smaller retained surface |
+| ICC color profile | Optional preserve/remove setting | ICC data is preserved but has no explicit removal control | Gap |
 | File timestamps | Optional preservation | Access/modified time and permissions preserved by default | Parity |
+| macOS extended attributes | Optional `xattr` removal | No extended-attribute scan/removal | Gap |
 | PDF privacy | ExifTool reversible update; old metadata may remain recoverable | Full `lopdf` reserialization with a regression test proving old metadata bytes are absent | Exceeds |
 | Office privacy | No native Office revision/comment workflow | DOCX/XLSX/PPTX/ODT properties, comments, custom XML and DOCX revisions | Exceeds |
+| Audio privacy | No audio extension in the actual application whitelist | MP3/WAV/FLAC tag, artwork, XMP and broadcast metadata cleaning | Exceeds |
 | Text/AI traces | Not a primary capability | Invisible Unicode, private-use characters, front matter, HTML/SVG generator and AI attributes | Exceeds |
 | Desktop integration | File/folder picker and drag/drop | Adds Windows Explorer context commands and tray workflow | Exceeds on Windows |
+| Result table ergonomics | Sorts name/type/size/before/after, shows size delta, reveal-in-folder and copyable errors | Per-file status and finding tags plus a persistent history page; no sorting, size delta or reveal action | Gap |
+| Native application chrome | Full app menus, keyboard accelerators, window-state restore and macOS dock integration | Tray open/quit and close-to-tray; no full menu/shortcut or geometry restore | Gap |
 | Version discovery | No polling; manual Releases link | Optional startup/manual stable-release discovery with official-link validation | Exceeds |
-| Format breadth | 90+ ExifTool writer formats including video/RAW | 47 explicitly supported extensions; safe native cleaning across images, audio, 17 ISO BMFF/QuickTime aliases, Office, PDF and 16 UTF-8 text/markup formats | Gap remains in raw count; unsafe RAW/HEIC intake is intentionally refused |
+| Actual application intake | README lists 90+ ExifTool writer formats, but both drop/folder paths enforce a 30-extension source whitelist; RAF is then refused and MKV has no writable tags | 47 extensions traverse the real application intake, classification, shell integration and tests | Exceeds on actual explicit intake count |
+| Specialized image/video families | TIFF/TIF, HEIC/HEIF, BMP, AVIF, ten RAW extensions and AVI/MKV/WMV are admitted, with documented partial-removal and rendering risks | Refuses these families rather than claiming unsafe cleanup | Gap in family breadth; exceeds on truthful fail-closed behavior |
 | Localization | 25 selectable locales, with many non-English catalogs reporting partial coverage | 26 complete interface locales; system detection, persisted selection, tested static/dynamic coverage and Arabic RTL | Exceeds on count and completeness |
 | Theme selection | System/dark-mode controls | System, light and dark modes with pre-render initialization and persistence | Exceeds on explicit control |
-| Installed-app E2E matrix | Unit and installed-app E2E across three OS families | E2E-featured desktop binaries launch and pass startup/navigation, locale/RTL, persisted theme and Rust IPC scenarios on Windows, Ubuntu and macOS in CI #19 | Parity on OS matrix; narrower scenario count |
+| Installed-app E2E matrix | Unit and installed-app E2E across three OS families | E2E-featured desktop binaries launch and pass startup/navigation, locale/RTL, persisted theme and Rust IPC scenarios on Windows, Ubuntu and macOS in CI #21 | Parity on OS matrix; narrower scenario count |
+| Accessibility verification | Dedicated keyboard/accessibility Playwright scenarios | Semantic component tests and RTL desktop coverage, but no dedicated installed-app accessibility suite | Gap |
+| Runtime footprint | Bundles Electron, Perl and ExifTool platform payloads | Native Rust/Tauri cleaners with no ExifTool, Perl or Python runtime | Exceeds |
+| Release artifacts | macOS DMG, Linux AppImage/DEB/RPM, Windows x64/ia32 NSIS plus portable build | macOS Intel/Arm DMG, Linux AppImage/DEB/RPM, Windows x64 NSIS and MSI | Different; portable and Windows 32-bit are gaps, MSI is an addition |
+| Release integrity | Generates `SHASUMS256.txt` and smoke-tests packaged payloads | Nine v0.2.0 assets are published and branch E2E launches real desktop binaries, but no release checksum manifest or installed-release smoke gate exists | Gap |
+| Webview boundary | Hardened Electron navigation/IPC policy and disabled Node attack surfaces | Narrow Tauri command/capability surface and official-link allowlist, but production CSP is currently unset | Gap: add explicit CSP |
+| Dependency security | Pinned ExifTool checksums and release gates | No known npm vulnerability, repository-owned hardened archive extractor, cargo audit gate and test-only driver isolation | Exceeds on npm transitive mitigation; release checksums still pending |
 
 ## Release boundary
 
@@ -30,9 +45,29 @@ The current MetaClean branch is stronger on irreversible PDF cleaning, Office
 revisions, text/AI traces, atomic backup semantics, Windows shell integration,
 secure version discovery, localization completeness and explicit theme control.
 It now matches the three-family installed-app CI matrix while keeping the test
-driver absent from production builds. Its explicit intake grew from 26 to 47
-extensions without routing unknown binary formats through a generic rewrite.
-ExifCleaner still leads on raw ExifTool-backed format count and total E2E
-scenario count. Future format work must preserve MetaClean's fail-closed policy
-instead of accepting formats whose metadata cannot be removed safely and
-irreversibly.
+driver absent from production builds. Its explicit real-app intake grew from 26
+to 47 extensions without routing unknown binary formats through a generic
+rewrite, exceeding ExifCleaner's 30-extension application whitelist even though
+the latter's README separately enumerates 90+ ExifTool writer formats.
+
+## Remaining parity backlog
+
+This is the complete known product/release gap list derived from the baseline's
+settings schema, intake whitelist, renderer table, application menus, platform
+services, release workflow and E2E suite:
+
+1. Re-inspect the exact cleaned bytes before any copy, backup or replacement is committed.
+2. Add an explicit ICC color-profile preservation/removal preference.
+3. Add opt-in macOS extended-attribute inspection/removal without deleting unrelated data silently.
+4. Provide expandable local before/after metadata values and a copyable diff.
+5. Add stable queue sorting, source/output size delta and reveal-in-file-manager actions.
+6. Add full desktop menus/keyboard accelerators and persistent window geometry.
+7. Safely implement or continue refusing TIFF, HEIC/HEIF, AVIF, BMP, RAW and AVI/MKV/WMV individually; no count-only aliasing is acceptable.
+8. Add dedicated installed-app accessibility and broader failure-path E2E scenarios.
+9. Publish SHA-256 manifests and smoke-test installed release artifacts, not only E2E-featured debug binaries.
+10. Set and test an explicit production Content Security Policy.
+11. Decide and document Windows portable/32-bit support rather than implying artifact parity.
+
+Future work must preserve MetaClean's fail-closed and irreversible-cleaning
+policy instead of accepting formats whose private metadata cannot be removed
+safely.
