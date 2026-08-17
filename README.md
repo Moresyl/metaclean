@@ -36,7 +36,7 @@ MetaClean finds all of it and removes it — entirely on your own machine.
 
 ## Download
 
-Grab the latest package from [GitHub Releases](https://github.com/Moresyl/metaclean/releases/latest).
+Grab the latest package from [GitHub Releases](https://github.com/Moresyl/metaclean/releases/latest). Windows releases include x64 NSIS/MSI installers, x86 NSIS, and x64/x86 portable ZIPs; every executable package is launch-smoked before publication.
 
 | Platform | Packages |
 | --- | --- |
@@ -106,10 +106,12 @@ pnpm test:e2e:build && pnpm test:e2e             # real desktop app E2E
 pnpm tauri build                                # platform installers
 ```
 
-Every branch build also launches an E2E-only desktop binary on Windows, macOS and Linux. Its embedded WebDriver and test commands are gated behind a Cargo feature and are absent from production bundles. Pushing a version tag builds the whole release matrix through GitHub Actions: NSIS and MSI for Windows, DMG for Apple Silicon and Intel macOS, and DEB/RPM/AppImage for Linux. macOS signing and notarization need the Apple secrets documented in the release workflow; without them the macOS job still produces unsigned bundles.
+Every branch build also launches an E2E-only desktop binary on Windows, macOS and Linux. Its embedded WebDriver and test commands are gated behind a Cargo feature and are absent from production bundles. Pushing a version tag builds the whole release matrix through GitHub Actions: x64 NSIS/MSI plus x86 NSIS and x64/x86 portable ZIPs for Windows, DMG for Apple Silicon and Intel macOS, and DEB/RPM/AppImage for Linux. macOS signing and notarization need the Apple secrets documented in the release workflow; without them the macOS job still produces unsigned bundles.
 
 Test coverage and release evidence are tracked in [VALIDATION.md](VALIDATION.md).
 Release changes are recorded in [CHANGELOG.md](CHANGELOG.md).
+The deliberate no-value metadata policy and per-format refusal decisions are
+documented in [SUPPORT_POLICY.md](SUPPORT_POLICY.md).
 
 ## Contributing
 

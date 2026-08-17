@@ -7,6 +7,9 @@ All notable changes to MetaClean are documented here. The project follows
 
 ### Added
 
+- Windows x86 NSIS plus x64/x86 portable ZIP release targets. Both installed
+  and portable executables must remain open with the expected window title for
+  six seconds before their packages can reach the final release job.
 - Native desktop menus and navigation accelerators, persisted window size,
   position and maximized state, plus dedicated installed-app accessibility and
   fail-closed IPC scenarios.

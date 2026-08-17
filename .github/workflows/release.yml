@@ -26,7 +26,16 @@ jobs:
             target: x86_64-pc-windows-msvc
             args: --bundles nsis,msi
             bundlePath: src-tauri/target/release/bundle
-            extensions: exe,msi
+            extensions: exe,msi,zip
+            architecture: x64
+            binaryPath: src-tauri/target/release/metaclean.exe
+          - platform: windows-latest
+            target: i686-pc-windows-msvc
+            args: --target i686-pc-windows-msvc --bundles nsis
+            bundlePath: src-tauri/target/i686-pc-windows-msvc/release/bundle
+            extensions: exe,zip
+            architecture: x86
+            binaryPath: src-tauri/target/i686-pc-windows-msvc/release/metaclean.exe
           - platform: macos-latest
             target: aarch64-apple-darwin
             args: --target aarch64-apple-darwin --bundles dmg
@@ -70,10 +79,18 @@ jobs:
         run: node scripts/load-release-notes.mjs
       - name: Build release packages
         run: pnpm tauri build ${{ matrix.args }}
+      - name: Package the portable Windows application
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: ./scripts/package-windows-portable.ps1 -BinaryPath "${{ matrix.binaryPath }}" -BundleDirectory "${{ matrix.bundlePath }}" -Architecture "${{ matrix.architecture }}"
       - name: Smoke-test the installed Windows package
         if: runner.os == 'Windows'
         shell: pwsh
         run: ./scripts/smoke-windows-installer.ps1 -BundleDirectory "${{ matrix.bundlePath }}"
+      - name: Smoke-test the portable Windows package
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: ./scripts/smoke-windows-portable.ps1 -BundleDirectory "${{ matrix.bundlePath }}" -Architecture "${{ matrix.architecture }}"
       - name: Smoke-test the copied macOS application
         if: runner.os == 'macOS'
         run: bash scripts/smoke-macos-dmg.sh "${{ matrix.bundlePath }}"
