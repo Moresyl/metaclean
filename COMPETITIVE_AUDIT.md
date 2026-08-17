@@ -35,9 +35,9 @@ implementation and tests.
 | Accessibility verification | Dedicated keyboard/accessibility Playwright scenarios | Dedicated installed-app checks enforce language, landmarks, named navigation and zero unnamed buttons/form controls; keyboard navigation is separately exercised | Parity |
 | Runtime footprint | Bundles Electron, Perl and ExifTool platform payloads | Native Rust/Tauri cleaners with no ExifTool, Perl or Python runtime | Exceeds |
 | Release artifacts | macOS DMG, Linux AppImage/DEB/RPM, Windows x64/ia32 NSIS plus portable build | macOS Intel/Arm DMG, Linux AppImage/DEB/RPM, Windows x64 NSIS/MSI, x86 NSIS and architecture-labelled x64/x86 portable ZIPs | Exceeds with MSI and dual-architecture portable packages |
-| Release integrity | Generates `SHASUMS256.txt` and smoke-tests packaged payloads | Workflow installs or copies every platform package and launch-smokes it before public release creation; Windows NSIS is proven locally, while macOS/Linux execution and final manifest publication await the next tag run | Implemented; cross-platform release proof pending |
+| Release integrity | Generates `SHASUMS256.txt` and smoke-tests packaged payloads | v0.3.0 workflow #7 installed, extracted or copied and launch-smoked all five platform builds before publishing ten platform packages plus a complete ten-entry `SHASUMS256.txt` | Parity proven; adds MSI and dual-architecture portable validation |
 | Webview boundary | Hardened Electron navigation/IPC policy and disabled Node attack surfaces | Narrow Tauri command/capability surface, official-link allowlist and explicit local-only production CSP with a regression gate | Parity with smaller IPC surface |
-| Dependency security | Pinned ExifTool checksums and release gates | No known npm vulnerability, repository-owned hardened archive extractor, cargo audit gate and test-only driver isolation | Exceeds on npm transitive mitigation; release checksums still pending |
+| Dependency security | Pinned ExifTool checksums and release gates | No known npm vulnerability, repository-owned hardened archive extractor, cargo audit gate, test-only driver isolation and published per-package SHA-256 manifest | Exceeds on npm transitive mitigation and runtime isolation |
 
 ## Release boundary
 
@@ -62,11 +62,11 @@ policy in `SUPPORT_POLICY.md`, not implied future support.
 
 ## Remaining parity backlog
 
-This is the complete known product/release gap list derived from the baseline's
-settings schema, intake whitelist, renderer table, application menus, platform
-services, release workflow and E2E suite:
-
-1. Execute the next tagged release to prove macOS/Linux packaged-app smoke and final checksum publication; Windows installed and portable packages are already proven locally.
+No known product or release parity backlog remains within the audited ExifCleaner
+4.2.0 baseline. The raw-value metadata viewer and unsafe generic rewriting of
+specialized containers remain deliberate privacy/safety divergences, not missing
+deliverables. Word/WPS interoperability and Apple signing/notarization are
+external qualification gates tracked in `VALIDATION.md`.
 
 Future work must preserve MetaClean's fail-closed and irreversible-cleaning
 policy instead of accepting formats whose private metadata cannot be removed
