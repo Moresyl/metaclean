@@ -35,7 +35,7 @@ implementation and tests.
 | Accessibility verification | Dedicated keyboard/accessibility Playwright scenarios | Semantic component tests and RTL desktop coverage, but no dedicated installed-app accessibility suite | Gap |
 | Runtime footprint | Bundles Electron, Perl and ExifTool platform payloads | Native Rust/Tauri cleaners with no ExifTool, Perl or Python runtime | Exceeds |
 | Release artifacts | macOS DMG, Linux AppImage/DEB/RPM, Windows x64/ia32 NSIS plus portable build | macOS Intel/Arm DMG, Linux AppImage/DEB/RPM, Windows x64 NSIS and MSI | Different; portable and Windows 32-bit are gaps, MSI is an addition |
-| Release integrity | Generates `SHASUMS256.txt` and smoke-tests packaged payloads | Nine v0.2.0 assets are published and branch E2E launches real desktop binaries, but no release checksum manifest or installed-release smoke gate exists | Gap |
+| Release integrity | Generates `SHASUMS256.txt` and smoke-tests packaged payloads | Release workflow now validates a per-version bilingual body and publishes one SHA-256 manifest for every uploaded package; installed-package smoke remains absent | Partial: checksum parity, installed smoke gap |
 | Webview boundary | Hardened Electron navigation/IPC policy and disabled Node attack surfaces | Narrow Tauri command/capability surface, official-link allowlist and explicit local-only production CSP with a regression gate | Parity with smaller IPC surface |
 | Dependency security | Pinned ExifTool checksums and release gates | No known npm vulnerability, repository-owned hardened archive extractor, cargo audit gate and test-only driver isolation | Exceeds on npm transitive mitigation; release checksums still pending |
 
@@ -64,7 +64,7 @@ services, release workflow and E2E suite:
 4. Add full desktop menus/keyboard accelerators and persistent window geometry.
 5. Safely implement or continue refusing TIFF, HEIC/HEIF, AVIF, BMP, RAW and AVI/MKV/WMV individually; no count-only aliasing is acceptable.
 6. Add dedicated installed-app accessibility and broader failure-path E2E scenarios.
-7. Publish SHA-256 manifests and smoke-test installed release artifacts, not only E2E-featured debug binaries.
+7. Smoke-test installed release artifacts on each platform; checksum publication is now automated.
 8. Decide and document Windows portable/32-bit support rather than implying artifact parity.
 
 Future work must preserve MetaClean's fail-closed and irreversible-cleaning

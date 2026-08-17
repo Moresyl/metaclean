@@ -95,6 +95,7 @@ Run the full check suite before opening a pull request:
 pnpm test:coverage                              # frontend tests, 80% floor
 pnpm test:formats                               # extension-manifest consistency
 pnpm test:security                              # production WebView CSP policy
+pnpm test:release                               # release-note and checksum automation
 pnpm test:supply-chain                          # patched dependency regression
 pnpm build                                      # typecheck + production bundle
 cargo test --manifest-path src-tauri/Cargo.toml # Rust core tests

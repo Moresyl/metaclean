@@ -7,6 +7,8 @@ All notable changes to MetaClean are documented here. The project follows
 
 ### Added
 
+- Per-version validated bilingual release-note files and a final release job
+  that publishes one SHA-256 manifest covering every uploaded package.
 - An independently persisted ICC/sRGB preservation control for JPEG, PNG and
   WebP. Profiles remain intact by default and become an explicit informational
   scan finding when removal is selected.

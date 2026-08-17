@@ -29,6 +29,8 @@ jobs:
         run: pnpm test:supply-chain
       - name: Verify WebView security policy
         run: pnpm test:security
+      - name: Verify release automation
+        run: pnpm test:release
       - name: Verify format manifests
         run: pnpm test:formats
       - name: Audit dependencies
