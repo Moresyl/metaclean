@@ -1,0 +1,15 @@
+{
+  "name": "extract-zip",
+  "version": "2.0.2",
+  "description": "Vendored extract-zip with out-of-root symlink rejection",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "license": "BSD-2-Clause",
+  "repository": "max-mapper/extract-zip",
+  "engines": { "node": ">=18" },
+  "dependencies": {
+    "debug": "^4.4.3",
+    "get-stream": "^5.2.0",
+    "yauzl": "^2.10.0"
+  }
+}

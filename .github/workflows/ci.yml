@@ -28,8 +28,7 @@ jobs:
       - name: Verify extract-zip security patch
         run: pnpm test:supply-chain
       - name: Audit dependencies
-        # GHSA-jmr9-qjv8-65gv is fixed by patches/extract-zip@2.0.1.patch and tested above.
-        run: pnpm audit --audit-level moderate --ignore GHSA-jmr9-qjv8-65gv --registry=https://registry.npmjs.org
+        run: pnpm audit --audit-level moderate --registry=https://registry.npmjs.org
       - run: pnpm test:coverage
       - run: pnpm build
       - run: cargo fmt --check
