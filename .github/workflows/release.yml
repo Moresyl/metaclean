@@ -24,7 +24,7 @@ jobs:
         include:
           - platform: windows-latest
             target: x86_64-pc-windows-msvc
-            args: --bundles nsis,msi
+            args: --bundles "nsis,msi"
             bundlePath: src-tauri/target/release/bundle
             extensions: exe,msi,zip
             architecture: x64
