@@ -25,15 +25,23 @@ jobs:
           - platform: windows-latest
             target: x86_64-pc-windows-msvc
             args: --bundles nsis,msi
+            bundlePath: src-tauri/target/release/bundle
+            extensions: exe,msi
           - platform: macos-latest
             target: aarch64-apple-darwin
             args: --target aarch64-apple-darwin --bundles dmg
+            bundlePath: src-tauri/target/aarch64-apple-darwin/release/bundle
+            extensions: dmg
           - platform: macos-latest
             target: x86_64-apple-darwin
             args: --target x86_64-apple-darwin --bundles dmg
+            bundlePath: src-tauri/target/x86_64-apple-darwin/release/bundle
+            extensions: dmg
           - platform: ubuntu-22.04
             target: x86_64-unknown-linux-gnu
             args: --bundles deb,rpm,appimage
+            bundlePath: src-tauri/target/release/bundle
+            extensions: deb,rpm,AppImage
     runs-on: ${{ matrix.platform }}
     steps:
       - uses: actions/checkout@v7
@@ -58,20 +66,28 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y build-essential curl wget file libssl-dev libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf rpm
       - run: pnpm install --frozen-lockfile
-      - name: Load validated bilingual release notes
-        id: release-notes
+      - name: Validate bilingual release notes
         run: node scripts/load-release-notes.mjs
-      - uses: tauri-apps/tauri-action@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build release packages
+        run: pnpm tauri build ${{ matrix.args }}
+      - name: Smoke-test the installed Windows package
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: ./scripts/smoke-windows-installer.ps1 -BundleDirectory "${{ matrix.bundlePath }}"
+      - name: Smoke-test the copied macOS application
+        if: runner.os == 'macOS'
+        run: bash scripts/smoke-macos-dmg.sh "${{ matrix.bundlePath }}"
+      - name: Smoke-test the installed Linux package
+        if: runner.os == 'Linux'
+        run: bash scripts/smoke-linux-deb.sh "${{ matrix.bundlePath }}"
+      - name: Collect validated release assets
+        run: node scripts/collect-release-assets.mjs "${{ matrix.bundlePath }}" "${{ runner.temp }}/release-assets" "${{ matrix.extensions }}"
+      - uses: actions/upload-artifact@v6
         with:
-          tauriScript: pnpm tauri
-          args: ${{ matrix.args }}
-          tagName: v__VERSION__
-          releaseName: MetaClean v__VERSION__
-          releaseBody: ${{ steps.release-notes.outputs.body }}
-          releaseDraft: false
-          prerelease: false
+          name: packages-${{ matrix.target }}
+          path: ${{ runner.temp }}/release-assets/*
+          if-no-files-found: error
+          retention-days: 1
 
   finalize:
     needs: build
@@ -83,13 +99,16 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: 24
-      - name: Download every published package
-        run: gh release download "$RELEASE_TAG" --dir "$RUNNER_TEMP/release-assets"
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: packages-*
+          path: ${{ runner.temp }}/release-assets
+          merge-multiple: true
+      - name: Validate bilingual release notes
+        run: node scripts/load-release-notes.mjs
       - name: Generate SHA-256 manifest
-        run: node scripts/generate-checksums.mjs "$RUNNER_TEMP/release-assets" "$RUNNER_TEMP/SHASUMS256.txt"
-      - name: Publish SHA-256 manifest
-        run: gh release upload "$RELEASE_TAG" "$RUNNER_TEMP/SHASUMS256.txt" --clobber
+        run: node scripts/generate-checksums.mjs "${{ runner.temp }}/release-assets" "${{ runner.temp }}/SHASUMS256.txt"
+      - name: Create the public release only after every smoke test passes
+        run: gh release create "$RELEASE_TAG" "${{ runner.temp }}"/release-assets/* "${{ runner.temp }}/SHASUMS256.txt" --title "MetaClean $RELEASE_TAG" --notes-file "release-notes/$RELEASE_TAG.md" --verify-tag
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

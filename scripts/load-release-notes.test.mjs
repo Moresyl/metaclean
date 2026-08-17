@@ -7,6 +7,7 @@ test("loads the concrete bilingual notes for a published version", async () => {
   const notes = await loadReleaseNotes("v0.2.0");
   assert.match(notes, /### 新功能/u);
   assert.match(notes, /### English summary/u);
+  assert.equal(validateReleaseNotes("v0.2.0", notes.replace(/\n/gu, "\r\n")), notes);
 });
 
 test("rejects missing sections, generic bodies and invalid tags", () => {
@@ -18,10 +19,13 @@ test("rejects missing sections, generic bodies and invalid tags", () => {
 
 test("release workflow consumes validated notes and finalizes checksums", async () => {
   const workflow = await readFile(new URL("../.github/workflows/release.yml", import.meta.url), "utf8");
-  assert.match(workflow, /releaseBody: \$\{\{ steps\.release-notes\.outputs\.body \}\}/u);
-  assert.doesNotMatch(workflow, /releaseBody: \|/u);
+  assert.doesNotMatch(workflow, /releaseBody:/u);
   assert.match(workflow, /^  finalize:/mu);
   assert.match(workflow, /generate-checksums\.mjs/u);
-  assert.match(workflow, /gh release upload/u);
+  assert.match(workflow, /smoke-windows-installer\.ps1/u);
+  assert.match(workflow, /smoke-macos-dmg\.sh/u);
+  assert.match(workflow, /smoke-linux-deb\.sh/u);
+  assert.match(workflow, /gh release create/u);
+  assert.doesNotMatch(workflow, /\$RUNNER_TEMP/u);
   assert.equal((workflow.match(/ref: \$\{\{ env\.RELEASE_TAG \}\}/gu) ?? []).length, 2);
 });

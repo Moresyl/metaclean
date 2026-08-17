@@ -35,7 +35,7 @@ implementation and tests.
 | Accessibility verification | Dedicated keyboard/accessibility Playwright scenarios | Semantic component tests and RTL desktop coverage, but no dedicated installed-app accessibility suite | Gap |
 | Runtime footprint | Bundles Electron, Perl and ExifTool platform payloads | Native Rust/Tauri cleaners with no ExifTool, Perl or Python runtime | Exceeds |
 | Release artifacts | macOS DMG, Linux AppImage/DEB/RPM, Windows x64/ia32 NSIS plus portable build | macOS Intel/Arm DMG, Linux AppImage/DEB/RPM, Windows x64 NSIS and MSI | Different; portable and Windows 32-bit are gaps, MSI is an addition |
-| Release integrity | Generates `SHASUMS256.txt` and smoke-tests packaged payloads | Release workflow now validates a per-version bilingual body and publishes one SHA-256 manifest for every uploaded package; installed-package smoke remains absent | Partial: checksum parity, installed smoke gap |
+| Release integrity | Generates `SHASUMS256.txt` and smoke-tests packaged payloads | Workflow installs or copies every platform package and launch-smokes it before public release creation; Windows NSIS is proven locally, while macOS/Linux execution and final manifest publication await the next tag run | Implemented; cross-platform release proof pending |
 | Webview boundary | Hardened Electron navigation/IPC policy and disabled Node attack surfaces | Narrow Tauri command/capability surface, official-link allowlist and explicit local-only production CSP with a regression gate | Parity with smaller IPC surface |
 | Dependency security | Pinned ExifTool checksums and release gates | No known npm vulnerability, repository-owned hardened archive extractor, cargo audit gate and test-only driver isolation | Exceeds on npm transitive mitigation; release checksums still pending |
 
@@ -64,7 +64,7 @@ services, release workflow and E2E suite:
 4. Add full desktop menus/keyboard accelerators and persistent window geometry.
 5. Safely implement or continue refusing TIFF, HEIC/HEIF, AVIF, BMP, RAW and AVI/MKV/WMV individually; no count-only aliasing is acceptable.
 6. Add dedicated installed-app accessibility and broader failure-path E2E scenarios.
-7. Smoke-test installed release artifacts on each platform; checksum publication is now automated.
+7. Execute the next tagged release to prove macOS/Linux packaged-app smoke and final checksum publication; Windows NSIS is already proven locally.
 8. Decide and document Windows portable/32-bit support rather than implying artifact parity.
 
 Future work must preserve MetaClean's fail-closed and irreversible-cleaning
