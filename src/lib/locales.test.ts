@@ -17,7 +17,7 @@ describe("locales", () => {
   });
 
   it("has a complete translation for every published non-source catalog", () => {
-    for (const locale of ["zh-TW", "de", "es", "fr", "it", "ja", "ko", "nl", "pl", "pt", "pt-BR", "ru", "uk"] satisfies Locale[]) {
+    for (const locale of ["zh-TW", "da", "de", "es", "fr", "it", "ja", "ko", "nb", "nl", "pl", "pt", "pt-BR", "ru", "sv", "uk"] satisfies Locale[]) {
       for (const source of SOURCE_STRINGS) {
         expect(hasStaticTranslation(locale, source), `${locale}: ${source}`).toBe(true);
       }
@@ -57,7 +57,7 @@ describe("locales", () => {
       "Version 0.2.0 is up to date.",
       "Update check failed: offline",
     ];
-    for (const locale of ["zh-TW", "de", "es", "fr", "it", "ja", "ko", "nl", "pl", "pt", "pt-BR", "ru", "uk"] satisfies Locale[]) {
+    for (const locale of ["zh-TW", "da", "de", "es", "fr", "it", "ja", "ko", "nb", "nl", "pl", "pt", "pt-BR", "ru", "sv", "uk"] satisfies Locale[]) {
       for (const message of messages) {
         expect(translate(locale, "", message), `${locale}: ${message}`).not.toBe(message);
       }
