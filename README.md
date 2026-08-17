@@ -77,7 +77,7 @@ Grab the latest package from [GitHub Releases](https://github.com/Moresyl/metacl
 - Closing the window keeps MetaClean in the system tray; right-click the tray icon to reopen or exit
 - Preserves JPEG display orientation and file timestamps by default without retaining private EXIF fields
 - Finds stable updates through GitHub Releases, with automatic checks independently switchable off
-- Twelve complete interface languages, including both Chinese scripts, four Western European language families, Japanese and Korean; system/light/dark theme, output mode, fidelity options, and local cleanup history persist between sessions
+- Fifteen complete interface languages, spanning both Chinese scripts, Western and Eastern Europe, Japanese and Korean; system/light/dark theme, output mode, fidelity options, and local cleanup history persist between sessions
 
 ## Build from source
 
