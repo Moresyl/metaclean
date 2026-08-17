@@ -1,6 +1,7 @@
 mod cleaners;
 mod engine;
 mod error;
+mod intake;
 mod models;
 mod safe_io;
 mod shell_integration;
@@ -17,11 +18,23 @@ fn scan_files(paths: Vec<String>) -> Vec<ScanReport> {
 }
 
 #[tauri::command]
+fn expand_paths(paths: Vec<String>) -> intake::IntakeResult {
+    intake::expand_paths(&paths)
+}
+
+#[tauri::command]
 fn clean_files(request: CleanRequest) -> Vec<CleanResult> {
     request
         .paths
         .iter()
-        .map(|path| engine::clean_file(std::path::Path::new(path), &request.mode))
+        .map(|path| {
+            engine::clean_file_with_options(
+                std::path::Path::new(path),
+                &request.mode,
+                request.preserve_timestamps,
+                request.preserve_orientation,
+            )
+        })
         .collect()
 }
 
@@ -49,6 +62,7 @@ fn set_context_menu_enabled(enabled: bool) -> Result<shell_integration::ContextM
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_opener::init())
         .setup(|app| {
             let open = MenuItem::with_id(app, "open", "打开 MetaClean / Open", true, None::<&str>)?;
             let quit = MenuItem::with_id(app, "quit", "退出 / Exit", true, None::<&str>)?;
@@ -80,6 +94,7 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             scan_files,
+            expand_paths,
             clean_files,
             get_launch_paths,
             get_context_menu_status,

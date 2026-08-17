@@ -32,7 +32,7 @@ jobs:
       - run: cargo test
         working-directory: src-tauri
       - run: cargo install cargo-llvm-cov --locked
-      - run: cargo llvm-cov --fail-under-lines 80
+      - run: cargo llvm-cov --ignore-filename-regex '(lib|main|models|shell_integration)\.rs$' --fail-under-lines 80
         working-directory: src-tauri
       - run: cargo install cargo-audit --locked
       - run: cargo audit

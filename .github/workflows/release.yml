@@ -56,6 +56,35 @@ jobs:
           args: ${{ matrix.args }}
           tagName: v__VERSION__
           releaseName: MetaClean v__VERSION__
-          releaseBody: See README.md and README.zh-CN.md for supported formats and safety guarantees.
+          releaseBody: |
+            ## MetaClean v__VERSION__
+
+            ### 新功能
+
+            - 新增稳定版本发现：支持启动检查、手动检查、更新提示和官方发布页跳转，自动检查可关闭。
+            - 新增文件夹递归导入，提供跳过原因、符号链接拒绝、64 层深度和 10,000 文件安全限制。
+            - 新增 GIF、MP3、WAV、FLAC 元数据清理，覆盖注释/XMP、ID3/APEv2、RIFF INFO/BWF/iXML、Vorbis 评论和封面。
+            - 新增 JPEG 最小方向保留，以及文件权限和访问/修改时间保留。
+
+            ### 变更与安全
+
+            - Windows 资源管理器右键菜单扩展到 22 种扩展名。
+            - 新媒体解析器在写入前校验容器结构和块边界；畸形文件直接拒绝。
+            - 更新发现只接受正式非草稿版本，并限制到官方 `Moresyl/metaclean` 发布路径。
+
+            ### 修复与打磨
+
+            - 修复移除全部 EXIF 后 JPEG 可能旋转的问题。
+            - 修复清理输出丢失源文件权限或时间戳的问题。
+
+            ### 安装
+
+            - Windows x64：推荐 NSIS `.exe`，同时提供 `.msi`。
+            - macOS：分别提供 Apple Silicon 与 Intel `.dmg`。
+            - Linux x64：提供 AppImage、DEB 和 RPM。
+
+            ---
+
+            MetaClean v__VERSION__ adds secure stable-release discovery, recursive folder intake, GIF/MP3/WAV/FLAC cleaning, minimal JPEG orientation preservation, and filesystem metadata preservation. It also hardens recursive intake and media parsing while expanding Windows Explorer integration to 22 extensions.
           releaseDraft: false
           prerelease: false

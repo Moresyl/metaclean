@@ -5,7 +5,7 @@ export interface FileEntry {
   name: string;
   path?: string;
   size?: number;
-  kind: "image" | "document" | "pdf" | "text" | "unknown";
+  kind: "image" | "audio" | "document" | "pdf" | "text" | "unknown";
   status: "ready" | "scanning" | "scanned" | "clean" | "error";
   report?: ScanReport;
 }
@@ -49,4 +49,16 @@ export interface ContextMenuStatus {
   available: boolean;
   enabled: boolean;
   detail: string;
+}
+
+export interface IntakeIssue {
+  path: string;
+  reason: string;
+}
+
+export interface IntakeResult {
+  files: string[];
+  skippedCount: number;
+  issues: IntakeIssue[];
+  limitReached: boolean;
 }

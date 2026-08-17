@@ -99,9 +99,15 @@ fn jpeg_segments(data: &[u8]) -> Result<Vec<(u8, &[u8], std::ops::Range<usize>)>
     Ok(result)
 }
 
-pub fn clean_jpeg(data: &[u8]) -> Result<(Vec<u8>, Vec<Finding>)> {
+pub fn clean_jpeg_with_options(
+    data: &[u8],
+    preserve_orientation: bool,
+) -> Result<(Vec<u8>, Vec<Finding>)> {
     let findings = inspect_jpeg(data)?;
     let segments = jpeg_segments(data)?;
+    let orientation = preserve_orientation
+        .then(|| jpeg_orientation(&segments))
+        .flatten();
     let mut output = Vec::with_capacity(data.len());
     let mut cursor = 0;
     for (marker, _payload, range) in segments {
@@ -112,7 +118,72 @@ pub fn clean_jpeg(data: &[u8]) -> Result<(Vec<u8>, Vec<Finding>)> {
         }
     }
     output.extend_from_slice(&data[cursor..]);
+    if let Some(value) = orientation {
+        let segment = orientation_segment(value);
+        output.splice(2..2, segment);
+    }
     Ok((output, findings))
+}
+
+fn jpeg_orientation(segments: &[(u8, &[u8], std::ops::Range<usize>)]) -> Option<u16> {
+    segments.iter().find_map(|(marker, payload, _)| {
+        if *marker != 0xE1 || !payload.starts_with(b"Exif\0\0") {
+            return None;
+        }
+        tiff_orientation(&payload[6..])
+    })
+}
+
+fn tiff_orientation(tiff: &[u8]) -> Option<u16> {
+    if tiff.len() < 8 {
+        return None;
+    }
+    let little_endian = match &tiff[..2] {
+        b"II" => true,
+        b"MM" => false,
+        _ => return None,
+    };
+    let read_u16 = |bytes: &[u8]| -> Option<u16> {
+        let value: [u8; 2] = bytes.get(..2)?.try_into().ok()?;
+        Some(if little_endian {
+            u16::from_le_bytes(value)
+        } else {
+            u16::from_be_bytes(value)
+        })
+    };
+    let read_u32 = |bytes: &[u8]| -> Option<u32> {
+        let value: [u8; 4] = bytes.get(..4)?.try_into().ok()?;
+        Some(if little_endian {
+            u32::from_le_bytes(value)
+        } else {
+            u32::from_be_bytes(value)
+        })
+    };
+    if read_u16(&tiff[2..])? != 42 {
+        return None;
+    }
+    let ifd_offset = usize::try_from(read_u32(&tiff[4..])?).ok()?;
+    let count = usize::from(read_u16(tiff.get(ifd_offset..)?)?);
+    for index in 0..count {
+        let start = ifd_offset.checked_add(2 + index * 12)?;
+        let entry = tiff.get(start..start + 12)?;
+        if read_u16(entry)? == 0x0112 && read_u16(&entry[2..])? == 3 && read_u32(&entry[4..])? == 1
+        {
+            let value = read_u16(&entry[8..])?;
+            return (1..=8).contains(&value).then_some(value);
+        }
+    }
+    None
+}
+
+fn orientation_segment(orientation: u16) -> Vec<u8> {
+    let mut payload = b"Exif\0\0MM\0*\0\0\0\x08\0\x01\x01\x12\0\x03\0\0\0\x01".to_vec();
+    payload.extend_from_slice(&orientation.to_be_bytes());
+    payload.extend_from_slice(&[0, 0, 0, 0, 0, 0]);
+    let mut segment = vec![0xff, 0xe1];
+    segment.extend_from_slice(&((payload.len() + 2) as u16).to_be_bytes());
+    segment.extend_from_slice(&payload);
+    segment
 }
 
 fn png_chunks(data: &[u8]) -> Result<Vec<([u8; 4], std::ops::Range<usize>)>> {
@@ -250,6 +321,13 @@ pub fn clean_webp(data: &[u8]) -> Result<(Vec<u8>, Vec<Finding>)> {
 mod tests {
     use super::*;
 
+    fn jpeg_segment(marker: u8, payload: &[u8]) -> Vec<u8> {
+        let mut segment = vec![0xff, marker];
+        segment.extend_from_slice(&((payload.len() + 2) as u16).to_be_bytes());
+        segment.extend_from_slice(payload);
+        segment
+    }
+
     fn jpeg_with_exif() -> Vec<u8> {
         vec![
             0xff, 0xd8, 0xff, 0xe1, 0, 10, b'E', b'x', b'i', b'f', 0, 0, 1, 2, 0xff, 0xd9,
@@ -258,9 +336,58 @@ mod tests {
     #[test]
     fn strips_jpeg_exif_segment() {
         let source = jpeg_with_exif();
-        let (cleaned, findings) = clean_jpeg(&source).unwrap();
+        let (cleaned, findings) = clean_jpeg_with_options(&source, true).unwrap();
         assert_eq!(cleaned, vec![0xff, 0xd8, 0xff, 0xd9]);
         assert_eq!(findings[0].count, 1);
+    }
+
+    #[test]
+    fn reports_and_removes_every_private_jpeg_segment_class() {
+        let mut source = vec![0xff, 0xd8];
+        source.extend(jpeg_segment(0xe1, b"Exif\0\0data"));
+        source.extend(jpeg_segment(0xe1, b"http://ns.adobe.com/xap/1.0/"));
+        source.extend(jpeg_segment(0xeb, b"c2pa"));
+        source.extend(jpeg_segment(0xed, b"iptc"));
+        source.extend_from_slice(&[0xff, 0xd9]);
+        let findings = inspect_jpeg(&source).unwrap();
+        assert_eq!(findings.len(), 4);
+        assert!(findings.iter().any(|item| item.category == "provenance"));
+        let (cleaned, _) = clean_jpeg_with_options(&source, false).unwrap();
+        assert_eq!(cleaned, vec![0xff, 0xd8, 0xff, 0xd9]);
+    }
+
+    #[test]
+    fn rejects_malformed_jpeg_segment_layouts() {
+        assert!(inspect_jpeg(b"not jpeg").is_err());
+        assert!(inspect_jpeg(&[0xff, 0xd8, 0xff]).is_err());
+        assert!(inspect_jpeg(&[0xff, 0xd8, 0xff, 0xe1]).is_err());
+        assert!(inspect_jpeg(&[0xff, 0xd8, 0xff, 0xe1, 0, 1, 0xff, 0xd9]).is_err());
+        assert!(inspect_jpeg(&[0xff, 0xd8, 0xff, 0xe1, 0, 20, 0xff, 0xd9]).is_err());
+        assert!(inspect_jpeg(&[0xff, 0xd8, 0xff, 0xd0, 0xff, 0xd9]).is_ok());
+    }
+
+    fn jpeg_with_orientation(orientation: u16) -> Vec<u8> {
+        let mut source = vec![0xff, 0xd8];
+        source.extend(orientation_segment(orientation));
+        source.extend_from_slice(&[0xff, 0xfe, 0, 5, b'g', b'p', b's', 0xff, 0xd9]);
+        source
+    }
+
+    #[test]
+    fn preserves_only_a_minimal_orientation_tag() {
+        let source = jpeg_with_orientation(6);
+        let (cleaned, findings) = clean_jpeg_with_options(&source, true).unwrap();
+        let segments = jpeg_segments(&cleaned).unwrap();
+        assert_eq!(jpeg_orientation(&segments), Some(6));
+        assert!(!cleaned.windows(3).any(|window| window == b"gps"));
+        assert_eq!(findings.len(), 2);
+    }
+
+    #[test]
+    fn removes_orientation_when_disabled() {
+        let source = jpeg_with_orientation(6);
+        let (cleaned, _) = clean_jpeg_with_options(&source, false).unwrap();
+        assert_eq!(cleaned, vec![0xff, 0xd8, 0xff, 0xd9]);
     }
     #[test]
     fn rejects_truncated_png() {
@@ -287,6 +414,26 @@ mod tests {
     }
 
     #[test]
+    fn reports_and_removes_png_provenance_chunks() {
+        let mut source = PNG_SIGNATURE.to_vec();
+        source.extend(png_chunk(b"caBX", b"claim"));
+        source.extend(png_chunk(b"IEND", b""));
+        let findings = inspect_png(&source).unwrap();
+        assert_eq!(findings[0].category, "provenance");
+        let (cleaned, _) = clean_png(&source).unwrap();
+        assert!(!cleaned.windows(4).any(|window| window == b"caBX"));
+    }
+
+    #[test]
+    fn rejects_png_chunks_that_cross_the_container_boundary() {
+        let mut source = PNG_SIGNATURE.to_vec();
+        source.extend_from_slice(&100u32.to_be_bytes());
+        source.extend_from_slice(b"tEXt");
+        source.extend_from_slice(b"short");
+        assert!(inspect_png(&source).is_err());
+    }
+
+    #[test]
     fn strips_webp_exif_and_updates_size() {
         let mut source = b"RIFF\0\0\0\0WEBP".to_vec();
         source.extend_from_slice(b"EXIF\x04\0\0\0data");
@@ -295,5 +442,29 @@ mod tests {
         let (cleaned, findings) = clean_webp(&source).unwrap();
         assert_eq!(findings[0].count, 1);
         assert_eq!(cleaned, b"RIFF\x04\0\0\0WEBP");
+    }
+
+    #[test]
+    fn clears_webp_extended_metadata_flags() {
+        let mut source = b"RIFF\0\0\0\0WEBP".to_vec();
+        source.extend_from_slice(b"VP8X\x0a\0\0\0\x0c\0\0\0\0\0\0\0\0\0");
+        source.extend_from_slice(b"EXIF\x04\0\0\0data");
+        let size = (source.len() - 8) as u32;
+        source[4..8].copy_from_slice(&size.to_le_bytes());
+        let (cleaned, findings) = clean_webp(&source).unwrap();
+        assert_eq!(findings[0].count, 1);
+        assert_eq!(cleaned[20] & 0x0c, 0);
+        assert!(!cleaned.windows(4).any(|window| window == b"EXIF"));
+    }
+
+    #[test]
+    fn rejects_invalid_webp_lengths() {
+        assert!(inspect_webp(b"RIFF").is_err());
+        assert!(inspect_webp(b"RIFF\x05\0\0\0WEBP").is_err());
+        let mut source = b"RIFF\0\0\0\0WEBP".to_vec();
+        source.extend_from_slice(b"EXIF\xff\xff\xff\x7f");
+        let size = (source.len() - 8) as u32;
+        source[4..8].copy_from_slice(&size.to_le_bytes());
+        assert!(inspect_webp(&source).is_err());
     }
 }

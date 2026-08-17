@@ -4,6 +4,10 @@ import { classifyFile, entryFromPath, mergeEntries } from "./files";
 describe("classifyFile", () => {
   it.each([
     ["photo.JPG", "image"],
+    ["animation.gif", "image"],
+    ["recording.MP3", "audio"],
+    ["voice.wav", "audio"],
+    ["album.flac", "audio"],
     ["report.docx", "document"],
     ["paper.pdf", "pdf"],
     ["notes.md", "text"],

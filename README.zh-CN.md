@@ -6,7 +6,7 @@
 
 **分享文件之前，先清掉里面的隐私痕迹。**
 
-纯本地处理 · 不联网 · 无需 ExifTool / Python / Perl · Rust 内核
+文件纯本地处理 · 可关闭的版本检查 · 无需 ExifTool / Python / Perl · Rust 内核
 
 [![CI](https://img.shields.io/github/actions/workflow/status/Moresyl/metaclean/ci.yml?branch=master&style=flat-square&label=CI)](https://github.com/Moresyl/metaclean/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/Moresyl/metaclean?include_prereleases&style=flat-square&color=35966d)](https://github.com/Moresyl/metaclean/releases)
@@ -28,7 +28,7 @@ MetaClean 把这些统统找出来并清除——全过程只在你自己的电�
 
 ## 为什么用它
 
-- **文件不出本机。** 没有上传接口，没有遥测，没有云端处理。
+- **文件绝不出本机。** 没有上传接口、遥测或云端处理。可选的版本检查只请求官方 GitHub Releases，并且可以关闭。
 - **不用先装一堆东西。** 单个可执行文件，无需 Python、Perl、ExifTool 或任何运行时。
 - **先扫描，再决定。** 扫描是只读操作，逐个文件列出检测结果，确认之后才会写入。
 - **默认就是安全的。** 替换原文件前强制备份，写入为原子操作，默认模式只生成 `.cleaned` 副本而不覆盖原件。
@@ -51,6 +51,8 @@ MetaClean 把这些统统找出来并清除——全过程只在你自己的电�
 | JPEG | `.jpg` `.jpeg` | EXIF/GPS、XMP、IPTC、图片注释、JUMBF/C2PA 段 |
 | PNG | `.png` | EXIF、文本元数据、C2PA/JUMBF 块 |
 | WebP | `.webp` | EXIF、XMP、C2PA 块 |
+| GIF | `.gif` | 注释与 XMP 应用元数据，不重新编码动画帧 |
+| 音频 | `.mp3` `.wav` `.flac` | ID3/APEv2、RIFF INFO/XMP/BWF/iXML、FLAC Vorbis 评论、封面与 XMP |
 | Office | `.docx` `.xlsx` `.pptx` `.odt` | 作者与应用属性、批注、自定义 XML；DOCX 修订会被固化——接受插入内容，移除删除标记内容 |
 | PDF | `.pdf` | 移除 Info 字典与 XMP，再完整重序列化，丢弃残留在增量更新历史里的元数据 |
 | 文本与标记 | `.txt` `.md` `.markdown` `.html` `.htm` `.svg` `.xml` `.json` `.csv` | 不可见 Unicode，以及 Markdown Front Matter、HTML、SVG 中的作者/生成器信息 |
@@ -68,11 +70,13 @@ MetaClean 把这些统统找出来并清除——全过程只在你自己的电�
 
 ## 桌面端
 
-- 支持批量拖拽，也可以用系统原生文件选择器打开
+- 支持批量拖入文件或文件夹，也可以用系统原生选择器递归导入目录
 - 四个页面：**文件净化**、**处理记录**、**隐私说明**、**设置**
-- 可选的 Windows 资源管理器右键菜单，覆盖全部 18 种受支持扩展名（Windows 11 上位于**显示更多选项**中）
+- 可选的 Windows 资源管理器右键菜单，覆盖全部 22 种受支持扩展名（Windows 11 上位于**显示更多选项**中）
 - 关闭窗口后驻留系统托盘，右键托盘图标可重新打开或彻底退出
-- 中英文界面、输出方式、本地处理记录都会持久保存
+- 默认保留 JPEG 显示方向与文件时间戳，但不会保留其他私密 EXIF 字段
+- 通过 GitHub Releases 发现稳定版，启动检查可以单独关闭
+- 中英文界面、输出方式、保真选项、本地处理记录都会持久保存
 
 ## 从源码构建
 

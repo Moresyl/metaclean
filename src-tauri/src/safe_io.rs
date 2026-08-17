@@ -6,6 +6,23 @@ use std::{
 
 use crate::error::{display_path, CleanError, Result};
 
+#[derive(Debug, Clone)]
+pub struct FileMetadataSnapshot {
+    permissions: fs::Permissions,
+    accessed: filetime::FileTime,
+    modified: filetime::FileTime,
+}
+
+impl FileMetadataSnapshot {
+    pub fn from_metadata(metadata: &fs::Metadata) -> Self {
+        Self {
+            permissions: metadata.permissions(),
+            accessed: filetime::FileTime::from_last_access_time(metadata),
+            modified: filetime::FileTime::from_last_modification_time(metadata),
+        }
+    }
+}
+
 pub const MAX_INPUT_BYTES: u64 = 256 * 1024 * 1024;
 
 pub fn validate_input(path: &Path) -> Result<fs::Metadata> {
@@ -47,7 +64,12 @@ pub fn backup_path(source: &Path) -> PathBuf {
     source.with_file_name(format!("{name}.bak"))
 }
 
-pub fn atomic_write(path: &Path, bytes: &[u8]) -> Result<()> {
+pub fn atomic_write_with_metadata(
+    path: &Path,
+    bytes: &[u8],
+    source_metadata: Option<&FileMetadataSnapshot>,
+    preserve_timestamps: bool,
+) -> Result<()> {
     if path
         .symlink_metadata()
         .is_ok_and(|metadata| metadata.file_type().is_symlink())
@@ -61,8 +83,16 @@ pub fn atomic_write(path: &Path, bytes: &[u8]) -> Result<()> {
     let mut temp = tempfile::NamedTempFile::new_in(parent)?;
     temp.write_all(bytes)?;
     temp.as_file_mut().sync_all()?;
+    if let Some(metadata) = source_metadata {
+        if preserve_timestamps {
+            filetime::set_file_times(temp.path(), metadata.accessed, metadata.modified)?;
+        }
+    }
     temp.persist(path)
         .map_err(|error| CleanError::Io(error.error))?;
+    if let Some(metadata) = source_metadata {
+        fs::set_permissions(path, metadata.permissions.clone())?;
+    }
     Ok(())
 }
 
@@ -144,7 +174,32 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("file.txt");
         fs::write(&path, b"old").unwrap();
-        atomic_write(&path, b"new").unwrap();
+        atomic_write_with_metadata(&path, b"new", None, false).unwrap();
         assert_eq!(fs::read(path).unwrap(), b"new");
+    }
+
+    #[test]
+    fn metadata_aware_write_preserves_permissions_and_timestamps() {
+        let dir = tempfile::tempdir().unwrap();
+        let source = dir.path().join("source.txt");
+        let output = dir.path().join("output.txt");
+        fs::write(&source, b"source").unwrap();
+        let expected = filetime::FileTime::from_unix_time(1_600_000_000, 0);
+        filetime::set_file_mtime(&source, expected).unwrap();
+        let mut permissions = fs::metadata(&source).unwrap().permissions();
+        permissions.set_readonly(true);
+        fs::set_permissions(&source, permissions).unwrap();
+        let source_metadata = fs::metadata(&source).unwrap();
+        let snapshot = FileMetadataSnapshot::from_metadata(&source_metadata);
+        atomic_write_with_metadata(&output, b"clean", Some(&snapshot), true).unwrap();
+        let output_metadata = fs::metadata(&output).unwrap();
+        assert_eq!(
+            output_metadata.permissions().readonly(),
+            source_metadata.permissions().readonly()
+        );
+        assert_eq!(
+            filetime::FileTime::from_last_modification_time(&output_metadata),
+            expected
+        );
     }
 }

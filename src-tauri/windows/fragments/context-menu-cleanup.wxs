@@ -22,6 +22,10 @@
         <RemoveRegistryKey Id="RemoveMetaCleanContext15" Root="HKCU" Key="Software\Classes\SystemFileAssociations\.xml\shell\MetaClean" Action="removeOnUninstall" />
         <RemoveRegistryKey Id="RemoveMetaCleanContext16" Root="HKCU" Key="Software\Classes\SystemFileAssociations\.json\shell\MetaClean" Action="removeOnUninstall" />
         <RemoveRegistryKey Id="RemoveMetaCleanContext17" Root="HKCU" Key="Software\Classes\SystemFileAssociations\.csv\shell\MetaClean" Action="removeOnUninstall" />
+        <RemoveRegistryKey Id="RemoveMetaCleanContext18" Root="HKCU" Key="Software\Classes\SystemFileAssociations\.gif\shell\MetaClean" Action="removeOnUninstall" />
+        <RemoveRegistryKey Id="RemoveMetaCleanContext19" Root="HKCU" Key="Software\Classes\SystemFileAssociations\.mp3\shell\MetaClean" Action="removeOnUninstall" />
+        <RemoveRegistryKey Id="RemoveMetaCleanContext20" Root="HKCU" Key="Software\Classes\SystemFileAssociations\.wav\shell\MetaClean" Action="removeOnUninstall" />
+        <RemoveRegistryKey Id="RemoveMetaCleanContext21" Root="HKCU" Key="Software\Classes\SystemFileAssociations\.flac\shell\MetaClean" Action="removeOnUninstall" />
         <RemoveRegistryKey Id="RemoveMetaCleanInstallState" Root="HKCU" Key="Software\moresl\MetaClean" Action="removeOnUninstall" />
         <RemoveRegistryKey Id="RemoveMetaCleanCleanupState" Root="HKCU" Key="Software\MetaClean" Action="removeOnUninstall" />
       </Component>

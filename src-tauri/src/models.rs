@@ -41,6 +41,14 @@ pub enum OutputMode {
 pub struct CleanRequest {
     pub paths: Vec<String>,
     pub mode: OutputMode,
+    #[serde(default = "default_true")]
+    pub preserve_timestamps: bool,
+    #[serde(default = "default_true")]
+    pub preserve_orientation: bool,
+}
+
+fn default_true() -> bool {
+    true
 }
 
 #[derive(Debug, Clone, Serialize)]

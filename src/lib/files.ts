@@ -1,12 +1,14 @@
 import type { FileEntry } from "../types";
 
-const IMAGE_EXTENSIONS = new Set(["jpg", "jpeg", "png", "webp"]);
+const IMAGE_EXTENSIONS = new Set(["jpg", "jpeg", "png", "webp", "gif"]);
+const AUDIO_EXTENSIONS = new Set(["mp3", "wav", "flac"]);
 const DOCUMENT_EXTENSIONS = new Set(["docx", "xlsx", "pptx", "odt"]);
 const TEXT_EXTENSIONS = new Set(["txt", "md", "html", "svg"]);
 
 export function classifyFile(name: string): FileEntry["kind"] {
   const extension = name.split(".").pop()?.toLowerCase() ?? "";
   if (IMAGE_EXTENSIONS.has(extension)) return "image";
+  if (AUDIO_EXTENSIONS.has(extension)) return "audio";
   if (DOCUMENT_EXTENSIONS.has(extension)) return "document";
   if (extension === "pdf") return "pdf";
   if (TEXT_EXTENSIONS.has(extension)) return "text";

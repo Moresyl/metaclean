@@ -8,26 +8,38 @@ import PrivacyPage from "./PrivacyPage";
 import SettingsPage from "./SettingsPage";
 import { I18nProvider, useI18n } from "../lib/i18n";
 import type { FileEntry, HistoryEntry } from "../types";
+import { UpdateProvider } from "../contexts/UpdateContext";
 
 const openMock = vi.hoisted(() => vi.fn());
 const invokeMock = vi.hoisted(() => vi.fn());
+const checkForUpdateMock = vi.hoisted(() => vi.fn());
+const openUrlMock = vi.hoisted(() => vi.fn());
 vi.mock("@tauri-apps/plugin-dialog", () => ({ open: openMock }));
 vi.mock("@tauri-apps/api/core", () => ({ invoke: invokeMock }));
+vi.mock("@tauri-apps/plugin-opener", () => ({ openUrl: openUrlMock }));
+vi.mock("../lib/update", () => ({
+  RELEASES_PAGE_URL: "https://github.com/Moresyl/metaclean/releases/latest",
+  checkForUpdate: checkForUpdateMock,
+}));
 
-const wrap = (node: React.ReactNode) => render(<I18nProvider>{node}</I18nProvider>);
+const wrap = (node: React.ReactNode) => render(<I18nProvider><UpdateProvider>{node}</UpdateProvider></I18nProvider>);
 
 beforeEach(() => {
   openMock.mockReset();
   invokeMock.mockReset();
+  checkForUpdateMock.mockReset();
+  checkForUpdateMock.mockResolvedValue({ status: "current", currentVersion: "0.1.0" });
+  openUrlMock.mockReset();
 });
 
 describe("desktop components", () => {
   it("adds native dialog selections and dropped browser files", async () => {
     const onAdd = vi.fn();
     openMock.mockResolvedValue(["C:\\work\\photo.jpg", "C:\\work\\paper.pdf"]);
-    wrap(<DropZone onAdd={onAdd} />);
+    const onAddNativePaths = vi.fn().mockResolvedValue(undefined);
+    wrap(<DropZone onAdd={onAdd} onAddNativePaths={onAddNativePaths} />);
     fireEvent.click(screen.getByRole("button", { name: "选择文件" }));
-    await waitFor(() => expect(onAdd).toHaveBeenCalledWith(expect.arrayContaining([expect.objectContaining({ name: "photo.jpg" }), expect.objectContaining({ name: "paper.pdf" })])));
+    await waitFor(() => expect(onAddNativePaths).toHaveBeenCalledWith(["C:\\work\\photo.jpg", "C:\\work\\paper.pdf"]));
     const zone = screen.getByText("拖入要净化的文件").closest("section")!;
     fireEvent.dragOver(zone);
     fireEvent.drop(zone, { dataTransfer: { files: [new File(["x"], "notes.md")] } });
@@ -37,7 +49,7 @@ describe("desktop components", () => {
   it("falls back to the browser input when the native dialog is unavailable", async () => {
     const onAdd = vi.fn();
     openMock.mockRejectedValue(new Error("browser mode"));
-    const { container } = wrap(<DropZone onAdd={onAdd} />);
+    const { container } = wrap(<DropZone onAdd={onAdd} onAddNativePaths={vi.fn().mockRejectedValue(new Error("browser mode"))} />);
     const input = container.querySelector("input[type=file]") as HTMLInputElement;
     const click = vi.spyOn(input, "click");
     fireEvent.click(screen.getByRole("button", { name: "选择文件" }));
@@ -79,16 +91,17 @@ describe("desktop components", () => {
   it("switches cleanup mode and exposes every action state", () => {
     const onMode = vi.fn();
     const onAction = vi.fn();
-    const { rerender } = wrap(<CleanOptions mode="copy" onModeChange={onMode} disabled={false} scanned={false} hasFindings={false} busy={false} onAction={onAction} />);
+    const fidelity = { preserveTimestamps: true, onPreserveTimestampsChange: vi.fn(), preserveOrientation: true, onPreserveOrientationChange: vi.fn() };
+    const { rerender } = wrap(<CleanOptions {...fidelity} mode="copy" onModeChange={onMode} disabled={false} scanned={false} hasFindings={false} busy={false} onAction={onAction} />);
     fireEvent.click(screen.getByText("替换原文件"));
     expect(onMode).toHaveBeenCalledWith("replace");
     fireEvent.click(screen.getByRole("button", { name: "扫描隐私痕迹" }));
     expect(onAction).toHaveBeenCalled();
-    rerender(<I18nProvider><CleanOptions mode="replace" onModeChange={onMode} disabled={false} scanned hasFindings busy={false} onAction={onAction} /></I18nProvider>);
+    rerender(<I18nProvider><CleanOptions {...fidelity} mode="replace" onModeChange={onMode} disabled={false} scanned hasFindings busy={false} onAction={onAction} /></I18nProvider>);
     expect(screen.getByRole("button", { name: "确认并开始清理" })).toBeEnabled();
     fireEvent.click(screen.getByText("保存为安全副本"));
     expect(onMode).toHaveBeenCalledWith("copy");
-    rerender(<I18nProvider><CleanOptions mode="replace" onModeChange={onMode} disabled={false} scanned hasFindings={false} busy={false} onAction={onAction} /></I18nProvider>);
+    rerender(<I18nProvider><CleanOptions {...fidelity} mode="replace" onModeChange={onMode} disabled={false} scanned hasFindings={false} busy={false} onAction={onAction} /></I18nProvider>);
     expect(screen.getByRole("button", { name: "没有需要清理的痕迹" })).toBeDisabled();
   });
 
@@ -118,7 +131,7 @@ describe("desktop components", () => {
       return Promise.reject(new Error(command));
     });
     const onMode = vi.fn();
-    const { unmount } = wrap(<SettingsPage mode="copy" onModeChange={onMode} />);
+    const { unmount } = wrap(<SettingsPage mode="copy" onModeChange={onMode} preserveTimestamps onPreserveTimestampsChange={vi.fn()} preserveOrientation onPreserveOrientationChange={vi.fn()} />);
     const enable = await screen.findByRole("button", { name: "启用" });
     fireEvent.click(enable);
     await screen.findByRole("button", { name: "停用" });
@@ -126,13 +139,41 @@ describe("desktop components", () => {
     expect(onMode).toHaveBeenCalledWith("replace");
     unmount();
     wrap(<PrivacyPage />);
-    expect(screen.getByText("纯本地运行")).toBeInTheDocument();
+    expect(screen.getByText("文件纯本地处理")).toBeInTheDocument();
     expect(screen.getByText("当前支持范围")).toBeInTheDocument();
+  });
+
+  it("selects a folder for recursive native expansion", async () => {
+    const onAddNativePaths = vi.fn().mockResolvedValue(undefined);
+    openMock.mockResolvedValue("C:\\photos");
+    wrap(<DropZone onAdd={vi.fn()} onAddNativePaths={onAddNativePaths} />);
+    fireEvent.click(screen.getByRole("button", { name: "选择文件夹" }));
+    await waitFor(() => expect(onAddNativePaths).toHaveBeenCalledWith(["C:\\photos"]));
+    expect(openMock).toHaveBeenCalledWith({ multiple: false, directory: true });
+  });
+
+  it("discovers and opens a newer stable release", async () => {
+    invokeMock.mockResolvedValue({ available: false, enabled: false, detail: "仅 Windows" });
+    checkForUpdateMock.mockResolvedValue({
+      status: "available",
+      info: {
+        currentVersion: "0.1.0",
+        availableVersion: "0.2.0",
+        name: "MetaClean v0.2.0",
+        releaseUrl: "https://github.com/Moresyl/metaclean/releases/tag/v0.2.0",
+      },
+    });
+    wrap(<SettingsPage mode="copy" onModeChange={vi.fn()} preserveTimestamps onPreserveTimestampsChange={vi.fn()} preserveOrientation onPreserveOrientationChange={vi.fn()} />);
+    fireEvent.click(screen.getByRole("button", { name: "检查更新" }));
+    const download = await screen.findByRole("button", { name: "下载新版本" });
+    expect(screen.getByText(/可更新到 0.2.0/)).toBeInTheDocument();
+    fireEvent.click(download);
+    await waitFor(() => expect(openUrlMock).toHaveBeenCalledWith("https://github.com/Moresyl/metaclean/releases/tag/v0.2.0"));
   });
 
   it("shows unavailable Windows integration without enabling it", async () => {
     invokeMock.mockResolvedValue({ available: false, enabled: false, detail: "仅 Windows" });
-    wrap(<SettingsPage mode="replace" onModeChange={vi.fn()} />);
+    wrap(<SettingsPage mode="replace" onModeChange={vi.fn()} preserveTimestamps onPreserveTimestampsChange={vi.fn()} preserveOrientation onPreserveOrientationChange={vi.fn()} />);
     expect(await screen.findByRole("button", { name: "启用" })).toBeDisabled();
   });
 

@@ -6,7 +6,7 @@
 
 **Strip private metadata from your files before you share them.**
 
-Local-first · No cloud · No ExifTool, Python or Perl · Rust core
+Local file processing · Optional update check · No ExifTool, Python or Perl · Rust core
 
 [![CI](https://img.shields.io/github/actions/workflow/status/Moresyl/metaclean/ci.yml?branch=master&style=flat-square&label=CI)](https://github.com/Moresyl/metaclean/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/Moresyl/metaclean?include_prereleases&style=flat-square&color=35966d)](https://github.com/Moresyl/metaclean/releases)
@@ -28,7 +28,7 @@ MetaClean finds all of it and removes it — entirely on your own machine.
 
 ## Why
 
-- **Nothing leaves your computer.** No upload API, no telemetry, no cloud processing.
+- **Your files never leave your computer.** No upload API, telemetry, or cloud processing. The optional update check requests only the official GitHub Releases endpoint and can be disabled.
 - **Nothing to install first.** One binary. No Python, Perl, ExifTool, or runtime to set up.
 - **Scan first, then decide.** Scanning is read-only. You see a per-file report of what was found and confirm before anything is written.
 - **Safe by default.** Originals are backed up before replacement, writes are atomic, and the default mode produces a `.cleaned` copy instead of overwriting.
@@ -51,6 +51,8 @@ Grab the latest package from [GitHub Releases](https://github.com/Moresyl/metacl
 | JPEG | `.jpg` `.jpeg` | EXIF/GPS, XMP, IPTC, comments, JUMBF/C2PA segments |
 | PNG | `.png` | EXIF, textual metadata, C2PA/JUMBF chunks |
 | WebP | `.webp` | EXIF, XMP, C2PA chunks |
+| GIF | `.gif` | Comments and XMP application metadata without re-encoding frames |
+| Audio | `.mp3` `.wav` `.flac` | ID3/APEv2, RIFF INFO/XMP/BWF/iXML, FLAC Vorbis comments, pictures and XMP |
 | Office | `.docx` `.xlsx` `.pptx` `.odt` | Author and application properties, comments, custom XML. DOCX revisions are resolved — insertions accepted, deletions removed |
 | PDF | `.pdf` | Info dictionary and XMP, then a full reserialization that discards metadata stranded in incremental-update history |
 | Text & markup | `.txt` `.md` `.markdown` `.html` `.htm` `.svg` `.xml` `.json` `.csv` | Invisible Unicode, plus generator/author metadata in Markdown front matter, HTML and SVG |
@@ -68,11 +70,13 @@ Grab the latest package from [GitHub Releases](https://github.com/Moresyl/metacl
 
 ## The desktop app
 
-- Drag in a batch of files, or open them from the native picker
+- Drag in files or folders, or recursively import a folder from the native picker
 - Four panes: **Clean**, **History**, **Privacy**, and **Settings**
-- Optional Windows File Explorer command across all 18 supported extensions — on Windows 11 it lives under **Show more options**
+- Optional Windows File Explorer command across all 22 supported extensions — on Windows 11 it lives under **Show more options**
 - Closing the window keeps MetaClean in the system tray; right-click the tray icon to reopen or exit
-- Chinese/English UI, output mode, and local cleanup history persist between sessions
+- Preserves JPEG display orientation and file timestamps by default without retaining private EXIF fields
+- Finds stable updates through GitHub Releases, with automatic checks independently switchable off
+- Chinese/English UI, output mode, fidelity options, and local cleanup history persist between sessions
 
 ## Build from source
 

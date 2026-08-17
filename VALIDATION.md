@@ -1,6 +1,6 @@
 # MetaClean validation status
 
-Last audited: 2026-08-15
+Last audited: 2026-08-17
 
 This file records evidence, not intent. A row is complete only when the named artifact or runtime check exists.
 
@@ -9,28 +9,30 @@ This file records evidence, not intent. A row is complete only when the named ar
 | Gate | Status | Evidence |
 |---|---|---|
 | M0: PDF structural rewrite | Complete | `drops_metadata_bytes_from_incremental_history` proves old Info metadata bytes are absent after full `lopdf` serialization. |
-| M0: image format decision | Complete | JPEG, PNG and WebP have container-level cleanup and malformed-input tests. TIFF, HEIC and RAW are explicitly unsupported rather than being modified unsafely. |
+| M0: image/media format decision | Complete | JPEG, PNG, WebP and GIF plus MP3, WAV and FLAC have container-level cleanup and malformed-input tests. TIFF, HEIC, RAW and unimplemented media containers are explicitly unsupported rather than being modified unsafely. |
 | M0: Office package integrity | Partial | Real DOCX/XLSX/PPTX/ODT samples were cleaned and successfully opened/exported by LibreOffice 26.2.5. Current Word and WPS executables are unavailable on this machine, so those two applications remain unverified. |
-| M1: desktop MVP | Complete | Batch drag/drop, native picker, per-file scan reports, safe-copy/replace modes, forced backup, atomic writes and Chinese/English UI are implemented and tested. |
-| M2: Office/PDF/shell integration | Complete | DOCX/XLSX/PPTX/ODT/PDF cleaners, 18-extension Windows Explorer integration and launch-path handling are covered by unit and installer tests. |
-| M3: Windows release | Complete | Optimized NSIS and MSI packages build, install, run, remain in the tray after window close, register/unregister context commands and uninstall without files or registry state remaining. MSI installs only `metaclean.exe` plus its uninstall shortcut. |
-| M3: macOS/Linux release | Partial | GitHub Actions defines Intel and Apple Silicon DMG plus DEB/RPM/AppImage jobs. There is no Git remote/run evidence in this checkout, and Apple signing/notarization secrets are unavailable locally. |
+| M1: desktop MVP | Complete | Batch drag/drop, recursive file/folder intake, native pickers, per-file scan reports, safe-copy/replace modes, forced backup, atomic writes, version discovery and Chinese/English UI are implemented and tested. |
+| M2: Office/PDF/shell integration | Complete | DOCX/XLSX/PPTX/ODT/PDF cleaners, 22-extension Windows Explorer integration and launch-path handling are covered by unit and installer tests. |
+| M3: Windows release | Complete | Optimized v0.2.0 NSIS and MSI packages build. The release executable starts, remains running for a six-second smoke window and exposes the expected `MetaClean` main-window title. The v0.1.0 installer lifecycle test previously proved install, tray behavior, shell registration cleanup and uninstall cleanup; the same WiX/NSIS integration is retained and expanded to 22 extensions. |
+| M3: macOS/Linux release | Partial | GitHub Actions defines Intel and Apple Silicon DMG plus DEB/RPM/AppImage jobs. The remote and v0.1.0 release exist, but the v0.2.0 matrix has not run yet and Apple signing/notarization secrets are unavailable locally. |
 
 ## Automated quality gates
 
-- Frontend: 23 tests. Statements 90.15%, branches 81.04%, functions 87.20%, lines 95.96%.
-- Rust: 27 regular tests plus one opt-in external Office compatibility test. Regions 80.93%, lines 80.99%.
-- CI fails below 80% for all frontend coverage dimensions and below 80% Rust line coverage.
-- npm's official audit endpoint reports no known frontend vulnerabilities. RustSec reports no known Rust vulnerabilities after upgrading `lopdf` to 0.44 and `quick-xml` to 0.41.
-- Production frontend build, Rust formatting and Rust tests pass locally.
+- Frontend: 48 tests. Statements 89.24%, branches 82.55%, functions 83.62%, lines 94.56%.
+- Rust: 48 regular tests plus one ignored external Office compatibility test. Core regions 80.76%, lines 80.53% after excluding Tauri/platform glue (`lib`, `main`, data-only `models` and `shell_integration`) from the line threshold; cleaners, intake, engine and safe I/O remain included.
+- CI fails below 80% for all frontend coverage dimensions and below 80% Rust core line coverage.
+- npm's official audit endpoint reports no known frontend vulnerabilities.
+- `cargo audit` reports no blocking vulnerability and exits successfully. It emits 17 allowed warnings from inherited GTK/Tauri and Unicode dependency families, including RUSTSEC-2024-0429 in `glib`; these are tracked upstream rather than represented as resolved.
+- Production frontend build, Rust all-target tests, Rust formatting, JavaScript/TypeScript linting and both coverage gates pass locally.
 
 ## Windows release artifacts
 
-- `src-tauri/target/release/bundle/nsis/MetaClean_0.1.0_x64-setup.exe`
-- `src-tauri/target/release/bundle/msi/MetaClean_0.1.0_x64_en-US.msi`
+- `src-tauri/target/release/bundle/nsis/MetaClean_0.2.0_x64-setup.exe` (2,958,274 bytes; SHA-256 `424245B70E4883C642B0EE55BAAB2EDEDFDAD099B22DF04689ED317030F46E01`)
+- `src-tauri/target/release/bundle/msi/MetaClean_0.2.0_x64_en-US.msi` (4,419,584 bytes; SHA-256 `5CDB8500F767AE93184AAF993F102683F39515B73F574033754ED78C8CEE0A12`)
 
 ## Remaining external release gates
 
 1. Open cleaned DOCX/XLSX/PPTX/ODT samples in current Word and WPS builds. LibreOffice 26.2.5 validation is complete.
-2. Run the GitHub release matrix on an actual remote and retain successful macOS/Linux job and artifact evidence.
+2. Run the v0.2.0 GitHub release matrix and retain successful macOS/Linux job and artifact evidence.
 3. Provide Apple Developer signing/notarization credentials and verify both DMGs with Gatekeeper.
+4. Repeat installed-app interaction and installer-lifecycle automation for v0.2.0 when the Windows Computer Use helper is available; current evidence covers build output and process-level startup, not automated page-by-page UI interaction.
