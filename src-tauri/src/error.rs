@@ -8,6 +8,8 @@ pub enum CleanError {
     InvalidFormat(String),
     #[error("暂不支持此文件格式：{0}")]
     Unsupported(String),
+    #[error("清理结果验证失败：{0}")]
+    Verification(String),
     #[error("文件过大，最大允许 256 MiB：{0}")]
     TooLarge(String),
     #[error("拒绝处理符号链接：{0}")]

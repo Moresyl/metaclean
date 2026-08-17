@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { classifyFile, entryFromFile, entryFromPath, mergeEntries } from "./files";
+import { actionableFindingCount, classifyFile, entryFromFile, entryFromPath, mergeEntries } from "./files";
 
 describe("classifyFile", () => {
   const groups = {
@@ -60,5 +60,31 @@ describe("mergeEntries", () => {
     const first = entryFromPath("first.jpg");
     const second = entryFromPath("second.mp4");
     expect(mergeEntries([first], [first, second])).toEqual([first, second]);
+  });
+});
+
+describe("actionableFindingCount", () => {
+  const report = {
+    path: "photo.jpg",
+    name: "photo.jpg",
+    format: "JPEG",
+    size: 10,
+    supported: true,
+    findings: [
+      { category: "image_metadata", label: "EXIF", count: 2, severity: "privacy" as const },
+      { category: "color_profile", label: "ICC", count: 1, severity: "informational" as const },
+    ],
+  };
+
+  it("excludes a profile that the user chose to preserve", () => {
+    expect(actionableFindingCount(report, true)).toBe(2);
+  });
+
+  it("includes a profile that the user chose to remove", () => {
+    expect(actionableFindingCount(report, false)).toBe(3);
+  });
+
+  it("handles an unscanned file", () => {
+    expect(actionableFindingCount(undefined, false)).toBe(0);
   });
 });

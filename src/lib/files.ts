@@ -1,4 +1,4 @@
-import type { FileEntry } from "../types";
+import type { FileEntry, ScanReport } from "../types";
 
 const IMAGE_EXTENSIONS = new Set(["jpg", "jpeg", "jpe", "png", "webp", "gif"]);
 const AUDIO_EXTENSIONS = new Set(["mp3", "wav", "flac"]);
@@ -21,6 +21,15 @@ export function classifyFile(name: string): FileEntry["kind"] {
   if (extension === "pdf") return "pdf";
   if (TEXT_EXTENSIONS.has(extension)) return "text";
   return "unknown";
+}
+
+export function actionableFindingCount(
+  report: ScanReport | undefined,
+  preserveColorProfile: boolean,
+): number {
+  return report?.findings
+    .filter((finding) => finding.category !== "color_profile" || !preserveColorProfile)
+    .reduce((total, finding) => total + finding.count, 0) ?? 0;
 }
 
 export function entryFromPath(path: string): FileEntry {

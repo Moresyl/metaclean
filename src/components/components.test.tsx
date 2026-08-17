@@ -65,7 +65,7 @@ describe("desktop components", () => {
       { id: "1", name: "photo.jpg", path: "photo.jpg", kind: "image", status: "scanned", report: { path: "photo.jpg", name: "photo.jpg", format: "JPEG", size: 1, supported: true, findings: [{ category: "image_metadata", label: "metadata", count: 2, severity: "privacy" }] } },
       { id: "2", name: "bad.pdf", path: "bad.pdf", kind: "pdf", status: "error", report: { path: "bad.pdf", name: "bad.pdf", format: "PDF", size: 1, supported: false, findings: [], error: "格式损坏" } },
     ];
-    wrap(<FileQueue entries={entries} onRemove={onRemove} onClear={vi.fn()} />);
+    wrap(<FileQueue entries={entries} preserveColorProfile onRemove={onRemove} onClear={vi.fn()} />);
     expect(screen.getByText("发现 2 项痕迹")).toBeInTheDocument();
     expect(screen.getByText("图片元数据 · 2")).toBeInTheDocument();
     expect(screen.getByText("格式损坏")).toBeInTheDocument();
@@ -74,7 +74,7 @@ describe("desktop components", () => {
   });
 
   it("renders empty and every queue lifecycle status", () => {
-    const { rerender } = wrap(<FileQueue entries={[]} onRemove={vi.fn()} onClear={vi.fn()} />);
+    const { rerender } = wrap(<FileQueue entries={[]} preserveColorProfile onRemove={vi.fn()} onClear={vi.fn()} />);
     expect(screen.getByText("添加文件后，将在这里展示扫描状态")).toBeInTheDocument();
     const entries: FileEntry[] = [
       { id: "1", name: "scan.txt", kind: "text", status: "scanning" },
@@ -82,7 +82,7 @@ describe("desktop components", () => {
       { id: "3", name: "safe.txt", kind: "text", status: "scanned", report: { path: "safe.txt", name: "safe.txt", format: "Text", size: 1, supported: true, findings: [] } },
       { id: "4", name: "mystery.bin", kind: "unknown", status: "ready" },
     ];
-    rerender(<I18nProvider><FileQueue entries={entries} onRemove={vi.fn()} onClear={vi.fn()} /></I18nProvider>);
+    rerender(<I18nProvider><FileQueue entries={entries} preserveColorProfile onRemove={vi.fn()} onClear={vi.fn()} /></I18nProvider>);
     expect(screen.getByText("正在扫描…")).toBeInTheDocument();
     expect(screen.getByText("清理完成")).toBeInTheDocument();
     expect(screen.getByText("未发现隐私痕迹")).toBeInTheDocument();
@@ -92,7 +92,7 @@ describe("desktop components", () => {
   it("switches cleanup mode and exposes every action state", () => {
     const onMode = vi.fn();
     const onAction = vi.fn();
-    const fidelity = { preserveTimestamps: true, onPreserveTimestampsChange: vi.fn(), preserveOrientation: true, onPreserveOrientationChange: vi.fn() };
+    const fidelity = { preserveTimestamps: true, onPreserveTimestampsChange: vi.fn(), preserveOrientation: true, onPreserveOrientationChange: vi.fn(), preserveColorProfile: true, onPreserveColorProfileChange: vi.fn() };
     const { rerender } = wrap(<CleanOptions {...fidelity} mode="copy" onModeChange={onMode} disabled={false} scanned={false} hasFindings={false} busy={false} onAction={onAction} />);
     fireEvent.click(screen.getByText("替换原文件"));
     expect(onMode).toHaveBeenCalledWith("replace");
@@ -132,7 +132,7 @@ describe("desktop components", () => {
       return Promise.reject(new Error(command));
     });
     const onMode = vi.fn();
-    const { unmount } = wrap(<SettingsPage mode="copy" onModeChange={onMode} preserveTimestamps onPreserveTimestampsChange={vi.fn()} preserveOrientation onPreserveOrientationChange={vi.fn()} />);
+    const { unmount } = wrap(<SettingsPage mode="copy" onModeChange={onMode} preserveTimestamps onPreserveTimestampsChange={vi.fn()} preserveOrientation onPreserveOrientationChange={vi.fn()} preserveColorProfile onPreserveColorProfileChange={vi.fn()} />);
     const enable = await screen.findByRole("button", { name: "启用" });
     fireEvent.click(enable);
     await screen.findByRole("button", { name: "停用" });
@@ -164,7 +164,7 @@ describe("desktop components", () => {
         releaseUrl: "https://github.com/Moresyl/metaclean/releases/tag/v0.2.0",
       },
     });
-    wrap(<SettingsPage mode="copy" onModeChange={vi.fn()} preserveTimestamps onPreserveTimestampsChange={vi.fn()} preserveOrientation onPreserveOrientationChange={vi.fn()} />);
+    wrap(<SettingsPage mode="copy" onModeChange={vi.fn()} preserveTimestamps onPreserveTimestampsChange={vi.fn()} preserveOrientation onPreserveOrientationChange={vi.fn()} preserveColorProfile onPreserveColorProfileChange={vi.fn()} />);
     fireEvent.click(screen.getByRole("button", { name: "检查更新" }));
     const download = await screen.findByRole("button", { name: "下载新版本" });
     expect(screen.getByText(/可更新到 0.2.0/)).toBeInTheDocument();
@@ -174,13 +174,13 @@ describe("desktop components", () => {
 
   it("shows unavailable Windows integration without enabling it", async () => {
     invokeMock.mockResolvedValue({ available: false, enabled: false, detail: "仅 Windows" });
-    wrap(<SettingsPage mode="replace" onModeChange={vi.fn()} preserveTimestamps onPreserveTimestampsChange={vi.fn()} preserveOrientation onPreserveOrientationChange={vi.fn()} />);
+    wrap(<SettingsPage mode="replace" onModeChange={vi.fn()} preserveTimestamps onPreserveTimestampsChange={vi.fn()} preserveOrientation onPreserveOrientationChange={vi.fn()} preserveColorProfile onPreserveColorProfileChange={vi.fn()} />);
     expect(await screen.findByRole("button", { name: "启用" })).toBeDisabled();
   });
 
   it("persists the selected interface theme", async () => {
     invokeMock.mockResolvedValue({ available: false, enabled: false, detail: "仅 Windows" });
-    wrap(<SettingsPage mode="copy" onModeChange={vi.fn()} preserveTimestamps onPreserveTimestampsChange={vi.fn()} preserveOrientation onPreserveOrientationChange={vi.fn()} />);
+    wrap(<SettingsPage mode="copy" onModeChange={vi.fn()} preserveTimestamps onPreserveTimestampsChange={vi.fn()} preserveOrientation onPreserveOrientationChange={vi.fn()} preserveColorProfile onPreserveColorProfileChange={vi.fn()} />);
     fireEvent.click(screen.getByRole("button", { name: "深色" }));
     await waitFor(() => expect(localStorage.getItem("metaclean.theme")).toBe("dark"));
     expect(document.documentElement.dataset.theme).toBe("dark");

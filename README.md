@@ -48,9 +48,9 @@ Grab the latest package from [GitHub Releases](https://github.com/Moresyl/metacl
 
 | Format | Extensions | Cleaned |
 | --- | --- | --- |
-| JPEG | `.jpg` `.jpeg` `.jpe` | EXIF/GPS, XMP, IPTC, comments, JUMBF/C2PA segments |
-| PNG | `.png` | EXIF, textual metadata, C2PA/JUMBF chunks |
-| WebP | `.webp` | EXIF, XMP, C2PA chunks |
+| JPEG | `.jpg` `.jpeg` `.jpe` | EXIF/GPS, XMP, IPTC, comments, JUMBF/C2PA segments; ICC profiles are preserved by default or removable on request |
+| PNG | `.png` | EXIF, textual metadata, C2PA/JUMBF chunks; optional ICC profile removal |
+| WebP | `.webp` | EXIF, XMP, C2PA chunks; optional ICC profile removal |
 | GIF | `.gif` | Comments and XMP application metadata without re-encoding frames |
 | Audio | `.mp3` `.wav` `.flac` | ID3/APEv2, RIFF INFO/XMP/BWF/iXML, FLAC Vorbis comments, pictures and XMP |
 | ISO media | `.mp4` `.mov` `.m4v` `.m4a` `.3g2` `.3gp` `.3gp2` `.3gpp` `.f4a` `.f4b` `.f4p` `.f4v` `.lrv` `.m4b` `.m4p` `.mqv` `.qt` | ISO BMFF/QuickTime user data, XMP, author and location atoms without moving media bytes |
@@ -65,6 +65,7 @@ Grab the latest package from [GitHub Releases](https://github.com/Moresyl/metacl
 - Always writes a `.bak` file before replacing an original
 - Produces a `.cleaned` safe copy by default
 - Writes to a temporary file, then atomically replaces the destination
+- Re-inspects the exact cleaned candidate bytes before creating a backup or writing any output
 - Refuses symlinks as both input and destination
 - Caps input at 256 MiB, and expanded Office archives at 512 MiB
 - Malformed or unsupported files fail without touching the source
@@ -75,7 +76,7 @@ Grab the latest package from [GitHub Releases](https://github.com/Moresyl/metacl
 - Four panes: **Clean**, **History**, **Privacy**, and **Settings**
 - Optional Windows File Explorer command across all 47 supported extensions — on Windows 11 it lives under **Show more options**
 - Closing the window keeps MetaClean in the system tray; right-click the tray icon to reopen or exit
-- Preserves JPEG display orientation and file timestamps by default without retaining private EXIF fields
+- Preserves JPEG display orientation, ICC/sRGB color profiles and file timestamps by default, with independent removal controls
 - Finds stable updates through GitHub Releases, with automatic checks independently switchable off
 - Twenty-six complete interface languages spanning Europe, Asia and Arabic RTL; system/light/dark theme, output mode, fidelity options, and local cleanup history persist between sessions
 

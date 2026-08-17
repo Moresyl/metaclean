@@ -138,11 +138,14 @@ fn clean_data(
     format: Format,
     data: &[u8],
     preserve_orientation: bool,
+    preserve_color_profile: bool,
 ) -> Result<(Vec<u8>, Vec<Finding>)> {
     match format {
-        Format::Jpeg => image::clean_jpeg_with_options(data, preserve_orientation),
-        Format::Png => image::clean_png(data),
-        Format::Webp => image::clean_webp(data),
+        Format::Jpeg => {
+            image::clean_jpeg_with_options(data, preserve_orientation, preserve_color_profile)
+        }
+        Format::Png => image::clean_png_with_options(data, preserve_color_profile),
+        Format::Webp => image::clean_webp_with_options(data, preserve_color_profile),
         Format::Gif => media::clean_gif(data),
         Format::Mp3 => media::clean_mp3(data),
         Format::Wav => media::clean_wav(data),
@@ -159,6 +162,43 @@ fn clean_data(
             Ok((cleaned.into_bytes(), findings))
         }
         Format::Unsupported => Err(CleanError::Unsupported("未知格式".into())),
+    }
+}
+
+fn verify_cleaned_data(
+    path: &Path,
+    expected_format: Format,
+    data: &[u8],
+    preserve_orientation: bool,
+    preserve_color_profile: bool,
+) -> Result<()> {
+    let detected_format = detect(path, data);
+    if detected_format != expected_format {
+        return Err(CleanError::Verification(format!(
+            "输出格式从 {} 变为 {}",
+            format_name(expected_format),
+            format_name(detected_format)
+        )));
+    }
+    match expected_format {
+        Format::Jpeg => {
+            image::verify_jpeg_cleaned(data, preserve_orientation, preserve_color_profile)
+        }
+        Format::Png => image::verify_png_cleaned(data, preserve_color_profile),
+        Format::Webp => image::verify_webp_cleaned(data, preserve_color_profile),
+        Format::Unsupported => Err(CleanError::Unsupported("未知格式".into())),
+        _ => {
+            let residual = inspect_data(path, expected_format, data)?;
+            if residual.is_empty() {
+                Ok(())
+            } else {
+                let count = residual.iter().map(|finding| finding.count).sum::<usize>();
+                Err(CleanError::Verification(format!(
+                    "{} 中仍发现 {count} 项应移除的痕迹",
+                    format_name(expected_format)
+                )))
+            }
+        }
     }
 }
 
@@ -229,6 +269,7 @@ pub fn clean_file_with_options(
     mode: &OutputMode,
     preserve_timestamps: bool,
     preserve_orientation: bool,
+    preserve_color_profile: bool,
 ) -> CleanResult {
     let fail = |error: String| CleanResult {
         source_path: display_path(source),
@@ -248,10 +289,25 @@ pub fn clean_file_with_options(
         Err(error) => return fail(error.to_string()),
     };
     let format = detect(source, &data);
-    let (cleaned, removed) = match clean_data(source, format, &data, preserve_orientation) {
+    let (cleaned, removed) = match clean_data(
+        source,
+        format,
+        &data,
+        preserve_orientation,
+        preserve_color_profile,
+    ) {
         Ok(value) => value,
         Err(error) => return fail(error.to_string()),
     };
+    if let Err(error) = verify_cleaned_data(
+        source,
+        format,
+        &cleaned,
+        preserve_orientation,
+        preserve_color_profile,
+    ) {
+        return fail(error.to_string());
+    }
     let (output, backup): (PathBuf, Option<PathBuf>) = match mode {
         OutputMode::Copy => (unique_path(cleaned_path(source)), None),
         OutputMode::Replace => {
@@ -440,6 +496,65 @@ mod tests {
     }
 
     #[test]
+    fn verification_rejects_residual_traces_and_format_changes() {
+        let error = verify_cleaned_data(
+            Path::new("note.txt"),
+            Format::Text,
+            "a\u{200b}b".as_bytes(),
+            true,
+            true,
+        )
+        .unwrap_err();
+        assert!(error.to_string().contains("仍发现 1 项应移除的痕迹"));
+        verify_cleaned_data(
+            Path::new("note.txt"),
+            Format::Text,
+            b"clean text",
+            true,
+            true,
+        )
+        .unwrap();
+        assert!(verify_cleaned_data(
+            Path::new("photo.jpg"),
+            Format::Jpeg,
+            b"not a jpeg",
+            true,
+            true,
+        )
+        .is_err());
+    }
+
+    #[test]
+    fn preserves_or_removes_jpeg_icc_through_the_public_engine_path() {
+        let dir = tempfile::tempdir().unwrap();
+        let source = dir.path().join("profile.jpg");
+        let payload = b"ICC_PROFILE\0\x01\x01display-profile";
+        let mut jpeg = vec![0xff, 0xd8, 0xff, 0xe2];
+        jpeg.extend_from_slice(&((payload.len() + 2) as u16).to_be_bytes());
+        jpeg.extend_from_slice(payload);
+        jpeg.extend_from_slice(&[0xff, 0xd9]);
+        fs::write(&source, jpeg).unwrap();
+
+        let report = scan_file(&source);
+        assert_eq!(report.findings[0].category, "color_profile");
+
+        let preserved = clean_file_with_options(&source, &OutputMode::Copy, true, true, true);
+        assert!(preserved.success, "{:?}", preserved.error);
+        assert!(preserved.removed.is_empty());
+        let preserved_report = scan_file(Path::new(preserved.output_path.as_deref().unwrap()));
+        assert_eq!(preserved_report.findings[0].category, "color_profile");
+
+        let stripped = clean_file_with_options(&source, &OutputMode::Copy, true, true, false);
+        assert!(stripped.success, "{:?}", stripped.error);
+        assert_eq!(stripped.removed[0].category, "color_profile");
+        assert!(
+            scan_file(Path::new(stripped.output_path.as_deref().unwrap()))
+                .findings
+                .is_empty()
+        );
+    }
+
+    #[test]
     fn scan_reports_missing_invalid_and_multiple_paths() {
         let dir = tempfile::tempdir().unwrap();
         let missing = dir.path().join("missing.txt");
@@ -466,7 +581,7 @@ mod tests {
         fs::write(&source, "a\u{200b}b").unwrap();
         let report = scan_file(&source);
         assert_eq!(report.findings[0].count, 1);
-        let result = clean_file_with_options(&source, &OutputMode::Copy, true, true);
+        let result = clean_file_with_options(&source, &OutputMode::Copy, true, true, true);
         assert!(result.success);
         assert_eq!(
             fs::read_to_string(result.output_path.unwrap()).unwrap(),
@@ -484,7 +599,7 @@ mod tests {
             let report = scan_file(&source);
             assert!(report.supported, "{name}: {:?}", report.error);
             assert!(!report.findings.is_empty(), "{name}: expected metadata");
-            let result = clean_file_with_options(&source, &OutputMode::Copy, true, true);
+            let result = clean_file_with_options(&source, &OutputMode::Copy, true, true, true);
             assert!(result.success, "{name}: {:?}", result.error);
             let output = PathBuf::from(result.output_path.unwrap());
             assert!(output.exists());
@@ -514,7 +629,7 @@ mod tests {
             fs::write(&source, &video).unwrap();
             let report = scan_file(&source);
             assert!(report.supported, "{extension}: {:?}", report.error);
-            let result = clean_file_with_options(&source, &OutputMode::Copy, true, true);
+            let result = clean_file_with_options(&source, &OutputMode::Copy, true, true, true);
             assert!(result.success, "{extension}: {:?}", result.error);
             let cleaned = scan_file(Path::new(result.output_path.as_deref().unwrap()));
             assert!(cleaned.supported, "{extension}: {:?}", cleaned.error);
@@ -526,7 +641,7 @@ mod tests {
             fs::write(&source, "a\u{200b}b").unwrap();
             let report = scan_file(&source);
             assert!(report.supported, "{extension}: {:?}", report.error);
-            let result = clean_file_with_options(&source, &OutputMode::Copy, true, true);
+            let result = clean_file_with_options(&source, &OutputMode::Copy, true, true, true);
             assert!(result.success, "{extension}: {:?}", result.error);
             assert_eq!(
                 fs::read_to_string(result.output_path.unwrap()).unwrap(),
@@ -552,7 +667,7 @@ mod tests {
             let report = scan_file(&source);
             assert!(!report.supported);
             assert!(report.error.is_some());
-            assert!(!clean_file_with_options(&source, &OutputMode::Copy, true, true).success);
+            assert!(!clean_file_with_options(&source, &OutputMode::Copy, true, true, true).success);
             assert!(!cleaned_path(&source).exists());
         }
     }
@@ -561,7 +676,7 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let source = dir.path().join("note.txt");
         fs::write(&source, "a\u{200b}b").unwrap();
-        let result = clean_file_with_options(&source, &OutputMode::Replace, true, true);
+        let result = clean_file_with_options(&source, &OutputMode::Replace, true, true, true);
         assert!(result.success);
         assert_eq!(fs::read_to_string(&source).unwrap(), "ab");
         assert_eq!(
@@ -577,14 +692,14 @@ mod tests {
         fs::write(&source, "a\u{200b}b").unwrap();
         let old = filetime::FileTime::from_unix_time(1_600_000_000, 0);
         filetime::set_file_mtime(&source, old).unwrap();
-        let preserved = clean_file_with_options(&source, &OutputMode::Copy, true, true);
+        let preserved = clean_file_with_options(&source, &OutputMode::Copy, true, true, true);
         let preserved_metadata = fs::metadata(preserved.output_path.unwrap()).unwrap();
         assert_eq!(
             filetime::FileTime::from_last_modification_time(&preserved_metadata),
             old
         );
 
-        let refreshed = clean_file_with_options(&source, &OutputMode::Copy, false, true);
+        let refreshed = clean_file_with_options(&source, &OutputMode::Copy, false, true, true);
         let refreshed_metadata = fs::metadata(refreshed.output_path.unwrap()).unwrap();
         assert_ne!(
             filetime::FileTime::from_last_modification_time(&refreshed_metadata),
@@ -596,7 +711,7 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let source = dir.path().join("data.bin");
         fs::write(&source, [0, 1, 2]).unwrap();
-        assert!(!clean_file_with_options(&source, &OutputMode::Copy, true, true).success);
+        assert!(!clean_file_with_options(&source, &OutputMode::Copy, true, true, true).success);
     }
 
     #[test]
@@ -614,7 +729,7 @@ mod tests {
                 !report.findings.is_empty(),
                 "{name}: expected metadata findings"
             );
-            let result = clean_file_with_options(&source, &OutputMode::Copy, true, true);
+            let result = clean_file_with_options(&source, &OutputMode::Copy, true, true, true);
             assert!(result.success, "{}: {:?}", name, result.error);
             let output = PathBuf::from(result.output_path.expect("cleaned output path"));
             assert!(

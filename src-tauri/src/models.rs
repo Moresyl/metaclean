@@ -45,6 +45,8 @@ pub struct CleanRequest {
     pub preserve_timestamps: bool,
     #[serde(default = "default_true")]
     pub preserve_orientation: bool,
+    #[serde(default = "default_true")]
+    pub preserve_color_profile: bool,
 }
 
 fn default_true() -> bool {

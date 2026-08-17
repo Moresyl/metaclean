@@ -33,6 +33,7 @@ fn clean_files(request: CleanRequest) -> Vec<CleanResult> {
                 &request.mode,
                 request.preserve_timestamps,
                 request.preserve_orientation,
+                request.preserve_color_profile,
             )
         })
         .collect()

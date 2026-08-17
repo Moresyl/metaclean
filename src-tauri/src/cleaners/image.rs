@@ -14,16 +14,31 @@ fn finding(label: &str, count: usize) -> Finding {
     }
 }
 
+fn color_profile_finding(count: usize) -> Finding {
+    Finding {
+        category: "color_profile".into(),
+        label: "ICC 色彩配置文件".into(),
+        count,
+        severity: FindingSeverity::Informational,
+    }
+}
+
+fn is_jpeg_icc_profile(marker: u8, payload: &[u8]) -> bool {
+    marker == 0xE2 && payload.starts_with(b"ICC_PROFILE\0")
+}
+
 pub fn inspect_jpeg(data: &[u8]) -> Result<Vec<Finding>> {
     let segments = jpeg_segments(data)?;
     let mut exif = 0;
     let mut xmp = 0;
     let mut provenance = 0;
     let mut comments = 0;
+    let mut color_profiles = 0;
     for (marker, payload, _) in segments {
         match marker {
             0xE1 if payload.starts_with(b"Exif\0\0") => exif += 1,
             0xE1 => xmp += 1,
+            0xE2 if is_jpeg_icc_profile(marker, payload) => color_profiles += 1,
             0xEB => provenance += 1,
             0xED | 0xFE => comments += 1,
             _ => {}
@@ -46,6 +61,9 @@ pub fn inspect_jpeg(data: &[u8]) -> Result<Vec<Finding>> {
     }
     if comments > 0 {
         findings.push(finding("图片注释或 IPTC", comments));
+    }
+    if color_profiles > 0 {
+        findings.push(color_profile_finding(color_profiles));
     }
     Ok(findings)
 }
@@ -102,16 +120,21 @@ fn jpeg_segments(data: &[u8]) -> Result<Vec<(u8, &[u8], std::ops::Range<usize>)>
 pub fn clean_jpeg_with_options(
     data: &[u8],
     preserve_orientation: bool,
+    preserve_color_profile: bool,
 ) -> Result<(Vec<u8>, Vec<Finding>)> {
-    let findings = inspect_jpeg(data)?;
+    let findings = inspect_jpeg(data)?
+        .into_iter()
+        .filter(|finding| finding.category != "color_profile" || !preserve_color_profile)
+        .collect();
     let segments = jpeg_segments(data)?;
     let orientation = preserve_orientation
         .then(|| jpeg_orientation(&segments))
         .flatten();
     let mut output = Vec::with_capacity(data.len());
     let mut cursor = 0;
-    for (marker, _payload, range) in segments {
-        let remove = matches!(marker, 0xE1 | 0xEB | 0xED | 0xFE);
+    for (marker, payload, range) in segments {
+        let remove = matches!(marker, 0xE1 | 0xEB | 0xED | 0xFE)
+            || (!preserve_color_profile && is_jpeg_icc_profile(marker, payload));
         if remove {
             output.extend_from_slice(&data[cursor..range.start]);
             cursor = range.end;
@@ -123,6 +146,41 @@ pub fn clean_jpeg_with_options(
         output.splice(2..2, segment);
     }
     Ok((output, findings))
+}
+
+pub fn verify_jpeg_cleaned(
+    data: &[u8],
+    preserve_orientation: bool,
+    preserve_color_profile: bool,
+) -> Result<()> {
+    let segments = jpeg_segments(data)?;
+    let mut orientation_segments = 0;
+    for (marker, payload, _) in segments {
+        if marker == 0xE1 && preserve_orientation && is_minimal_orientation(payload) {
+            orientation_segments += 1;
+            continue;
+        }
+        if matches!(marker, 0xE1 | 0xEB | 0xED | 0xFE)
+            || (!preserve_color_profile && is_jpeg_icc_profile(marker, payload))
+        {
+            return Err(CleanError::Verification(
+                "JPEG 中仍存在应移除的元数据段".into(),
+            ));
+        }
+    }
+    if orientation_segments > 1 {
+        return Err(CleanError::Verification(
+            "JPEG 中存在多个保留的方向段".into(),
+        ));
+    }
+    Ok(())
+}
+
+fn is_minimal_orientation(payload: &[u8]) -> bool {
+    let Some(orientation) = payload.strip_prefix(b"Exif\0\0").and_then(tiff_orientation) else {
+        return false;
+    };
+    orientation_segment(orientation).get(4..) == Some(payload)
 }
 
 fn jpeg_orientation(segments: &[(u8, &[u8], std::ops::Range<usize>)]) -> Option<u16> {
@@ -232,6 +290,7 @@ pub fn inspect_png(data: &[u8]) -> Result<Vec<Finding>> {
         .iter()
         .filter(|(kind, _)| matches!(kind, b"caBX" | b"c2pa" | b"jumb" | b"jumd"))
         .count();
+    let color_profiles = chunks.iter().filter(|(kind, _)| kind == b"iCCP").count();
     let mut findings = Vec::new();
     if metadata > 0 {
         findings.push(finding("PNG 文本 / EXIF 元数据", metadata));
@@ -244,20 +303,41 @@ pub fn inspect_png(data: &[u8]) -> Result<Vec<Finding>> {
             severity: FindingSeverity::Provenance,
         });
     }
+    if color_profiles > 0 {
+        findings.push(color_profile_finding(color_profiles));
+    }
     Ok(findings)
 }
 
-pub fn clean_png(data: &[u8]) -> Result<(Vec<u8>, Vec<Finding>)> {
-    let findings = inspect_png(data)?;
+pub fn clean_png_with_options(
+    data: &[u8],
+    preserve_color_profile: bool,
+) -> Result<(Vec<u8>, Vec<Finding>)> {
+    let findings = inspect_png(data)?
+        .into_iter()
+        .filter(|finding| finding.category != "color_profile" || !preserve_color_profile)
+        .collect();
     let chunks = png_chunks(data)?;
     let mut output = Vec::with_capacity(data.len());
     output.extend_from_slice(PNG_SIGNATURE);
     for (kind, range) in chunks {
-        if !is_private_png_chunk(&kind) {
+        if !is_private_png_chunk(&kind) && (preserve_color_profile || &kind != b"iCCP") {
             output.extend_from_slice(&data[range]);
         }
     }
     Ok((output, findings))
+}
+
+pub fn verify_png_cleaned(data: &[u8], preserve_color_profile: bool) -> Result<()> {
+    if png_chunks(data)?
+        .iter()
+        .any(|(kind, _)| is_private_png_chunk(kind) || (!preserve_color_profile && kind == b"iCCP"))
+    {
+        return Err(CleanError::Verification(
+            "PNG 中仍存在应移除的元数据块".into(),
+        ));
+    }
+    Ok(())
 }
 
 pub fn inspect_webp(data: &[u8]) -> Result<Vec<Finding>> {
@@ -266,11 +346,15 @@ pub fn inspect_webp(data: &[u8]) -> Result<Vec<Finding>> {
         .iter()
         .filter(|(kind, _)| matches!(kind, b"EXIF" | b"XMP " | b"C2PA"))
         .count();
-    Ok(if count > 0 {
-        vec![finding("WebP EXIF / XMP / C2PA 元数据", count)]
-    } else {
-        Vec::new()
-    })
+    let color_profiles = chunks.iter().filter(|(kind, _)| kind == b"ICCP").count();
+    let mut findings = Vec::new();
+    if count > 0 {
+        findings.push(finding("WebP EXIF / XMP / C2PA 元数据", count));
+    }
+    if color_profiles > 0 {
+        findings.push(color_profile_finding(color_profiles));
+    }
+    Ok(findings)
 }
 
 fn webp_chunks(data: &[u8]) -> Result<Vec<([u8; 4], std::ops::Range<usize>)>> {
@@ -297,24 +381,46 @@ fn webp_chunks(data: &[u8]) -> Result<Vec<([u8; 4], std::ops::Range<usize>)>> {
     Ok(chunks)
 }
 
-pub fn clean_webp(data: &[u8]) -> Result<(Vec<u8>, Vec<Finding>)> {
-    let findings = inspect_webp(data)?;
+pub fn clean_webp_with_options(
+    data: &[u8],
+    preserve_color_profile: bool,
+) -> Result<(Vec<u8>, Vec<Finding>)> {
+    let findings = inspect_webp(data)?
+        .into_iter()
+        .filter(|finding| finding.category != "color_profile" || !preserve_color_profile)
+        .collect();
     let chunks = webp_chunks(data)?;
     let mut output = Vec::with_capacity(data.len());
     output.extend_from_slice(&data[..12]);
     for (kind, range) in chunks {
-        if matches!(&kind, b"EXIF" | b"XMP " | b"C2PA") {
+        if matches!(&kind, b"EXIF" | b"XMP " | b"C2PA")
+            || (!preserve_color_profile && &kind == b"ICCP")
+        {
             continue;
         }
         let start = output.len();
         output.extend_from_slice(&data[range]);
         if &kind == b"VP8X" && output.len() >= start + 9 {
             output[start + 8] &= !(0x08 | 0x04);
+            if !preserve_color_profile {
+                output[start + 8] &= !0x20;
+            }
         }
     }
     let riff_size = (output.len() - 8) as u32;
     output[4..8].copy_from_slice(&riff_size.to_le_bytes());
     Ok((output, findings))
+}
+
+pub fn verify_webp_cleaned(data: &[u8], preserve_color_profile: bool) -> Result<()> {
+    if webp_chunks(data)?.iter().any(|(kind, _)| {
+        matches!(kind, b"EXIF" | b"XMP " | b"C2PA") || (!preserve_color_profile && kind == b"ICCP")
+    }) {
+        return Err(CleanError::Verification(
+            "WebP 中仍存在应移除的元数据块".into(),
+        ));
+    }
+    Ok(())
 }
 
 #[cfg(test)]
@@ -336,7 +442,7 @@ mod tests {
     #[test]
     fn strips_jpeg_exif_segment() {
         let source = jpeg_with_exif();
-        let (cleaned, findings) = clean_jpeg_with_options(&source, true).unwrap();
+        let (cleaned, findings) = clean_jpeg_with_options(&source, true, true).unwrap();
         assert_eq!(cleaned, vec![0xff, 0xd8, 0xff, 0xd9]);
         assert_eq!(findings[0].count, 1);
     }
@@ -352,7 +458,7 @@ mod tests {
         let findings = inspect_jpeg(&source).unwrap();
         assert_eq!(findings.len(), 4);
         assert!(findings.iter().any(|item| item.category == "provenance"));
-        let (cleaned, _) = clean_jpeg_with_options(&source, false).unwrap();
+        let (cleaned, _) = clean_jpeg_with_options(&source, false, true).unwrap();
         assert_eq!(cleaned, vec![0xff, 0xd8, 0xff, 0xd9]);
     }
 
@@ -376,7 +482,7 @@ mod tests {
     #[test]
     fn preserves_only_a_minimal_orientation_tag() {
         let source = jpeg_with_orientation(6);
-        let (cleaned, findings) = clean_jpeg_with_options(&source, true).unwrap();
+        let (cleaned, findings) = clean_jpeg_with_options(&source, true, true).unwrap();
         let segments = jpeg_segments(&cleaned).unwrap();
         assert_eq!(jpeg_orientation(&segments), Some(6));
         assert!(!cleaned.windows(3).any(|window| window == b"gps"));
@@ -386,7 +492,7 @@ mod tests {
     #[test]
     fn removes_orientation_when_disabled() {
         let source = jpeg_with_orientation(6);
-        let (cleaned, _) = clean_jpeg_with_options(&source, false).unwrap();
+        let (cleaned, _) = clean_jpeg_with_options(&source, false, true).unwrap();
         assert_eq!(cleaned, vec![0xff, 0xd8, 0xff, 0xd9]);
     }
     #[test]
@@ -408,7 +514,7 @@ mod tests {
         let mut source = PNG_SIGNATURE.to_vec();
         source.extend(png_chunk(b"tEXt", b"Author\0Alice"));
         source.extend(png_chunk(b"IEND", b""));
-        let (cleaned, findings) = clean_png(&source).unwrap();
+        let (cleaned, findings) = clean_png_with_options(&source, true).unwrap();
         assert_eq!(findings[0].count, 1);
         assert!(!cleaned.windows(4).any(|window| window == b"tEXt"));
     }
@@ -420,7 +526,7 @@ mod tests {
         source.extend(png_chunk(b"IEND", b""));
         let findings = inspect_png(&source).unwrap();
         assert_eq!(findings[0].category, "provenance");
-        let (cleaned, _) = clean_png(&source).unwrap();
+        let (cleaned, _) = clean_png_with_options(&source, true).unwrap();
         assert!(!cleaned.windows(4).any(|window| window == b"caBX"));
     }
 
@@ -439,7 +545,7 @@ mod tests {
         source.extend_from_slice(b"EXIF\x04\0\0\0data");
         let size = (source.len() - 8) as u32;
         source[4..8].copy_from_slice(&size.to_le_bytes());
-        let (cleaned, findings) = clean_webp(&source).unwrap();
+        let (cleaned, findings) = clean_webp_with_options(&source, true).unwrap();
         assert_eq!(findings[0].count, 1);
         assert_eq!(cleaned, b"RIFF\x04\0\0\0WEBP");
     }
@@ -451,7 +557,7 @@ mod tests {
         source.extend_from_slice(b"EXIF\x04\0\0\0data");
         let size = (source.len() - 8) as u32;
         source[4..8].copy_from_slice(&size.to_le_bytes());
-        let (cleaned, findings) = clean_webp(&source).unwrap();
+        let (cleaned, findings) = clean_webp_with_options(&source, true).unwrap();
         assert_eq!(findings[0].count, 1);
         assert_eq!(cleaned[20] & 0x0c, 0);
         assert!(!cleaned.windows(4).any(|window| window == b"EXIF"));
@@ -466,5 +572,92 @@ mod tests {
         let size = (source.len() - 8) as u32;
         source[4..8].copy_from_slice(&size.to_le_bytes());
         assert!(inspect_webp(&source).is_err());
+    }
+
+    #[test]
+    fn preserves_or_removes_jpeg_icc_profiles_explicitly() {
+        let mut source = vec![0xff, 0xd8];
+        source.extend(jpeg_segment(0xe2, b"ICC_PROFILE\0\x01\x01display-profile"));
+        source.extend_from_slice(&[0xff, 0xd9]);
+
+        let scanned = inspect_jpeg(&source).unwrap();
+        assert_eq!(scanned[0].category, "color_profile");
+        assert_eq!(scanned[0].severity, FindingSeverity::Informational);
+
+        let (preserved, removed) = clean_jpeg_with_options(&source, true, true).unwrap();
+        assert!(preserved.windows(11).any(|window| window == b"ICC_PROFILE"));
+        assert!(removed.is_empty());
+        verify_jpeg_cleaned(&preserved, true, true).unwrap();
+
+        let (stripped, removed) = clean_jpeg_with_options(&source, true, false).unwrap();
+        assert!(!stripped.windows(11).any(|window| window == b"ICC_PROFILE"));
+        assert_eq!(removed[0].category, "color_profile");
+        verify_jpeg_cleaned(&stripped, true, false).unwrap();
+        assert!(verify_jpeg_cleaned(&source, true, false).is_err());
+    }
+
+    #[test]
+    fn preserves_or_removes_png_icc_profiles_explicitly() {
+        let mut source = PNG_SIGNATURE.to_vec();
+        source.extend(png_chunk(b"iCCP", b"Display\0\0profile"));
+        source.extend(png_chunk(b"IEND", b""));
+
+        let (preserved, removed) = clean_png_with_options(&source, true).unwrap();
+        assert!(preserved.windows(4).any(|window| window == b"iCCP"));
+        assert!(removed.is_empty());
+        verify_png_cleaned(&preserved, true).unwrap();
+
+        let (stripped, removed) = clean_png_with_options(&source, false).unwrap();
+        assert!(!stripped.windows(4).any(|window| window == b"iCCP"));
+        assert_eq!(removed[0].category, "color_profile");
+        verify_png_cleaned(&stripped, false).unwrap();
+        assert!(verify_png_cleaned(&source, false).is_err());
+    }
+
+    #[test]
+    fn preserves_or_removes_webp_icc_profiles_and_feature_flag() {
+        fn webp_chunk(kind: &[u8; 4], payload: &[u8]) -> Vec<u8> {
+            let mut output = kind.to_vec();
+            output.extend_from_slice(&(payload.len() as u32).to_le_bytes());
+            output.extend_from_slice(payload);
+            if payload.len() % 2 == 1 {
+                output.push(0);
+            }
+            output
+        }
+
+        let mut source = b"RIFF\0\0\0\0WEBP".to_vec();
+        source.extend(webp_chunk(b"VP8X", &[0x20, 0, 0, 0, 0, 0, 0, 0, 0, 0]));
+        source.extend(webp_chunk(b"ICCP", b"profile"));
+        let size = (source.len() - 8) as u32;
+        source[4..8].copy_from_slice(&size.to_le_bytes());
+
+        let (preserved, removed) = clean_webp_with_options(&source, true).unwrap();
+        assert!(preserved.windows(4).any(|window| window == b"ICCP"));
+        assert_eq!(preserved[20] & 0x20, 0x20);
+        assert!(removed.is_empty());
+        verify_webp_cleaned(&preserved, true).unwrap();
+
+        let (stripped, removed) = clean_webp_with_options(&source, false).unwrap();
+        assert!(!stripped.windows(4).any(|window| window == b"ICCP"));
+        assert_eq!(stripped[20] & 0x20, 0);
+        assert_eq!(removed[0].category, "color_profile");
+        verify_webp_cleaned(&stripped, false).unwrap();
+        assert!(verify_webp_cleaned(&source, false).is_err());
+    }
+
+    #[test]
+    fn verification_allows_only_the_rebuilt_orientation_segment() {
+        let cleaned = clean_jpeg_with_options(&jpeg_with_orientation(6), true, true)
+            .unwrap()
+            .0;
+        verify_jpeg_cleaned(&cleaned, true, true).unwrap();
+        assert!(verify_jpeg_cleaned(&jpeg_with_exif(), true, true).is_err());
+
+        let orientation = jpeg_segments(&cleaned).unwrap()[0].2.clone();
+        let mut duplicated = cleaned[..orientation.end].to_vec();
+        duplicated.extend_from_slice(&cleaned[orientation]);
+        duplicated.extend_from_slice(&[0xff, 0xd9]);
+        assert!(verify_jpeg_cleaned(&duplicated, true, true).is_err());
     }
 }

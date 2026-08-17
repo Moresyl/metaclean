@@ -48,9 +48,9 @@ MetaClean 把这些统统找出来并清除——全过程只在你自己的电�
 
 | 格式 | 扩展名 | 清理内容 |
 | --- | --- | --- |
-| JPEG | `.jpg` `.jpeg` `.jpe` | EXIF/GPS、XMP、IPTC、图片注释、JUMBF/C2PA 段 |
-| PNG | `.png` | EXIF、文本元数据、C2PA/JUMBF 块 |
-| WebP | `.webp` | EXIF、XMP、C2PA 块 |
+| JPEG | `.jpg` `.jpeg` `.jpe` | EXIF/GPS、XMP、IPTC、图片注释、JUMBF/C2PA 段；ICC 默认保留，也可明确移除 |
+| PNG | `.png` | EXIF、文本元数据、C2PA/JUMBF 块；可选移除 ICC 配置 |
+| WebP | `.webp` | EXIF、XMP、C2PA 块；可选移除 ICC 配置 |
 | GIF | `.gif` | 注释与 XMP 应用元数据，不重新编码动画帧 |
 | 音频 | `.mp3` `.wav` `.flac` | ID3/APEv2、RIFF INFO/XMP/BWF/iXML、FLAC Vorbis 评论、封面与 XMP |
 | ISO 媒体 | `.mp4` `.mov` `.m4v` `.m4a` `.3g2` `.3gp` `.3gp2` `.3gpp` `.f4a` `.f4b` `.f4p` `.f4v` `.lrv` `.m4b` `.m4p` `.mqv` `.qt` | ISO BMFF/QuickTime 用户数据、XMP、作者与位置原子，不移动媒体字节 |
@@ -65,6 +65,7 @@ MetaClean 把这些统统找出来并清除——全过程只在你自己的电�
 - 替换原文件前，一定先写入 `.bak` 备份
 - 默认生成 `.cleaned` 安全副本
 - 先写临时文件，再原子替换目标文件
+- 创建备份或写入任何输出前，复检即将提交的精确清理后字节
 - 输入和输出路径都拒绝符号链接
 - 单文件上限 256 MiB，Office 解压总量上限 512 MiB
 - 文件损坏或格式不支持时直接失败，绝不改动源文件
@@ -75,7 +76,7 @@ MetaClean 把这些统统找出来并清除——全过程只在你自己的电�
 - 四个页面：**文件净化**、**处理记录**、**隐私说明**、**设置**
 - 可选的 Windows 资源管理器右键菜单，覆盖全部 47 种受支持扩展名（Windows 11 上位于**显示更多选项**中）
 - 关闭窗口后驻留系统托盘，右键托盘图标可重新打开或彻底退出
-- 默认保留 JPEG 显示方向与文件时间戳，但不会保留其他私密 EXIF 字段
+- 默认保留 JPEG 显示方向、ICC/sRGB 色彩配置与文件时间戳，三项均可独立关闭
 - 通过 GitHub Releases 发现稳定版，启动检查可以单独关闭
 - 26 种完整界面语言，覆盖欧洲、亚洲与阿拉伯语 RTL；跟随系统/浅色/深色主题、输出方式、保真选项、本地处理记录都会持久保存
 

@@ -1,12 +1,13 @@
 import { FileImage, FileText, FileType2, FileVideo2, Music2, Trash2, X } from "lucide-react";
 import type { FileEntry } from "../types";
 import { useI18n } from "../lib/i18n";
+import { actionableFindingCount } from "../lib/files";
 
-interface FileQueueProps { entries: FileEntry[]; onRemove: (id: string) => void; onClear: () => void }
+interface FileQueueProps { entries: FileEntry[]; preserveColorProfile: boolean; onRemove: (id: string) => void; onClear: () => void }
 
 const icons = { image: FileImage, audio: Music2, video: FileVideo2, document: FileType2, pdf: FileText, text: FileText, unknown: FileText };
 
-export default function FileQueue({ entries, onRemove, onClear }: FileQueueProps) {
+export default function FileQueue({ entries, preserveColorProfile, onRemove, onClear }: FileQueueProps) {
   const { text } = useI18n();
   const findingLabel = (category: string, fallback: string) => ({
     unicode: text("不可见 Unicode 字符", "Invisible Unicode"),
@@ -18,6 +19,7 @@ export default function FileQueue({ entries, onRemove, onClear }: FileQueueProps
     office_metadata: text("Office 隐私痕迹", "Office privacy trace"),
     pdf_metadata: text("PDF 文档属性 / XMP", "PDF properties / XMP"),
     document_metadata: text("作者 / 生成器 / AI 元数据", "Author / generator / AI metadata"),
+    color_profile: "ICC / sRGB",
   } as Record<string, string>)[category] ?? fallback;
   return (
     <section className="queue-card">
@@ -28,7 +30,7 @@ export default function FileQueue({ entries, onRemove, onClear }: FileQueueProps
         <div className="file-list">
           {entries.map((entry) => {
             const Icon = icons[entry.kind];
-            const findingCount = entry.report?.findings.reduce((total, finding) => total + finding.count, 0) ?? 0;
+            const findingCount = actionableFindingCount(entry.report, preserveColorProfile);
             const status = entry.report?.error
               ? entry.report.error
               : entry.status === "scanning" ? text("正在扫描…", "Scanning…")

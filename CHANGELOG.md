@@ -7,6 +7,9 @@ All notable changes to MetaClean are documented here. The project follows
 
 ### Added
 
+- An independently persisted ICC/sRGB preservation control for JPEG, PNG and
+  WebP. Profiles remain intact by default and become an explicit informational
+  scan finding when removal is selected.
 - System, light and dark interface themes with local persistence and
   no-flash initialization before React renders.
 - Native MP4, MOV, M4V and M4A privacy cleaning for ISO BMFF/QuickTime user
@@ -33,6 +36,9 @@ All notable changes to MetaClean are documented here. The project follows
 
 ### Security
 
+- Every cleaned candidate is now format-checked and re-inspected in memory
+  before MetaClean chooses an output path, creates a replacement backup or
+  writes any bytes. Residual metadata or a changed format fails closed.
 - MP4/QuickTime parsing validates atom bounds, nesting depth, compatible brands
   and required media structure before writing; malformed containers fail closed.
 - WebdriverIO's vulnerable transitive archive extractor is replaced by a

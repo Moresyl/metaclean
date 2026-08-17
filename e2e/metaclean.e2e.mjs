@@ -47,6 +47,22 @@ describe("MetaClean desktop application", () => {
     assert.equal(await $("html").getAttribute("data-theme"), "dark");
   });
 
+  it("persists the ICC fidelity preference across a real desktop reload", async () => {
+    const navigation = await $$(".sidebar nav button");
+    await navigation[3].click();
+    const fidelity = await $$(".fidelity-options input");
+    assert.equal(await fidelity[1].isSelected(), true);
+    await fidelity[1].click();
+    await browser.waitUntil(async () => await browser.tauri.execute(() => localStorage.getItem("metaclean.preserveColorProfile")) === "false");
+
+    await browser.refresh();
+    await $(".app-shell").waitForDisplayed();
+    const refreshedNavigation = await $$(".sidebar nav button");
+    await refreshedNavigation[3].click();
+    const refreshedFidelity = await $$(".fidelity-options input");
+    assert.equal(await refreshedFidelity[1].isSelected(), false);
+  });
+
   it("crosses the Tauri IPC boundary without modifying user files", async () => {
     const reports = await browser.tauri.execute(({ core }) => {
       return core.invoke("scan_files", { paths: [] });

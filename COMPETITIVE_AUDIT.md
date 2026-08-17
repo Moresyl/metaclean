@@ -14,9 +14,9 @@ implementation and tests.
 | Folder recursion | Recursive file/folder intake | Recursive picker and drag/drop with skip reasons, symlink refusal, 64-level and 10,000-file limits | Exceeds on safety |
 | Unsupported intake accounting | Folder summaries count skipped files and unreadable roots | Counts every skipped item, returns the first concrete issue and reports when a safety limit is reached | Exceeds on bounded failure reporting |
 | Metadata inspection | Expandable before/after tag values, grouped diff and copy-all | Read-only category/count findings before confirmation; no private values rendered | Gap: detailed local diff is absent |
-| Runtime cleanup verification | Reads metadata after processing and distinguishes cleaned, unchanged, refused and verification-failed outcomes | Native cleaners are regression-tested but the application does not yet re-inspect the exact candidate bytes before commit | Gap |
+| Runtime cleanup verification | Reads metadata after processing and distinguishes cleaned, unchanged, refused and verification-failed outcomes | Re-detects the format and re-inspects the exact in-memory candidate before choosing an output path, creating a backup or writing; residual traces fail closed | Exceeds on pre-commit timing |
 | JPEG orientation | Optional preservation | Minimal orientation-only EXIF reconstruction, independently switchable | Parity with smaller retained surface |
-| ICC color profile | Optional preserve/remove setting | ICC data is preserved but has no explicit removal control | Gap |
+| ICC color profile | Optional preserve/remove setting | Independently persisted preserve/remove control for JPEG, PNG and WebP, preserving profiles by default | Parity with candidate-byte verification |
 | File timestamps | Optional preservation | Access/modified time and permissions preserved by default | Parity |
 | macOS extended attributes | Optional `xattr` removal | No extended-attribute scan/removal | Gap |
 | PDF privacy | ExifTool reversible update; old metadata may remain recoverable | Full `lopdf` reserialization with a regression test proving old metadata bytes are absent | Exceeds |
@@ -48,7 +48,9 @@ It now matches the three-family installed-app CI matrix while keeping the test
 driver absent from production builds. Its explicit real-app intake grew from 26
 to 47 extensions without routing unknown binary formats through a generic
 rewrite, exceeding ExifCleaner's 30-extension application whitelist even though
-the latter's README separately enumerates 90+ ExifTool writer formats.
+the latter's README separately enumerates 90+ ExifTool writer formats. Candidate
+bytes are now re-detected and re-inspected before any copy, backup or replacement
+write, and ICC/sRGB preservation is independently configurable.
 
 ## Remaining parity backlog
 
@@ -56,17 +58,15 @@ This is the complete known product/release gap list derived from the baseline's
 settings schema, intake whitelist, renderer table, application menus, platform
 services, release workflow and E2E suite:
 
-1. Re-inspect the exact cleaned bytes before any copy, backup or replacement is committed.
-2. Add an explicit ICC color-profile preservation/removal preference.
-3. Add opt-in macOS extended-attribute inspection/removal without deleting unrelated data silently.
-4. Provide expandable local before/after metadata values and a copyable diff.
-5. Add stable queue sorting, source/output size delta and reveal-in-file-manager actions.
-6. Add full desktop menus/keyboard accelerators and persistent window geometry.
-7. Safely implement or continue refusing TIFF, HEIC/HEIF, AVIF, BMP, RAW and AVI/MKV/WMV individually; no count-only aliasing is acceptable.
-8. Add dedicated installed-app accessibility and broader failure-path E2E scenarios.
-9. Publish SHA-256 manifests and smoke-test installed release artifacts, not only E2E-featured debug binaries.
-10. Set and test an explicit production Content Security Policy.
-11. Decide and document Windows portable/32-bit support rather than implying artifact parity.
+1. Add opt-in macOS extended-attribute inspection/removal without deleting unrelated data silently.
+2. Provide expandable local before/after metadata values and a copyable diff.
+3. Add stable queue sorting, source/output size delta and reveal-in-file-manager actions.
+4. Add full desktop menus/keyboard accelerators and persistent window geometry.
+5. Safely implement or continue refusing TIFF, HEIC/HEIF, AVIF, BMP, RAW and AVI/MKV/WMV individually; no count-only aliasing is acceptable.
+6. Add dedicated installed-app accessibility and broader failure-path E2E scenarios.
+7. Publish SHA-256 manifests and smoke-test installed release artifacts, not only E2E-featured debug binaries.
+8. Set and test an explicit production Content Security Policy.
+9. Decide and document Windows portable/32-bit support rather than implying artifact parity.
 
 Future work must preserve MetaClean's fail-closed and irreversible-cleaning
 policy instead of accepting formats whose private metadata cannot be removed
