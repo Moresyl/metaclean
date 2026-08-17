@@ -13,17 +13,20 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: pnpm/action-setup@v6
-        with:
-          version: 10.32.1
       - uses: actions/setup-node@v7
         with:
           node-version: 24
-          cache: pnpm
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
+      - run: corepack enable
+      - run: corepack prepare pnpm@10.32.1 --activate
+      - run: rustup default stable
+      - uses: actions/cache@v5
         with:
-          workspaces: src-tauri
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            src-tauri/target
+          key: rust-ci-${{ runner.os }}-${{ hashFiles('src-tauri/Cargo.lock') }}
+          restore-keys: rust-ci-${{ runner.os }}-
       - run: pnpm install --frozen-lockfile
       - name: Verify extract-zip security patch
         run: pnpm test:supply-chain
@@ -58,17 +61,20 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v7
-      - uses: pnpm/action-setup@v6
-        with:
-          version: 10.32.1
       - uses: actions/setup-node@v7
         with:
           node-version: 24
-          cache: pnpm
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
+      - run: corepack enable
+      - run: corepack prepare pnpm@10.32.1 --activate
+      - run: rustup default stable
+      - uses: actions/cache@v5
         with:
-          workspaces: src-tauri
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            src-tauri/target
+          key: rust-e2e-${{ runner.os }}-${{ hashFiles('src-tauri/Cargo.lock') }}
+          restore-keys: rust-e2e-${{ runner.os }}-
       - name: Install Linux system dependencies
         if: runner.os == 'Linux'
         run: |
