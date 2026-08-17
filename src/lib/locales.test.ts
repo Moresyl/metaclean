@@ -12,11 +12,12 @@ describe("locales", () => {
     expect(initialLocale("ja", "de-DE")).toBe("ja");
     expect(initialLocale(null, "zh-Hant-HK")).toBe("zh-TW");
     expect(initialLocale(null, "ko-KR")).toBe("ko");
+    expect(initialLocale(null, "pt-BR")).toBe("pt-BR");
     expect(initialLocale(null, "xx-YY")).toBe("en");
   });
 
   it("has a complete translation for every published non-source catalog", () => {
-    for (const locale of ["zh-TW", "de", "es", "fr", "ja", "ko"] satisfies Locale[]) {
+    for (const locale of ["zh-TW", "de", "es", "fr", "it", "ja", "ko", "nl", "pt", "pt-BR"] satisfies Locale[]) {
       for (const source of SOURCE_STRINGS) {
         expect(hasStaticTranslation(locale, source), `${locale}: ${source}`).toBe(true);
       }
@@ -27,6 +28,11 @@ describe("locales", () => {
     expect(translate("zh", "设置", "Settings")).toBe("设置");
     expect(translate("en", "设置", "Settings")).toBe("Settings");
     expect(htmlLanguage("zh-TW")).toBe("zh-TW");
+    expect(htmlLanguage("invalid" as Locale)).toBe("en");
+    expect(hasStaticTranslation("zh", "Settings")).toBe(true);
+    expect(hasStaticTranslation("en", "Settings")).toBe(true);
+    expect(hasStaticTranslation("fr", "missing")).toBe(false);
+    expect(translate("fr", "", "missing")).toBe("missing");
   });
 
   it("localizes dynamic values without altering user or version data", () => {
@@ -50,7 +56,7 @@ describe("locales", () => {
       "Version 0.2.0 is up to date.",
       "Update check failed: offline",
     ];
-    for (const locale of ["zh-TW", "de", "es", "fr", "ja", "ko"] satisfies Locale[]) {
+    for (const locale of ["zh-TW", "de", "es", "fr", "it", "ja", "ko", "nl", "pt", "pt-BR"] satisfies Locale[]) {
       for (const message of messages) {
         expect(translate(locale, "", message), `${locale}: ${message}`).not.toBe(message);
       }

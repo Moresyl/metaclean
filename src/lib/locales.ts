@@ -5,8 +5,12 @@ export const LOCALES = [
   { code: "de", nativeName: "Deutsch", htmlLang: "de" },
   { code: "es", nativeName: "Español", htmlLang: "es" },
   { code: "fr", nativeName: "Français", htmlLang: "fr" },
+  { code: "it", nativeName: "Italiano", htmlLang: "it" },
   { code: "ja", nativeName: "日本語", htmlLang: "ja" },
   { code: "ko", nativeName: "한국어", htmlLang: "ko" },
+  { code: "nl", nativeName: "Nederlands", htmlLang: "nl" },
+  { code: "pt", nativeName: "Português", htmlLang: "pt-PT" },
+  { code: "pt-BR", nativeName: "Português (Brasil)", htmlLang: "pt-BR" },
 ] as const;
 
 export type Locale = (typeof LOCALES)[number]["code"];
@@ -281,6 +285,84 @@ const FR = [
   "Activé pour les types de fichiers pris en charge. Sous Windows 11, utilisez « Afficher plus d’options ».", "Active la commande de l’Explorateur pour les types pris en charge. Sous Windows 11, elle se trouve sous « Afficher plus d’options ».", "L’intégration au menu contextuel est disponible uniquement sous Windows.", "Navigation principale",
 ] as const;
 
+const IT = [
+  "Massimo 256 MiB per file", "Aggiungi file per visualizzare qui lo stato della scansione", "Tutta l’elaborazione avviene in locale. ", "Aspetto", "Output atomico tramite file temporaneo",
+  "Audio", "Metadati audio", "Tag audio e copertine", "Metadati autore / generatore / IA", "La modalità browser non può accedere ai percorsi completi. Seleziona i file nell’app desktop.",
+  "Le modifiche vengono applicate immediatamente.", "Controlla automaticamente dopo l’avvio", "Controlla ora", "Verifica dell’integrazione con Esplora file…", "Ricerca dell’ultima versione stabile su GitHub…",
+  "Controlla solo GitHub Releases; non vengono inviati file o dati di utilizzo.", "Scegli file", "Scegli cartella", "Pulisci file", "Pulito",
+  "Svuota", "Cancella cronologia", "I processi di pulizia completati appariranno qui.", "Conferma e pulisci", "Crea .bak, quindi sostituisci atomicamente l’originale",
+  "Crea un backup prima della pulizia", "Scuro", "Modalità di output predefinita", "Disattiva", "Autori e revisioni del documento",
+  "Scarica", "Trascina qui i file da pulire", "Attiva", "Opzioni di fedeltà", "Pulizia privacy dei file",
+  "Coda dei file", "I file non lasciano mai questo dispositivo", "I file restano in locale", "Segui il sistema o usa sempre un tema chiaro o scuro.", "Il formato verrà verificato durante la scansione",
+  "Cronologia", "La cronologia resta su questo dispositivo e non memorizza mai il contenuto dei file.", "Metadati immagine", "Immagini", "Unicode invisibile",
+  "Metadati JPEG, PNG, WebP e GIF; tag audio MP3, WAV e FLAC; dati utente, XMP e posizione MP4, MOV, M4V e M4A; proprietà/commenti DOCX, XLSX, PPTX e ODT; proprietà PDF e XMP; Unicode invisibile e metadati del generatore in TXT, Markdown, HTML e SVG.",
+  "Mantieni solo le informazioni necessarie alla visualizzazione e alla gestione dei file, mai metadati GPS, autore o provenienza.", "Mantieni l’originale e crea una copia .cleaned", "Lingua", "Chiaro", "Solo locale",
+  "MetaClean ha limiti di elaborazione chiari e verificabili.", "MetaClean non carica, archivia o analizza mai il contenuto dei tuoi file.", "MetaClean · Strumento locale per la privacy dei file", "Nessuna cronologia", "Nessuna traccia privata trovata",
+  "Nessuna traccia da pulire", "Traccia privata Office", "Verranno rimosse solo le tracce elencate.", "Modalità di output", "Proprietà PDF / XMP",
+  "Mantieni l’orientamento di visualizzazione JPEG", "Mantieni le date di accesso e modifica", "Mantieni le date del file", "Mantieni l’orientamento della foto", "Privacy",
+  "Elabora contenuti autorizzati", "Indicatore di provenienza", "Ricrea un segmento EXIF minimo contenente solo l’orientamento; tutti gli altri dati EXIF/GPS vengono rimossi.", "Consigliato; mantiene l’originale", "Rifiuta la scrittura su collegamenti simbolici",
+  "Rimuovi le tracce private prima della condivisione", "Sostituisci originale", "Sostituisci con backup", "La sostituzione crea sempre un backup", "Copia sicura",
+  "Garanzie di sicurezza", "Salva una copia sicura", "Scansiona prima di pulire", "Scansiona tracce private", "Scansiona prima le tracce private, quindi conferma la pulizia",
+  "La scansione è in sola lettura e non modifica nulla.", "La scansione è in sola lettura. I file cambiano solo dopo una conferma esplicita.", "Scansione…", "Cerca", "Impostazioni",
+  "Le impostazioni vengono salvate in locale.", "Aggiornamenti software", "Le filigrane statistiche nel testo, le filigrane nei pixel e i vecchi formati binari Office non sono supportati.", "Ambito supportato", "Sistema",
+  "Testo", "La strategia predefinita per i nuovi file.", "Il motore Rust locale scansiona e pulisce i file senza API di caricamento o elaborazione cloud. Il controllo aggiornamenti interroga solo GitHub Releases.", "Spazio insolito", "Aggiornamento disponibile",
+  "Usa questo strumento per la privacy e l’igiene dei file, non per frodi, falsa provenienza o contenuti non autorizzati.", "Video", "Dati utente e posizione video", "In attesa di scansione", "Se disattivato, MetaClean resta completamente offline finché non esegui un controllo manuale.",
+  "Se disattivato, i file di output usano l’ora della pulizia.", "Menu contestuale di Windows", "Elaborazione…", "file", "proprietà e XMP", "riusciti",
+  "Attivo per i tipi di file supportati. In Windows 11 usa «Mostra altre opzioni».", "Attiva il comando di Esplora file per i tipi supportati. In Windows 11 si trova in «Mostra altre opzioni».", "L’integrazione del menu contestuale è disponibile solo in Windows.", "Navigazione principale",
+] as const;
+
+const NL = [
+  "Maximaal 256 MiB per bestand", "Voeg bestanden toe om hier de scanstatus te zien", "Alle verwerking gebeurt lokaal. ", "Weergave", "Atomaire uitvoer via tijdelijk bestand",
+  "Audio", "Audiometagegevens", "Audiotags en hoesafbeeldingen", "Auteur-/generator-/AI-metagegevens", "De browsermodus heeft geen toegang tot volledige paden. Kies bestanden in de desktop-app.",
+  "Wijzigingen worden direct toegepast.", "Automatisch controleren na starten", "Nu controleren", "Verkenner-integratie controleren…", "Nieuwste stabiele GitHub-versie controleren…",
+  "Controleert alleen GitHub Releases; er worden geen bestanden of gebruiksgegevens verzonden.", "Bestanden kiezen", "Map kiezen", "Bestanden opschonen", "Opgeschoond",
+  "Wissen", "Geschiedenis wissen", "Voltooide opschoontaken verschijnen hier.", "Bevestigen en opschonen", "Maak .bak en vervang daarna het origineel atomair",
+  "Maakt een back-up vóór het opschonen", "Donker", "Standaard uitvoermodus", "Uitschakelen", "Documentauteurs en revisies",
+  "Downloaden", "Sleep bestanden hierheen om op te schonen", "Inschakelen", "Behoudsopties", "Privacyreiniger voor bestanden",
+  "Bestandswachtrij", "Bestanden verlaten dit apparaat nooit", "Bestanden blijven lokaal", "Volg het systeem of gebruik altijd een licht of donker thema.", "Indeling wordt tijdens de scan gecontroleerd",
+  "Geschiedenis", "Geschiedenis blijft op dit apparaat en bewaart nooit bestandsinhoud.", "Afbeeldingsmetagegevens", "Afbeeldingen", "Onzichtbare Unicode",
+  "Metagegevens in JPEG, PNG, WebP en GIF; audiotags in MP3, WAV en FLAC; gebruikersgegevens, XMP en locatie in MP4, MOV, M4V en M4A; eigenschappen/opmerkingen in DOCX, XLSX, PPTX en ODT; PDF-eigenschappen en XMP; onzichtbare Unicode en generatormetagegevens in TXT, Markdown, HTML en SVG.",
+  "Behoud alleen informatie die nodig is voor weergave en bestandsbeheer, nooit GPS-, auteur- of herkomstmetagegevens.", "Behoud het origineel en maak een .cleaned-kopie", "Taal", "Licht", "Alleen lokaal",
+  "MetaClean heeft duidelijke, verifieerbare verwerkingsgrenzen.", "MetaClean uploadt, bewaart of analyseert nooit de inhoud van je bestanden.", "MetaClean · Lokale privacytool voor bestanden", "Nog geen geschiedenis", "Geen privétraces gevonden",
+  "Geen traces om op te schonen", "Office-privacytrace", "Alleen vermelde traces worden verwijderd.", "Uitvoermodus", "PDF-eigenschappen / XMP",
+  "JPEG-weergaverichting behouden", "Toegangs- en wijzigingstijden behouden", "Bestandstijdstempels behouden", "Fotorichting behouden", "Privacy",
+  "Alleen bevoegde inhoud verwerken", "Herkomstmarkering", "Bouwt een minimaal EXIF-segment met alleen de richting; alle andere EXIF-/GPS-gegevens worden verwijderd.", "Aanbevolen; behoudt het origineel", "Weigert schrijven naar symbolische koppelingen",
+  "Verwijder privétraces vóór het delen", "Origineel vervangen", "Vervangen met back-up", "Vervangen maakt altijd een back-up", "Veilige kopie",
+  "Veiligheidsgaranties", "Opslaan als veilige kopie", "Scannen vóór opschonen", "Privétraces scannen", "Scan eerst privétraces en bevestig daarna het opschonen",
+  "Scannen is alleen-lezen en verandert niets.", "Scannen is alleen-lezen. Bestanden veranderen pas na expliciete bevestiging.", "Scannen…", "Scant op", "Instellingen",
+  "Instellingen worden lokaal opgeslagen.", "Software-updates", "Statistische tekstwatermerken, watermerken in pixels en oude binaire Office-indelingen worden niet ondersteund.", "Ondersteund bereik", "Systeem",
+  "Tekst", "De standaardstrategie voor nieuw toegevoegde bestanden.", "De lokale Rust-engine scant en schoont bestanden op zonder upload-API of cloudverwerking. Updatecontroles raadplegen alleen GitHub Releases.", "Ongebruikelijke witruimte", "Update beschikbaar",
+  "Gebruik dit hulpmiddel voor privacy en bestandshygiëne, niet voor fraude, valse herkomst of onbevoegde inhoud.", "Video", "Videogebruikersgegevens en locatie", "Wacht op scan", "Wanneer uitgeschakeld blijft MetaClean volledig offline totdat je handmatig controleert.",
+  "Wanneer uitgeschakeld gebruiken uitvoerbestanden het tijdstip van opschonen.", "Windows-contextmenu", "Bezig…", "bestand(en)", "eigenschappen en XMP", "geslaagd",
+  "Ingeschakeld voor ondersteunde bestandstypen. Gebruik in Windows 11 ‘Meer opties weergeven’.", "Schakel de Verkenner-opdracht in voor ondersteunde typen. In Windows 11 staat deze onder ‘Meer opties weergeven’.", "Contextmenu-integratie is alleen beschikbaar in Windows.", "Hoofdnavigatie",
+] as const;
+
+const PT = [
+  "Máximo de 256 MiB por ficheiro", "Adicione ficheiros para ver aqui o estado da análise", "Todo o processamento ocorre localmente. ", "Aspeto", "Saída atómica através de ficheiro temporário",
+  "Áudio", "Metadados de áudio", "Etiquetas e capas de áudio", "Metadados de autor / gerador / IA", "O modo de navegador não consegue obter caminhos completos. Escolha os ficheiros na aplicação de ambiente de trabalho.",
+  "As alterações são aplicadas imediatamente.", "Procurar automaticamente após iniciar", "Procurar agora", "A verificar a integração com o Explorador…", "A procurar a versão estável mais recente no GitHub…",
+  "Consulta apenas o GitHub Releases; não são enviados ficheiros nem dados de utilização.", "Escolher ficheiros", "Escolher pasta", "Limpar ficheiros", "Limpo",
+  "Limpar", "Limpar histórico", "As limpezas concluídas aparecerão aqui.", "Confirmar e limpar", "Criar .bak e depois substituir atomicamente o original",
+  "Cria uma cópia de segurança antes de limpar", "Escuro", "Modo de saída predefinido", "Desativar", "Autores e revisões do documento",
+  "Transferir", "Largue os ficheiros a limpar", "Ativar", "Opções de fidelidade", "Limpador de privacidade de ficheiros",
+  "Fila de ficheiros", "Os ficheiros nunca saem deste dispositivo", "Os ficheiros permanecem localmente", "Seguir o sistema ou manter um tema claro ou escuro.", "O formato será verificado durante a análise",
+  "Histórico", "O histórico permanece neste dispositivo e nunca guarda o conteúdo dos ficheiros.", "Metadados de imagem", "Imagens", "Unicode invisível",
+  "Metadados JPEG, PNG, WebP e GIF; etiquetas de áudio MP3, WAV e FLAC; dados de utilizador, XMP e localização MP4, MOV, M4V e M4A; propriedades/comentários DOCX, XLSX, PPTX e ODT; propriedades PDF e XMP; Unicode invisível e metadados do gerador em TXT, Markdown, HTML e SVG.",
+  "Manter apenas as informações necessárias à apresentação e gestão de ficheiros, nunca metadados GPS, de autor ou de proveniência.", "Manter o original e criar uma cópia .cleaned", "Idioma", "Claro", "Apenas local",
+  "O MetaClean tem limites de processamento claros e verificáveis.", "O MetaClean nunca carrega, guarda nem analisa o conteúdo dos seus ficheiros.", "MetaClean · Ferramenta local de privacidade de ficheiros", "Ainda sem histórico", "Não foram encontrados vestígios privados",
+  "Não há vestígios a limpar", "Vestígio privado do Office", "Apenas serão removidos os vestígios indicados.", "Modo de saída", "Propriedades PDF / XMP",
+  "Manter a orientação de apresentação JPEG", "Manter as horas de acesso e modificação", "Manter os carimbos de data/hora do ficheiro", "Manter a orientação da fotografia", "Privacidade",
+  "Processar conteúdo autorizado", "Marcador de proveniência", "Reconstrói um segmento EXIF mínimo apenas com orientação; todos os outros dados EXIF/GPS são removidos.", "Recomendado; mantém o original", "Recusa escritas em ligações simbólicas",
+  "Remova vestígios privados antes de partilhar", "Substituir original", "Substituir com cópia de segurança", "A substituição cria sempre uma cópia de segurança", "Cópia segura",
+  "Garantias de segurança", "Guardar uma cópia segura", "Analisar antes de limpar", "Analisar vestígios privados", "Analisar primeiro os vestígios privados e depois confirmar a limpeza",
+  "A análise é só de leitura e não altera nada.", "A análise é só de leitura. Os ficheiros só mudam após confirmação explícita.", "A analisar…", "Procura", "Definições",
+  "As definições são guardadas localmente.", "Atualizações de software", "As marcas de água estatísticas em texto, as marcas de água em píxeis e os formatos binários Office antigos não são suportados.", "Âmbito suportado", "Sistema",
+  "Texto", "A estratégia predefinida para ficheiros recém-adicionados.", "O motor Rust local analisa e limpa ficheiros sem API de carregamento nem processamento na nuvem. As verificações de atualização consultam apenas o GitHub Releases.", "Espaço invulgar", "Atualização disponível",
+  "Utilize esta ferramenta para privacidade e higiene de ficheiros, não para fraude, proveniência falsa ou conteúdo não autorizado.", "Vídeo", "Dados de utilizador e localização do vídeo", "A aguardar análise", "Quando desativado, o MetaClean permanece totalmente offline até procurar manualmente.",
+  "Quando desativado, os ficheiros de saída utilizam a hora da limpeza.", "Menu de contexto do Windows", "A processar…", "ficheiro(s)", "propriedades e XMP", "com êxito",
+  "Ativado para tipos de ficheiro suportados. No Windows 11, utilize «Mostrar mais opções».", "Ativa o comando do Explorador para tipos suportados. No Windows 11 aparece em «Mostrar mais opções».", "A integração do menu de contexto está disponível apenas no Windows.", "Navegação principal",
+] as const;
+
 function makeCatalog(values: readonly string[]): ReadonlyMap<string, string> {
   if (values.length !== SOURCE_STRINGS.length) {
     throw new Error(`Locale has ${values.length} strings; expected ${SOURCE_STRINGS.length}`);
@@ -292,12 +374,31 @@ const CATALOGS: Partial<Record<Locale, ReadonlyMap<string, string>>> = {
   de: makeCatalog(DE),
   es: makeCatalog(ES),
   fr: makeCatalog(FR),
+  it: makeCatalog(IT),
   "zh-TW": makeCatalog(ZH_TW),
   ja: makeCatalog(JA),
   ko: makeCatalog(KO),
+  nl: makeCatalog(NL),
+  pt: makeCatalog(PT),
+  "pt-BR": makeCatalog(PT),
 };
 
 type DynamicRule = readonly [RegExp, (match: RegExpExecArray) => string];
+
+const PT_DYNAMIC_RULES: readonly DynamicRule[] = [
+  [/^Added (\d+) file\(s\); skipped (\d+)\.(.*)$/u, (m) => `${m[1]} ficheiro(s) adicionado(s); ${m[2]} ignorado(s).${m[3]}`],
+  [/^Could not expand the selected paths: (.*)$/u, (m) => `Não foi possível expandir os caminhos selecionados: ${m[1]}`],
+  [/^Scan complete: (\d+) trace\(s\) await confirmation\.$/u, (m) => `Análise concluída: ${m[1]} vestígio(s) aguardam confirmação.`],
+  [/^Scan failed: (.*)$/u, (m) => `Falha na análise: ${m[1]}`],
+  [/^(\d+) file\(s\) cleaned(?:; (\d+) failed)?\.(?: Output: (.*))?$/u, (m) => `${m[1]} ficheiro(s) limpo(s)${m[2] ? `; ${m[2]} falharam` : ""}.${m[3] ? ` Saída: ${m[3]}` : ""}`],
+  [/^Cleanup failed: (.*)$/u, (m) => `Falha na limpeza: ${m[1]}`],
+  [/^Version (.*) is available$/u, (m) => `A versão ${m[1]} está disponível`],
+  [/^(\d+) trace\(s\) found$/u, (m) => `${m[1]} vestígio(s) encontrado(s)`],
+  [/^Remove (.*)$/u, (m) => `Remover ${m[1]}`],
+  [/^Version (.*) is installed; (.*) is available\.$/u, (m) => `A versão ${m[1]} está instalada; ${m[2]} está disponível.`],
+  [/^Version (.*) is up to date\.$/u, (m) => `A versão ${m[1]} está atualizada.`],
+  [/^Update check failed: (.*)$/u, (m) => `Falha ao procurar atualizações: ${m[1]}`],
+];
 
 const DYNAMIC_RULES: Partial<Record<Locale, readonly DynamicRule[]>> = {
   de: [
@@ -342,6 +443,20 @@ const DYNAMIC_RULES: Partial<Record<Locale, readonly DynamicRule[]>> = {
     [/^Version (.*) is up to date\.$/u, (m) => `La version ${m[1]} est à jour.`],
     [/^Update check failed: (.*)$/u, (m) => `Échec de la recherche de mise à jour : ${m[1]}`],
   ],
+  it: [
+    [/^Added (\d+) file\(s\); skipped (\d+)\.(.*)$/u, (m) => `${m[1]} file aggiunti; ${m[2]} ignorati.${m[3]}`],
+    [/^Could not expand the selected paths: (.*)$/u, (m) => `Impossibile espandere i percorsi selezionati: ${m[1]}`],
+    [/^Scan complete: (\d+) trace\(s\) await confirmation\.$/u, (m) => `Scansione completata: ${m[1]} tracce attendono conferma.`],
+    [/^Scan failed: (.*)$/u, (m) => `Scansione non riuscita: ${m[1]}`],
+    [/^(\d+) file\(s\) cleaned(?:; (\d+) failed)?\.(?: Output: (.*))?$/u, (m) => `${m[1]} file puliti${m[2] ? `; ${m[2]} non riusciti` : ""}.${m[3] ? ` Output: ${m[3]}` : ""}`],
+    [/^Cleanup failed: (.*)$/u, (m) => `Pulizia non riuscita: ${m[1]}`],
+    [/^Version (.*) is available$/u, (m) => `È disponibile la versione ${m[1]}`],
+    [/^(\d+) trace\(s\) found$/u, (m) => `${m[1]} tracce trovate`],
+    [/^Remove (.*)$/u, (m) => `Rimuovi ${m[1]}`],
+    [/^Version (.*) is installed; (.*) is available\.$/u, (m) => `È installata la versione ${m[1]}; è disponibile la ${m[2]}.`],
+    [/^Version (.*) is up to date\.$/u, (m) => `La versione ${m[1]} è aggiornata.`],
+    [/^Update check failed: (.*)$/u, (m) => `Controllo aggiornamenti non riuscito: ${m[1]}`],
+  ],
   "zh-TW": [
     [/^Added (\d+) file\(s\); skipped (\d+)\.(.*)$/u, (m) => `已新增 ${m[1]} 個檔案，跳過 ${m[2]} 項。${m[3]}`],
     [/^Could not expand the selected paths: (.*)$/u, (m) => `無法展開所選路徑：${m[1]}`],
@@ -384,6 +499,22 @@ const DYNAMIC_RULES: Partial<Record<Locale, readonly DynamicRule[]>> = {
     [/^Version (.*) is up to date\.$/u, (m) => `버전 ${m[1]}이 최신입니다.`],
     [/^Update check failed: (.*)$/u, (m) => `업데이트 확인 실패: ${m[1]}`],
   ],
+  nl: [
+    [/^Added (\d+) file\(s\); skipped (\d+)\.(.*)$/u, (m) => `${m[1]} bestand(en) toegevoegd; ${m[2]} overgeslagen.${m[3]}`],
+    [/^Could not expand the selected paths: (.*)$/u, (m) => `Geselecteerde paden konden niet worden uitgebreid: ${m[1]}`],
+    [/^Scan complete: (\d+) trace\(s\) await confirmation\.$/u, (m) => `Scan voltooid: ${m[1]} trace(s) wachten op bevestiging.`],
+    [/^Scan failed: (.*)$/u, (m) => `Scan mislukt: ${m[1]}`],
+    [/^(\d+) file\(s\) cleaned(?:; (\d+) failed)?\.(?: Output: (.*))?$/u, (m) => `${m[1]} bestand(en) opgeschoond${m[2] ? `; ${m[2]} mislukt` : ""}.${m[3] ? ` Uitvoer: ${m[3]}` : ""}`],
+    [/^Cleanup failed: (.*)$/u, (m) => `Opschonen mislukt: ${m[1]}`],
+    [/^Version (.*) is available$/u, (m) => `Versie ${m[1]} is beschikbaar`],
+    [/^(\d+) trace\(s\) found$/u, (m) => `${m[1]} trace(s) gevonden`],
+    [/^Remove (.*)$/u, (m) => `${m[1]} verwijderen`],
+    [/^Version (.*) is installed; (.*) is available\.$/u, (m) => `Versie ${m[1]} is geïnstalleerd; ${m[2]} is beschikbaar.`],
+    [/^Version (.*) is up to date\.$/u, (m) => `Versie ${m[1]} is actueel.`],
+    [/^Update check failed: (.*)$/u, (m) => `Updatecontrole mislukt: ${m[1]}`],
+  ],
+  pt: PT_DYNAMIC_RULES,
+  "pt-BR": PT_DYNAMIC_RULES,
 };
 
 export function isLocale(value: string | null): value is Locale {
@@ -393,6 +524,7 @@ export function isLocale(value: string | null): value is Locale {
 export function initialLocale(stored: string | null, browserLanguage: string | undefined): Locale {
   if (isLocale(stored)) return stored;
   const normalized = browserLanguage?.toLowerCase() ?? "";
+  if (normalized.startsWith("pt-br")) return "pt-BR";
   if (normalized.startsWith("zh-tw") || normalized.startsWith("zh-hk") || normalized.startsWith("zh-mo") || normalized.startsWith("zh-hant")) return "zh-TW";
   const language = normalized.split("-")[0];
   return isLocale(language) ? language : "en";
