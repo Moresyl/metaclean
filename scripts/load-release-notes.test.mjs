@@ -20,6 +20,7 @@ test("rejects missing sections, generic bodies and invalid tags", () => {
 test("release workflow consumes validated notes and finalizes checksums", async () => {
   const workflow = await readFile(new URL("../.github/workflows/release.yml", import.meta.url), "utf8");
   const ciWorkflow = await readFile(new URL("../.github/workflows/ci.yml", import.meta.url), "utf8");
+  const linuxSmoke = await readFile(new URL("./smoke-linux-deb.sh", import.meta.url), "utf8");
   assert.doesNotMatch(workflow, /releaseBody:/u);
   assert.match(workflow, /^  finalize:/mu);
   assert.match(workflow, /generate-checksums\.mjs/u);
@@ -37,6 +38,8 @@ test("release workflow consumes validated notes and finalizes checksums", async 
     assert.match(setup, /actions\/cache@v5/u);
   }
   assert.match(workflow, /rustup target add \$\{\{ matrix\.target \}\}/u);
+  assert.match(linuxSmoke, /deb_file="\$\(realpath /u);
+  assert.match(linuxSmoke, /apt-get install -y "\$deb_file"/u);
   assert.doesNotMatch(workflow, /\$RUNNER_TEMP/u);
   assert.equal((workflow.match(/ref: \$\{\{ env\.RELEASE_TAG \}\}/gu) ?? []).length, 2);
 });

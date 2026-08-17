@@ -8,13 +8,14 @@ if [[ ${#deb_files[@]} -ne 1 || ! -f "${deb_files[0]}" ]]; then
   exit 1
 fi
 
-package_name="$(dpkg-deb --field "${deb_files[0]}" Package)"
+deb_file="$(realpath "${deb_files[0]}")"
+package_name="$(dpkg-deb --field "$deb_file" Package)"
 cleanup() {
   sudo apt-get remove -y "$package_name" >/dev/null 2>&1 || true
 }
 trap cleanup EXIT
 
-sudo apt-get install -y "${deb_files[0]}"
+sudo apt-get install -y "$deb_file"
 binary="$(dpkg -L "$package_name" | awk '/\/usr\/bin\// { print; exit }')"
 if [[ -z "$binary" || ! -x "$binary" ]]; then
   echo "Installed DEB does not expose an executable under /usr/bin" >&2
