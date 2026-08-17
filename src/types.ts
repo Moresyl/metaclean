@@ -8,6 +8,7 @@ export interface FileEntry {
   kind: "image" | "audio" | "video" | "document" | "pdf" | "text" | "unknown";
   status: "ready" | "scanning" | "scanned" | "clean" | "error";
   report?: ScanReport;
+  result?: CleanResult;
 }
 
 export interface Finding {
@@ -31,6 +32,8 @@ export interface CleanResult {
   sourcePath: string;
   outputPath?: string;
   backupPath?: string;
+  sourceSize?: number;
+  outputSize?: number;
   removed: Finding[];
   success: boolean;
   error?: string;

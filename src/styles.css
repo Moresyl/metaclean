@@ -69,7 +69,7 @@ button:focus-visible { outline: 2px solid var(--green); outline-offset: 2px; }
 .topbar h1 { margin: 0; font-size: 17px; letter-spacing: -.02em; }
 .topbar p { margin: 4px 0 0; font-size: 11px; color: var(--muted); }
 .update-badge { border: 1px solid var(--border); background: var(--green-soft); color: var(--green-dark); border-radius: 999px; padding: 7px 11px; display: flex; align-items: center; gap: 6px; font-size: 10px; font-weight: 700; cursor: pointer; }
-.window-actions button, .queue-card header button, .file-row > button { border: 0; background: transparent; color: var(--muted); cursor: pointer; }
+.window-actions button, .queue-card header button, .file-actions button { border: 0; background: transparent; color: var(--muted); cursor: pointer; }
 .content-grid { display: grid; grid-template-columns: minmax(420px, 1fr) 260px; align-items: start; gap: 18px; max-width: 1050px; margin: 0 auto; padding: 24px 28px 40px; }
 .main-column { display: grid; gap: 14px; min-width: 0; }
 .notice { border: 1px solid var(--border); background: var(--green-soft); color: var(--green-dark); border-radius: 8px; min-height: 42px; padding: 10px 13px; display: flex; align-items: center; gap: 9px; font-size: 11px; }
@@ -92,14 +92,23 @@ button:focus-visible { outline: 2px solid var(--green); outline-offset: 2px; }
 .queue-card header span { color: var(--muted); font-size: 10px; }
 .queue-card header button { display: flex; gap: 5px; align-items: center; font-size: 10px; }
 .queue-card header button:disabled { opacity: .35; cursor: default; }
+.queue-tools { display: flex; align-items: center; gap: 6px; }
+.queue-tools select { border: 1px solid var(--border); border-radius: 5px; background: var(--surface); color: var(--muted); padding: 4px 22px 4px 6px; font-size: 9px; cursor: pointer; }
+.queue-tools select:focus-visible { outline: 2px solid var(--green); outline-offset: 2px; }
+.queue-tools .sort-direction { width: 22px; justify-content: center; font-size: 13px; }
+.visually-hidden { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 .empty-queue { min-height: 92px; display: flex; align-items: center; justify-content: center; gap: 9px; color: var(--muted); font-size: 10px; }
 .file-list { max-height: 190px; overflow: auto; }
-.file-row { display: grid; grid-template-columns: 30px minmax(0,1fr) 28px; align-items: center; gap: 8px; padding: 10px 12px; border-bottom: 1px solid var(--border-soft); }
+.file-row { display: grid; grid-template-columns: 30px minmax(0,1fr) auto; align-items: center; gap: 8px; padding: 10px 12px; border-bottom: 1px solid var(--border-soft); }
 .file-row:last-child { border-bottom: 0; }
 .file-kind { width: 30px; height: 30px; display: grid; place-items: center; border-radius: 6px; color: var(--green); background: var(--green-soft); }
 .file-name { min-width: 0; }
 .file-name strong, .file-name span { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .file-name strong { font-size: 11px; }.file-name span { color: var(--muted); font-size: 9px; margin-top: 2px; }
+.file-name .file-size-delta { color: var(--green-dark); font-variant-numeric: tabular-nums; }
+.file-actions { display: flex; align-items: center; gap: 2px; }
+.file-actions button { width: 28px; height: 28px; display: grid; place-items: center; border-radius: 5px; }
+.file-actions button:hover { color: var(--green-dark); background: var(--green-soft); }
 .file-row.clean .file-kind { color: #fff; background: var(--green-action); }
 .file-row.error .file-kind { color: var(--danger); background: var(--danger-soft); }
 .finding-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 5px; }

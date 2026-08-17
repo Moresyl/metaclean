@@ -7,6 +7,9 @@ All notable changes to MetaClean are documented here. The project follows
 
 ### Added
 
+- Stable queue sorting by name, extension, source/output size or actionable
+  finding count, plus per-file before/after size deltas and a scoped native
+  reveal-in-folder action for completed outputs.
 - Per-version validated bilingual release-note files and a final release job
   that publishes one SHA-256 manifest covering every uploaded package. Public
   release creation now waits for installed/copy-launched package smoke tests on

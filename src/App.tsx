@@ -88,13 +88,25 @@ export default function App() {
       const { invoke } = await import("@tauri-apps/api/core");
       const results = await invoke<CleanResult[]>("clean_files", { request: { paths, mode, preserveTimestamps, preserveOrientation, preserveColorProfile } });
       const byPath = new Map(results.map((result) => [result.sourcePath, result]));
-      setEntries((current) => current.map((entry) => ({ ...entry, status: entry.path && byPath.get(entry.path)?.success ? "clean" : "error" })));
+      setEntries((current) => current.map((entry) => {
+        const result = entry.path ? byPath.get(entry.path) : undefined;
+        return result ? { ...entry, status: result.success ? "clean" : "error", result } : entry;
+      }));
       const successes = results.filter((result) => result.success);
       const failures = results.length - successes.length;
       setMessage(text(`${successes.length} 个文件清理完成${failures ? `，${failures} 个失败` : ""}。${successes[0]?.outputPath ? ` 输出：${successes[0].outputPath}` : ""}`, `${successes.length} file(s) cleaned${failures ? `; ${failures} failed` : ""}.${successes[0]?.outputPath ? ` Output: ${successes[0].outputPath}` : ""}`));
       saveHistory([{ id: crypto.randomUUID(), createdAt: new Date().toISOString(), mode, results }, ...history]);
     } catch (error) { setMessage(text(`清理失败：${String(error)}`, `Cleanup failed: ${String(error)}`)); }
     finally { setBusy(false); }
+  }
+
+  async function reveal(path: string) {
+    try {
+      const { revealItemInDir } = await import("@tauri-apps/plugin-opener");
+      await revealItemInDir(path);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : String(error));
+    }
   }
 
   return (
@@ -107,7 +119,7 @@ export default function App() {
             <div className="notice"><Sparkles size={15} /><span><strong>{text("所有处理均在本机完成。", "All processing happens locally. ")}</strong>{text("MetaClean 不上传、不保存、也不分析你的文件内容。", "MetaClean never uploads, stores, or analyzes your file content.")}</span></div>
             {message ? <div className="result-message" role="status">{message}</div> : null}
             <DropZone onAdd={addEntries} onAddNativePaths={addNativePaths} />
-            <FileQueue entries={entries} preserveColorProfile={preserveColorProfile} onClear={() => setEntries([])} onRemove={(id) => setEntries((current) => current.filter((entry) => entry.id !== id))} />
+            <FileQueue entries={entries} preserveColorProfile={preserveColorProfile} onClear={() => setEntries([])} onRemove={(id) => setEntries((current) => current.filter((entry) => entry.id !== id))} onReveal={(path) => void reveal(path)} />
           </div>
           <CleanOptions mode={mode} onModeChange={setMode} preserveTimestamps={preserveTimestamps} onPreserveTimestampsChange={setPreserveTimestamps} preserveOrientation={preserveOrientation} onPreserveOrientationChange={setPreserveOrientation} preserveColorProfile={preserveColorProfile} onPreserveColorProfileChange={setPreserveColorProfile} disabled={!entries.length} scanned={scanned} hasFindings={cleanableEntries.length > 0} busy={busy} onAction={() => void (scanned ? clean() : scan())} />
         </div> : page === "history" ? <HistoryPage entries={history} onClear={() => saveHistory([])} /> : page === "privacy" ? <PrivacyPage /> : <SettingsPage mode={mode} onModeChange={setMode} preserveTimestamps={preserveTimestamps} onPreserveTimestampsChange={setPreserveTimestamps} preserveOrientation={preserveOrientation} onPreserveOrientationChange={setPreserveOrientation} preserveColorProfile={preserveColorProfile} onPreserveColorProfileChange={setPreserveColorProfile} />}

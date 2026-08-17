@@ -65,7 +65,7 @@ describe("desktop components", () => {
       { id: "1", name: "photo.jpg", path: "photo.jpg", kind: "image", status: "scanned", report: { path: "photo.jpg", name: "photo.jpg", format: "JPEG", size: 1, supported: true, findings: [{ category: "image_metadata", label: "metadata", count: 2, severity: "privacy" }] } },
       { id: "2", name: "bad.pdf", path: "bad.pdf", kind: "pdf", status: "error", report: { path: "bad.pdf", name: "bad.pdf", format: "PDF", size: 1, supported: false, findings: [], error: "格式损坏" } },
     ];
-    wrap(<FileQueue entries={entries} preserveColorProfile onRemove={onRemove} onClear={vi.fn()} />);
+    wrap(<FileQueue entries={entries} preserveColorProfile onRemove={onRemove} onClear={vi.fn()} onReveal={vi.fn()} />);
     expect(screen.getByText("发现 2 项痕迹")).toBeInTheDocument();
     expect(screen.getByText("图片元数据 · 2")).toBeInTheDocument();
     expect(screen.getByText("格式损坏")).toBeInTheDocument();
@@ -74,19 +74,39 @@ describe("desktop components", () => {
   });
 
   it("renders empty and every queue lifecycle status", () => {
-    const { rerender } = wrap(<FileQueue entries={[]} preserveColorProfile onRemove={vi.fn()} onClear={vi.fn()} />);
+    const { rerender } = wrap(<FileQueue entries={[]} preserveColorProfile onRemove={vi.fn()} onClear={vi.fn()} onReveal={vi.fn()} />);
     expect(screen.getByText("添加文件后，将在这里展示扫描状态")).toBeInTheDocument();
     const entries: FileEntry[] = [
       { id: "1", name: "scan.txt", kind: "text", status: "scanning" },
       { id: "2", name: "clean.txt", kind: "text", status: "clean" },
       { id: "3", name: "safe.txt", kind: "text", status: "scanned", report: { path: "safe.txt", name: "safe.txt", format: "Text", size: 1, supported: true, findings: [] } },
       { id: "4", name: "mystery.bin", kind: "unknown", status: "ready" },
+      { id: "5", name: "failed.txt", kind: "text", status: "error", result: { sourcePath: "failed.txt", removed: [], success: false, error: "写入失败" } },
     ];
-    rerender(<I18nProvider><FileQueue entries={entries} preserveColorProfile onRemove={vi.fn()} onClear={vi.fn()} /></I18nProvider>);
+    rerender(<I18nProvider><FileQueue entries={entries} preserveColorProfile onRemove={vi.fn()} onClear={vi.fn()} onReveal={vi.fn()} /></I18nProvider>);
     expect(screen.getByText("正在扫描…")).toBeInTheDocument();
     expect(screen.getByText("清理完成")).toBeInTheDocument();
     expect(screen.getByText("未发现隐私痕迹")).toBeInTheDocument();
     expect(screen.getByText("格式将在扫描时确认")).toBeInTheDocument();
+    expect(screen.getByText("写入失败")).toBeInTheDocument();
+  });
+
+  it("sorts the queue stably and reveals cleaned output with its size delta", () => {
+    const onReveal = vi.fn();
+    const entries: FileEntry[] = [
+      { id: "1", name: "zeta.txt", kind: "text", status: "scanned", report: { path: "zeta.txt", name: "zeta.txt", format: "Text", size: 2048, supported: true, findings: [] } },
+      { id: "2", name: "alpha.jpg", kind: "image", status: "clean", result: { sourcePath: "alpha.jpg", outputPath: "alpha.cleaned.jpg", sourceSize: 2048, outputSize: 1024, removed: [], success: true } },
+      { id: "3", name: "beta.txt", kind: "text", status: "scanned", report: { path: "beta.txt", name: "beta.txt", format: "Text", size: 2048, supported: true, findings: [] } },
+    ];
+    const { container } = wrap(<FileQueue entries={entries} preserveColorProfile onRemove={vi.fn()} onClear={vi.fn()} onReveal={onReveal} />);
+    expect([...container.querySelectorAll(".file-name strong")].map((element) => element.textContent)).toEqual(["alpha.jpg", "beta.txt", "zeta.txt"]);
+    expect(screen.getByText("2.0 KB → 1.0 KB (−1.0 KB)")).toBeInTheDocument();
+    fireEvent.change(screen.getByRole("combobox", { name: "待处理文件" }), { target: { value: "type" } });
+    expect([...container.querySelectorAll(".file-name strong")].map((element) => element.textContent)).toEqual(["alpha.jpg", "zeta.txt", "beta.txt"]);
+    fireEvent.click(screen.getByRole("button", { name: "待处理文件 ↑" }));
+    expect([...container.querySelectorAll(".file-name strong")].map((element) => element.textContent)).toEqual(["zeta.txt", "beta.txt", "alpha.jpg"]);
+    fireEvent.click(screen.getByRole("button", { name: "alpha.cleaned.jpg" }));
+    expect(onReveal).toHaveBeenCalledWith("alpha.cleaned.jpg");
   });
 
   it("switches cleanup mode and exposes every action state", () => {

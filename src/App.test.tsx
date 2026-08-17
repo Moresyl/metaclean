@@ -7,13 +7,17 @@ import { ThemeProvider } from "./contexts/ThemeContext";
 
 vi.mock("@tauri-apps/api/webview", () => ({ getCurrentWebview: () => ({ onDragDropEvent: () => Promise.resolve(() => undefined) }) }));
 const invokeMock = vi.hoisted(() => vi.fn());
+const revealMock = vi.hoisted(() => vi.fn());
 vi.mock("@tauri-apps/api/core", () => ({ invoke: invokeMock }));
+vi.mock("@tauri-apps/plugin-opener", () => ({ revealItemInDir: revealMock }));
 
 describe("App", () => {
   const renderApp = () => render(<ThemeProvider initialMode="light"><I18nProvider><UpdateProvider><App /></UpdateProvider></I18nProvider></ThemeProvider>);
   beforeEach(() => {
     localStorage.clear();
     localStorage.setItem("metaclean.locale", "zh");
+    revealMock.mockReset();
+    revealMock.mockResolvedValue(undefined);
     invokeMock.mockImplementation((command?: string) => command === "get_launch_paths" || command === undefined ? Promise.resolve([]) : command === "expand_paths" ? Promise.resolve({ files: [], skippedCount: 0, issues: [], limitReached: false }) : Promise.reject(new Error(`unexpected ${command}`)));
   });
   it("starts with scanning disabled", () => {
@@ -61,7 +65,7 @@ describe("App", () => {
       if (command === "get_launch_paths") return Promise.resolve(["C:\\work\\notes.txt"]);
       if (command === "expand_paths") return Promise.resolve({ files: ["C:\\work\\notes.txt"], skippedCount: 0, issues: [], limitReached: false });
       if (command === "scan_files") return Promise.resolve([{ path: "C:\\work\\notes.txt", name: "notes.txt", format: "Text", size: 4, supported: true, findings: [{ category: "unicode", label: "Invisible Unicode", count: 1, severity: "privacy" }] }]);
-      if (command === "clean_files") return Promise.resolve([{ sourcePath: "C:\\work\\notes.txt", outputPath: "C:\\work\\notes.cleaned.txt", removed: [], success: true }]);
+      if (command === "clean_files") return Promise.resolve([{ sourcePath: "C:\\work\\notes.txt", outputPath: "C:\\work\\notes.cleaned.txt", sourceSize: 4, outputSize: 3, removed: [], success: true }]);
       if (command === undefined) return Promise.resolve([]);
       return Promise.reject(new Error(`unexpected ${command}`));
     });
@@ -73,6 +77,11 @@ describe("App", () => {
     await screen.findByText(/1 个文件清理完成/);
     expect(invokeMock).toHaveBeenCalledWith("clean_files", { request: expect.objectContaining({ preserveColorProfile: true }) });
     expect(JSON.parse(localStorage.getItem("metaclean.history") ?? "[]")).toHaveLength(1);
+    fireEvent.click(screen.getByRole("button", { name: "C:\\work\\notes.cleaned.txt" }));
+    await waitFor(() => expect(revealMock).toHaveBeenCalledWith("C:\\work\\notes.cleaned.txt"));
+    revealMock.mockRejectedValueOnce(new Error("无法打开文件夹"));
+    fireEvent.click(screen.getByRole("button", { name: "C:\\work\\notes.cleaned.txt" }));
+    await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("无法打开文件夹"));
   });
 
   it("persists ICC preservation and treats profiles as actionable only when removal is selected", async () => {

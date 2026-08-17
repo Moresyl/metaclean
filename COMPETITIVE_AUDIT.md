@@ -24,7 +24,7 @@ implementation and tests.
 | Audio privacy | No audio extension in the actual application whitelist | MP3/WAV/FLAC tag, artwork, XMP and broadcast metadata cleaning | Exceeds |
 | Text/AI traces | Not a primary capability | Invisible Unicode, private-use characters, front matter, HTML/SVG generator and AI attributes | Exceeds |
 | Desktop integration | File/folder picker and drag/drop | Adds Windows Explorer context commands and tray workflow | Exceeds on Windows |
-| Result table ergonomics | Sorts name/type/size/before/after, shows size delta, reveal-in-folder and copyable errors | Per-file status and finding tags plus a persistent history page; no sorting, size delta or reveal action | Gap |
+| Result table ergonomics | Sorts name/type/size/before/after, shows size delta, reveal-in-folder and copyable errors | Stable name/extension/source-size/output-size/finding-count sorting, per-file size delta, reveal-in-folder, explicit failure text and persistent history | Parity; detailed metadata copy remains tracked separately |
 | Native application chrome | Full app menus, keyboard accelerators, window-state restore and macOS dock integration | Tray open/quit and close-to-tray; no full menu/shortcut or geometry restore | Gap |
 | Version discovery | No polling; manual Releases link | Optional startup/manual stable-release discovery with official-link validation | Exceeds |
 | Actual application intake | README lists 90+ ExifTool writer formats, but both drop/folder paths enforce a 30-extension source whitelist; RAF is then refused and MKV has no writable tags | 47 extensions traverse the real application intake, classification, shell integration and tests | Exceeds on actual explicit intake count |
@@ -50,7 +50,9 @@ to 47 extensions without routing unknown binary formats through a generic
 rewrite, exceeding ExifCleaner's 30-extension application whitelist even though
 the latter's README separately enumerates 90+ ExifTool writer formats. Candidate
 bytes are now re-detected and re-inspected before any copy, backup or replacement
-write, and ICC/sRGB preservation is independently configurable.
+write, and ICC/sRGB preservation is independently configurable. The queue now
+matches the baseline's stable sorting, before/after size delta and native
+reveal-in-folder workflow while retaining explicit per-file failure text.
 
 ## Remaining parity backlog
 
@@ -60,12 +62,11 @@ services, release workflow and E2E suite:
 
 1. Add opt-in macOS extended-attribute inspection/removal without deleting unrelated data silently.
 2. Provide expandable local before/after metadata values and a copyable diff.
-3. Add stable queue sorting, source/output size delta and reveal-in-file-manager actions.
-4. Add full desktop menus/keyboard accelerators and persistent window geometry.
-5. Safely implement or continue refusing TIFF, HEIC/HEIF, AVIF, BMP, RAW and AVI/MKV/WMV individually; no count-only aliasing is acceptable.
-6. Add dedicated installed-app accessibility and broader failure-path E2E scenarios.
-7. Execute the next tagged release to prove macOS/Linux packaged-app smoke and final checksum publication; Windows NSIS is already proven locally.
-8. Decide and document Windows portable/32-bit support rather than implying artifact parity.
+3. Add full desktop menus/keyboard accelerators and persistent window geometry.
+4. Safely implement or continue refusing TIFF, HEIC/HEIF, AVIF, BMP, RAW and AVI/MKV/WMV individually; no count-only aliasing is acceptable.
+5. Add dedicated installed-app accessibility and broader failure-path E2E scenarios.
+6. Execute the next tagged release to prove macOS/Linux packaged-app smoke and final checksum publication; Windows NSIS is already proven locally.
+7. Decide and document Windows portable/32-bit support rather than implying artifact parity.
 
 Future work must preserve MetaClean's fail-closed and irreversible-cleaning
 policy instead of accepting formats whose private metadata cannot be removed

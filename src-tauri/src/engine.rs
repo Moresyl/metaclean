@@ -275,6 +275,8 @@ pub fn clean_file_with_options(
         source_path: display_path(source),
         output_path: None,
         backup_path: None,
+        source_size: None,
+        output_size: None,
         removed: Vec::new(),
         success: false,
         error: Some(error),
@@ -330,6 +332,8 @@ pub fn clean_file_with_options(
             source_path: display_path(source),
             output_path: None,
             backup_path: backup.as_deref().map(display_path),
+            source_size: Some(data.len() as u64),
+            output_size: None,
             removed,
             success: false,
             error: Some(error.to_string()),
@@ -339,6 +343,8 @@ pub fn clean_file_with_options(
         source_path: display_path(source),
         output_path: Some(display_path(&output)),
         backup_path: backup.as_deref().map(display_path),
+        source_size: Some(data.len() as u64),
+        output_size: Some(cleaned.len() as u64),
         removed,
         success: true,
         error: None,
@@ -583,6 +589,8 @@ mod tests {
         assert_eq!(report.findings[0].count, 1);
         let result = clean_file_with_options(&source, &OutputMode::Copy, true, true, true);
         assert!(result.success);
+        assert_eq!(result.source_size, Some(5));
+        assert_eq!(result.output_size, Some(2));
         assert_eq!(
             fs::read_to_string(result.output_path.unwrap()).unwrap(),
             "ab"

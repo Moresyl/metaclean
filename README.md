@@ -76,6 +76,7 @@ Grab the latest package from [GitHub Releases](https://github.com/Moresyl/metacl
 - Four panes: **Clean**, **History**, **Privacy**, and **Settings**
 - Optional Windows File Explorer command across all 47 supported extensions — on Windows 11 it lives under **Show more options**
 - Closing the window keeps MetaClean in the system tray; right-click the tray icon to reopen or exit
+- Stable queue sorting by name, extension, source/output size or finding count, with per-file size savings and reveal-in-folder actions for completed outputs
 - Preserves JPEG display orientation, ICC/sRGB color profiles and file timestamps by default, with independent removal controls
 - Finds stable updates through GitHub Releases, with automatic checks independently switchable off
 - Twenty-six complete interface languages spanning Europe, Asia and Arabic RTL; system/light/dark theme, output mode, fidelity options, and local cleanup history persist between sessions

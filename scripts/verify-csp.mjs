@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
 const config = JSON.parse(await readFile(new URL("../src-tauri/tauri.conf.json", import.meta.url), "utf8"));
+const capability = JSON.parse(await readFile(new URL("../src-tauri/capabilities/default.json", import.meta.url), "utf8"));
 const policy = config?.app?.security?.csp;
 
 assert.equal(typeof policy, "string", "production CSP must be an explicit string");
@@ -23,4 +24,15 @@ for (const source of ["'self'", "asset:", "http://asset.localhost", "data:"]) {
 }
 assert.doesNotMatch(policy, /unsafe-eval|\*|https?:\/\/(?!ipc\.localhost|asset\.localhost)/u);
 
-console.log("Verified explicit local-only production CSP.");
+const openerPermissions = capability.permissions.filter((permission) =>
+  typeof permission === "string" ? permission.startsWith("opener:") : permission.identifier?.startsWith("opener:"),
+);
+assert.deepEqual(openerPermissions, [
+  "opener:allow-reveal-item-in-dir",
+  {
+    identifier: "opener:allow-open-url",
+    allow: [{ url: "https://github.com/Moresyl/metaclean/releases/*" }],
+  },
+]);
+
+console.log("Verified explicit local-only production CSP and scoped opener permissions.");

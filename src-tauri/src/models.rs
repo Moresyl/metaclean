@@ -59,6 +59,8 @@ pub struct CleanResult {
     pub source_path: String,
     pub output_path: Option<String>,
     pub backup_path: Option<String>,
+    pub source_size: Option<u64>,
+    pub output_size: Option<u64>,
     pub removed: Vec<Finding>,
     pub success: bool,
     pub error: Option<String>,
