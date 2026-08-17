@@ -36,7 +36,7 @@ implementation and tests.
 | Runtime footprint | Bundles Electron, Perl and ExifTool platform payloads | Native Rust/Tauri cleaners with no ExifTool, Perl or Python runtime | Exceeds |
 | Release artifacts | macOS DMG, Linux AppImage/DEB/RPM, Windows x64/ia32 NSIS plus portable build | macOS Intel/Arm DMG, Linux AppImage/DEB/RPM, Windows x64 NSIS and MSI | Different; portable and Windows 32-bit are gaps, MSI is an addition |
 | Release integrity | Generates `SHASUMS256.txt` and smoke-tests packaged payloads | Nine v0.2.0 assets are published and branch E2E launches real desktop binaries, but no release checksum manifest or installed-release smoke gate exists | Gap |
-| Webview boundary | Hardened Electron navigation/IPC policy and disabled Node attack surfaces | Narrow Tauri command/capability surface and official-link allowlist, but production CSP is currently unset | Gap: add explicit CSP |
+| Webview boundary | Hardened Electron navigation/IPC policy and disabled Node attack surfaces | Narrow Tauri command/capability surface, official-link allowlist and explicit local-only production CSP with a regression gate | Parity with smaller IPC surface |
 | Dependency security | Pinned ExifTool checksums and release gates | No known npm vulnerability, repository-owned hardened archive extractor, cargo audit gate and test-only driver isolation | Exceeds on npm transitive mitigation; release checksums still pending |
 
 ## Release boundary
@@ -65,8 +65,7 @@ services, release workflow and E2E suite:
 5. Safely implement or continue refusing TIFF, HEIC/HEIF, AVIF, BMP, RAW and AVI/MKV/WMV individually; no count-only aliasing is acceptable.
 6. Add dedicated installed-app accessibility and broader failure-path E2E scenarios.
 7. Publish SHA-256 manifests and smoke-test installed release artifacts, not only E2E-featured debug binaries.
-8. Set and test an explicit production Content Security Policy.
-9. Decide and document Windows portable/32-bit support rather than implying artifact parity.
+8. Decide and document Windows portable/32-bit support rather than implying artifact parity.
 
 Future work must preserve MetaClean's fail-closed and irreversible-cleaning
 policy instead of accepting formats whose private metadata cannot be removed

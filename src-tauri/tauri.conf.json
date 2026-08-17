@@ -11,7 +11,9 @@
   },
   "app": {
     "windows": [{ "title": "MetaClean", "width": 1100, "height": 760, "minWidth": 760, "minHeight": 620, "resizable": true }],
-    "security": { "csp": null }
+    "security": {
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' asset: http://asset.localhost data:; connect-src ipc: http://ipc.localhost"
+    }
   },
   "bundle": {
     "active": true,

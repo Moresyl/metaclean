@@ -48,6 +48,9 @@ describe("MetaClean desktop application", () => {
   });
 
   it("persists the ICC fidelity preference across a real desktop reload", async () => {
+    await browser.tauri.execute(() => localStorage.setItem("metaclean.preserveColorProfile", "true"));
+    await browser.refresh();
+    await $(".app-shell").waitForDisplayed();
     const navigation = await $$(".sidebar nav button");
     await navigation[3].click();
     const fidelity = await $$(".fidelity-options input");

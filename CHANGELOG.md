@@ -36,6 +36,9 @@ All notable changes to MetaClean are documented here. The project follows
 
 ### Security
 
+- The production WebView now enforces an explicit local-only Content Security
+  Policy. A CI regression gate rejects missing policy, `unsafe-eval`, and
+  unbounded network sources.
 - Every cleaned candidate is now format-checked and re-inspected in memory
   before MetaClean chooses an output path, creates a replacement backup or
   writes any bytes. Residual metadata or a changed format fails closed.

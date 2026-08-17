@@ -94,6 +94,7 @@ pnpm tauri dev      # 以开发模式运行
 ```bash
 pnpm test:coverage                              # 前端测试，覆盖率不低于 80%
 pnpm test:formats                               # 扩展名清单一致性检查
+pnpm test:security                              # 生产 WebView CSP 安全策略
 pnpm test:supply-chain                          # 已修补依赖的安全回归测试
 pnpm build                                      # 类型检查 + 生产构建
 cargo test --manifest-path src-tauri/Cargo.toml # Rust 内核测试

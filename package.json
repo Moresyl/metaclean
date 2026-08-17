@@ -14,6 +14,7 @@
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "test:formats": "node scripts/verify-format-manifests.mjs",
+    "test:security": "node scripts/verify-csp.mjs",
     "test:supply-chain": "node scripts/verify-extract-zip-patch.mjs",
     "test:e2e:build": "tauri build --debug --no-bundle --features e2e --config src-tauri/tauri.e2e.conf.json",
     "test:e2e": "wdio run ./wdio.conf.mjs",
