@@ -9,17 +9,17 @@ This file records evidence, not intent. A row is complete only when the named ar
 | Gate | Status | Evidence |
 |---|---|---|
 | M0: PDF structural rewrite | Complete | `drops_metadata_bytes_from_incremental_history` proves old Info metadata bytes are absent after full `lopdf` serialization. |
-| M0: image/media format decision | Complete | JPEG, PNG, WebP and GIF plus MP3, WAV and FLAC have container-level cleanup and malformed-input tests. TIFF, HEIC, RAW and unimplemented media containers are explicitly unsupported rather than being modified unsafely. |
+| M0: image/media format decision | Complete | JPEG, PNG, WebP and GIF; MP3, WAV and FLAC; and MP4/MOV/M4V/M4A have container-level cleanup and malformed-input tests. ISO BMFF cleanup preserves file length and media offsets. TIFF, HEIC, RAW and unimplemented media containers are explicitly unsupported rather than being modified unsafely. |
 | M0: Office package integrity | Partial | Real DOCX/XLSX/PPTX/ODT samples were cleaned and successfully opened/exported by LibreOffice 26.2.5. Current Word and WPS executables are unavailable on this machine, so those two applications remain unverified. |
 | M1: desktop MVP | Complete | Batch drag/drop, recursive file/folder intake, native pickers, per-file scan reports, safe-copy/replace modes, forced backup, atomic writes, version discovery and Chinese/English UI are implemented and tested. |
-| M2: Office/PDF/shell integration | Complete | DOCX/XLSX/PPTX/ODT/PDF cleaners, 22-extension Windows Explorer integration and launch-path handling are covered by unit and installer tests. |
+| M2: Office/PDF/shell integration | Complete | DOCX/XLSX/PPTX/ODT/PDF cleaners, 26-extension Windows Explorer integration and launch-path handling are covered by unit and installer tests. |
 | M3: Windows release | Complete | Optimized v0.2.0 NSIS and MSI packages build locally and were published by the successful GitHub release matrix. The release executable starts, remains running for a six-second smoke window and exposes the expected `MetaClean` main-window title. The v0.1.0 installer lifecycle test previously proved install, tray behavior, shell registration cleanup and uninstall cleanup; the same WiX/NSIS integration is retained and expanded to 22 extensions. |
 | M3: macOS/Linux release | Partial | The successful v0.2.0 GitHub matrix published Intel and Apple Silicon DMGs plus DEB/RPM/AppImage packages. Apple signing/notarization secrets are unavailable, so the DMGs are currently unsigned and Gatekeeper verification remains external. |
 
 ## Automated quality gates
 
-- Frontend: 52 tests. Statements 89.50%, branches 82.85%, functions 83.07%, lines 95.16%.
-- Rust: 48 regular tests plus one ignored external Office compatibility test. Core regions 80.76%, lines 80.53% after excluding Tauri/platform glue (`lib`, `main`, data-only `models` and `shell_integration`) from the line threshold; cleaners, intake, engine and safe I/O remain included.
+- Frontend: 54 tests. Statements 89.58%, branches 82.97%, functions 83.07%, lines 95.20%.
+- Rust: 51 regular tests plus one ignored external Office compatibility test. Core regions 81.22%, lines 80.77% after excluding Tauri/platform glue (`lib`, `main`, data-only `models` and `shell_integration`) from the line threshold; cleaners, intake, engine and safe I/O remain included.
 - CI fails below 80% for all frontend coverage dimensions and below 80% Rust core line coverage.
 - npm's official audit endpoint reports no known frontend vulnerabilities.
 - `cargo audit` reports no blocking vulnerability and exits successfully. It emits 17 allowed warnings from inherited GTK/Tauri and Unicode dependency families, including RUSTSEC-2024-0429 in `glib`; these are tracked upstream rather than represented as resolved.

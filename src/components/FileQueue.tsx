@@ -1,10 +1,10 @@
-import { FileImage, FileText, FileType2, Music2, Trash2, X } from "lucide-react";
+import { FileImage, FileText, FileType2, FileVideo2, Music2, Trash2, X } from "lucide-react";
 import type { FileEntry } from "../types";
 import { useI18n } from "../lib/i18n";
 
 interface FileQueueProps { entries: FileEntry[]; onRemove: (id: string) => void; onClear: () => void }
 
-const icons = { image: FileImage, audio: Music2, document: FileType2, pdf: FileText, text: FileText, unknown: FileText };
+const icons = { image: FileImage, audio: Music2, video: FileVideo2, document: FileType2, pdf: FileText, text: FileText, unknown: FileText };
 
 export default function FileQueue({ entries, onRemove, onClear }: FileQueueProps) {
   const { text } = useI18n();
@@ -13,6 +13,7 @@ export default function FileQueue({ entries, onRemove, onClear }: FileQueueProps
     unicode_space: text("异常空白字符", "Unusual whitespace"),
     image_metadata: text("图片元数据", "Image metadata"),
     audio_metadata: text("音频元数据", "Audio metadata"),
+    video_metadata: text("视频用户数据与位置", "Video user data and location"),
     provenance: text("来源标记", "Provenance marker"),
     office_metadata: text("Office 隐私痕迹", "Office privacy trace"),
     pdf_metadata: text("PDF 文档属性 / XMP", "PDF properties / XMP"),

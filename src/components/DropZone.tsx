@@ -36,7 +36,7 @@ export default function DropZone({ onAdd, onAddNativePaths }: DropZoneProps) {
         onAdd(Array.from(event.target.files ?? [], entryFromFile));
         event.target.value = "";
       }} />
-      <div className="format-list"><span>{text("图片", "Images")}</span><span>{text("音频", "Audio")}</span><span>Office</span><span>PDF</span><span>{text("文本", "Text")}</span></div>
+      <div className="format-list"><span>{text("图片", "Images")}</span><span>{text("音频", "Audio")}</span><span>{text("视频", "Video")}</span><span>Office</span><span>PDF</span><span>{text("文本", "Text")}</span></div>
     </section>
   );
 }

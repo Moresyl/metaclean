@@ -53,11 +53,12 @@ Grab the latest package from [GitHub Releases](https://github.com/Moresyl/metacl
 | WebP | `.webp` | EXIF, XMP, C2PA chunks |
 | GIF | `.gif` | Comments and XMP application metadata without re-encoding frames |
 | Audio | `.mp3` `.wav` `.flac` | ID3/APEv2, RIFF INFO/XMP/BWF/iXML, FLAC Vorbis comments, pictures and XMP |
+| Video | `.mp4` `.mov` `.m4v` `.m4a` | ISO BMFF/QuickTime user data, XMP, author and location atoms without moving media bytes |
 | Office | `.docx` `.xlsx` `.pptx` `.odt` | Author and application properties, comments, custom XML. DOCX revisions are resolved — insertions accepted, deletions removed |
 | PDF | `.pdf` | Info dictionary and XMP, then a full reserialization that discards metadata stranded in incremental-update history |
 | Text & markup | `.txt` `.md` `.markdown` `.html` `.htm` `.svg` `.xml` `.json` `.csv` | Invisible Unicode, plus generator/author metadata in Markdown front matter, HTML and SVG |
 
-**Deliberately out of scope:** statistical text watermarks, pixel-domain watermarks, video, legacy binary Office files (`.doc` / `.xls` / `.ppt`), and unknown binary formats. MetaClean refuses these rather than modifying them unsafely.
+**Deliberately out of scope:** statistical text watermarks, pixel-domain watermarks, unsupported video containers, legacy binary Office files (`.doc` / `.xls` / `.ppt`), and unknown binary formats. MetaClean refuses these rather than modifying them unsafely.
 
 ## Safety guarantees
 
@@ -72,7 +73,7 @@ Grab the latest package from [GitHub Releases](https://github.com/Moresyl/metacl
 
 - Drag in files or folders, or recursively import a folder from the native picker
 - Four panes: **Clean**, **History**, **Privacy**, and **Settings**
-- Optional Windows File Explorer command across all 22 supported extensions — on Windows 11 it lives under **Show more options**
+- Optional Windows File Explorer command across all 26 supported extensions — on Windows 11 it lives under **Show more options**
 - Closing the window keeps MetaClean in the system tray; right-click the tray icon to reopen or exit
 - Preserves JPEG display orientation and file timestamps by default without retaining private EXIF fields
 - Finds stable updates through GitHub Releases, with automatic checks independently switchable off

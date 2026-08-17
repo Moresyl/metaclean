@@ -8,6 +8,8 @@ describe("classifyFile", () => {
     ["recording.MP3", "audio"],
     ["voice.wav", "audio"],
     ["album.flac", "audio"],
+    ["movie.MP4", "video"],
+    ["clip.mov", "video"],
     ["report.docx", "document"],
     ["paper.pdf", "pdf"],
     ["notes.md", "text"],

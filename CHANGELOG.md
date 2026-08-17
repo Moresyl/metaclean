@@ -9,12 +9,20 @@ All notable changes to MetaClean are documented here. The project follows
 
 - System, light and dark interface themes with local persistence and
   no-flash initialization before React renders.
+- Native MP4, MOV, M4V and M4A privacy cleaning for ISO BMFF/QuickTime user
+  data, XMP, author and location atoms without re-encoding or moving media.
 
 ### Changed
 
 - GitHub Actions now use their current Node 24-compatible major versions.
 - CI runs for branch pushes and pull requests without duplicating the complete
   test suite for version-tag pushes.
+- Windows Explorer integration now covers all 26 supported extensions.
+
+### Security
+
+- MP4/QuickTime parsing validates atom bounds, nesting depth, compatible brands
+  and required media structure before writing; malformed containers fail closed.
 
 ## [0.2.0] - 2026-08-17
 

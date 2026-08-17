@@ -7,7 +7,7 @@ This is an evidence ledger, not a claim that every competitor feature is
 already matched. A row is complete only when the repository contains the named
 implementation and tests.
 
-| Capability | ExifCleaner baseline | MetaClean 0.2.0 | Status |
+| Capability | ExifCleaner baseline | MetaClean current | Status |
 |---|---|---|---|
 | Safe copy and replacement | Save-as-copy option | Safe copy by default; replacement always creates a backup and uses atomic output | Exceeds |
 | Folder recursion | Recursive file/folder intake | Recursive picker and drag/drop with skip reasons, symlink refusal, 64-level and 10,000-file limits | Exceeds on safety |
@@ -19,15 +19,16 @@ implementation and tests.
 | Text/AI traces | Not a primary capability | Invisible Unicode, private-use characters, front matter, HTML/SVG generator and AI attributes | Exceeds |
 | Desktop integration | File/folder picker and drag/drop | Adds Windows Explorer context commands and tray workflow | Exceeds on Windows |
 | Version discovery | No polling; manual Releases link | Optional startup/manual stable-release discovery with official-link validation | Exceeds |
-| Format breadth | 90+ ExifTool writer formats including video/RAW | 22 explicitly supported extensions; images, audio, Office, PDF and text | Gap remains |
+| Format breadth | 90+ ExifTool writer formats including video/RAW | 26 explicitly supported extensions; images, audio, MP4/QuickTime video, Office, PDF and text | Gap remains |
 | Localization | 25 locales | Simplified Chinese and English | Gap remains |
 | Theme selection | System/dark-mode controls | System, light and dark modes with pre-render initialization and persistence | Exceeds on explicit control |
 | Installed-app E2E matrix | Unit and installed-app E2E across three OS families | Unit/coverage gates and local Windows installer evidence | Gap remains |
 
 ## Release boundary
 
-MetaClean 0.2.0 is stronger on irreversible PDF cleaning, Office revisions,
-text/AI traces, atomic backup semantics, Windows shell integration and secure
-version discovery. ExifCleaner still leads on broad ExifTool-backed format
-coverage, localization count and installed-app E2E breadth. Future work should
-close those rows without weakening MetaClean's fail-closed format policy.
+The current MetaClean branch is stronger on irreversible PDF cleaning, Office
+revisions, text/AI traces, atomic backup semantics, Windows shell integration,
+secure version discovery and explicit theme control. ExifCleaner still leads on
+broad ExifTool-backed format coverage, localization count and installed-app E2E
+breadth. Future work should close those rows without weakening MetaClean's
+fail-closed format policy.

@@ -116,12 +116,12 @@ mod tests {
         fs::create_dir_all(&nested).unwrap();
         fs::write(root.path().join("document.pdf"), b"%PDF-1.4").unwrap();
         fs::write(nested.join("photo.JPG"), b"jpeg").unwrap();
-        fs::write(nested.join("movie.mp4"), b"video").unwrap();
+        fs::write(nested.join("movie.mkv"), b"video").unwrap();
         let result = expand_paths(&[root.path().to_string_lossy().into_owned()]);
         assert_eq!(result.files.len(), 2);
         assert!(result.files.iter().any(|path| path.ends_with("photo.JPG")));
         assert_eq!(result.skipped_count, 1);
-        assert!(result.issues[0].path.ends_with("movie.mp4"));
+        assert!(result.issues[0].path.ends_with("movie.mkv"));
     }
 
     #[test]

@@ -5,7 +5,7 @@ export interface FileEntry {
   name: string;
   path?: string;
   size?: number;
-  kind: "image" | "audio" | "document" | "pdf" | "text" | "unknown";
+  kind: "image" | "audio" | "video" | "document" | "pdf" | "text" | "unknown";
   status: "ready" | "scanning" | "scanned" | "clean" | "error";
   report?: ScanReport;
 }

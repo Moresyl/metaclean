@@ -4,7 +4,7 @@ use std::{
 };
 
 use crate::{
-    cleaners::{image, media, office, pdf, web_text},
+    cleaners::{image, media, office, pdf, video, web_text},
     error::{display_path, CleanError, Result},
     models::{CleanResult, Finding, OutputMode, ScanReport},
     safe_io::{
@@ -22,6 +22,7 @@ enum Format {
     Mp3,
     Wav,
     Flac,
+    IsoMedia,
     Office,
     Pdf,
     Text,
@@ -46,6 +47,10 @@ pub fn has_supported_extension(path: &Path) -> bool {
             | "mp3"
             | "wav"
             | "flac"
+            | "mp4"
+            | "mov"
+            | "m4v"
+            | "m4a"
             | "docx"
             | "xlsx"
             | "pptx"
@@ -85,10 +90,13 @@ fn detect(path: &Path, data: &[u8]) -> Format {
     if data.starts_with(b"fLaC") {
         return Format::Flac;
     }
+    let ext = extension(path);
+    if matches!(ext.as_str(), "mp4" | "mov" | "m4v" | "m4a") && video::is_iso_media(data) {
+        return Format::IsoMedia;
+    }
     if data.starts_with(b"%PDF-") {
         return Format::Pdf;
     }
-    let ext = extension(path);
     if data.starts_with(b"PK") && matches!(ext.as_str(), "docx" | "xlsx" | "pptx" | "odt") {
         return Format::Office;
     }
@@ -111,6 +119,7 @@ fn format_name(format: Format) -> &'static str {
         Format::Mp3 => "MP3",
         Format::Wav => "WAV",
         Format::Flac => "FLAC",
+        Format::IsoMedia => "MP4 / QuickTime",
         Format::Office => "Office",
         Format::Pdf => "PDF",
         Format::Text => "Text",
@@ -127,6 +136,7 @@ fn inspect_data(path: &Path, format: Format, data: &[u8]) -> Result<Vec<Finding>
         Format::Mp3 => media::inspect_mp3(data),
         Format::Wav => media::inspect_wav(data),
         Format::Flac => media::inspect_flac(data),
+        Format::IsoMedia => video::inspect(data),
         Format::Office => office::inspect(data),
         Format::Pdf => pdf::inspect(data),
         Format::Text => Ok(web_text::inspect(
@@ -152,6 +162,7 @@ fn clean_data(
         Format::Mp3 => media::clean_mp3(data),
         Format::Wav => media::clean_wav(data),
         Format::Flac => media::clean_flac(data),
+        Format::IsoMedia => video::clean(data),
         Format::Office => office::clean(data),
         Format::Pdf => pdf::clean(data),
         Format::Text => {
@@ -325,6 +336,13 @@ mod tests {
     }
 
     fn supported_media_samples() -> Vec<(&'static str, Vec<u8>)> {
+        fn atom(kind: &[u8; 4], payload: &[u8]) -> Vec<u8> {
+            let mut bytes = ((payload.len() + 8) as u32).to_be_bytes().to_vec();
+            bytes.extend_from_slice(kind);
+            bytes.extend_from_slice(payload);
+            bytes
+        }
+
         let jpeg = vec![0xff, 0xd8, 0xff, 0xfe, 0, 5, b't', b'a', b'g', 0xff, 0xd9];
 
         let mut png = b"\x89PNG\r\n\x1a\n".to_vec();
@@ -355,6 +373,11 @@ mod tests {
         flac.extend_from_slice(b"Alice");
         flac.extend_from_slice(b"\xff\xf8audio");
 
+        let mut video = atom(b"ftyp", b"isom\0\0\0\0isommp42");
+        let user_data = atom(b"udta", b"author=Alice;location=Shanghai");
+        video.extend(atom(b"moov", &user_data));
+        video.extend(atom(b"mdat", b"\0\0\0\x01VIDEO-FRAMES"));
+
         vec![
             ("photo.jpg", jpeg),
             ("graphic.png", png),
@@ -363,6 +386,7 @@ mod tests {
             ("recording.mp3", mp3),
             ("recording.wav", wav),
             ("recording.flac", flac),
+            ("movie.mp4", video),
         ]
     }
 
@@ -381,6 +405,12 @@ mod tests {
             ("audio.bin", b"\xff\xfb", Format::Mp3, "MP3"),
             ("audio.bin", b"RIFF\x04\0\0\0WAVE", Format::Wav, "WAV"),
             ("audio.bin", b"fLaC", Format::Flac, "FLAC"),
+            (
+                "movie.mp4",
+                b"\0\0\0\x18ftypisom\0\0\0\0isommp42",
+                Format::IsoMedia,
+                "MP4 / QuickTime",
+            ),
             ("file.bin", b"%PDF-1.7", Format::Pdf, "PDF"),
             ("file.docx", b"PKarchive", Format::Office, "Office"),
             ("file.md", b"plain text", Format::Text, "Text"),
@@ -399,12 +429,13 @@ mod tests {
         for extension in [
             "jpg", "jpeg", "png", "webp", "gif", "mp3", "wav", "flac", "docx", "xlsx", "pptx",
             "odt", "pdf", "txt", "md", "markdown", "html", "htm", "svg", "xml", "json", "csv",
+            "mp4", "mov", "m4v", "m4a",
         ] {
             assert!(has_supported_extension(Path::new(&format!(
                 "file.{extension}"
             ))));
         }
-        assert!(!has_supported_extension(Path::new("video.mp4")));
+        assert!(!has_supported_extension(Path::new("video.mkv")));
     }
 
     #[test]
@@ -478,6 +509,7 @@ mod tests {
             ("broken.mp3", b"ID3\x04".as_slice()),
             ("broken.wav", b"RIFF\0\0\0\0WAVE".as_slice()),
             ("broken.flac", b"fLaC".as_slice()),
+            ("broken.mp4", b"\0\0\0\x18ftypisom".as_slice()),
         ] {
             let source = dir.path().join(name);
             fs::write(&source, bytes).unwrap();
