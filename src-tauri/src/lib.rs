@@ -13,9 +13,26 @@ use tauri::{
     tray::TrayIconBuilder,
     Emitter, Manager,
 };
+use tauri_plugin_updater::UpdaterExt;
 use tauri_plugin_window_state::StateFlags;
 
 static ALLOW_EXIT: AtomicBool = AtomicBool::new(false);
+const PORTABLE_MARKER: &str = "metaclean-portable.marker";
+
+#[derive(Clone, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+struct UpdateRuntime {
+    self_update_supported: bool,
+    portable: bool,
+}
+
+#[derive(Clone, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+struct UpdateDownloadProgress {
+    stage: &'static str,
+    downloaded: u64,
+    total: Option<u64>,
+}
 
 #[tauri::command]
 fn scan_files(paths: Vec<String>) -> Vec<ScanReport> {
@@ -65,6 +82,102 @@ fn set_context_menu_enabled(enabled: bool) -> Result<shell_integration::ContextM
     .map_err(|error| format!("更新 Windows 右键菜单失败：{error}"))
 }
 
+fn portable_marker_exists(executable: &std::path::Path) -> bool {
+    executable
+        .parent()
+        .is_some_and(|directory| directory.join(PORTABLE_MARKER).is_file())
+}
+
+fn self_update_supported_for(portable: bool, linux: bool, app_image: bool) -> bool {
+    !portable && (!linux || app_image)
+}
+
+fn detect_update_runtime() -> UpdateRuntime {
+    let portable = std::env::current_exe()
+        .ok()
+        .is_some_and(|executable| portable_marker_exists(&executable));
+    let linux = cfg!(target_os = "linux");
+    let app_image = std::env::var_os("APPIMAGE").is_some();
+    UpdateRuntime {
+        self_update_supported: self_update_supported_for(portable, linux, app_image),
+        portable,
+    }
+}
+
+#[tauri::command]
+fn get_update_runtime() -> UpdateRuntime {
+    detect_update_runtime()
+}
+
+#[tauri::command]
+async fn install_update_and_restart(app: tauri::AppHandle) -> Result<bool, String> {
+    if !detect_update_runtime().self_update_supported {
+        return Err("当前安装方式不支持应用内更新，请从官方发布页下载新版本。".into());
+    }
+
+    let updater = app
+        .updater_builder()
+        .build()
+        .map_err(|error| format!("初始化更新器失败：{error}"))?;
+    let Some(update) = updater
+        .check()
+        .await
+        .map_err(|error| format!("检查更新失败：{error}"))?
+    else {
+        return Ok(false);
+    };
+
+    let progress_app = app.clone();
+    let mut downloaded = 0_u64;
+    let bytes = update
+        .download(
+            move |chunk_length, total| {
+                downloaded = downloaded.saturating_add(chunk_length as u64);
+                let _ = progress_app.emit(
+                    "update-progress",
+                    UpdateDownloadProgress {
+                        stage: "downloading",
+                        downloaded,
+                        total,
+                    },
+                );
+            },
+            || {},
+        )
+        .await
+        .map_err(|error| format!("下载更新失败：{error}"))?;
+
+    let _ = app.emit(
+        "update-progress",
+        UpdateDownloadProgress {
+            stage: "installing",
+            downloaded: 0,
+            total: None,
+        },
+    );
+
+    #[cfg(target_os = "windows")]
+    {
+        ALLOW_EXIT.store(true, Ordering::SeqCst);
+        app.remove_tray_by_id("main");
+        if let Err(error) = update.install(bytes) {
+            ALLOW_EXIT.store(false, Ordering::SeqCst);
+            return Err(format!("安装更新失败：{error}"));
+        }
+        Ok(true)
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    {
+        update
+            .install(bytes)
+            .map_err(|error| format!("安装更新失败：{error}"))?;
+        ALLOW_EXIT.store(true, Ordering::SeqCst);
+        app.remove_tray_by_id("main");
+        app.restart();
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let builder = tauri::Builder::default();
@@ -76,6 +189,7 @@ pub fn run() {
     builder
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(
             tauri_plugin_window_state::Builder::default()
                 .with_state_flags(StateFlags::SIZE | StateFlags::POSITION | StateFlags::MAXIMIZED)
@@ -165,7 +279,9 @@ pub fn run() {
             clean_files,
             get_launch_paths,
             get_context_menu_status,
-            set_context_menu_enabled
+            set_context_menu_enabled,
+            get_update_runtime,
+            install_update_and_restart
         ])
         .build(tauri::generate_context!())
         .expect("failed to build MetaClean")
@@ -207,5 +323,29 @@ pub fn run_cli_action() -> Option<i32> {
             eprintln!("{error}");
             Some(1)
         }
+    }
+}
+
+#[cfg(test)]
+mod update_tests {
+    use super::{portable_marker_exists, self_update_supported_for, PORTABLE_MARKER};
+
+    #[test]
+    fn portable_mode_requires_the_package_marker_next_to_the_executable() {
+        let directory = tempfile::tempdir().expect("create temporary directory");
+        let executable = directory.path().join("MetaClean.exe");
+        std::fs::write(&executable, b"binary").expect("write executable fixture");
+        assert!(!portable_marker_exists(&executable));
+        std::fs::write(directory.path().join(PORTABLE_MARKER), b"portable\n")
+            .expect("write portable marker");
+        assert!(portable_marker_exists(&executable));
+    }
+
+    #[test]
+    fn self_update_refuses_portable_and_non_appimage_linux_runtimes() {
+        assert!(self_update_supported_for(false, false, false));
+        assert!(self_update_supported_for(false, true, true));
+        assert!(!self_update_supported_for(true, false, false));
+        assert!(!self_update_supported_for(false, true, false));
     }
 }

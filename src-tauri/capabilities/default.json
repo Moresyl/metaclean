@@ -6,6 +6,7 @@
   "permissions": [
     "core:default",
     "dialog:allow-open",
+    "updater:allow-check",
     "opener:allow-reveal-item-in-dir",
     {
       "identifier": "opener:allow-open-url",

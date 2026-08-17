@@ -18,6 +18,8 @@ try {
   Expand-Archive -LiteralPath $archives[0].FullName -DestinationPath $temporaryRoot
   $application = Join-Path $temporaryRoot "MetaClean.exe"
   if (-not (Test-Path -LiteralPath $application -PathType Leaf)) { throw "Portable executable is missing: $application" }
+  $portableMarker = Join-Path $temporaryRoot "metaclean-portable.marker"
+  if (-not (Test-Path -LiteralPath $portableMarker -PathType Leaf)) { throw "Portable marker is missing: $portableMarker" }
   $process = Start-Process -FilePath $application -PassThru -WindowStyle Hidden
   Start-Sleep -Seconds 6
   $process.Refresh()

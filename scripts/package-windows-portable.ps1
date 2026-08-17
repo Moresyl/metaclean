@@ -21,6 +21,7 @@ try {
   if (Test-Path -LiteralPath $temporaryRoot) { Remove-Item -LiteralPath $temporaryRoot -Recurse -Force }
   New-Item -ItemType Directory -Path $temporaryRoot | Out-Null
   Copy-Item -LiteralPath $binary -Destination (Join-Path $temporaryRoot "MetaClean.exe")
+  Set-Content -LiteralPath (Join-Path $temporaryRoot "metaclean-portable.marker") -Value "portable" -Encoding ascii -NoNewline
   Copy-Item -LiteralPath (Join-Path $PSScriptRoot "..\README.md") -Destination $temporaryRoot
   Copy-Item -LiteralPath (Join-Path $PSScriptRoot "..\LICENSE") -Destination $temporaryRoot
   if (Test-Path -LiteralPath $archive) { Remove-Item -LiteralPath $archive -Force }

@@ -6,7 +6,7 @@
 
 **分享文件之前，先清掉里面的隐私痕迹。**
 
-文件纯本地处理 · 可关闭的版本检查 · 无需 ExifTool / Python / Perl · Rust 内核
+文件纯本地处理 · 应用内签名更新 · 无需 ExifTool / Python / Perl · Rust 内核
 
 [![CI](https://img.shields.io/github/actions/workflow/status/Moresyl/metaclean/ci.yml?branch=master&style=flat-square&label=CI)](https://github.com/Moresyl/metaclean/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/Moresyl/metaclean?include_prereleases&style=flat-square&color=35966d)](https://github.com/Moresyl/metaclean/releases)
@@ -28,7 +28,7 @@ MetaClean 把这些统统找出来并清除——全过程只在你自己的电�
 
 ## 为什么用它
 
-- **文件绝不出本机。** 没有上传接口、遥测或云端处理。可选的版本检查只请求官方 GitHub Releases，并且可以关闭。
+- **文件绝不出本机。** 没有上传接口、遥测或云端处理。可选的签名更新检查只请求 MetaClean 官方 GitHub 发布清单，并且可以关闭。
 - **不用先装一堆东西。** 单个可执行文件，无需 Python、Perl、ExifTool 或任何运行时。
 - **先扫描，再决定。** 扫描是只读操作，逐个文件列出检测结果，确认之后才会写入。
 - **默认就是安全的。** 替换原文件前强制备份，写入为原子操作，默认模式只生成 `.cleaned` 副本而不覆盖原件。
@@ -77,7 +77,8 @@ MetaClean 把这些统统找出来并清除——全过程只在你自己的电�
 - 可选的 Windows 资源管理器右键菜单，覆盖全部 47 种受支持扩展名（Windows 11 上位于**显示更多选项**中）
 - 关闭窗口后驻留系统托盘，右键托盘图标可重新打开或彻底退出
 - 默认保留 JPEG 显示方向、ICC/sRGB 色彩配置与文件时间戳，三项均可独立关闭
-- 通过 GitHub Releases 发现稳定版，启动检查可以单独关闭
+- 安装版可在应用内检查、下载并安装通过签名验证的稳定版，显示下载进度后自动重启；Windows 便携版与 Linux 非 AppImage 包会回退到官方 Releases 页面
+- 启动更新检查可以单独关闭，恢复完全离线运行
 - 26 种完整界面语言，覆盖欧洲、亚洲与阿拉伯语 RTL；跟随系统/浅色/深色主题、输出方式、保真选项、本地处理记录都会持久保存
 
 ## 从源码构建
@@ -103,7 +104,7 @@ pnpm test:e2e:build && pnpm test:e2e             # 真实桌面程序 E2E
 pnpm tauri build                                # 各平台安装包
 ```
 
-每次分支构建还会在 Windows、macOS 和 Linux 启动 E2E 专用桌面二进制；内嵌 WebDriver 与测试命令受 Cargo feature 隔离，不会进入生产包。推送版本标签后，GitHub Actions 会构建完整发布矩阵：Windows x64 的 NSIS/MSI/便携 ZIP 与 x86 的 NSIS/便携 ZIP、macOS 的 Apple Silicon 与 Intel 双 DMG、Linux 的 DEB/RPM/AppImage。macOS 签名与公证需要配置发布工作流中列出的 Apple 密钥；未配置时 macOS 任务仍会产出未签名安装包。
+每次分支构建还会在 Windows、macOS 和 Linux 启动 E2E 专用桌面二进制；内嵌 WebDriver 与测试命令受 Cargo feature 隔离，不会进入生产包。推送版本标签后，GitHub Actions 会构建完整发布矩阵：Windows x64 的 NSIS/MSI/便携 ZIP 与 x86 的 NSIS/便携 ZIP、macOS 的 Apple Silicon 与 Intel 双 DMG、Linux 的 DEB/RPM/AppImage。Release 还会生成五个平台目标的签名更新包与静态 `latest.json`，全部安装包冒烟通过并生成完整 SHA-256 清单后才公开发布。更新签名不等于操作系统代码签名；macOS 签名与公证仍需 Apple 凭据，未配置时 DMG 仍是未签名状态。
 
 测试覆盖率与发布验收证据记录在 [VALIDATION.md](VALIDATION.md)。
 

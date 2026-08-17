@@ -14,6 +14,8 @@ import { ThemeProvider } from "../contexts/ThemeContext";
 const openMock = vi.hoisted(() => vi.fn());
 const invokeMock = vi.hoisted(() => vi.fn());
 const checkForUpdateMock = vi.hoisted(() => vi.fn());
+const getUpdateRuntimeMock = vi.hoisted(() => vi.fn());
+const installAvailableUpdateMock = vi.hoisted(() => vi.fn());
 const openUrlMock = vi.hoisted(() => vi.fn());
 vi.mock("@tauri-apps/plugin-dialog", () => ({ open: openMock }));
 vi.mock("@tauri-apps/api/core", () => ({ invoke: invokeMock }));
@@ -21,6 +23,8 @@ vi.mock("@tauri-apps/plugin-opener", () => ({ openUrl: openUrlMock }));
 vi.mock("../lib/update", () => ({
   RELEASES_PAGE_URL: "https://github.com/Moresyl/metaclean/releases/latest",
   checkForUpdate: checkForUpdateMock,
+  getUpdateRuntime: getUpdateRuntimeMock,
+  installAvailableUpdate: installAvailableUpdateMock,
 }));
 
 const wrap = (node: React.ReactNode) => render(<ThemeProvider initialMode="light"><I18nProvider><UpdateProvider>{node}</UpdateProvider></I18nProvider></ThemeProvider>);
@@ -30,6 +34,9 @@ beforeEach(() => {
   invokeMock.mockReset();
   checkForUpdateMock.mockReset();
   checkForUpdateMock.mockResolvedValue({ status: "current", currentVersion: "0.1.0" });
+  getUpdateRuntimeMock.mockReset();
+  getUpdateRuntimeMock.mockResolvedValue({ selfUpdateSupported: false, portable: true });
+  installAvailableUpdateMock.mockReset();
   openUrlMock.mockReset();
 });
 

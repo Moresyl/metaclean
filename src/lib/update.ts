@@ -1,17 +1,18 @@
-const RELEASES_API_URL = "https://api.github.com/repos/Moresyl/metaclean/releases/latest";
 export const RELEASES_PAGE_URL = "https://github.com/Moresyl/metaclean/releases/latest";
 
-type FetchLike = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
-
-interface GitHubRelease {
-  tag_name?: unknown;
-  name?: unknown;
-  body?: unknown;
-  published_at?: unknown;
-  html_url?: unknown;
-  draft?: unknown;
-  prerelease?: unknown;
+interface NativeUpdate {
+  version: string;
+  currentVersion?: string;
+  body?: string;
+  date?: string;
 }
+
+type UpdateChecker = (options: { timeout: number }) => Promise<NativeUpdate | null>;
+type InvokeLike = <T>(command: string) => Promise<T>;
+type ListenLike = (
+  event: string,
+  handler: (event: { payload: UpdateProgress }) => void,
+) => Promise<() => void>;
 
 export interface UpdateInfo {
   currentVersion: string;
@@ -20,6 +21,17 @@ export interface UpdateInfo {
   notes?: string;
   publishedAt?: string;
   releaseUrl: string;
+}
+
+export interface UpdateRuntime {
+  selfUpdateSupported: boolean;
+  portable: boolean;
+}
+
+export interface UpdateProgress {
+  stage: "downloading" | "installing";
+  downloaded: number;
+  total?: number;
 }
 
 export type UpdateCheckResult =
@@ -32,9 +44,9 @@ interface ParsedVersion {
 }
 
 function parseVersion(value: string): ParsedVersion {
-  const normalized = value.trim().replace(/^v/i, "").split("+", 1)[0];
+  const normalized = value.trim().replace(/^v/iu, "").split("+", 1)[0];
   const [coreValue, prereleaseValue = ""] = normalized.split("-", 2);
-  if (!/^\d+(?:\.\d+)*$/.test(coreValue)) throw new Error(`Invalid version: ${value}`);
+  if (!/^\d+(?:\.\d+)*$/u.test(coreValue)) throw new Error(`Invalid version: ${value}`);
   return {
     core: coreValue.split(".").map(Number),
     prerelease: prereleaseValue ? prereleaseValue.split(".") : [],
@@ -59,8 +71,8 @@ export function compareVersions(left: string, right: string): number {
     if (aPart === undefined) return -1;
     if (bPart === undefined) return 1;
     if (aPart === bPart) continue;
-    const aNumeric = /^\d+$/.test(aPart);
-    const bNumeric = /^\d+$/.test(bPart);
+    const aNumeric = /^\d+$/u.test(aPart);
+    const bNumeric = /^\d+$/u.test(bPart);
     if (aNumeric && bNumeric) return Math.sign(Number(aPart) - Number(bPart));
     if (aNumeric) return -1;
     if (bNumeric) return 1;
@@ -69,16 +81,8 @@ export function compareVersions(left: string, right: string): number {
   return 0;
 }
 
-function validatedReleaseUrl(value: unknown): string {
-  if (typeof value !== "string") return RELEASES_PAGE_URL;
-  try {
-    const url = new URL(value);
-    return url.origin === "https://github.com" && url.pathname.startsWith("/Moresyl/metaclean/releases/")
-      ? url.toString()
-      : RELEASES_PAGE_URL;
-  } catch {
-    return RELEASES_PAGE_URL;
-  }
+function releaseUrlForVersion(version: string): string {
+  return `https://github.com/Moresyl/metaclean/releases/tag/v${encodeURIComponent(version)}`;
 }
 
 async function installedVersion(): Promise<string> {
@@ -90,43 +94,64 @@ async function installedVersion(): Promise<string> {
   }
 }
 
+async function nativeCheck(options: { timeout: number }): Promise<NativeUpdate | null> {
+  const { check } = await import("@tauri-apps/plugin-updater");
+  return await check(options);
+}
+
 export async function checkForUpdate(options: {
   currentVersion?: string;
-  fetcher?: FetchLike;
+  checker?: UpdateChecker;
   timeoutMs?: number;
 } = {}): Promise<UpdateCheckResult> {
-  const currentVersion = options.currentVersion ?? await installedVersion();
-  const controller = new AbortController();
-  const timeout = window.setTimeout(() => controller.abort(), options.timeoutMs ?? 10_000);
+  const update = await (options.checker ?? nativeCheck)({ timeout: options.timeoutMs ?? 10_000 });
+  const currentVersion = options.currentVersion ?? update?.currentVersion ?? await installedVersion();
+  if (!update) return { status: "current", currentVersion };
+
+  const availableVersion = update.version.replace(/^v/iu, "");
+  const parsed = parseVersion(availableVersion);
+  if (parsed.prerelease.length) throw new Error("Update service returned a prerelease version");
+  if (compareVersions(availableVersion, currentVersion) <= 0) {
+    return { status: "current", currentVersion };
+  }
+  return {
+    status: "available",
+    info: {
+      currentVersion,
+      availableVersion,
+      name: `MetaClean v${availableVersion}`,
+      notes: typeof update.body === "string" && update.body.trim() ? update.body : undefined,
+      publishedAt: typeof update.date === "string" && update.date.trim() ? update.date : undefined,
+      releaseUrl: releaseUrlForVersion(availableVersion),
+    },
+  };
+}
+
+export async function getUpdateRuntime(invoker?: InvokeLike): Promise<UpdateRuntime> {
+  const invoke = invoker ?? (async <T,>(command: string) => {
+    const core = await import("@tauri-apps/api/core");
+    return await core.invoke<T>(command);
+  });
+  return await invoke<UpdateRuntime>("get_update_runtime");
+}
+
+export async function installAvailableUpdate(options: {
+  onProgress?: (progress: UpdateProgress) => void;
+  invoker?: InvokeLike;
+  listener?: ListenLike;
+} = {}): Promise<boolean> {
+  const invoke = options.invoker ?? (async <T,>(command: string) => {
+    const core = await import("@tauri-apps/api/core");
+    return await core.invoke<T>(command);
+  });
+  const listen = options.listener ?? (async (event, handler) => {
+    const events = await import("@tauri-apps/api/event");
+    return await events.listen<UpdateProgress>(event, handler);
+  });
+  const unlisten = await listen("update-progress", (event) => options.onProgress?.(event.payload));
   try {
-    const response = await (options.fetcher ?? fetch)(RELEASES_API_URL, {
-      headers: {
-        Accept: "application/vnd.github+json",
-        "X-GitHub-Api-Version": "2022-11-28",
-      },
-      signal: controller.signal,
-    });
-    if (!response.ok) throw new Error(`GitHub update service returned HTTP ${response.status}`);
-    const release = await response.json() as GitHubRelease;
-    if (release.draft || release.prerelease || typeof release.tag_name !== "string") {
-      throw new Error("GitHub update service returned an invalid stable release");
-    }
-    const availableVersion = release.tag_name.replace(/^v/i, "");
-    if (compareVersions(availableVersion, currentVersion) <= 0) {
-      return { status: "current", currentVersion };
-    }
-    return {
-      status: "available",
-      info: {
-        currentVersion,
-        availableVersion,
-        name: typeof release.name === "string" && release.name.trim() ? release.name : `MetaClean v${availableVersion}`,
-        notes: typeof release.body === "string" ? release.body : undefined,
-        publishedAt: typeof release.published_at === "string" ? release.published_at : undefined,
-        releaseUrl: validatedReleaseUrl(release.html_url),
-      },
-    };
+    return await invoke<boolean>("install_update_and_restart");
   } finally {
-    window.clearTimeout(timeout);
+    unlisten();
   }
 }

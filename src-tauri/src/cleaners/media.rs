@@ -259,7 +259,10 @@ pub fn clean_wav(data: &[u8]) -> Result<(Vec<u8>, Vec<Finding>)> {
     ))
 }
 
-fn flac_blocks(data: &[u8]) -> Result<(Vec<(u8, Range<usize>, Range<usize>)>, usize)> {
+type FlacBlock = (u8, Range<usize>, Range<usize>);
+type FlacBlocks = (Vec<FlacBlock>, usize);
+
+fn flac_blocks(data: &[u8]) -> Result<FlacBlocks> {
     if !data.starts_with(b"fLaC") {
         return Err(CleanError::InvalidFormat("不是有效 FLAC".into()));
     }

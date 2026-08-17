@@ -1,20 +1,32 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { checkForUpdate, RELEASES_PAGE_URL, type UpdateInfo } from "../lib/update";
+import {
+  checkForUpdate,
+  getUpdateRuntime,
+  installAvailableUpdate,
+  RELEASES_PAGE_URL,
+  type UpdateInfo,
+  type UpdateProgress,
+  type UpdateRuntime,
+} from "../lib/update";
 
-type UpdateStatus = "idle" | "checking" | "current" | "available" | "error";
+type UpdateStatus = "idle" | "checking" | "current" | "available" | "updating" | "error";
 
 interface UpdateContextValue {
   status: UpdateStatus;
   info?: UpdateInfo;
   currentVersion?: string;
   error?: string;
+  progress?: UpdateProgress;
+  runtime: UpdateRuntime;
   autoCheckEnabled: boolean;
   setAutoCheckEnabled: (enabled: boolean) => void;
   checkUpdate: () => Promise<void>;
+  installUpdate: () => Promise<void>;
   openRelease: () => Promise<void>;
 }
 
 const AUTO_CHECK_KEY = "metaclean.update.autoCheck";
+const DEFAULT_RUNTIME: UpdateRuntime = { selfUpdateSupported: false, portable: false };
 const UpdateContext = createContext<UpdateContextValue | null>(null);
 
 export function UpdateProvider({ children }: { children: ReactNode }) {
@@ -22,6 +34,8 @@ export function UpdateProvider({ children }: { children: ReactNode }) {
   const [info, setInfo] = useState<UpdateInfo>();
   const [currentVersion, setCurrentVersion] = useState<string>();
   const [error, setError] = useState<string>();
+  const [progress, setProgress] = useState<UpdateProgress>();
+  const [runtime, setRuntime] = useState<UpdateRuntime>(DEFAULT_RUNTIME);
   const [autoCheckEnabled, setAutoCheckState] = useState(() => localStorage.getItem(AUTO_CHECK_KEY) !== "false");
   const checking = useRef(false);
 
@@ -59,6 +73,36 @@ export function UpdateProvider({ children }: { children: ReactNode }) {
     await openUrl(info?.releaseUrl ?? RELEASES_PAGE_URL);
   }, [info?.releaseUrl]);
 
+  const installUpdate = useCallback(async () => {
+    if (!runtime.selfUpdateSupported) {
+      await openRelease();
+      return;
+    }
+    setStatus("updating");
+    setError(undefined);
+    setProgress({ stage: "downloading", downloaded: 0 });
+    try {
+      const installed = await installAvailableUpdate({ onProgress: setProgress });
+      if (!installed) {
+        setInfo(undefined);
+        setProgress(undefined);
+        setStatus("current");
+      }
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : String(reason));
+      setProgress(undefined);
+      setStatus("error");
+    }
+  }, [openRelease, runtime.selfUpdateSupported]);
+
+  useEffect(() => {
+    let active = true;
+    void getUpdateRuntime()
+      .then((value) => { if (active) setRuntime(value); })
+      .catch(() => undefined);
+    return () => { active = false; };
+  }, []);
+
   useEffect(() => {
     if (!autoCheckEnabled) return;
     const timer = window.setTimeout(() => { void checkUpdate(); }, 1_500);
@@ -66,8 +110,18 @@ export function UpdateProvider({ children }: { children: ReactNode }) {
   }, [autoCheckEnabled, checkUpdate]);
 
   const value = useMemo<UpdateContextValue>(() => ({
-    status, info, currentVersion, error, autoCheckEnabled, setAutoCheckEnabled, checkUpdate, openRelease,
-  }), [status, info, currentVersion, error, autoCheckEnabled, setAutoCheckEnabled, checkUpdate, openRelease]);
+    status,
+    info,
+    currentVersion,
+    error,
+    progress,
+    runtime,
+    autoCheckEnabled,
+    setAutoCheckEnabled,
+    checkUpdate,
+    installUpdate,
+    openRelease,
+  }), [status, info, currentVersion, error, progress, runtime, autoCheckEnabled, setAutoCheckEnabled, checkUpdate, installUpdate, openRelease]);
 
   return <UpdateContext.Provider value={value}>{children}</UpdateContext.Provider>;
 }

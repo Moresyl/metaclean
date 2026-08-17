@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { checkForUpdate, compareVersions, RELEASES_PAGE_URL } from "./update";
+import { checkForUpdate, compareVersions, getUpdateRuntime, installAvailableUpdate } from "./update";
 
 const getVersionMock = vi.hoisted(() => vi.fn());
 vi.mock("@tauri-apps/api/app", () => ({ getVersion: getVersionMock }));
@@ -26,61 +26,61 @@ describe("compareVersions", () => {
 });
 
 describe("checkForUpdate", () => {
-  beforeEach(() => getVersionMock.mockResolvedValue("0.1.0"));
-  it("returns a validated newer stable release", async () => {
-    const fetcher = vi.fn().mockResolvedValue(new Response(JSON.stringify({
-      tag_name: "v0.2.0",
-      name: "MetaClean v0.2.0",
-      body: "Safer cleaning",
-      published_at: "2026-08-17T00:00:00Z",
-      html_url: "https://github.com/Moresyl/metaclean/releases/tag/v0.2.0",
-      draft: false,
-      prerelease: false,
-    }), { status: 200 }));
-    await expect(checkForUpdate({ currentVersion: "0.1.0", fetcher })).resolves.toEqual({
-      status: "available",
-      info: expect.objectContaining({ availableVersion: "0.2.0", releaseUrl: "https://github.com/Moresyl/metaclean/releases/tag/v0.2.0" }),
+  beforeEach(() => getVersionMock.mockResolvedValue("0.3.0"));
+
+  it("returns signed native updater metadata for a newer stable release", async () => {
+    const checker = vi.fn().mockResolvedValue({
+      currentVersion: "0.3.0",
+      version: "0.4.0",
+      body: "Signed update",
+      date: "2026-08-18T00:00:00Z",
     });
-  });
-
-  it("reports current versions and refuses untrusted release links", async () => {
-    const currentFetcher = vi.fn().mockResolvedValue(new Response(JSON.stringify({ tag_name: "v0.1.0", draft: false, prerelease: false }), { status: 200 }));
-    await expect(checkForUpdate({ currentVersion: "0.1.0", fetcher: currentFetcher })).resolves.toEqual({ status: "current", currentVersion: "0.1.0" });
-
-    const untrustedFetcher = vi.fn().mockResolvedValue(new Response(JSON.stringify({ tag_name: "v0.2.0", html_url: "https://evil.example/update", draft: false, prerelease: false }), { status: 200 }));
-    const result = await checkForUpdate({ currentVersion: "0.1.0", fetcher: untrustedFetcher });
-    expect(result.status === "available" && result.info.releaseUrl).toBe(RELEASES_PAGE_URL);
-  });
-
-  it("rejects API failures and non-stable payloads", async () => {
-    const failed = vi.fn().mockResolvedValue(new Response("rate limited", { status: 403 }));
-    await expect(checkForUpdate({ currentVersion: "0.1.0", fetcher: failed })).rejects.toThrow("HTTP 403");
-    const prerelease = vi.fn().mockResolvedValue(new Response(JSON.stringify({ tag_name: "v0.2.0-beta.1", prerelease: true }), { status: 200 }));
-    await expect(checkForUpdate({ currentVersion: "0.1.0", fetcher: prerelease })).rejects.toThrow("invalid stable release");
-  });
-
-  it("uses the installed app version and safe fallback release fields", async () => {
-    const fetcher = vi.fn().mockResolvedValue(new Response(JSON.stringify({
-      tag_name: "v0.2.0",
-      name: "",
-      body: 123,
-      published_at: null,
-      html_url: "not a URL",
-      draft: false,
-      prerelease: false,
-    }), { status: 200 }));
-    const result = await checkForUpdate({ fetcher, timeoutMs: 100 });
-    expect(getVersionMock).toHaveBeenCalled();
-    expect(result).toEqual({
+    await expect(checkForUpdate({ checker, timeoutMs: 2500 })).resolves.toEqual({
       status: "available",
       info: {
-        currentVersion: "0.1.0",
-        availableVersion: "0.2.0",
-        name: "MetaClean v0.2.0",
-        notes: undefined,
-        publishedAt: undefined,
-        releaseUrl: RELEASES_PAGE_URL,
+        currentVersion: "0.3.0",
+        availableVersion: "0.4.0",
+        name: "MetaClean v0.4.0",
+        notes: "Signed update",
+        publishedAt: "2026-08-18T00:00:00Z",
+        releaseUrl: "https://github.com/Moresyl/metaclean/releases/tag/v0.4.0",
       },
     });
+    expect(checker).toHaveBeenCalledWith({ timeout: 2500 });
+  });
+
+  it("reports current versions and uses the installed version when no update exists", async () => {
+    const checker = vi.fn().mockResolvedValue(null);
+    await expect(checkForUpdate({ checker })).resolves.toEqual({ status: "current", currentVersion: "0.3.0" });
+    expect(getVersionMock).toHaveBeenCalled();
+  });
+
+  it("refuses prereleases and stale updater payloads", async () => {
+    const prerelease = vi.fn().mockResolvedValue({ currentVersion: "0.3.0", version: "0.4.0-beta.1" });
+    await expect(checkForUpdate({ checker: prerelease })).rejects.toThrow("prerelease");
+    const stale = vi.fn().mockResolvedValue({ currentVersion: "0.4.0", version: "0.3.0" });
+    await expect(checkForUpdate({ checker: stale })).resolves.toEqual({ status: "current", currentVersion: "0.4.0" });
+  });
+});
+
+describe("native update commands", () => {
+  it("reads the runtime support boundary from Rust", async () => {
+    const invoker = vi.fn().mockResolvedValue({ selfUpdateSupported: false, portable: true });
+    await expect(getUpdateRuntime(invoker)).resolves.toEqual({ selfUpdateSupported: false, portable: true });
+    expect(invoker).toHaveBeenCalledWith("get_update_runtime");
+  });
+
+  it("forwards progress and always removes the event listener", async () => {
+    const unlisten = vi.fn();
+    const progress = vi.fn();
+    const listener = vi.fn().mockImplementation(async (_event, handler) => {
+      handler({ payload: { stage: "downloading", downloaded: 40, total: 100 } });
+      return unlisten;
+    });
+    const invoker = vi.fn().mockResolvedValue(true);
+    await expect(installAvailableUpdate({ listener, invoker, onProgress: progress })).resolves.toBe(true);
+    expect(progress).toHaveBeenCalledWith({ stage: "downloading", downloaded: 40, total: 100 });
+    expect(invoker).toHaveBeenCalledWith("install_update_and_restart");
+    expect(unlisten).toHaveBeenCalled();
   });
 });

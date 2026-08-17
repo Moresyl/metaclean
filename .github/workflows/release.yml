@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: Existing version tag to publish, for example v0.3.0
+        description: Existing version tag to publish, for example v0.4.0
         required: true
         type: string
   push:
@@ -24,6 +24,7 @@ jobs:
         include:
           - platform: windows-latest
             target: x86_64-pc-windows-msvc
+            updaterPlatform: windows-x86_64
             args: --bundles "nsis,msi"
             bundlePath: src-tauri/target/release/bundle
             extensions: exe,msi,zip
@@ -31,6 +32,7 @@ jobs:
             binaryPath: src-tauri/target/release/metaclean.exe
           - platform: windows-latest
             target: i686-pc-windows-msvc
+            updaterPlatform: windows-i686
             args: --target i686-pc-windows-msvc --bundles nsis
             bundlePath: src-tauri/target/i686-pc-windows-msvc/release/bundle
             extensions: exe,zip
@@ -38,16 +40,19 @@ jobs:
             binaryPath: src-tauri/target/i686-pc-windows-msvc/release/metaclean.exe
           - platform: macos-latest
             target: aarch64-apple-darwin
+            updaterPlatform: darwin-aarch64
             args: --target aarch64-apple-darwin --bundles dmg
             bundlePath: src-tauri/target/aarch64-apple-darwin/release/bundle
             extensions: dmg
           - platform: macos-latest
             target: x86_64-apple-darwin
+            updaterPlatform: darwin-x86_64
             args: --target x86_64-apple-darwin --bundles dmg
             bundlePath: src-tauri/target/x86_64-apple-darwin/release/bundle
             extensions: dmg
           - platform: ubuntu-22.04
             target: x86_64-unknown-linux-gnu
+            updaterPlatform: linux-x86_64
             args: --bundles deb,rpm,appimage
             bundlePath: src-tauri/target/release/bundle
             extensions: deb,rpm,AppImage
@@ -80,7 +85,10 @@ jobs:
       - name: Validate bilingual release notes
         run: node scripts/load-release-notes.mjs
       - name: Build release packages
-        run: pnpm tauri build ${{ matrix.args }}
+        run: pnpm tauri build --config src-tauri/tauri.release.conf.json ${{ matrix.args }}
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
       - name: Package the portable Windows application
         if: runner.os == 'Windows'
         shell: pwsh
@@ -101,6 +109,8 @@ jobs:
         run: bash scripts/smoke-linux-deb.sh "${{ matrix.bundlePath }}"
       - name: Collect validated release assets
         run: node scripts/collect-release-assets.mjs "${{ matrix.bundlePath }}" "${{ runner.temp }}/release-assets" "${{ matrix.extensions }}"
+      - name: Collect signed updater assets
+        run: node scripts/collect-updater-assets.mjs "${{ matrix.bundlePath }}" "${{ runner.temp }}/release-assets" "${{ matrix.updaterPlatform }}" "$RELEASE_TAG"
       - uses: actions/upload-artifact@v6
         with:
           name: packages-${{ matrix.target }}
@@ -125,6 +135,10 @@ jobs:
           merge-multiple: true
       - name: Validate bilingual release notes
         run: node scripts/load-release-notes.mjs
+      - name: Generate signed updater manifest
+        run: |
+          publication_date="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+          node scripts/generate-updater-manifest.mjs "${{ runner.temp }}/release-assets" "$RELEASE_TAG" "${{ github.repository }}" "release-notes/$RELEASE_TAG.md" "$publication_date" "${{ runner.temp }}/release-assets/latest.json"
       - name: Generate SHA-256 manifest
         run: node scripts/generate-checksums.mjs "${{ runner.temp }}/release-assets" "${{ runner.temp }}/SHASUMS256.txt"
       - name: Create the public release only after every smoke test passes

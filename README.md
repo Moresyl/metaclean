@@ -6,7 +6,7 @@
 
 **Strip private metadata from your files before you share them.**
 
-Local file processing · Optional update check · No ExifTool, Python or Perl · Rust core
+Local file processing · Signed in-app updates · No ExifTool, Python or Perl · Rust core
 
 [![CI](https://img.shields.io/github/actions/workflow/status/Moresyl/metaclean/ci.yml?branch=master&style=flat-square&label=CI)](https://github.com/Moresyl/metaclean/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/Moresyl/metaclean?include_prereleases&style=flat-square&color=35966d)](https://github.com/Moresyl/metaclean/releases)
@@ -28,7 +28,7 @@ MetaClean finds all of it and removes it — entirely on your own machine.
 
 ## Why
 
-- **Your files never leave your computer.** No upload API, telemetry, or cloud processing. The optional update check requests only the official GitHub Releases endpoint and can be disabled.
+- **Your files never leave your computer.** No upload API, telemetry, or cloud processing. The optional signed update check requests only MetaClean's official GitHub release manifest and can be disabled.
 - **Nothing to install first.** One binary. No Python, Perl, ExifTool, or runtime to set up.
 - **Scan first, then decide.** Scanning is read-only. You see a per-file report of what was found and confirm before anything is written.
 - **Safe by default.** Originals are backed up before replacement, writes are atomic, and the default mode produces a `.cleaned` copy instead of overwriting.
@@ -80,7 +80,8 @@ Grab the latest package from [GitHub Releases](https://github.com/Moresyl/metacl
 - Preserves JPEG display orientation, ICC/sRGB color profiles and file timestamps by default, with independent removal controls
 - Preserves every macOS extended attribute by default; an explicit opt-in removes only six known download/provenance attributes and leaves Finder data, resource forks, tags, and custom attributes intact
 - Native application menus, `Ctrl/Cmd+1…4` navigation accelerators, and persisted window size, position, and maximized state
-- Finds stable updates through GitHub Releases, with automatic checks independently switchable off
+- Checks, downloads and installs cryptographically signed stable updates in installed builds, with visible progress and restart; portable Windows packages and non-AppImage Linux builds fall back to the official Releases page
+- Automatic update checks are independently switchable off, restoring fully offline operation
 - Twenty-six complete interface languages spanning Europe, Asia and Arabic RTL; system/light/dark theme, output mode, fidelity options, and local cleanup history persist between sessions
 
 ## Build from source
@@ -106,7 +107,7 @@ pnpm test:e2e:build && pnpm test:e2e             # real desktop app E2E
 pnpm tauri build                                # platform installers
 ```
 
-Every branch build also launches an E2E-only desktop binary on Windows, macOS and Linux. Its embedded WebDriver and test commands are gated behind a Cargo feature and are absent from production bundles. Pushing a version tag builds the whole release matrix through GitHub Actions: x64 NSIS/MSI plus x86 NSIS and x64/x86 portable ZIPs for Windows, DMG for Apple Silicon and Intel macOS, and DEB/RPM/AppImage for Linux. macOS signing and notarization need the Apple secrets documented in the release workflow; without them the macOS job still produces unsigned bundles.
+Every branch build also launches an E2E-only desktop binary on Windows, macOS and Linux. Its embedded WebDriver and test commands are gated behind a Cargo feature and are absent from production bundles. Pushing a version tag builds the whole release matrix through GitHub Actions: x64 NSIS/MSI plus x86 NSIS and x64/x86 portable ZIPs for Windows, DMG for Apple Silicon and Intel macOS, and DEB/RPM/AppImage for Linux. Release builds additionally produce signed updater bundles for five platform targets and a static `latest.json`; publication waits for every package smoke test and a complete SHA-256 manifest. Updater signatures are independent of operating-system code signing. macOS signing and notarization still require Apple credentials; without them the macOS job produces unsigned DMGs.
 
 Test coverage and release evidence are tracked in [VALIDATION.md](VALIDATION.md).
 Release changes are recorded in [CHANGELOG.md](CHANGELOG.md).

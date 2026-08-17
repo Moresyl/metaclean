@@ -116,6 +116,14 @@ describe("MetaClean desktop application", () => {
     assert.deepEqual(reports, []);
   });
 
+  it("reports whether this desktop package can self-update", async () => {
+    const runtime = await browser.tauri.execute(({ core }) => core.invoke("get_update_runtime"));
+    assert.deepEqual(runtime, {
+      selfUpdateSupported: process.platform !== "linux",
+      portable: false,
+    });
+  });
+
   it("fails closed for missing input across scan and cleanup IPC", async () => {
     const missingPath = process.platform === "win32" ? "Z:\\metaclean-missing-input.txt" : "/tmp/metaclean-missing-input.txt";
     const outcome = await browser.tauri.execute(({ core }, path) => Promise.all([

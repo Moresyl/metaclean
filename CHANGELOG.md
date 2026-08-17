@@ -5,6 +5,43 @@ All notable changes to MetaClean are documented here. The project follows
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-08-18
+
+### Added
+
+- Cryptographically signed in-app updates for installed Windows builds, both
+  macOS architectures and Linux AppImage. The Settings page reports download
+  progress, installs the verified package and restarts the application.
+- A five-target updater release pipeline that collects signed NSIS, macOS app
+  archives and AppImage artifacts, generates a complete static `latest.json`,
+  and includes every updater file in the SHA-256 release manifest.
+- Explicit runtime capability detection and a package marker for Windows
+  portable ZIPs. Portable and non-AppImage Linux builds open the official
+  release page instead of attempting an unsafe in-place self-update.
+
+### Changed
+
+- Stable update discovery now uses the native Tauri updater over Rust TLS
+  instead of a WebView GitHub API request. Automatic checks remain optional and
+  the production WebView CSP remains local-only.
+- Download and installation are owned by a narrow Rust command; the frontend
+  receives only updater check permission and progress events.
+
+### Security
+
+- Every in-app update must pass the embedded minisign public-key check. Signature
+  verification cannot be disabled by a release manifest or remote response.
+- Signing is enabled only by the release-specific Tauri configuration, keeping
+  private keys out of the repository and ordinary local builds while requiring
+  encrypted GitHub Actions secrets for public updater artifacts.
+
+### Fixed
+
+- Fixed production update discovery being blocked by the intentionally strict
+  WebView `connect-src` policy even though mocked browser tests passed.
+- Update errors now degrade to a visible retry state, concurrent checks remain
+  deduplicated, and dismissed versions remain locally persisted.
+
 ## [0.3.0] - 2026-08-17
 
 ### Added
@@ -132,4 +169,5 @@ All notable changes to MetaClean are documented here. The project follows
 [0.1.0]: https://github.com/Moresyl/metaclean/releases/tag/v0.1.0
 [0.2.0]: https://github.com/Moresyl/metaclean/compare/v0.1.0...v0.2.0
 [0.3.0]: https://github.com/Moresyl/metaclean/compare/v0.2.0...v0.3.0
-[Unreleased]: https://github.com/Moresyl/metaclean/compare/v0.3.0...HEAD
+[0.4.0]: https://github.com/Moresyl/metaclean/compare/v0.3.0...v0.4.0
+[Unreleased]: https://github.com/Moresyl/metaclean/compare/v0.4.0...HEAD

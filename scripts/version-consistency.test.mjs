@@ -1,0 +1,28 @@
+import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
+import test from "node:test";
+
+test("keeps application metadata, changelog and release notes on one version", async () => {
+  const packageMetadata = JSON.parse(await readFile(new URL("../package.json", import.meta.url), "utf8"));
+  const tauriConfig = JSON.parse(await readFile(new URL("../src-tauri/tauri.conf.json", import.meta.url), "utf8"));
+  const cargoManifest = await readFile(new URL("../src-tauri/Cargo.toml", import.meta.url), "utf8");
+  const changelog = await readFile(new URL("../CHANGELOG.md", import.meta.url), "utf8");
+  const releaseNotes = await readFile(new URL(`../release-notes/v${packageMetadata.version}.md`, import.meta.url), "utf8");
+
+  assert.equal(tauriConfig.version, packageMetadata.version);
+  assert.match(cargoManifest, new RegExp(`^version = "${packageMetadata.version.replace(/\./gu, "\\.")}"$`, "mu"));
+  assert.match(changelog, new RegExp(`^## \\[${packageMetadata.version.replace(/\./gu, "\\.")}\\]`, "mu"));
+  assert.match(releaseNotes, new RegExp(`^# MetaClean v${packageMetadata.version.replace(/\./gu, "\\.")}$`, "mu"));
+});
+
+test("keeps updater trust in the base config and signing in the release-only config", async () => {
+  const tauriConfig = JSON.parse(await readFile(new URL("../src-tauri/tauri.conf.json", import.meta.url), "utf8"));
+  const releaseConfig = JSON.parse(await readFile(new URL("../src-tauri/tauri.release.conf.json", import.meta.url), "utf8"));
+  const updater = tauriConfig.plugins?.updater;
+
+  assert.match(updater.pubkey, /^[A-Za-z0-9+/]+=*$/u);
+  assert.deepEqual(updater.endpoints, ["https://github.com/Moresyl/metaclean/releases/latest/download/latest.json"]);
+  assert.equal(updater.windows.installMode, "passive");
+  assert.equal(tauriConfig.bundle.createUpdaterArtifacts, undefined);
+  assert.equal(releaseConfig.bundle.createUpdaterArtifacts, true);
+});

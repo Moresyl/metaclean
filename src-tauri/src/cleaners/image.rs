@@ -2,8 +2,10 @@ use crate::{
     error::{CleanError, Result},
     models::{Finding, FindingSeverity},
 };
+use std::ops::Range;
 
 const PNG_SIGNATURE: &[u8] = b"\x89PNG\r\n\x1a\n";
+type JpegSegment<'a> = (u8, &'a [u8], Range<usize>);
 
 fn finding(label: &str, count: usize) -> Finding {
     Finding {
@@ -68,7 +70,7 @@ pub fn inspect_jpeg(data: &[u8]) -> Result<Vec<Finding>> {
     Ok(findings)
 }
 
-fn jpeg_segments(data: &[u8]) -> Result<Vec<(u8, &[u8], std::ops::Range<usize>)>> {
+fn jpeg_segments(data: &[u8]) -> Result<Vec<JpegSegment<'_>>> {
     if !data.starts_with(&[0xFF, 0xD8]) {
         return Err(CleanError::InvalidFormat("不是有效 JPEG".into()));
     }

@@ -186,6 +186,9 @@ pub fn clean(data: &[u8]) -> Result<(Vec<u8>, Vec<Finding>)> {
     let cursor = Cursor::new(Vec::with_capacity(data.len()));
     let mut writer = ZipWriter::new(cursor);
     let options = SimpleFileOptions::default().compression_method(zip::CompressionMethod::Deflated);
+    let private_relation =
+        Regex::new(r#"(?is)<(?:Relationship|Override)[^>]*(?:comments|customXml)[^>]*/>"#)
+            .expect("private Office relationship regex must compile");
     let mut expanded = 0u64;
     for index in 0..archive.len() {
         let mut file = archive.by_index(index)?;
@@ -216,11 +219,7 @@ pub fn clean(data: &[u8]) -> Result<(Vec<u8>, Vec<Finding>)> {
                     cleaned = accept_word_revisions(&cleaned).0;
                 }
                 if name.ends_with(".rels") || name == "[Content_Types].xml" {
-                    let relation = Regex::new(
-                        r#"(?is)<(?:Relationship|Override)[^>]*(?:comments|customXml)[^>]*/>"#,
-                    )
-                    .unwrap();
-                    cleaned = relation.replace_all(&cleaned, "").into_owned();
+                    cleaned = private_relation.replace_all(&cleaned, "").into_owned();
                 }
                 content = cleaned.into_bytes();
             }

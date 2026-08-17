@@ -1,6 +1,6 @@
 [package]
 name = "metaclean"
-version = "0.3.0"
+version = "0.4.0"
 description = "Offline file privacy cleaner"
 authors = ["Moresyl"]
 license = "MIT"
@@ -30,6 +30,7 @@ tempfile = "3"
 thiserror = "2"
 zip = { version = "4", default-features = false, features = ["deflate"] }
 filetime = "0.2"
+tauri-plugin-updater = "2"
 
 [target.'cfg(windows)'.dependencies]
 winreg = "0.55"
