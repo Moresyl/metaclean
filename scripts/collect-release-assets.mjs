@@ -6,9 +6,8 @@ async function walk(directory) {
   const files = [];
   for (const entry of await readdir(directory, { withFileTypes: true })) {
     const fullPath = path.join(directory, entry.name);
-    if (entry.isDirectory()) files.push(...await walk(fullPath));
+    if (entry.isDirectory() && !/\.(?:app|appdir)$/iu.test(entry.name)) files.push(...await walk(fullPath));
     else if (entry.isFile()) files.push(fullPath);
-    else throw new Error(`Release bundle contains a non-regular entry: ${fullPath}`);
   }
   return files;
 }

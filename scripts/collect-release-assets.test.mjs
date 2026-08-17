@@ -21,6 +21,20 @@ test("collects one non-empty package per expected extension", async () => {
   }
 });
 
+test("ignores application bundle contents when selecting final packages", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "metaclean-assets-appimage-"));
+  try {
+    const bundle = path.join(root, "bundle");
+    const output = path.join(root, "output");
+    await mkdir(path.join(bundle, "appimage", "MetaClean.AppDir"), { recursive: true });
+    await writeFile(path.join(bundle, "appimage", "MetaClean.AppImage"), "appimage");
+    await writeFile(path.join(bundle, "appimage", "MetaClean.AppDir", "internal.AppImage"), "internal");
+    assert.deepEqual(await collectReleaseAssets(bundle, output, ["AppImage"]), ["MetaClean.AppImage"]);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test("rejects missing, duplicate and empty packages", async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), "metaclean-assets-invalid-"));
   try {
