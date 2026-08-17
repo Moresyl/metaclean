@@ -4,10 +4,10 @@ import test from "node:test";
 import { loadReleaseNotes, validateReleaseNotes } from "./load-release-notes.mjs";
 
 test("loads the concrete bilingual notes for a published version", async () => {
-  const notes = await loadReleaseNotes("v0.2.0");
+  const notes = await loadReleaseNotes("v0.3.0");
   assert.match(notes, /### 新功能/u);
   assert.match(notes, /### English summary/u);
-  assert.equal(validateReleaseNotes("v0.2.0", notes.replace(/\n/gu, "\r\n")), notes);
+  assert.equal(validateReleaseNotes("v0.3.0", notes.replace(/\n/gu, "\r\n")), notes);
 });
 
 test("rejects missing sections, generic bodies and invalid tags", () => {
