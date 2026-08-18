@@ -42,3 +42,24 @@ test("rejects missing, empty and ambiguous AppImage delta output", async () => {
     await rm(root, { recursive: true, force: true });
   }
 });
+
+test("accepts one exact match across Tauri's possible working directories and rejects duplicates", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "metaclean-place-zsync-candidates-"));
+  try {
+    const bundle = path.join(root, "bundle");
+    const first = path.join(root, "repository");
+    const second = path.join(first, "src-tauri");
+    await mkdir(bundle);
+    await mkdir(second, { recursive: true });
+    await writeFile(path.join(bundle, appImageName), "appimage");
+    await writeFile(path.join(second, `${appImageName}.zsync`), "zsync");
+    assert.equal(await placeAppImageZsync(bundle, [first, second]), path.join(bundle, `${appImageName}.zsync`));
+
+    await rm(path.join(bundle, `${appImageName}.zsync`));
+    await writeFile(path.join(first, `${appImageName}.zsync`), "first");
+    await writeFile(path.join(second, `${appImageName}.zsync`), "second");
+    await assert.rejects(placeAppImageZsync(bundle, [first, second]), /exactly one generated/u);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
