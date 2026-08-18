@@ -26,3 +26,8 @@ test("keeps updater trust in the base config and signing in the release-only con
   assert.equal(tauriConfig.bundle.createUpdaterArtifacts, undefined);
   assert.equal(releaseConfig.bundle.createUpdaterArtifacts, true);
 });
+
+test("keeps Windows release builds on the GUI subsystem", async () => {
+  const mainSource = await readFile(new URL("../src-tauri/src/main.rs", import.meta.url), "utf8");
+  assert.match(mainSource, /^#!\[cfg_attr\(not\(debug_assertions\), windows_subsystem = "windows"\)\]$/mu);
+});

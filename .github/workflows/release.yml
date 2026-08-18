@@ -15,6 +15,7 @@ permissions:
 
 env:
   RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+  APPIMAGE_UPDATE_INFORMATION: gh-releases-zsync|Moresyl|metaclean|latest|MetaClean_*_amd64.AppImage.zsync
 
 jobs:
   build:
@@ -55,7 +56,7 @@ jobs:
             updaterPlatform: linux-x86_64
             args: --bundles deb,rpm,appimage
             bundlePath: src-tauri/target/release/bundle
-            extensions: deb,rpm,AppImage
+            extensions: deb,rpm,AppImage,zsync
     runs-on: ${{ matrix.platform }}
     steps:
       - uses: actions/checkout@v7
@@ -80,7 +81,7 @@ jobs:
         if: matrix.platform == 'ubuntu-22.04'
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential curl wget file libssl-dev libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf rpm
+          sudo apt-get install -y build-essential curl wget file libssl-dev libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf rpm zsync
       - run: pnpm install --frozen-lockfile
       - name: Validate bilingual release notes
         run: node scripts/load-release-notes.mjs
@@ -89,6 +90,13 @@ jobs:
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          LDAI_UPDATE_INFORMATION: ${{ runner.os == 'Linux' && env.APPIMAGE_UPDATE_INFORMATION || '' }}
+      - name: Verify the Windows executable uses the GUI subsystem
+        if: runner.os == 'Windows'
+        run: node scripts/verify-windows-gui-subsystem.mjs "${{ matrix.binaryPath }}"
+      - name: Verify AppImage update information and delta metadata
+        if: runner.os == 'Linux'
+        run: node scripts/verify-appimage-update.mjs "${{ matrix.bundlePath }}" "$APPIMAGE_UPDATE_INFORMATION"
       - name: Package the portable Windows application
         if: runner.os == 'Windows'
         shell: pwsh

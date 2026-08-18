@@ -4,10 +4,10 @@ import test from "node:test";
 import { loadReleaseNotes, validateReleaseNotes } from "./load-release-notes.mjs";
 
 test("loads the concrete bilingual notes for a published version", async () => {
-  const notes = await loadReleaseNotes("v0.4.0");
+  const notes = await loadReleaseNotes("v0.4.1");
   assert.match(notes, /### 新功能/u);
   assert.match(notes, /### English summary/u);
-  assert.equal(validateReleaseNotes("v0.4.0", notes.replace(/\n/gu, "\r\n")), notes);
+  assert.equal(validateReleaseNotes("v0.4.1", notes.replace(/\n/gu, "\r\n")), notes);
 });
 
 test("rejects missing sections, generic bodies and invalid tags", () => {
@@ -29,6 +29,12 @@ test("release workflow consumes validated notes and finalizes checksums", async 
   assert.match(workflow, /tauri\.release\.conf\.json/u);
   assert.match(workflow, /TAURI_SIGNING_PRIVATE_KEY/u);
   assert.match(workflow, /TAURI_SIGNING_PRIVATE_KEY_PASSWORD/u);
+  assert.match(workflow, /APPIMAGE_UPDATE_INFORMATION: gh-releases-zsync\|Moresyl\|metaclean\|latest\|MetaClean_\*_amd64\.AppImage\.zsync/u);
+  assert.match(workflow, /LDAI_UPDATE_INFORMATION:/u);
+  assert.match(workflow, /extensions: deb,rpm,AppImage,zsync/u);
+  assert.match(workflow, /rpm zsync/u);
+  assert.match(workflow, /verify-appimage-update\.mjs/u);
+  assert.match(workflow, /verify-windows-gui-subsystem\.mjs/u);
   assert.match(workflow, /smoke-windows-installer\.ps1/u);
   assert.match(workflow, /package-windows-portable\.ps1/u);
   assert.match(workflow, /smoke-windows-portable\.ps1/u);

@@ -5,6 +5,28 @@ All notable changes to MetaClean are documented here. The project follows
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-08-18
+
+### Added
+
+- Linux AppImage builds now embed the standard `gh-releases-zsync` update
+  information and publish a matching `.AppImage.zsync` asset. Compatible
+  AppImage update tools can discover the latest GitHub Release and download
+  only changed blocks.
+- Release gates now inspect the Windows PE subsystem and the AppImage
+  `.upd_info`/zsync pair before any package can reach the public release.
+
+### Changed
+
+- The AppImage delta channel is generated during the original Tauri bundle so
+  the existing minisign signature continues to cover the final AppImage used
+  by MetaClean's in-app updater.
+
+### Fixed
+
+- Windows release executables now use the GUI subsystem and no longer open an
+  extra black console window when MetaClean starts.
+
 ## [0.4.0] - 2026-08-18
 
 ### Added
