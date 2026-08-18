@@ -34,6 +34,9 @@ test("release workflow consumes validated notes and finalizes checksums", async 
   assert.match(workflow, /smoke-windows-portable\.ps1/u);
   assert.match(workflow, /i686-pc-windows-msvc/u);
   assert.match(workflow, /args: --bundles "nsis,msi"/u);
+  assert.equal((workflow.match(/--bundles "app,dmg"/gu) ?? []).length, 2);
+  assert.match(workflow, /collect-updater-assets\.mjs[^\n]+"\$\{\{ env\.RELEASE_TAG \}\}"/u);
+  assert.doesNotMatch(workflow, /collect-updater-assets\.mjs[^\n]+"\$RELEASE_TAG"/u);
   assert.match(workflow, /smoke-macos-dmg\.sh/u);
   assert.match(workflow, /smoke-linux-deb\.sh/u);
   assert.match(workflow, /gh release create/u);

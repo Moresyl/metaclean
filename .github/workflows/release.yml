@@ -41,13 +41,13 @@ jobs:
           - platform: macos-latest
             target: aarch64-apple-darwin
             updaterPlatform: darwin-aarch64
-            args: --target aarch64-apple-darwin --bundles dmg
+            args: --target aarch64-apple-darwin --bundles "app,dmg"
             bundlePath: src-tauri/target/aarch64-apple-darwin/release/bundle
             extensions: dmg
           - platform: macos-latest
             target: x86_64-apple-darwin
             updaterPlatform: darwin-x86_64
-            args: --target x86_64-apple-darwin --bundles dmg
+            args: --target x86_64-apple-darwin --bundles "app,dmg"
             bundlePath: src-tauri/target/x86_64-apple-darwin/release/bundle
             extensions: dmg
           - platform: ubuntu-22.04
@@ -110,7 +110,7 @@ jobs:
       - name: Collect validated release assets
         run: node scripts/collect-release-assets.mjs "${{ matrix.bundlePath }}" "${{ runner.temp }}/release-assets" "${{ matrix.extensions }}"
       - name: Collect signed updater assets
-        run: node scripts/collect-updater-assets.mjs "${{ matrix.bundlePath }}" "${{ runner.temp }}/release-assets" "${{ matrix.updaterPlatform }}" "$RELEASE_TAG"
+        run: node scripts/collect-updater-assets.mjs "${{ matrix.bundlePath }}" "${{ runner.temp }}/release-assets" "${{ matrix.updaterPlatform }}" "${{ env.RELEASE_TAG }}"
       - uses: actions/upload-artifact@v6
         with:
           name: packages-${{ matrix.target }}
