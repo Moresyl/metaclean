@@ -33,6 +33,7 @@ test("release workflow consumes validated notes and finalizes checksums", async 
   assert.match(workflow, /LDAI_UPDATE_INFORMATION:/u);
   assert.match(workflow, /extensions: deb,rpm,AppImage,zsync/u);
   assert.match(workflow, /rpm zsync/u);
+  assert.match(workflow, /prepare-appimage-zsync\.mjs/u);
   assert.match(workflow, /verify-appimage-update\.mjs/u);
   assert.match(workflow, /verify-windows-gui-subsystem\.mjs/u);
   assert.match(workflow, /smoke-windows-installer\.ps1/u);
