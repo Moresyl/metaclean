@@ -6,6 +6,14 @@ async function openSettingsPage() {
   await $(".locale-switch select").waitForDisplayed();
 }
 
+async function openCleaningPreferences() {
+  const navigation = await $$(".sidebar nav button");
+  await navigation[3].click();
+  const categories = await $$(".settings-nav button");
+  await categories[1].click();
+  await $(".fidelity-options").waitForDisplayed();
+}
+
 describe("MetaClean desktop application", () => {
   before(async () => {
     const [mainWindow] = await browser.getWindowHandles();
@@ -89,8 +97,7 @@ describe("MetaClean desktop application", () => {
     await browser.tauri.execute(() => localStorage.setItem("metaclean.removeExtendedAttributes", "false"));
     await browser.refresh();
     await $(".app-shell").waitForDisplayed();
-    const navigation = await $$(".sidebar nav button");
-    await navigation[3].click();
+    await openCleaningPreferences();
     const fidelity = await $$(".fidelity-options input");
     assert.equal(await fidelity[1].isSelected(), true);
     assert.equal(await fidelity[2].isSelected(), false);
@@ -101,8 +108,7 @@ describe("MetaClean desktop application", () => {
 
     await browser.refresh();
     await $(".app-shell").waitForDisplayed();
-    const refreshedNavigation = await $$(".sidebar nav button");
-    await refreshedNavigation[3].click();
+    await openCleaningPreferences();
     const refreshedFidelity = await $$(".fidelity-options input");
     assert.equal(await refreshedFidelity[1].isSelected(), false);
     assert.equal(await refreshedFidelity[2].isSelected(), true);
