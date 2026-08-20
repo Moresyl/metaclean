@@ -3,12 +3,14 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { UpdateProvider, useUpdate } from "./UpdateContext";
 
 const checkForUpdateMock = vi.hoisted(() => vi.fn());
+const getInstalledVersionMock = vi.hoisted(() => vi.fn());
 const getUpdateRuntimeMock = vi.hoisted(() => vi.fn());
 const installAvailableUpdateMock = vi.hoisted(() => vi.fn());
 const openUrlMock = vi.hoisted(() => vi.fn());
 vi.mock("../lib/update", () => ({
   RELEASES_PAGE_URL: "https://github.com/Moresyl/metaclean/releases/latest",
   checkForUpdate: checkForUpdateMock,
+  getInstalledVersion: getInstalledVersionMock,
   getUpdateRuntime: getUpdateRuntimeMock,
   installAvailableUpdate: installAvailableUpdateMock,
 }));
@@ -22,10 +24,13 @@ function Probe() {
     <span>{update.error}</span>
     <span>{String(update.runtime.selfUpdateSupported)}</span>
     <span>{update.progress?.downloaded}</span>
+    <span data-testid="prompt-open">{String(update.promptOpen)}</span>
     <button type="button" onClick={() => void update.checkUpdate()}>check</button>
     <button type="button" onClick={() => void update.installUpdate()}>install</button>
     <button type="button" onClick={() => void update.openRelease()}>open</button>
     <button type="button" onClick={() => update.setAutoCheckEnabled(!update.autoCheckEnabled)}>toggle</button>
+    <button type="button" onClick={update.showUpdatePrompt}>show prompt</button>
+    <button type="button" onClick={update.dismissUpdatePrompt}>dismiss prompt</button>
   </div>;
 }
 
@@ -33,6 +38,8 @@ describe("UpdateProvider", () => {
   beforeEach(() => {
     localStorage.clear();
     checkForUpdateMock.mockReset();
+    getInstalledVersionMock.mockReset();
+    getInstalledVersionMock.mockResolvedValue("0.4.1");
     getUpdateRuntimeMock.mockReset();
     installAvailableUpdateMock.mockReset();
     openUrlMock.mockReset();
@@ -101,6 +108,22 @@ describe("UpdateProvider", () => {
     fireEvent.click(screen.getByRole("button", { name: "install" }));
     await waitFor(() => expect(openUrlMock).toHaveBeenCalledWith("https://github.com/Moresyl/metaclean/releases/tag/v0.4.0"));
     expect(installAvailableUpdateMock).not.toHaveBeenCalled();
+  });
+
+  it("remembers a dismissed version and allows the prompt to be reopened", async () => {
+    checkForUpdateMock.mockResolvedValue({
+      status: "available",
+      info: { currentVersion: "0.4.1", availableVersion: "0.5.0", name: "MetaClean v0.5.0", releaseUrl: "https://github.com/Moresyl/metaclean/releases/tag/v0.5.0" },
+    });
+    render(<UpdateProvider><Probe /></UpdateProvider>);
+    fireEvent.click(screen.getByRole("button", { name: "check" }));
+    await waitFor(() => expect(screen.getByTestId("prompt-open")).toHaveTextContent("true"));
+    fireEvent.click(screen.getByRole("button", { name: "dismiss prompt" }));
+    expect(screen.getByTestId("prompt-open")).toHaveTextContent("false");
+    expect(localStorage.getItem("metaclean.update.dismissedVersion")).toBe("0.5.0");
+    fireEvent.click(screen.getByRole("button", { name: "show prompt" }));
+    expect(screen.getByTestId("prompt-open")).toHaveTextContent("true");
+    expect(localStorage.getItem("metaclean.update.dismissedVersion")).toBeNull();
   });
 
   it("rejects consumers outside the provider", () => {

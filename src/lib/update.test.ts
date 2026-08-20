@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { checkForUpdate, compareVersions, getUpdateRuntime, installAvailableUpdate } from "./update";
+import { checkForUpdate, compareVersions, getInstalledVersion, getUpdateRuntime, installAvailableUpdate } from "./update";
 
 const getVersionMock = vi.hoisted(() => vi.fn());
 vi.mock("@tauri-apps/api/app", () => ({ getVersion: getVersionMock }));
@@ -60,6 +60,13 @@ describe("checkForUpdate", () => {
     await expect(checkForUpdate({ checker: prerelease })).rejects.toThrow("prerelease");
     const stale = vi.fn().mockResolvedValue({ currentVersion: "0.4.0", version: "0.3.0" });
     await expect(checkForUpdate({ checker: stale })).resolves.toEqual({ status: "current", currentVersion: "0.4.0" });
+  });
+});
+
+describe("getInstalledVersion", () => {
+  it("reads the local application version without an update request", async () => {
+    getVersionMock.mockResolvedValue("0.4.1");
+    await expect(getInstalledVersion()).resolves.toBe("0.4.1");
   });
 });
 

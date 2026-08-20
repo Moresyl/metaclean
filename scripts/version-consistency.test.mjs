@@ -31,3 +31,31 @@ test("keeps Windows release builds on the GUI subsystem", async () => {
   const mainSource = await readFile(new URL("../src-tauri/src/main.rs", import.meta.url), "utf8");
   assert.match(mainSource, /^#!\[cfg_attr\(not\(debug_assertions\), windows_subsystem = "windows"\)\]$/mu);
 });
+
+test("keeps the desktop window at a fixed size", async () => {
+  const tauriConfig = JSON.parse(await readFile(new URL("../src-tauri/tauri.conf.json", import.meta.url), "utf8"));
+  const [mainWindow] = tauriConfig.app.windows;
+
+  assert.deepEqual(
+    {
+      width: mainWindow.width,
+      height: mainWindow.height,
+      minWidth: mainWindow.minWidth,
+      minHeight: mainWindow.minHeight,
+      maxWidth: mainWindow.maxWidth,
+      maxHeight: mainWindow.maxHeight,
+      resizable: mainWindow.resizable,
+      maximizable: mainWindow.maximizable,
+    },
+    {
+      width: 1100,
+      height: 570,
+      minWidth: 1100,
+      minHeight: 570,
+      maxWidth: 1100,
+      maxHeight: 570,
+      resizable: false,
+      maximizable: false,
+    },
+  );
+});

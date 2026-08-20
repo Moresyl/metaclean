@@ -6,14 +6,16 @@ import FileQueue from "./FileQueue";
 import HistoryPage from "./HistoryPage";
 import PrivacyPage from "./PrivacyPage";
 import SettingsPage from "./SettingsPage";
+import UpdateDialog from "./UpdateDialog";
 import { I18nProvider, useI18n } from "../lib/i18n";
 import type { FileEntry, HistoryEntry } from "../types";
-import { UpdateProvider } from "../contexts/UpdateContext";
+import { UpdateProvider, useUpdate } from "../contexts/UpdateContext";
 import { ThemeProvider } from "../contexts/ThemeContext";
 
 const openMock = vi.hoisted(() => vi.fn());
 const invokeMock = vi.hoisted(() => vi.fn());
 const checkForUpdateMock = vi.hoisted(() => vi.fn());
+const getInstalledVersionMock = vi.hoisted(() => vi.fn());
 const getUpdateRuntimeMock = vi.hoisted(() => vi.fn());
 const installAvailableUpdateMock = vi.hoisted(() => vi.fn());
 const openUrlMock = vi.hoisted(() => vi.fn());
@@ -23,17 +25,25 @@ vi.mock("@tauri-apps/plugin-opener", () => ({ openUrl: openUrlMock }));
 vi.mock("../lib/update", () => ({
   RELEASES_PAGE_URL: "https://github.com/Moresyl/metaclean/releases/latest",
   checkForUpdate: checkForUpdateMock,
+  getInstalledVersion: getInstalledVersionMock,
   getUpdateRuntime: getUpdateRuntimeMock,
   installAvailableUpdate: installAvailableUpdateMock,
 }));
 
 const wrap = (node: React.ReactNode) => render(<ThemeProvider initialMode="light"><I18nProvider><UpdateProvider>{node}</UpdateProvider></I18nProvider></ThemeProvider>);
 
+function UpdateDialogHarness() {
+  const update = useUpdate();
+  return <><button type="button" onClick={() => void update.checkUpdate()}>trigger update</button><UpdateDialog /></>;
+}
+
 beforeEach(() => {
   openMock.mockReset();
   invokeMock.mockReset();
   checkForUpdateMock.mockReset();
   checkForUpdateMock.mockResolvedValue({ status: "current", currentVersion: "0.1.0" });
+  getInstalledVersionMock.mockReset();
+  getInstalledVersionMock.mockResolvedValue("0.4.1");
   getUpdateRuntimeMock.mockReset();
   getUpdateRuntimeMock.mockResolvedValue({ selfUpdateSupported: false, portable: true });
   installAvailableUpdateMock.mockReset();
@@ -163,9 +173,11 @@ describe("desktop components", () => {
     });
     const onMode = vi.fn();
     const { unmount } = wrap(<SettingsPage mode="copy" onModeChange={onMode} preserveTimestamps onPreserveTimestampsChange={vi.fn()} preserveOrientation onPreserveOrientationChange={vi.fn()} preserveColorProfile onPreserveColorProfileChange={vi.fn()} removeExtendedAttributes={false} onRemoveExtendedAttributesChange={vi.fn()} />);
+    fireEvent.click(screen.getByRole("button", { name: "系统与更新" }));
     const enable = await screen.findByRole("button", { name: "启用" });
     fireEvent.click(enable);
     await screen.findByRole("button", { name: "停用" });
+    fireEvent.click(screen.getByRole("button", { name: "清理偏好" }));
     fireEvent.click(screen.getByText("替换并备份"));
     expect(onMode).toHaveBeenCalledWith("replace");
     unmount();
@@ -195,9 +207,10 @@ describe("desktop components", () => {
       },
     });
     wrap(<SettingsPage mode="copy" onModeChange={vi.fn()} preserveTimestamps onPreserveTimestampsChange={vi.fn()} preserveOrientation onPreserveOrientationChange={vi.fn()} preserveColorProfile onPreserveColorProfileChange={vi.fn()} removeExtendedAttributes={false} onRemoveExtendedAttributesChange={vi.fn()} />);
+    fireEvent.click(screen.getByRole("button", { name: "系统与更新" }));
     fireEvent.click(screen.getByRole("button", { name: "检查更新" }));
-    const download = await screen.findByRole("button", { name: "下载新版本" });
-    expect(screen.getByText(/可更新到 0.2.0/)).toBeInTheDocument();
+    const download = await screen.findByRole("button", { name: "前往 GitHub" });
+    expect(screen.getByText(/可更新到 v0.2.0/)).toBeInTheDocument();
     fireEvent.click(download);
     await waitFor(() => expect(openUrlMock).toHaveBeenCalledWith("https://github.com/Moresyl/metaclean/releases/tag/v0.2.0"));
   });
@@ -205,7 +218,28 @@ describe("desktop components", () => {
   it("shows unavailable Windows integration without enabling it", async () => {
     invokeMock.mockResolvedValue({ available: false, enabled: false, detail: "仅 Windows" });
     wrap(<SettingsPage mode="replace" onModeChange={vi.fn()} preserveTimestamps onPreserveTimestampsChange={vi.fn()} preserveOrientation onPreserveOrientationChange={vi.fn()} preserveColorProfile onPreserveColorProfileChange={vi.fn()} removeExtendedAttributes={false} onRemoveExtendedAttributesChange={vi.fn()} />);
+    fireEvent.click(screen.getByRole("button", { name: "系统与更新" }));
     expect(await screen.findByRole("button", { name: "启用" })).toBeDisabled();
+  });
+
+  it("shows release notes and opens the GitHub release from the update prompt", async () => {
+    checkForUpdateMock.mockResolvedValue({
+      status: "available",
+      info: {
+        currentVersion: "0.4.1",
+        availableVersion: "0.5.0",
+        name: "MetaClean v0.5.0",
+        notes: "新增原生设置分栏\n修复空窗口菜单",
+        publishedAt: "2026-08-20T00:00:00Z",
+        releaseUrl: "https://github.com/Moresyl/metaclean/releases/tag/v0.5.0",
+      },
+    });
+    wrap(<UpdateDialogHarness />);
+    fireEvent.click(screen.getByRole("button", { name: "trigger update" }));
+    expect(await screen.findByRole("dialog", { name: "v0.5.0" })).toHaveTextContent("新增原生设置分栏");
+    fireEvent.click(screen.getByRole("button", { name: /前往 GitHub 查看并下载/ }));
+    await waitFor(() => expect(openUrlMock).toHaveBeenCalledWith("https://github.com/Moresyl/metaclean/releases/tag/v0.5.0"));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
   it("persists the selected interface theme", async () => {

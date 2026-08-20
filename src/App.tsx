@@ -7,7 +7,9 @@ import CleanOptions from "./components/CleanOptions";
 import HistoryPage from "./components/HistoryPage";
 import PrivacyPage from "./components/PrivacyPage";
 import SettingsPage from "./components/SettingsPage";
+import UpdateDialog from "./components/UpdateDialog";
 import { actionableFindingCount, entryFromPath, mergeEntries } from "./lib/files";
+import { installZoomLock } from "./lib/window";
 import type { CleanMode, FileEntry, HistoryEntry, IntakeResult, Page } from "./types";
 import type { CleanResult, ScanReport } from "./types";
 import { useI18n } from "./lib/i18n";
@@ -63,6 +65,10 @@ export default function App() {
       .catch(() => undefined);
     return () => dispose?.();
   }, [addNativePaths]);
+
+  useEffect(() => {
+    return installZoomLock();
+  }, []);
 
   useEffect(() => {
     let dispose: (() => void) | undefined;
@@ -132,10 +138,11 @@ export default function App() {
   }
 
   return (
+    <>
     <div className="app-shell">
       <Sidebar page={page} onNavigate={setPage} />
       <main className="workspace">
-        <header className="topbar"><div><h1>{page === "clean" ? text("文件净化", "Clean files") : page === "history" ? text("处理记录", "History") : page === "privacy" ? text("隐私说明", "Privacy") : text("设置", "Settings")}</h1><p>{page === "clean" ? text("清除文件里的隐私痕迹，分享前更安心", "Remove private traces before sharing") : text("MetaClean · 纯本地文件隐私工具", "MetaClean · Local file privacy tool")}</p></div>{update.status === "available" ? <button className="update-badge" type="button" onClick={() => setPage("settings")} aria-label={text(`发现新版本 ${update.info?.availableVersion}`, `Version ${update.info?.availableVersion} is available`)}><ArrowUpCircle size={16}/><span>{text("发现新版本", "Update available")}</span></button> : null}</header>
+        <header className="topbar"><div><h1>{page === "clean" ? text("文件净化", "Clean files") : page === "history" ? text("处理记录", "History") : page === "privacy" ? text("隐私说明", "Privacy") : text("设置", "Settings")}</h1><p>{page === "clean" ? text("清除文件里的隐私痕迹，分享前更安心", "Remove private traces before sharing") : text("MetaClean · 纯本地文件隐私工具", "MetaClean · Local file privacy tool")}</p></div>{update.status === "available" ? <button className="update-badge" type="button" onClick={update.showUpdatePrompt} aria-label={text(`发现新版本 ${update.info?.availableVersion}`, `Version ${update.info?.availableVersion} is available`)}><ArrowUpCircle size={16}/><span>{text(`更新至 v${update.info?.availableVersion}`, `Update to v${update.info?.availableVersion}`)}</span></button> : null}</header>
         {page === "clean" ? <div className="content-grid">
           <div className="main-column">
             <div className="notice"><Sparkles size={15} /><span><strong>{text("所有处理均在本机完成。", "All processing happens locally. ")}</strong>{text("MetaClean 不上传、不保存、也不分析你的文件内容。", "MetaClean never uploads, stores, or analyzes your file content.")}</span></div>
@@ -147,5 +154,7 @@ export default function App() {
         </div> : page === "history" ? <HistoryPage entries={history} onClear={() => saveHistory([])} /> : page === "privacy" ? <PrivacyPage /> : <SettingsPage mode={mode} onModeChange={setMode} preserveTimestamps={preserveTimestamps} onPreserveTimestampsChange={setPreserveTimestamps} preserveOrientation={preserveOrientation} onPreserveOrientationChange={setPreserveOrientation} preserveColorProfile={preserveColorProfile} onPreserveColorProfileChange={setPreserveColorProfile} removeExtendedAttributes={removeExtendedAttributes} onRemoveExtendedAttributesChange={setRemoveExtendedAttributes} />}
       </main>
     </div>
+    <UpdateDialog />
+    </>
   );
 }

@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "MetaClean",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "identifier": "com.moresl.metaclean",
   "build": {
     "beforeDevCommand": "pnpm dev",
@@ -10,7 +10,7 @@
     "frontendDist": "../dist"
   },
   "app": {
-    "windows": [{ "title": "MetaClean", "width": 1100, "height": 760, "minWidth": 760, "minHeight": 620, "resizable": true }],
+    "windows": [{ "title": "MetaClean", "width": 1100, "height": 570, "minWidth": 1100, "minHeight": 570, "maxWidth": 1100, "maxHeight": 570, "resizable": false, "maximizable": false }],
     "security": {
       "csp": "default-src 'self'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' asset: http://asset.localhost data:; connect-src ipc: http://ipc.localhost"
     }

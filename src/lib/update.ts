@@ -85,7 +85,7 @@ function releaseUrlForVersion(version: string): string {
   return `https://github.com/Moresyl/metaclean/releases/tag/v${encodeURIComponent(version)}`;
 }
 
-async function installedVersion(): Promise<string> {
+export async function getInstalledVersion(): Promise<string> {
   try {
     const { getVersion } = await import("@tauri-apps/api/app");
     return await getVersion();
@@ -105,7 +105,7 @@ export async function checkForUpdate(options: {
   timeoutMs?: number;
 } = {}): Promise<UpdateCheckResult> {
   const update = await (options.checker ?? nativeCheck)({ timeout: options.timeoutMs ?? 10_000 });
-  const currentVersion = options.currentVersion ?? update?.currentVersion ?? await installedVersion();
+  const currentVersion = options.currentVersion ?? update?.currentVersion ?? await getInstalledVersion();
   if (!update) return { status: "current", currentVersion };
 
   const availableVersion = update.version.replace(/^v/iu, "");

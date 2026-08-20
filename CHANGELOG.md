@@ -5,6 +5,33 @@ All notable changes to MetaClean are documented here. The project follows
 
 ## [Unreleased]
 
+## [0.4.2] - 2026-08-20
+
+### Added
+
+- The installed MetaClean version is now always visible in the sidebar and in
+  Settings without waiting for a network update check.
+- Available updates now open a dedicated prompt with the target version,
+  publication date and concrete release notes. Dismissal is remembered per
+  version, and the prompt can be reopened from the update badge.
+
+### Changed
+
+- Settings now use a compact native-style category layout for appearance,
+  cleaning preferences, system updates and safety controls.
+- The desktop window is fixed at 1100 by 570 pixels, cannot be maximized or
+  resized, restores position only, and blocks keyboard and wheel zoom shortcuts.
+- Interface typography now uses a small shared type scale with black text in
+  light mode and white text in dark mode, while flatter controls and system
+  fonts make the application feel closer to a native desktop utility.
+
+### Fixed
+
+- Fixed Issue #2 by limiting the application menu to macOS. Linux AppImage and
+  Windows builds no longer display the empty WebView window menu.
+- Removed the fullscreen command from the remaining macOS Window menu so the
+  fixed desktop layout cannot be expanded through the native menu.
+
 ## [0.4.1] - 2026-08-18
 
 ### Added
@@ -192,4 +219,6 @@ All notable changes to MetaClean are documented here. The project follows
 [0.2.0]: https://github.com/Moresyl/metaclean/compare/v0.1.0...v0.2.0
 [0.3.0]: https://github.com/Moresyl/metaclean/compare/v0.2.0...v0.3.0
 [0.4.0]: https://github.com/Moresyl/metaclean/compare/v0.3.0...v0.4.0
-[Unreleased]: https://github.com/Moresyl/metaclean/compare/v0.4.0...HEAD
+[0.4.1]: https://github.com/Moresyl/metaclean/compare/v0.4.0...v0.4.1
+[0.4.2]: https://github.com/Moresyl/metaclean/compare/v0.4.1...v0.4.2
+[Unreleased]: https://github.com/Moresyl/metaclean/compare/v0.4.2...HEAD

@@ -9,6 +9,7 @@ vi.mock("@tauri-apps/api/webview", () => ({ getCurrentWebview: () => ({ onDragDr
 const invokeMock = vi.hoisted(() => vi.fn());
 const revealMock = vi.hoisted(() => vi.fn());
 vi.mock("@tauri-apps/api/core", () => ({ invoke: invokeMock }));
+vi.mock("@tauri-apps/api/app", () => ({ getVersion: () => Promise.resolve("0.4.1") }));
 vi.mock("@tauri-apps/plugin-opener", () => ({ revealItemInDir: revealMock }));
 
 describe("App", () => {
@@ -25,6 +26,11 @@ describe("App", () => {
     expect(screen.getByRole("button", { name: "扫描隐私痕迹" })).toBeDisabled();
   });
 
+  it("shows the installed version in the sidebar without waiting for an update check", async () => {
+    renderApp();
+    expect(await screen.findByText("MetaClean v0.4.1")).toBeInTheDocument();
+  });
+
   it("adds a dropped file and enables scanning", () => {
     renderApp();
     const zone = screen.getByText("拖入要净化的文件").closest("section");
@@ -38,6 +44,7 @@ describe("App", () => {
     fireEvent.click(screen.getByRole("button", { name: "设置" }));
     fireEvent.change(screen.getByRole("combobox", { name: "界面语言" }), { target: { value: "en" } });
     expect(screen.getByRole("button", { name: "Clean files" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Cleaning" }));
     expect(screen.getByText("Default output mode")).toBeInTheDocument();
     expect(localStorage.getItem("metaclean.locale")).toBe("en");
   });
@@ -45,7 +52,7 @@ describe("App", () => {
   it("navigates every primary page with desktop accelerators", () => {
     renderApp();
     fireEvent.keyDown(window, { key: "4", ctrlKey: true });
-    expect(screen.getByText("默认输出方式")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "外观与语言" })).toBeInTheDocument();
     fireEvent.keyDown(window, { key: "2", metaKey: true });
     expect(screen.getByText("还没有处理记录")).toBeInTheDocument();
     fireEvent.keyDown(window, { key: "3", ctrlKey: true });
@@ -59,6 +66,7 @@ describe("App", () => {
     fireEvent.click(screen.getByRole("button", { name: "设置" }));
     fireEvent.change(screen.getByRole("combobox", { name: "界面语言" }), { target: { value: "ja" } });
     expect(screen.getByRole("button", { name: "ファイルをクリーン" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Cleaning" }));
     expect(screen.getByText("既定の出力モード")).toBeInTheDocument();
     expect(document.documentElement.lang).toBe("ja");
   });
@@ -109,6 +117,7 @@ describe("App", () => {
     fireEvent.click(screen.getByRole("button", { name: "扫描隐私痕迹" }));
     expect(await screen.findByRole("button", { name: "没有需要清理的痕迹" })).toBeDisabled();
     fireEvent.click(screen.getByRole("button", { name: "设置" }));
+    fireEvent.click(screen.getByRole("button", { name: "清理偏好" }));
     fireEvent.click(screen.getByRole("checkbox", { name: /图片 · ICC \/ sRGB/ }));
     expect(localStorage.getItem("metaclean.preserveColorProfile")).toBe("false");
     fireEvent.click(screen.getByRole("button", { name: "文件净化" }));
@@ -128,6 +137,7 @@ describe("App", () => {
     fireEvent.click(screen.getByRole("button", { name: "扫描隐私痕迹" }));
     expect(await screen.findByRole("button", { name: "没有需要清理的痕迹" })).toBeDisabled();
     fireEvent.click(screen.getByRole("button", { name: "设置" }));
+    fireEvent.click(screen.getByRole("button", { name: "清理偏好" }));
     fireEvent.click(screen.getByRole("checkbox", { name: /macOS · xattr/ }));
     expect(localStorage.getItem("metaclean.removeExtendedAttributes")).toBe("true");
     fireEvent.click(screen.getByRole("button", { name: "文件净化" }));

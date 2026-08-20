@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   checkForUpdate,
+  getInstalledVersion,
   getUpdateRuntime,
   installAvailableUpdate,
   RELEASES_PAGE_URL,
@@ -18,14 +19,18 @@ interface UpdateContextValue {
   error?: string;
   progress?: UpdateProgress;
   runtime: UpdateRuntime;
+  promptOpen: boolean;
   autoCheckEnabled: boolean;
   setAutoCheckEnabled: (enabled: boolean) => void;
   checkUpdate: () => Promise<void>;
   installUpdate: () => Promise<void>;
   openRelease: () => Promise<void>;
+  showUpdatePrompt: () => void;
+  dismissUpdatePrompt: () => void;
 }
 
 const AUTO_CHECK_KEY = "metaclean.update.autoCheck";
+const DISMISSED_VERSION_KEY = "metaclean.update.dismissedVersion";
 const DEFAULT_RUNTIME: UpdateRuntime = { selfUpdateSupported: false, portable: false };
 const UpdateContext = createContext<UpdateContextValue | null>(null);
 
@@ -36,6 +41,7 @@ export function UpdateProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string>();
   const [progress, setProgress] = useState<UpdateProgress>();
   const [runtime, setRuntime] = useState<UpdateRuntime>(DEFAULT_RUNTIME);
+  const [promptOpen, setPromptOpen] = useState(false);
   const [autoCheckEnabled, setAutoCheckState] = useState(() => localStorage.getItem(AUTO_CHECK_KEY) !== "false");
   const checking = useRef(false);
 
@@ -55,10 +61,12 @@ export function UpdateProvider({ children }: { children: ReactNode }) {
         setInfo(result.info);
         setCurrentVersion(result.info.currentVersion);
         setStatus("available");
+        setPromptOpen(localStorage.getItem(DISMISSED_VERSION_KEY) !== result.info.availableVersion);
       } else {
         setInfo(undefined);
         setCurrentVersion(result.currentVersion);
         setStatus("current");
+        setPromptOpen(false);
       }
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : String(reason));
@@ -72,6 +80,19 @@ export function UpdateProvider({ children }: { children: ReactNode }) {
     const { openUrl } = await import("@tauri-apps/plugin-opener");
     await openUrl(info?.releaseUrl ?? RELEASES_PAGE_URL);
   }, [info?.releaseUrl]);
+
+  const showUpdatePrompt = useCallback(() => {
+    if (!info) return;
+    localStorage.removeItem(DISMISSED_VERSION_KEY);
+    setPromptOpen(true);
+  }, [info]);
+
+  const dismissUpdatePrompt = useCallback(() => {
+    if (info?.availableVersion) {
+      localStorage.setItem(DISMISSED_VERSION_KEY, info.availableVersion);
+    }
+    setPromptOpen(false);
+  }, [info?.availableVersion]);
 
   const installUpdate = useCallback(async () => {
     if (!runtime.selfUpdateSupported) {
@@ -97,6 +118,9 @@ export function UpdateProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let active = true;
+    void getInstalledVersion()
+      .then((version) => { if (active) setCurrentVersion(version); })
+      .catch(() => undefined);
     void getUpdateRuntime()
       .then((value) => { if (active) setRuntime(value); })
       .catch(() => undefined);
@@ -116,12 +140,15 @@ export function UpdateProvider({ children }: { children: ReactNode }) {
     error,
     progress,
     runtime,
+    promptOpen,
     autoCheckEnabled,
     setAutoCheckEnabled,
     checkUpdate,
     installUpdate,
     openRelease,
-  }), [status, info, currentVersion, error, progress, runtime, autoCheckEnabled, setAutoCheckEnabled, checkUpdate, installUpdate, openRelease]);
+    showUpdatePrompt,
+    dismissUpdatePrompt,
+  }), [status, info, currentVersion, error, progress, runtime, promptOpen, autoCheckEnabled, setAutoCheckEnabled, checkUpdate, installUpdate, openRelease, showUpdatePrompt, dismissUpdatePrompt]);
 
   return <UpdateContext.Provider value={value}>{children}</UpdateContext.Provider>;
 }

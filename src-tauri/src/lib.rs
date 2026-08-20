@@ -8,11 +8,9 @@ mod shell_integration;
 
 use models::{CleanRequest, CleanResult, ScanReport};
 use std::sync::atomic::{AtomicBool, Ordering};
-use tauri::{
-    menu::{MenuBuilder, MenuItem, MenuItemBuilder, SubmenuBuilder},
-    tray::TrayIconBuilder,
-    Emitter, Manager,
-};
+#[cfg(target_os = "macos")]
+use tauri::menu::{MenuBuilder, MenuItemBuilder, SubmenuBuilder};
+use tauri::{menu::MenuItem, tray::TrayIconBuilder, Emitter, Manager};
 use tauri_plugin_updater::UpdaterExt;
 use tauri_plugin_window_state::StateFlags;
 
@@ -104,6 +102,48 @@ fn detect_update_runtime() -> UpdateRuntime {
     }
 }
 
+#[cfg(target_os = "macos")]
+fn install_application_menu(app: &tauri::App) -> tauri::Result<()> {
+    let show_window = MenuItemBuilder::with_id("show", "显示主窗口 / Show MetaClean")
+        .accelerator("CmdOrCtrl+Shift+O")
+        .build(app)?;
+    let settings = MenuItemBuilder::with_id("settings", "设置 / Settings")
+        .accelerator("CmdOrCtrl+,")
+        .build(app)?;
+    let quit_app = MenuItemBuilder::with_id("quit", "退出 / Exit")
+        .accelerator("CmdOrCtrl+Q")
+        .build(app)?;
+    let app_menu = SubmenuBuilder::new(app, "MetaClean")
+        .item(&show_window)
+        .item(&settings)
+        .separator()
+        .item(&quit_app)
+        .build()?;
+    let clean_page = MenuItemBuilder::with_id("clean", "文件净化 / Clean files")
+        .accelerator("CmdOrCtrl+1")
+        .build(app)?;
+    let history_page = MenuItemBuilder::with_id("history", "处理记录 / History")
+        .accelerator("CmdOrCtrl+2")
+        .build(app)?;
+    let privacy_page = MenuItemBuilder::with_id("privacy", "隐私说明 / Privacy")
+        .accelerator("CmdOrCtrl+3")
+        .build(app)?;
+    let settings_page = MenuItemBuilder::with_id("settings-page", "设置 / Settings")
+        .accelerator("CmdOrCtrl+4")
+        .build(app)?;
+    let navigation_menu = SubmenuBuilder::new(app, "导航 / Navigate")
+        .items(&[&clean_page, &history_page, &privacy_page, &settings_page])
+        .build()?;
+    let window_menu = SubmenuBuilder::new(app, "窗口 / Window")
+        .minimize()
+        .build()?;
+    let menu = MenuBuilder::new(app)
+        .items(&[&app_menu, &navigation_menu, &window_menu])
+        .build()?;
+    app.set_menu(menu)?;
+    Ok(())
+}
+
 #[tauri::command]
 fn get_update_runtime() -> UpdateRuntime {
     detect_update_runtime()
@@ -192,48 +232,12 @@ pub fn run() {
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(
             tauri_plugin_window_state::Builder::default()
-                .with_state_flags(StateFlags::SIZE | StateFlags::POSITION | StateFlags::MAXIMIZED)
+                .with_state_flags(StateFlags::POSITION)
                 .build(),
         )
         .setup(|app| {
-            let show_window = MenuItemBuilder::with_id("show", "显示主窗口 / Show MetaClean")
-                .accelerator("CmdOrCtrl+Shift+O")
-                .build(app)?;
-            let settings = MenuItemBuilder::with_id("settings", "设置 / Settings")
-                .accelerator("CmdOrCtrl+,")
-                .build(app)?;
-            let quit_app = MenuItemBuilder::with_id("quit", "退出 / Exit")
-                .accelerator("CmdOrCtrl+Q")
-                .build(app)?;
-            let app_menu = SubmenuBuilder::new(app, "MetaClean")
-                .item(&show_window)
-                .item(&settings)
-                .separator()
-                .item(&quit_app)
-                .build()?;
-            let clean_page = MenuItemBuilder::with_id("clean", "文件净化 / Clean files")
-                .accelerator("CmdOrCtrl+1")
-                .build(app)?;
-            let history_page = MenuItemBuilder::with_id("history", "处理记录 / History")
-                .accelerator("CmdOrCtrl+2")
-                .build(app)?;
-            let privacy_page = MenuItemBuilder::with_id("privacy", "隐私说明 / Privacy")
-                .accelerator("CmdOrCtrl+3")
-                .build(app)?;
-            let settings_page = MenuItemBuilder::with_id("settings-page", "设置 / Settings")
-                .accelerator("CmdOrCtrl+4")
-                .build(app)?;
-            let navigation_menu = SubmenuBuilder::new(app, "导航 / Navigate")
-                .items(&[&clean_page, &history_page, &privacy_page, &settings_page])
-                .build()?;
-            let window_menu = SubmenuBuilder::new(app, "窗口 / Window")
-                .minimize()
-                .fullscreen()
-                .build()?;
-            let window_menu = MenuBuilder::new(app)
-                .items(&[&app_menu, &navigation_menu, &window_menu])
-                .build()?;
-            app.set_menu(window_menu)?;
+            #[cfg(target_os = "macos")]
+            install_application_menu(app)?;
 
             let open = MenuItem::with_id(app, "open", "打开 MetaClean / Open", true, None::<&str>)?;
             let quit = MenuItem::with_id(app, "quit", "退出 / Exit", true, None::<&str>)?;
