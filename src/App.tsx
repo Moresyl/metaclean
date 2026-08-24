@@ -9,6 +9,7 @@ import PrivacyPage from "./components/PrivacyPage";
 import SettingsPage from "./components/SettingsPage";
 import UpdateDialog from "./components/UpdateDialog";
 import TitleBar from "./components/TitleBar";
+import StatusBar from "./components/StatusBar";
 import TooltipHost from "./components/TooltipHost";
 import CommandPalette, { type Command } from "./components/CommandPalette";
 import { actionableFindingCount, entryFromPath, mergeEntries } from "./lib/files";
@@ -202,6 +203,7 @@ export default function App() {
         </div>
       </main>
     </div>
+    <StatusBar busy={busy} fileCount={entries.length} />
     </div>
     <UpdateDialog />
     <TooltipHost />

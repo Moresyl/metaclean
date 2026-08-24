@@ -5,6 +5,41 @@ All notable changes to MetaClean are documented here. The project follows
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-08-24
+
+### Added
+
+- HTML, XHTML, SVG and Markdown now inspect and clean metadata inside embedded
+  raster image data URIs, including nested SVG. Processing is bounded to 100
+  images, 16 MiB per payload and four nesting levels.
+- PDF cleanup now reaches JPEG image XObjects and removes their EXIF, XMP,
+  IPTC, comments and provenance blocks while preserving orientation and color
+  profiles.
+- The queue can export a versioned local JSON audit report containing the
+  summary, findings and output status without exposing raw metadata values.
+- WAV C2PA chunks and ID3v2/C2PA prefixes before FLAC streams are detected and
+  removed without re-encoding audio.
+
+### Changed
+
+- The desktop shell is rebuilt as a fixed 1180 × 720 privacy workspace with a
+  compact 60-pixel icon rail, 36-pixel product caption, balanced two-column
+  work area and persistent 26-pixel local-status bar.
+- Invisible-text cleanup now covers all 66 Unicode noncharacters and reserved
+  default-ignorable ranges while preserving legitimate emoji, complex-script,
+  CJK variation, flag-tag and directional-text sequences contextually.
+- Cleaning, history, privacy and settings surfaces now share one compact type,
+  spacing, control-height, panel and state hierarchy.
+
+### Fixed
+
+- Floating bidi overrides and malformed directional controls no longer survive
+  text cleanup, while valid paired embeddings and isolates remain intact.
+- FLAC files prefixed with an ID3v2 tag are now recognized by the public engine
+  instead of being rejected before the native FLAC cleaner can run.
+- Deep metadata embedded in PDFs and markup can no longer pass a successful
+  top-level scan unnoticed.
+
 ## [0.5.0] - 2026-08-24
 
 ### Added

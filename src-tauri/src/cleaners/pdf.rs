@@ -7,6 +7,31 @@ use crate::{
     models::{Finding, FindingSeverity},
 };
 
+use super::image;
+
+fn embedded_image_findings(document: &Document) -> usize {
+    document
+        .objects
+        .values()
+        .filter_map(|object| match object {
+            Object::Stream(stream)
+                if stream
+                    .dict
+                    .get(b"Subtype")
+                    .is_ok_and(|value| value.as_name().is_ok_and(|name| name == b"Image")) =>
+            {
+                Some(stream)
+            }
+            _ => None,
+        })
+        .map(|stream| &stream.content)
+        .filter(|content| {
+            content.starts_with(&[0xff, 0xd8, 0xff])
+                && image::inspect_jpeg(content).is_ok_and(|findings| !findings.is_empty())
+        })
+        .count()
+}
+
 pub fn inspect(data: &[u8]) -> Result<Vec<Finding>> {
     let document = Document::load_mem(data)?;
     let mut count = 0;
@@ -30,10 +55,11 @@ pub fn inspect(data: &[u8]) -> Result<Vec<Finding>> {
             _ => {}
         }
     }
+    count += embedded_image_findings(&document);
     Ok(if count > 0 {
         vec![Finding {
             category: "pdf_metadata".into(),
-            label: "PDF 文档属性 / XMP".into(),
+            label: "PDF 文档属性 / XMP / 内嵌图片".into(),
             count,
             severity: FindingSeverity::Privacy,
         }]
@@ -69,6 +95,22 @@ pub fn clean(data: &[u8]) -> Result<(Vec<u8>, Vec<Finding>)> {
         if let Object::Stream(stream) = object {
             stream.dict.remove(b"Metadata");
             scrub_dictionary(&mut stream.dict);
+            if stream
+                .dict
+                .get(b"Subtype")
+                .is_ok_and(|value| value.as_name().is_ok_and(|name| name == b"Image"))
+            {
+                let content = stream.content.clone();
+                if content.starts_with(&[0xff, 0xd8, 0xff]) {
+                    if let Ok((cleaned, removed)) =
+                        image::clean_jpeg_with_options(&content, true, true)
+                    {
+                        if !removed.is_empty() && cleaned != content {
+                            stream.set_content(cleaned);
+                        }
+                    }
+                }
+            }
         }
     }
     for id in metadata_ids {
@@ -102,6 +144,7 @@ fn scrub_dictionary(dictionary: &mut Dictionary) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use lopdf::dictionary;
 
     fn incremental_pdf_with_stale_info() -> Vec<u8> {
         let objects: &[&[u8]] = &[
@@ -155,5 +198,53 @@ mod tests {
         assert!(!cleaned.windows(6).any(|window| window == b"Claude"));
         assert!(!cleaned.windows(9).any(|window| window == b"Anthropic"));
         Document::load_mem(&cleaned).unwrap();
+    }
+
+    #[test]
+    fn strips_metadata_from_embedded_jpeg_streams() {
+        let jpeg = vec![
+            0xff, 0xd8, 0xff, 0xe1, 0, 10, b'E', b'x', b'i', b'f', 0, 0, 1, 2, 0xff, 0xd9,
+        ];
+        let mut document = Document::with_version("1.5");
+        let stream = lopdf::Stream::new(
+            dictionary! {
+                "Type" => "XObject",
+                "Subtype" => "Image",
+                "Width" => 1,
+                "Height" => 1,
+                "Filter" => "DCTDecode",
+            },
+            jpeg,
+        );
+        let image_id = document.add_object(stream);
+        let root_id = document.add_object(dictionary! {
+            "Type" => "Catalog",
+            "EmbeddedImage" => image_id,
+        });
+        document.trailer.set("Root", root_id);
+        let mut source = Vec::new();
+        document.save_to(&mut source).unwrap();
+
+        assert!(!inspect(&source).unwrap().is_empty());
+        let (cleaned, _) = clean(&source).unwrap();
+        let result = Document::load_mem(&cleaned).unwrap();
+        let image_stream = result
+            .objects
+            .values()
+            .find_map(|object| match object {
+                Object::Stream(stream)
+                    if stream
+                        .dict
+                        .get(b"Subtype")
+                        .is_ok_and(|value| value.as_name().is_ok_and(|name| name == b"Image")) =>
+                {
+                    Some(stream)
+                }
+                _ => None,
+            })
+            .unwrap();
+        let content = &image_stream.content;
+        assert_eq!(content.as_slice(), &[0xff, 0xd8, 0xff, 0xd9]);
+        assert!(image::inspect_jpeg(content).unwrap().is_empty());
     }
 }

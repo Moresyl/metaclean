@@ -61,6 +61,27 @@ fn clean_files(request: CleanRequest) -> Vec<CleanResult> {
 }
 
 #[tauri::command]
+fn export_audit_report(path: String, contents: String) -> Result<(), String> {
+    export_audit_report_to(std::path::Path::new(&path), &contents)
+}
+
+fn export_audit_report_to(destination: &std::path::Path, contents: &str) -> Result<(), String> {
+    const MAX_REPORT_BYTES: usize = 10 * 1024 * 1024;
+    if contents.len() > MAX_REPORT_BYTES {
+        return Err("审计报告超过 10 MiB 上限".into());
+    }
+    if destination
+        .extension()
+        .and_then(|value| value.to_str())
+        .is_none_or(|value| !value.eq_ignore_ascii_case("json"))
+    {
+        return Err("审计报告必须使用 .json 扩展名".into());
+    }
+    safe_io::atomic_write_with_metadata(destination, contents.as_bytes(), None, false, false)
+        .map_err(|error| format!("导出审计报告失败：{error}"))
+}
+
+#[tauri::command]
 fn get_launch_paths() -> Vec<String> {
     shell_integration::launch_paths()
 }
@@ -281,6 +302,7 @@ pub fn run() {
             scan_files,
             expand_paths,
             clean_files,
+            export_audit_report,
             get_launch_paths,
             get_context_menu_status,
             set_context_menu_enabled,
@@ -332,7 +354,9 @@ pub fn run_cli_action() -> Option<i32> {
 
 #[cfg(test)]
 mod update_tests {
-    use super::{portable_marker_exists, self_update_supported_for, PORTABLE_MARKER};
+    use super::{
+        export_audit_report_to, portable_marker_exists, self_update_supported_for, PORTABLE_MARKER,
+    };
 
     #[test]
     fn portable_mode_requires_the_package_marker_next_to_the_executable() {
@@ -351,5 +375,22 @@ mod update_tests {
         assert!(self_update_supported_for(false, true, true));
         assert!(!self_update_supported_for(true, false, false));
         assert!(!self_update_supported_for(false, true, false));
+    }
+
+    #[test]
+    fn exports_only_bounded_json_audit_reports() {
+        let directory = tempfile::tempdir().expect("create temporary directory");
+        let report = directory.path().join("audit.json");
+        export_audit_report_to(&report, "{\"schemaVersion\":1}").expect("export report");
+        assert_eq!(
+            std::fs::read_to_string(report).expect("read report"),
+            "{\"schemaVersion\":1}"
+        );
+        assert!(export_audit_report_to(&directory.path().join("audit.txt"), "{}").is_err());
+        assert!(export_audit_report_to(
+            &directory.path().join("large.json"),
+            &"x".repeat(10 * 1024 * 1024 + 1),
+        )
+        .is_err());
     }
 }

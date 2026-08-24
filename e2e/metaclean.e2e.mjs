@@ -36,7 +36,7 @@ describe("MetaClean desktop application", () => {
   });
 
   it("launches the installed webview and exposes the complete navigation", async () => {
-    assert.equal(await $(".brand strong").getText(), "MetaClean");
+    assert.equal(await $(".titlebar-brand > span:nth-child(2)").getText(), "MetaClean");
     assert.equal((await $$(".sidebar nav button")).length, 4);
     assert.equal(await $(".scan-button").isEnabled(), false);
   });

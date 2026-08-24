@@ -6,6 +6,7 @@ import FileQueue from "./FileQueue";
 import HistoryPage from "./HistoryPage";
 import PrivacyPage from "./PrivacyPage";
 import SettingsPage from "./SettingsPage";
+import StatusBar from "./StatusBar";
 import UpdateDialog from "./UpdateDialog";
 import { I18nProvider, useI18n } from "../lib/i18n";
 import type { FileEntry, HistoryEntry } from "../types";
@@ -13,14 +14,16 @@ import { UpdateProvider, useUpdate } from "../contexts/UpdateContext";
 import { ThemeProvider } from "../contexts/ThemeContext";
 
 const openMock = vi.hoisted(() => vi.fn());
+const saveMock = vi.hoisted(() => vi.fn());
 const invokeMock = vi.hoisted(() => vi.fn());
 const checkForUpdateMock = vi.hoisted(() => vi.fn());
 const getInstalledVersionMock = vi.hoisted(() => vi.fn());
 const getUpdateRuntimeMock = vi.hoisted(() => vi.fn());
 const installAvailableUpdateMock = vi.hoisted(() => vi.fn());
 const openUrlMock = vi.hoisted(() => vi.fn());
-vi.mock("@tauri-apps/plugin-dialog", () => ({ open: openMock }));
+vi.mock("@tauri-apps/plugin-dialog", () => ({ open: openMock, save: saveMock }));
 vi.mock("@tauri-apps/api/core", () => ({ invoke: invokeMock }));
+vi.mock("@tauri-apps/api/app", () => ({ getVersion: vi.fn().mockResolvedValue("0.6.0") }));
 vi.mock("@tauri-apps/plugin-opener", () => ({ openUrl: openUrlMock }));
 vi.mock("../lib/update", () => ({
   RELEASES_PAGE_URL: "https://github.com/Moresyl/metaclean/releases/latest",
@@ -39,6 +42,7 @@ function UpdateDialogHarness() {
 
 beforeEach(() => {
   openMock.mockReset();
+  saveMock.mockReset();
   invokeMock.mockReset();
   checkForUpdateMock.mockReset();
   checkForUpdateMock.mockResolvedValue({ status: "current", currentVersion: "0.1.0" });
@@ -51,6 +55,14 @@ beforeEach(() => {
 });
 
 describe("desktop components", () => {
+  it("keeps local processing state and version visible in the status bar", async () => {
+    wrap(<StatusBar busy={false} fileCount={3} />);
+    expect(screen.getByText("就绪")).toBeInTheDocument();
+    expect(screen.getByText("纯本地处理")).toBeInTheDocument();
+    expect(screen.getByText("3 个文件")).toBeInTheDocument();
+    expect(await screen.findByText("MetaClean v0.4.1")).toBeInTheDocument();
+  });
+
   it("adds native dialog selections and dropped browser files", async () => {
     const onAdd = vi.fn();
     openMock.mockResolvedValue(["C:\\work\\photo.jpg", "C:\\work\\paper.pdf"]);
@@ -88,6 +100,21 @@ describe("desktop components", () => {
     expect(screen.getByText("格式损坏")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "移除 photo.jpg" }));
     expect(onRemove).toHaveBeenCalledWith("1");
+  });
+
+  it("exports a bounded value-free audit report through the native command", async () => {
+    saveMock.mockResolvedValue("C:\\reports\\metaclean-audit.json");
+    const entries: FileEntry[] = [
+      { id: "1", name: "photo.jpg", path: "C:\\private\\photo.jpg", kind: "image", status: "scanned", report: { path: "C:\\private\\photo.jpg", name: "photo.jpg", format: "JPEG", size: 12, supported: true, findings: [{ category: "image_metadata", label: "EXIF", count: 2, severity: "privacy" }] } },
+    ];
+    const onNotify = vi.fn();
+    wrap(<FileQueue entries={entries} preserveColorProfile removeExtendedAttributes={false} onRemove={vi.fn()} onClear={vi.fn()} onReveal={vi.fn()} onNotify={onNotify} />);
+    fireEvent.click(screen.getByRole("button", { name: "导出审计报告" }));
+    await waitFor(() => expect(invokeMock).toHaveBeenCalledWith("export_audit_report", expect.objectContaining({ path: "C:\\reports\\metaclean-audit.json" })));
+    const contents = JSON.parse(invokeMock.mock.calls[0][1].contents as string);
+    expect(contents).toMatchObject({ schemaVersion: 1, product: "MetaClean", version: "0.6.0", summary: { files: 1, findings: 2 } });
+    expect(contents.files[0]).not.toHaveProperty("value");
+    expect(onNotify).toHaveBeenCalledWith(expect.stringContaining("审计报告已导出"));
   });
 
   it("renders empty and every queue lifecycle status", () => {

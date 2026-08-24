@@ -8,7 +8,7 @@ import { useI18n } from "../lib/i18n";
  * A desktop app is judged partly on whether the keyboard can reach the whole
  * of it. The menu bar used to be that guarantee; in a chromeless window this
  * is. It also does what a menu bar never could — find a command by any part of
- * its name, in whichever of the twenty-six languages the interface is running.
+ * its name, in whichever of the thirty-two languages the interface is running.
  */
 export interface Command {
   id: string;

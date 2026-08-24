@@ -58,14 +58,14 @@ Grab the latest package from [GitHub Releases](https://github.com/Moresyl/metacl
 | TIFF | `.tif` `.tiff` | EXIF, GPS, IPTC and XMP directories, removed by compacting the image file directory in place so every strip, tile and preview offset stays valid |
 | Camera RAW | `.cr2` `.cr3` `.crw` `.nef` `.nrw` `.arw` `.srf` `.sr2` `.orf` `.rw2` `.rwl` `.dng` `.pef` `.srw` `.raf` `.3fr` `.erf` `.mef` `.mos` `.iiq` `.kdc` `.dcr` `.k25` | The same in-place directory compaction, plus MakerNote and GPS directories. Fujifilm's embedded JPEG preview and Canon's CR3 item payloads are cleaned where they lie; sensor data is never rewritten |
 | HEIF & AVIF | `.heic` `.heif` `.heics` `.heifs` `.hif` `.avif` `.avifs` | EXIF, XMP and C2PA items zeroed at item granularity, leaving the item table that locates the picture intact |
-| Audio | `.mp3` `.wav` `.flac` | ID3/APEv2, RIFF INFO/XMP/BWF/iXML, FLAC Vorbis comments, pictures and XMP |
+| Audio | `.mp3` `.wav` `.flac` | ID3/APEv2, RIFF INFO/XMP/BWF/iXML/C2PA, FLAC Vorbis comments, pictures, XMP and prefixed ID3/C2PA |
 | ISO media | `.mp4` `.mov` `.m4v` `.m4a` `.3g2` `.3gp` `.3gp2` `.3gpp` `.f4a` `.f4b` `.f4p` `.f4v` `.lrv` `.m4b` `.m4p` `.mqv` `.qt` | ISO BMFF/QuickTime user data, XMP, author and location atoms without moving media bytes |
 | AVI | `.avi` | Metadata chunks renamed to RIFF's own `JUNK` padding tag and blanked, so the `idx1` index keeps its meaning under either offset convention |
 | Matroska & WebM | `.mkv` `.mka` `.mks` `.mk3d` `.webm` | Tags, attachments and writing-application strings retired by stamping EBML `Void` over them in the same bytes, leaving the cue index true |
 | ASF | `.asf` `.wmv` `.wma` | Content descriptions and the `WM/` attribute space overwritten with the format's own padding object; the header's object count stays honest |
 | Documents | `.docx` `.xlsx` `.pptx` `.odt` `.epub` | Author and application properties, comments, custom XML. DOCX revisions are resolved — insertions accepted, deletions removed. EPUB loses its Dublin Core people and dates plus Calibre/Sigil/Kobo/Apple/Adobe leftovers |
-| PDF | `.pdf` | Info dictionary and XMP, then a full reserialization that discards metadata stranded in incremental-update history |
-| Text & markup | `.txt` `.md` `.markdown` `.html` `.htm` `.xhtml` `.svg` `.xml` `.json` `.csv` `.tsv` `.yaml` `.yml` `.log` `.srt` `.vtt` | Invisible Unicode, plus generator/author metadata in Markdown front matter, HTML/XHTML and SVG |
+| PDF | `.pdf` | Info dictionary, XMP and metadata inside embedded JPEG images, then a full reserialization that discards metadata stranded in incremental-update history |
+| Text & markup | `.txt` `.md` `.markdown` `.html` `.htm` `.xhtml` `.svg` `.xml` `.json` `.csv` `.tsv` `.yaml` `.yml` `.log` `.srt` `.vtt` | Invisible Unicode, generator/author metadata in Markdown front matter, HTML/XHTML and SVG, plus metadata inside embedded image data URIs |
 
 Every container above keeps its byte offsets. Nothing is deleted from a file
 that indexes itself by position — the metadata is compacted, blanked or
@@ -92,6 +92,8 @@ before it.
 - Optional Windows File Explorer command across all 91 supported extensions — on Windows 11 it lives under **Show more options**
 - Closing the window keeps MetaClean in the system tray; right-click the tray icon to reopen or exit
 - Stable queue sorting by name, extension, source/output size or finding count, with per-file size savings and reveal-in-folder actions for completed outputs
+- Versioned local JSON audit-report export with per-file findings and outcomes but no raw metadata values
+- Fixed 1180 × 720 enterprise workspace with compact icon navigation and a persistent local-only status bar
 - Preserves JPEG display orientation, ICC/sRGB color profiles and file timestamps by default, with independent removal controls
 - Preserves every macOS extended attribute by default; an explicit opt-in removes only six known download/provenance attributes and leaves Finder data, resource forks, tags, and custom attributes intact
 - Native application menus, `Ctrl/Cmd+1…4` navigation accelerators, and persisted window size, position, and maximized state

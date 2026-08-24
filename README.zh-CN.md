@@ -58,14 +58,14 @@ MetaClean 把这些统统找出来并清除——全过程只在你自己的电�
 | TIFF | `.tif` `.tiff` | EXIF、GPS、IPTC、XMP 目录；采用原地压缩 IFD 的方式删除，条带、分块与预览图的偏移量全部保持有效 |
 | 相机 RAW | `.cr2` `.cr3` `.crw` `.nef` `.nrw` `.arw` `.srf` `.sr2` `.orf` `.rw2` `.rwl` `.dng` `.pef` `.srw` `.raf` `.3fr` `.erf` `.mef` `.mos` `.iiq` `.kdc` `.dcr` `.k25` | 同样的原地目录压缩，另外处理 MakerNote 与 GPS 目录。富士的内嵌 JPEG 预览图、佳能 CR3 的条目数据都在原位清理，传感器数据从不重写 |
 | HEIF 与 AVIF | `.heic` `.heif` `.heics` `.heifs` `.hif` `.avif` `.avifs` | 按条目粒度清空 EXIF、XMP、C2PA 条目，完整保留定位图像所需的条目表 |
-| 音频 | `.mp3` `.wav` `.flac` | ID3/APEv2、RIFF INFO/XMP/BWF/iXML、FLAC Vorbis 评论、封面与 XMP |
+| 音频 | `.mp3` `.wav` `.flac` | ID3/APEv2、RIFF INFO/XMP/BWF/iXML/C2PA、FLAC Vorbis 评论、封面、XMP 与前置 ID3/C2PA |
 | ISO 媒体 | `.mp4` `.mov` `.m4v` `.m4a` `.3g2` `.3gp` `.3gp2` `.3gpp` `.f4a` `.f4b` `.f4p` `.f4v` `.lrv` `.m4b` `.m4p` `.mqv` `.qt` | ISO BMFF/QuickTime 用户数据、XMP、作者与位置原子，不移动媒体字节 |
 | AVI | `.avi` | 元数据块被改名为 RIFF 自带的 `JUNK` 填充标记并清零，无论 `idx1` 索引采用哪种偏移基准都不会错位 |
 | Matroska 与 WebM | `.mkv` `.mka` `.mks` `.mk3d` `.webm` | 标签、附件与写入程序信息，通过在原字节上覆写 EBML `Void` 元素来作废，索引表继续有效 |
 | ASF | `.asf` `.wmv` `.wma` | 内容描述与整个 `WM/` 属性空间被格式自带的填充对象覆盖，头部对象计数保持真实 |
 | 文档 | `.docx` `.xlsx` `.pptx` `.odt` `.epub` | 作者与应用属性、批注、自定义 XML；DOCX 修订会被固化——接受插入内容，移除删除标记内容。EPUB 会清掉 Dublin Core 中的人名与日期，以及 Calibre/Sigil/Kobo/Apple/Adobe 留下的痕迹 |
-| PDF | `.pdf` | 移除 Info 字典与 XMP，再完整重序列化，丢弃残留在增量更新历史里的元数据 |
-| 文本与标记 | `.txt` `.md` `.markdown` `.html` `.htm` `.xhtml` `.svg` `.xml` `.json` `.csv` `.tsv` `.yaml` `.yml` `.log` `.srt` `.vtt` | 不可见 Unicode，以及 Markdown Front Matter、HTML/XHTML、SVG 中的作者/生成器信息 |
+| PDF | `.pdf` | 移除 Info 字典、XMP 与内嵌 JPEG 图片中的元数据，再完整重序列化，丢弃残留在增量更新历史里的元数据 |
+| 文本与标记 | `.txt` `.md` `.markdown` `.html` `.htm` `.xhtml` `.svg` `.xml` `.json` `.csv` `.tsv` `.yaml` `.yml` `.log` `.srt` `.vtt` | 不可见 Unicode、Markdown Front Matter、HTML/XHTML/SVG 的作者与生成器信息，以及内嵌 Data URI 图片中的元数据 |
 
 上面每一种容器的字节偏移量都不会改变。凡是靠位置索引自身的文件，我们从不做删除——元数据要么被原地压缩，要么被清零，要么被该格式本身就定义好的填充元素覆盖。所以清理之后，一张 RAW 底片、一份 Matroska 索引表或一个 AVI 索引，和清理之前一样有效。
 
@@ -85,6 +85,8 @@ MetaClean 把这些统统找出来并清除——全过程只在你自己的电�
 
 - 支持批量拖入文件或文件夹，也可以用系统原生选择器递归导入目录
 - 四个页面：**文件净化**、**处理记录**、**隐私说明**、**设置**
+- 固定 1180 × 720 企业工作台，使用紧凑图标导航与持续可见的“仅本地”状态栏
+- 可导出带版本的本地 JSON 审计报告，记录逐文件发现项与处理结果，但不包含原始元数据值
 - 可选的 Windows 资源管理器右键菜单，覆盖全部 91 种受支持扩展名（Windows 11 上位于**显示更多选项**中）
 - 关闭窗口后驻留系统托盘，右键托盘图标可重新打开或彻底退出
 - 默认保留 JPEG 显示方向、ICC/sRGB 色彩配置与文件时间戳，三项均可独立关闭

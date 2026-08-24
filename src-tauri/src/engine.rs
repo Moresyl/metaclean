@@ -98,7 +98,7 @@ fn detect(path: &Path, data: &[u8]) -> Format {
     if avi::is_avi(data) {
         return Format::Avi;
     }
-    if data.starts_with(b"fLaC") {
+    if media::is_flac(data) {
         return Format::Flac;
     }
     if asf::is_asf(data) {

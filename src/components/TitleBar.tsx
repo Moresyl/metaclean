@@ -12,7 +12,7 @@ import { useI18n } from "../lib/i18n";
  * theme reliably, and the seam between it and the navigation pane is the first
  * thing that gives a desktop app away as a web page in a frame. So the window
  * ships undecorated and this stands in its place, at the metrics the system
- * uses — a 32px bar with 46px caption buttons, the close button turning the
+ * uses — a 36px bar with 46px caption buttons, the close button turning the
  * same red.
  *
  * The identity lives in the navigation pane below, which frees the middle of
@@ -46,6 +46,11 @@ export default function TitleBar({ onOpenCommands }: { onOpenCommands: () => voi
 
   return (
     <header className="titlebar" data-tauri-drag-region onContextMenu={menu.open}>
+      <div className="titlebar-brand" data-tauri-drag-region>
+        <span className="brand-mark" aria-hidden="true">M</span>
+        <span>MetaClean</span>
+        <small>{text("隐私净化工作台", "Privacy workspace")}</small>
+      </div>
       <button
         className="command-center"
         type="button"

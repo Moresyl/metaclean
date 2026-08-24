@@ -52,6 +52,28 @@ payload survive byte-identical, that the index, item table or object count still
 resolves afterwards, that tags which merely look like metadata are left alone,
 and that malformed input fails closed.
 
+## Deep embedded payloads
+
+Container-level success is not sufficient when a document can carry another
+privacy-bearing file inside it. MetaClean therefore continues inspection into
+two bounded embedded surfaces:
+
+- PDF JPEG image XObjects are inspected and rebuilt with private APP/COM blocks
+  removed while orientation and ICC data follow the user's fidelity settings.
+- Image data URIs in HTML, XHTML, SVG and Markdown are decoded and run through
+  the same native JPEG, PNG, WebP, GIF, BMP and HEIF cleaners. Nested SVG is
+  supported to four levels, with no more than 100 payloads and 16 MiB per
+  decoded payload.
+
+Unknown or oversized embedded data is left unchanged rather than sent through
+a generic decoder. WAV C2PA chunks and ID3v2/C2PA prefixes before FLAC streams
+follow the same rule: only container structures the cleaner can bound and
+re-inspect are retired.
+
+The optional JSON audit export records categories, counts, paths and outcomes
+but never raw metadata values. The native writer accepts JSON only, caps the
+report at 10 MiB and commits it atomically.
+
 ## Still refused
 
 These fail closed. MetaClean does not accept them, and does not pretend to.

@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { ChevronRight, Copy, FileImage, FileSearch, FileText, FileType2, FileVideo2, FolderOpen, Music2, Tag, Trash2, X } from "lucide-react";
+import { ChevronRight, Copy, FileDown, FileImage, FileSearch, FileText, FileType2, FileVideo2, FolderOpen, Music2, Tag, Trash2, X } from "lucide-react";
 import ContextMenu, { useContextMenu, type MenuEntry } from "./ContextMenu";
 import type { FileEntry, Finding } from "../types";
 import { useI18n } from "../lib/i18n";
@@ -72,6 +72,7 @@ export default function FileQueue({ entries, preserveColorProfile, removeExtende
     provenance: text("来源标记", "Provenance marker"),
     office_metadata: text("Office 隐私痕迹", "Office privacy trace"),
     pdf_metadata: text("PDF 文档属性 / XMP", "PDF properties / XMP"),
+    embedded_image_metadata: text("嵌入图片元数据 / C2PA", "Embedded image metadata / C2PA"),
     document_metadata: text("作者 / 生成器 / AI 元数据", "Author / generator / AI metadata"),
     color_profile: "ICC / sRGB",
     macos_xattr: "macOS · xattr",
@@ -81,6 +82,52 @@ export default function FileQueue({ entries, preserveColorProfile, removeExtende
     onNotify(await copyText(value)
       ? text("已复制到剪贴板", "Copied to clipboard")
       : text("无法访问剪贴板", "The clipboard is unavailable"));
+  }
+
+  async function exportReport() {
+    const completed = entries.filter((entry) => entry.report || entry.result);
+    if (!completed.length) return;
+    try {
+      const [{ save }, { invoke }, { getVersion }] = await Promise.all([
+        import("@tauri-apps/plugin-dialog"),
+        import("@tauri-apps/api/core"),
+        import("@tauri-apps/api/app"),
+      ]);
+      const destination = await save({
+        defaultPath: `MetaClean-audit-${new Date().toISOString().slice(0, 10)}.json`,
+        filters: [{ name: "JSON", extensions: ["json"] }],
+      });
+      if (!destination) return;
+      const report = {
+        schemaVersion: 1,
+        product: "MetaClean",
+        version: await getVersion(),
+        exportedAt: new Date().toISOString(),
+        summary: {
+          files: completed.length,
+          succeeded: completed.filter((entry) => entry.result?.success).length,
+          failed: completed.filter((entry) => entry.status === "error").length,
+          findings: completed.reduce((sum, entry) => sum + (entry.report?.findings.reduce((count, finding) => count + finding.count, 0) ?? 0), 0),
+        },
+        files: completed.map((entry) => ({
+          path: entry.path,
+          name: entry.name,
+          format: entry.report?.format,
+          sourceSize: entry.result?.sourceSize ?? entry.report?.size ?? entry.size,
+          outputSize: entry.result?.outputSize,
+          outputPath: entry.result?.outputPath,
+          backupPath: entry.result?.backupPath,
+          status: entry.status,
+          findings: entry.report?.findings ?? [],
+          removed: entry.result?.removed ?? [],
+          error: entry.result?.error ?? entry.report?.error,
+        })),
+      };
+      await invoke("export_audit_report", { path: destination, contents: JSON.stringify(report, null, 2) });
+      onNotify(text(`审计报告已导出：${destination}`, `Audit report exported: ${destination}`));
+    } catch (error) {
+      onNotify(text(`无法导出审计报告：${String(error)}`, `Could not export audit report: ${String(error)}`));
+    }
   }
 
   const menuEntries = (entry: FileEntry): MenuEntry[] => {
@@ -96,7 +143,7 @@ export default function FileQueue({ entries, preserveColorProfile, removeExtende
 
   return (
     <section className="queue-card">
-      <header><div><h2>{text("待处理文件", "File queue")}</h2><span>{entries.length} {text("个文件", "file(s)")}</span></div><div className="queue-tools"><label><span className="visually-hidden">{text("待处理文件", "File queue")}</span><select aria-label={text("待处理文件", "File queue")} value={sortKey} onChange={(event) => setSortKey(event.target.value as SortKey)}><option value="name">A–Z</option><option value="type">.EXT</option><option value="sourceSize">KB</option><option value="outputSize">KB✓</option><option value="findings">#</option></select></label><button className="sort-direction" aria-label={`${text("待处理文件", "File queue")} ${descending ? "↓" : "↑"}`} type="button" onClick={() => setDescending((current) => !current)}>{descending ? "↓" : "↑"}</button><button type="button" onClick={onClear} disabled={!entries.length}><Trash2 size={14} />{text("清空", "Clear")}</button></div></header>
+      <header><div><h2>{text("待处理文件", "File queue")}</h2><span>{entries.length} {text("个文件", "file(s)")}</span></div><div className="queue-tools"><label><span className="visually-hidden">{text("待处理文件", "File queue")}</span><select aria-label={text("待处理文件", "File queue")} value={sortKey} onChange={(event) => setSortKey(event.target.value as SortKey)}><option value="name">A–Z</option><option value="type">.EXT</option><option value="sourceSize">KB</option><option value="outputSize">KB✓</option><option value="findings">#</option></select></label><button className="sort-direction" aria-label={`${text("待处理文件", "File queue")} ${descending ? "↓" : "↑"}`} type="button" onClick={() => setDescending((current) => !current)}>{descending ? "↓" : "↑"}</button><button type="button" aria-label={text("导出审计报告", "Export audit report")} data-tip={text("导出审计报告", "Export audit report")} onClick={() => void exportReport()} disabled={!entries.some((entry) => entry.report || entry.result)}><FileDown size={14} /></button><button type="button" onClick={onClear} disabled={!entries.length}><Trash2 size={14} />{text("清空", "Clear")}</button></div></header>
       {entries.length === 0 ? (
         <div className="empty-queue"><FileText size={22} /><span>{text("添加文件后，将在这里展示扫描状态", "Add files to see scan status here")}</span></div>
       ) : (

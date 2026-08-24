@@ -223,7 +223,7 @@ fn wav_chunks(data: &[u8]) -> Result<Vec<([u8; 4], Range<usize>)>> {
 fn private_wav_chunk(kind: &[u8; 4], bytes: &[u8]) -> bool {
     matches!(
         kind,
-        b"ID3 " | b"id3 " | b"XMP " | b"bext" | b"iXML" | b"axml" | b"cart" | b"DISP"
+        b"C2PA" | b"ID3 " | b"id3 " | b"XMP " | b"bext" | b"iXML" | b"axml" | b"cart" | b"DISP"
     ) || (kind == b"LIST" && bytes.get(8..12) == Some(b"INFO"))
 }
 
@@ -260,14 +260,35 @@ pub fn clean_wav(data: &[u8]) -> Result<(Vec<u8>, Vec<Finding>)> {
 }
 
 type FlacBlock = (u8, Range<usize>, Range<usize>);
-type FlacBlocks = (Vec<FlacBlock>, usize);
+type FlacBlocks = (Vec<FlacBlock>, usize, usize);
 
-fn flac_blocks(data: &[u8]) -> Result<FlacBlocks> {
-    if !data.starts_with(b"fLaC") {
+fn flac_start(data: &[u8]) -> Result<usize> {
+    if data.starts_with(b"fLaC") {
+        return Ok(0);
+    }
+    if !data.starts_with(b"ID3") || data.len() < 10 {
         return Err(CleanError::InvalidFormat("不是有效 FLAC".into()));
     }
+    let footer = if data[5] & 0x10 != 0 { 10 } else { 0 };
+    let start = 10usize
+        .checked_add(synchsafe_size(&data[6..10])?)
+        .and_then(|value| value.checked_add(footer))
+        .filter(|value| {
+            data.get(*value..)
+                .is_some_and(|tail| tail.starts_with(b"fLaC"))
+        })
+        .ok_or_else(|| CleanError::InvalidFormat("FLAC 的 ID3v2 前缀无效".into()))?;
+    Ok(start)
+}
+
+pub fn is_flac(data: &[u8]) -> bool {
+    flac_start(data).is_ok()
+}
+
+fn flac_blocks(data: &[u8]) -> Result<FlacBlocks> {
+    let prefix = flac_start(data)?;
     let mut blocks = Vec::new();
-    let mut offset = 4;
+    let mut offset = prefix + 4;
     loop {
         let header = *data
             .get(offset)
@@ -301,7 +322,7 @@ fn flac_blocks(data: &[u8]) -> Result<FlacBlocks> {
     if data.len() < offset + 2 {
         return Err(CleanError::InvalidFormat("FLAC 缺少音频帧".into()));
     }
-    Ok((blocks, offset))
+    Ok((blocks, offset, prefix))
 }
 
 fn private_flac_block(kind: u8, payload: &[u8]) -> bool {
@@ -309,25 +330,26 @@ fn private_flac_block(kind: u8, payload: &[u8]) -> bool {
 }
 
 pub fn inspect_flac(data: &[u8]) -> Result<Vec<Finding>> {
-    let (blocks, _) = flac_blocks(data)?;
+    let (blocks, _, prefix) = flac_blocks(data)?;
     let count = blocks
         .iter()
         .filter(|(kind, _, payload)| private_flac_block(*kind, &data[payload.clone()]))
-        .count();
+        .count()
+        + usize::from(prefix > 0);
     Ok(finding(
         "audio_metadata",
-        "FLAC Vorbis 评论 / 封面 / XMP",
+        "FLAC ID3 / C2PA / 评论 / 封面 / XMP",
         count,
     ))
 }
 
 pub fn clean_flac(data: &[u8]) -> Result<(Vec<u8>, Vec<Finding>)> {
-    let (blocks, audio_offset) = flac_blocks(data)?;
+    let (blocks, audio_offset, prefix) = flac_blocks(data)?;
     let kept: Vec<_> = blocks
         .iter()
         .filter(|(kind, _, payload)| !private_flac_block(*kind, &data[payload.clone()]))
         .collect();
-    let removed = blocks.len() - kept.len();
+    let removed = blocks.len() - kept.len() + usize::from(prefix > 0);
     let mut output = b"fLaC".to_vec();
     for (index, (kind, range, _)) in kept.iter().enumerate() {
         let start = output.len();
@@ -337,7 +359,11 @@ pub fn clean_flac(data: &[u8]) -> Result<(Vec<u8>, Vec<Finding>)> {
     output.extend_from_slice(&data[audio_offset..]);
     Ok((
         output,
-        finding("audio_metadata", "FLAC Vorbis 评论 / 封面 / XMP", removed),
+        finding(
+            "audio_metadata",
+            "FLAC ID3 / C2PA / 评论 / 封面 / XMP",
+            removed,
+        ),
     ))
 }
 
@@ -386,12 +412,14 @@ mod tests {
         let mut source = b"RIFF\0\0\0\0WAVE".to_vec();
         source.extend(wav_chunk(b"fmt ", &[1, 0, 1, 0]));
         source.extend(wav_chunk(b"LIST", b"INFOIARTAlice"));
+        source.extend(wav_chunk(b"C2PA", b"manifest"));
         source.extend(wav_chunk(b"data", &[1, 2, 3, 4]));
         let size = (source.len() - 8) as u32;
         source[4..8].copy_from_slice(&size.to_le_bytes());
         let (cleaned, findings) = clean_wav(&source).unwrap();
-        assert_eq!(findings[0].count, 1);
+        assert_eq!(findings[0].count, 2);
         assert!(!cleaned.windows(4).any(|bytes| bytes == b"LIST"));
+        assert!(!cleaned.windows(4).any(|bytes| bytes == b"C2PA"));
         assert_eq!(
             u32::from_le_bytes(cleaned[4..8].try_into().unwrap()) as usize + 8,
             cleaned.len()
@@ -426,5 +454,23 @@ mod tests {
         assert_eq!(cleaned[4], 0x80);
         assert!(cleaned.ends_with(b"\xff\xf8audio"));
         assert!(!cleaned.windows(6).any(|bytes| bytes == b"artist"));
+    }
+
+    #[test]
+    fn removes_flac_id3_c2pa_prefix_without_touching_audio() {
+        let geob = b"GEOB\0application/c2pa\0manifest";
+        let mut source = b"ID3\x04\0\0".to_vec();
+        source.extend_from_slice(&[0, 0, 0, geob.len() as u8]);
+        source.extend_from_slice(geob);
+        source.extend_from_slice(b"fLaC");
+        source.extend(flac_block(0, true, &[0; 34]));
+        source.extend_from_slice(b"\xff\xf8audio");
+
+        assert!(is_flac(&source));
+        let (cleaned, findings) = clean_flac(&source).unwrap();
+        assert_eq!(findings[0].count, 1);
+        assert!(cleaned.starts_with(b"fLaC"));
+        assert!(cleaned.ends_with(b"\xff\xf8audio"));
+        assert!(!cleaned.windows(4).any(|bytes| bytes == b"C2PA"));
     }
 }
