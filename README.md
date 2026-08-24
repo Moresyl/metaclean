@@ -46,19 +46,34 @@ Grab the latest package from [GitHub Releases](https://github.com/Moresyl/metacl
 
 ## What it removes
 
+91 extensions, cleaned by native Rust code — no ExifTool, no re-encoding.
+
 | Format | Extensions | Cleaned |
 | --- | --- | --- |
 | JPEG | `.jpg` `.jpeg` `.jpe` | EXIF/GPS, XMP, IPTC, comments, JUMBF/C2PA segments; ICC profiles are preserved by default or removable on request |
 | PNG | `.png` | EXIF, textual metadata, C2PA/JUMBF chunks; optional ICC profile removal |
 | WebP | `.webp` | EXIF, XMP, C2PA chunks; optional ICC profile removal |
 | GIF | `.gif` | Comments and XMP application metadata without re-encoding frames |
+| BMP | `.bmp` `.dib` | The reserved header words editors write IDs into, V5 embedded ICC profiles, and EXIF or XMP stapled past the last pixel where no viewer shows it |
+| TIFF | `.tif` `.tiff` | EXIF, GPS, IPTC and XMP directories, removed by compacting the image file directory in place so every strip, tile and preview offset stays valid |
+| Camera RAW | `.cr2` `.cr3` `.crw` `.nef` `.nrw` `.arw` `.srf` `.sr2` `.orf` `.rw2` `.rwl` `.dng` `.pef` `.srw` `.raf` `.3fr` `.erf` `.mef` `.mos` `.iiq` `.kdc` `.dcr` `.k25` | The same in-place directory compaction, plus MakerNote and GPS directories. Fujifilm's embedded JPEG preview and Canon's CR3 item payloads are cleaned where they lie; sensor data is never rewritten |
+| HEIF & AVIF | `.heic` `.heif` `.heics` `.heifs` `.hif` `.avif` `.avifs` | EXIF, XMP and C2PA items zeroed at item granularity, leaving the item table that locates the picture intact |
 | Audio | `.mp3` `.wav` `.flac` | ID3/APEv2, RIFF INFO/XMP/BWF/iXML, FLAC Vorbis comments, pictures and XMP |
 | ISO media | `.mp4` `.mov` `.m4v` `.m4a` `.3g2` `.3gp` `.3gp2` `.3gpp` `.f4a` `.f4b` `.f4p` `.f4v` `.lrv` `.m4b` `.m4p` `.mqv` `.qt` | ISO BMFF/QuickTime user data, XMP, author and location atoms without moving media bytes |
-| Office | `.docx` `.xlsx` `.pptx` `.odt` | Author and application properties, comments, custom XML. DOCX revisions are resolved — insertions accepted, deletions removed |
+| AVI | `.avi` | Metadata chunks renamed to RIFF's own `JUNK` padding tag and blanked, so the `idx1` index keeps its meaning under either offset convention |
+| Matroska & WebM | `.mkv` `.mka` `.mks` `.mk3d` `.webm` | Tags, attachments and writing-application strings retired by stamping EBML `Void` over them in the same bytes, leaving the cue index true |
+| ASF | `.asf` `.wmv` `.wma` | Content descriptions and the `WM/` attribute space overwritten with the format's own padding object; the header's object count stays honest |
+| Documents | `.docx` `.xlsx` `.pptx` `.odt` `.epub` | Author and application properties, comments, custom XML. DOCX revisions are resolved — insertions accepted, deletions removed. EPUB loses its Dublin Core people and dates plus Calibre/Sigil/Kobo/Apple/Adobe leftovers |
 | PDF | `.pdf` | Info dictionary and XMP, then a full reserialization that discards metadata stranded in incremental-update history |
 | Text & markup | `.txt` `.md` `.markdown` `.html` `.htm` `.xhtml` `.svg` `.xml` `.json` `.csv` `.tsv` `.yaml` `.yml` `.log` `.srt` `.vtt` | Invisible Unicode, plus generator/author metadata in Markdown front matter, HTML/XHTML and SVG |
 
-**Deliberately out of scope:** statistical text watermarks, pixel-domain watermarks, unsupported video containers, legacy binary Office files (`.doc` / `.xls` / `.ppt`), and unknown binary formats. MetaClean refuses these rather than modifying them unsafely.
+Every container above keeps its byte offsets. Nothing is deleted from a file
+that indexes itself by position — the metadata is compacted, blanked or
+overwritten with the padding element the format already defines — so a raw
+negative, a Matroska cue table or an AVI index is as valid after cleaning as
+before it.
+
+**Deliberately out of scope:** statistical text watermarks, pixel-domain watermarks, legacy binary Office files (`.doc` / `.xls` / `.ppt`), and unknown binary formats. MetaClean refuses these rather than modifying them unsafely.
 
 ## Safety guarantees
 
@@ -74,7 +89,7 @@ Grab the latest package from [GitHub Releases](https://github.com/Moresyl/metacl
 
 - Drag in files or folders, or recursively import a folder from the native picker
 - Four panes: **Clean**, **History**, **Privacy**, and **Settings**
-- Optional Windows File Explorer command across all 47 supported extensions — on Windows 11 it lives under **Show more options**
+- Optional Windows File Explorer command across all 91 supported extensions — on Windows 11 it lives under **Show more options**
 - Closing the window keeps MetaClean in the system tray; right-click the tray icon to reopen or exit
 - Stable queue sorting by name, extension, source/output size or finding count, with per-file size savings and reveal-in-folder actions for completed outputs
 - Preserves JPEG display orientation, ICC/sRGB color profiles and file timestamps by default, with independent removal controls
@@ -82,7 +97,7 @@ Grab the latest package from [GitHub Releases](https://github.com/Moresyl/metacl
 - Native application menus, `Ctrl/Cmd+1…4` navigation accelerators, and persisted window size, position, and maximized state
 - Checks, downloads and installs cryptographically signed stable updates in installed builds, with visible progress and restart; portable Windows packages and non-AppImage Linux builds fall back to the official Releases page
 - Automatic update checks are independently switchable off, restoring fully offline operation
-- Twenty-six complete interface languages spanning Europe, Asia and Arabic RTL; system/light/dark theme, output mode, fidelity options, and local cleanup history persist between sessions
+- 32 complete interface languages spanning Europe, East and Southeast Asia, South Asia, and right-to-left Arabic and Persian; system/light/dark theme, output mode, fidelity options, and local cleanup history persist between sessions
 
 ## Build from source
 
@@ -111,8 +126,8 @@ Every branch build also launches an E2E-only desktop binary on Windows, macOS an
 
 Test coverage and release evidence are tracked in [VALIDATION.md](VALIDATION.md).
 Release changes are recorded in [CHANGELOG.md](CHANGELOG.md).
-The deliberate no-value metadata policy and per-format refusal decisions are
-documented in [SUPPORT_POLICY.md](SUPPORT_POLICY.md).
+The deliberate no-value metadata policy, the per-format cleaning strategies and
+what stays out of scope are documented in [SUPPORT_POLICY.md](SUPPORT_POLICY.md).
 
 ## Contributing
 

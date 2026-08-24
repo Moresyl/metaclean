@@ -1,7 +1,13 @@
+pub mod asf;
+pub mod avi;
+pub mod bmp;
+pub mod heif;
 pub mod image;
 pub mod media;
+pub mod mkv;
 pub mod office;
 pub mod pdf;
 pub mod text;
+pub mod tiff;
 pub mod video;
 pub mod web_text;

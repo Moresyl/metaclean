@@ -4,7 +4,7 @@ use std::{
 };
 
 use crate::{
-    cleaners::{image, media, office, pdf, video, web_text},
+    cleaners::{asf, avi, bmp, heif, image, media, mkv, office, pdf, tiff, video, web_text},
     error::{display_path, CleanError, Result},
     models::{CleanResult, Finding, FindingSeverity, OutputMode, ScanReport},
     safe_io::{
@@ -19,10 +19,19 @@ enum Format {
     Png,
     Webp,
     Gif,
+    Bmp,
+    Tiff,
+    Raw,
+    Raf,
+    Heif,
+    CanonRaw,
     Mp3,
     Wav,
     Flac,
     IsoMedia,
+    Avi,
+    Asf,
+    Matroska,
     Office,
     Pdf,
     Text,
@@ -30,15 +39,28 @@ enum Format {
 }
 
 pub const SUPPORTED_EXTENSIONS: &[&str] = &[
-    "jpg", "jpeg", "jpe", "png", "webp", "gif", "mp3", "wav", "flac", "mp4", "mov", "m4v", "m4a",
-    "3g2", "3gp", "3gp2", "3gpp", "f4a", "f4b", "f4p", "f4v", "lrv", "m4b", "m4p", "mqv", "qt",
-    "docx", "xlsx", "pptx", "odt", "pdf", "txt", "md", "markdown", "html", "htm", "xhtml", "svg",
-    "xml", "json", "csv", "tsv", "yaml", "yml", "log", "srt", "vtt",
+    "jpg", "jpeg", "jpe", "png", "webp", "gif", "bmp", "dib", "tif", "tiff", "heic", "heif",
+    "heics", "heifs", "hif", "avif", "avifs", "cr2", "cr3", "crw", "nef", "nrw", "arw", "srf",
+    "sr2", "orf", "rw2", "rwl", "dng", "pef", "srw", "raf", "3fr", "erf", "mef", "mos", "iiq",
+    "kdc", "dcr", "k25", "mp3", "wav", "flac", "mp4", "mov", "m4v", "m4a", "3g2", "3gp", "3gp2",
+    "3gpp", "f4a", "f4b", "f4p", "f4v", "lrv", "m4b", "m4p", "mqv", "qt", "avi", "asf", "wmv",
+    "wma", "mkv", "mka", "mks", "mk3d", "webm", "docx", "xlsx", "pptx", "odt", "epub", "pdf",
+    "txt", "md", "markdown", "html", "htm", "xhtml", "svg", "xml", "json", "csv", "tsv", "yaml",
+    "yml", "log", "srt", "vtt",
 ];
 
 const ISO_MEDIA_EXTENSIONS: &[&str] = &[
     "mp4", "mov", "m4v", "m4a", "3g2", "3gp", "3gp2", "3gpp", "f4a", "f4b", "f4p", "f4v", "lrv",
     "m4b", "m4p", "mqv", "qt",
+];
+
+/// Raw negatives that are TIFF containers underneath a private magic word, plus
+/// Canon's CR3, which is an ISO base media file instead. They are held apart
+/// from ordinary TIFF because a raw decoder needs the camera model to dispatch,
+/// so the model stays where an ordinary image would lose it.
+const RAW_EXTENSIONS: &[&str] = &[
+    "cr2", "crw", "nef", "nrw", "arw", "srf", "sr2", "orf", "rw2", "rwl", "dng", "pef", "srw",
+    "3fr", "erf", "mef", "mos", "iiq", "kdc", "dcr", "k25",
 ];
 
 const TEXT_EXTENSIONS: &[&str] = &[
@@ -70,23 +92,56 @@ fn detect(path: &Path, data: &[u8]) -> Format {
     if data.starts_with(b"GIF87a") || data.starts_with(b"GIF89a") {
         return Format::Gif;
     }
-    if data.starts_with(b"ID3") || (data.len() >= 2 && data[0] == 0xff && data[1] & 0xe0 == 0xe0) {
-        return Format::Mp3;
-    }
     if data.len() >= 12 && &data[..4] == b"RIFF" && &data[8..12] == b"WAVE" {
         return Format::Wav;
+    }
+    if avi::is_avi(data) {
+        return Format::Avi;
     }
     if data.starts_with(b"fLaC") {
         return Format::Flac;
     }
+    if asf::is_asf(data) {
+        return Format::Asf;
+    }
+    if mkv::is_matroska(data) {
+        return Format::Matroska;
+    }
     let ext = extension(path);
+    if tiff::is_raf(data) {
+        return Format::Raf;
+    }
+    if tiff::is_tiff(data) {
+        return if RAW_EXTENSIONS.contains(&ext.as_str()) {
+            Format::Raw
+        } else {
+            Format::Tiff
+        };
+    }
+    // A CR3 is an ISO base media file like a HEIC and cleans the same way, but
+    // it is a negative and deserves to be named as one in the report.
+    if heif::is_canon_raw(data) {
+        return Format::CanonRaw;
+    }
+    if heif::is_heif(data) {
+        return Format::Heif;
+    }
     if ISO_MEDIA_EXTENSIONS.contains(&ext.as_str()) && video::is_iso_media(data) {
         return Format::IsoMedia;
+    }
+    if bmp::is_bmp(data) {
+        return Format::Bmp;
+    }
+    // MP3 is last of the binary formats: a bare frame header is only two bytes
+    // of sync, which plenty of other containers match by accident.
+    if data.starts_with(b"ID3") || (data.len() >= 2 && data[0] == 0xff && data[1] & 0xe0 == 0xe0) {
+        return Format::Mp3;
     }
     if data.starts_with(b"%PDF-") {
         return Format::Pdf;
     }
-    if data.starts_with(b"PK") && matches!(ext.as_str(), "docx" | "xlsx" | "pptx" | "odt") {
+    if data.starts_with(b"PK") && matches!(ext.as_str(), "docx" | "xlsx" | "pptx" | "odt" | "epub")
+    {
         return Format::Office;
     }
     if TEXT_EXTENSIONS.contains(&ext.as_str()) && std::str::from_utf8(data).is_ok() {
@@ -101,10 +156,19 @@ fn format_name(format: Format) -> &'static str {
         Format::Png => "PNG",
         Format::Webp => "WebP",
         Format::Gif => "GIF",
+        Format::Bmp => "BMP",
+        Format::Tiff => "TIFF",
+        Format::Raw => "RAW",
+        Format::Raf => "RAF",
+        Format::Heif => "HEIF / AVIF",
+        Format::CanonRaw => "Canon CR3",
         Format::Mp3 => "MP3",
         Format::Wav => "WAV",
         Format::Flac => "FLAC",
         Format::IsoMedia => "MP4 / QuickTime",
+        Format::Avi => "AVI",
+        Format::Asf => "WMV / ASF",
+        Format::Matroska => "Matroska / WebM",
         Format::Office => "Office",
         Format::Pdf => "PDF",
         Format::Text => "Text",
@@ -127,10 +191,18 @@ fn inspect_data(path: &Path, format: Format, data: &[u8]) -> Result<Vec<Finding>
         Format::Png => image::inspect_png(data),
         Format::Webp => image::inspect_webp(data),
         Format::Gif => media::inspect_gif(data),
+        Format::Bmp => bmp::inspect(data),
+        Format::Tiff => tiff::inspect_tiff(data, false),
+        Format::Raw => tiff::inspect_tiff(data, true),
+        Format::Raf => tiff::inspect_raf(data),
+        Format::Heif | Format::CanonRaw => heif::inspect(data),
         Format::Mp3 => media::inspect_mp3(data),
         Format::Wav => media::inspect_wav(data),
         Format::Flac => media::inspect_flac(data),
         Format::IsoMedia => video::inspect(data),
+        Format::Avi => avi::inspect(data),
+        Format::Asf => asf::inspect(data),
+        Format::Matroska => mkv::inspect(data),
         Format::Office => office::inspect(data),
         Format::Pdf => pdf::inspect(data),
         Format::Text => Ok(web_text::inspect(
@@ -156,10 +228,24 @@ fn clean_data(
         Format::Png => image::clean_png_with_options(data, preserve_color_profile),
         Format::Webp => image::clean_webp_with_options(data, preserve_color_profile),
         Format::Gif => media::clean_gif(data),
+        Format::Bmp => bmp::clean(data, preserve_color_profile),
+        Format::Tiff => {
+            tiff::clean_tiff_with_options(data, false, preserve_orientation, preserve_color_profile)
+        }
+        Format::Raw => {
+            tiff::clean_tiff_with_options(data, true, preserve_orientation, preserve_color_profile)
+        }
+        Format::Raf => {
+            tiff::clean_raf_with_options(data, preserve_orientation, preserve_color_profile)
+        }
+        Format::Heif | Format::CanonRaw => heif::clean(data),
         Format::Mp3 => media::clean_mp3(data),
         Format::Wav => media::clean_wav(data),
         Format::Flac => media::clean_flac(data),
         Format::IsoMedia => video::clean(data),
+        Format::Avi => avi::clean(data),
+        Format::Asf => asf::clean(data),
+        Format::Matroska => mkv::clean(data),
         Format::Office => office::clean(data),
         Format::Pdf => pdf::clean(data),
         Format::Text => {
@@ -195,6 +281,18 @@ fn verify_cleaned_data(
         }
         Format::Png => image::verify_png_cleaned(data, preserve_color_profile),
         Format::Webp => image::verify_webp_cleaned(data, preserve_color_profile),
+        Format::Bmp => bmp::verify_cleaned(data, preserve_color_profile),
+        Format::Tiff => {
+            tiff::verify_tiff_cleaned(data, false, preserve_orientation, preserve_color_profile)
+        }
+        Format::Raw => {
+            tiff::verify_tiff_cleaned(data, true, preserve_orientation, preserve_color_profile)
+        }
+        Format::Raf => tiff::verify_raf_cleaned(data, preserve_orientation, preserve_color_profile),
+        Format::Heif | Format::CanonRaw => heif::verify_cleaned(data),
+        Format::Avi => avi::verify_cleaned(data),
+        Format::Asf => asf::verify_cleaned(data),
+        Format::Matroska => mkv::verify_cleaned(data),
         Format::Unsupported => Err(CleanError::Unsupported("未知格式".into())),
         _ => {
             let residual = inspect_data(path, expected_format, data)?;
@@ -468,16 +566,88 @@ mod tests {
         video.extend(atom(b"moov", &user_data));
         video.extend(atom(b"mdat", b"\0\0\0\x01VIDEO-FRAMES"));
 
+        // Two pixels behind a core info header, with a note stapled past the end
+        // where no viewer would ever show it.
+        let mut bmp = b"BM".to_vec();
+        bmp.extend_from_slice(&30u32.to_le_bytes());
+        bmp.extend_from_slice(&[0, 0, 0, 0]);
+        bmp.extend_from_slice(&26u32.to_le_bytes());
+        bmp.extend_from_slice(&12u32.to_le_bytes());
+        bmp.extend_from_slice(&1i16.to_le_bytes());
+        bmp.extend_from_slice(&1i16.to_le_bytes());
+        bmp.extend_from_slice(&1u16.to_le_bytes());
+        bmp.extend_from_slice(&24u16.to_le_bytes());
+        bmp.extend_from_slice(&[0, 0, 0, 0]);
+        bmp.extend_from_slice(b"Exif\0\0Alice");
+
+        let tiff = tiff_sample();
+
+        let mut avi = b"RIFF\0\0\0\0AVI ".to_vec();
+        avi.extend(chunk(b"IART", b"Alice Zhang\0", false));
+        avi.extend(chunk(b"LIST", b"movi00dcFRAME", false));
+        let avi_size = (avi.len() - 8) as u32;
+        avi[4..8].copy_from_slice(&avi_size.to_le_bytes());
+
+        let matroska = matroska_sample();
+
         vec![
             ("photo.jpg", jpeg),
             ("graphic.png", png),
             ("graphic.webp", webp),
             ("animation.gif", gif),
+            ("photo.bmp", bmp),
+            ("photo.tif", tiff.clone()),
+            ("photo.nef", tiff),
             ("recording.mp3", mp3),
             ("recording.wav", wav),
             ("recording.flac", flac),
             ("movie.mp4", video),
+            ("movie.avi", avi),
+            ("movie.mkv", matroska),
         ]
+    }
+
+    /// A little endian TIFF whose single directory holds nothing but the two
+    /// strings a camera signs its work with.
+    fn tiff_sample() -> Vec<u8> {
+        let entry = |tag: u16, value: &[u8; 4]| {
+            let mut bytes = tag.to_le_bytes().to_vec();
+            bytes.extend_from_slice(&2u16.to_le_bytes());
+            bytes.extend_from_slice(&4u32.to_le_bytes());
+            bytes.extend_from_slice(value);
+            bytes
+        };
+        let mut file = b"II\x2a\x00".to_vec();
+        file.extend_from_slice(&8u32.to_le_bytes());
+        file.extend_from_slice(&2u16.to_le_bytes());
+        file.extend(entry(0x0131, b"Bob\0"));
+        file.extend(entry(0x010e, b"Cam\0"));
+        file.extend_from_slice(&0u32.to_le_bytes());
+        file
+    }
+
+    /// EBML in miniature: a segment carrying the writing application and a tag
+    /// block, over a cluster that must survive untouched.
+    fn matroska_sample() -> Vec<u8> {
+        fn element(id: &[u8], payload: &[u8]) -> Vec<u8> {
+            let mut bytes = id.to_vec();
+            let mut length = (payload.len() as u32).to_be_bytes().to_vec();
+            length[0] |= 0x10;
+            bytes.extend(length);
+            bytes.extend_from_slice(payload);
+            bytes
+        }
+        let info = element(&[0x57, 0x41], b"mkvmerge on alice-laptop");
+        let tags = element(
+            &[0x12, 0x54, 0xc3, 0x67],
+            b"<SimpleTag>ARTIST=Alice</SimpleTag>",
+        );
+        let mut segment = element(&[0x15, 0x49, 0xa9, 0x66], &info);
+        segment.extend(element(&[0x1f, 0x43, 0xb6, 0x75], b"VIDEO-FRAMES"));
+        segment.extend(tags);
+        let mut file = element(&[0x1a, 0x45, 0xdf, 0xa3], b"\x42\x82\x88matroska");
+        file.extend(element(&[0x18, 0x53, 0x80, 0x67], &segment));
+        file
     }
 
     #[test]
@@ -501,28 +671,70 @@ mod tests {
                 Format::IsoMedia,
                 "MP4 / QuickTime",
             ),
+            ("movie.avi", b"RIFF\x04\0\0\0AVI ", Format::Avi, "AVI"),
+            (
+                "movie.mkv",
+                b"\x1a\x45\xdf\xa3\x84\x42\x82\x88x",
+                Format::Matroska,
+                "Matroska / WebM",
+            ),
+            (
+                "photo.heic",
+                b"\0\0\0\x18ftypheic\0\0\0\0heicmif1",
+                Format::Heif,
+                "HEIF / AVIF",
+            ),
+            (
+                "photo.cr3",
+                b"\0\0\0\x18ftypcrx \0\0\0\0crx isom",
+                Format::CanonRaw,
+                "Canon CR3",
+            ),
             ("file.bin", b"%PDF-1.7", Format::Pdf, "PDF"),
             ("file.docx", b"PKarchive", Format::Office, "Office"),
+            ("book.epub", b"PKarchive", Format::Office, "Office"),
             ("file.md", b"plain text", Format::Text, "Text"),
             ("file.bin", b"unknown", Format::Unsupported, "Unsupported"),
         ];
         for (name, data, expected, label) in cases {
             let detected = detect(Path::new(name), data);
-            assert_eq!(detected, expected);
+            assert_eq!(detected, expected, "{name}");
             assert_eq!(format_name(detected), label);
         }
+
+        // The same TIFF byte stream is a photograph or a negative depending on
+        // what the camera called it, and only the negative keeps its model.
+        let tiff = tiff_sample();
+        assert_eq!(detect(Path::new("photo.tif"), &tiff), Format::Tiff);
+        assert_eq!(detect(Path::new("photo.nef"), &tiff), Format::Raw);
+        assert_eq!(format_name(Format::Raw), "RAW");
+
+        let mut raf = b"FUJIFILMCCD-RAW ".to_vec();
+        raf.resize(93, 0);
+        assert_eq!(detect(Path::new("photo.raf"), &raf), Format::Raf);
+
+        let mut asf = vec![
+            0x30, 0x26, 0xb2, 0x75, 0x8e, 0x66, 0xcf, 0x11, 0xa6, 0xd9, 0x00, 0xaa, 0x00, 0x62,
+            0xce, 0x6c,
+        ];
+        asf.resize(64, 0);
+        assert_eq!(detect(Path::new("movie.wmv"), &asf), Format::Asf);
+        assert_eq!(format_name(Format::Asf), "WMV / ASF");
+
         assert_eq!(extension(Path::new("PHOTO.JPEG")), "jpeg");
     }
 
     #[test]
     fn recognizes_every_supported_intake_extension() {
-        assert_eq!(SUPPORTED_EXTENSIONS.len(), 47);
+        assert_eq!(SUPPORTED_EXTENSIONS.len(), 91);
         for extension in SUPPORTED_EXTENSIONS {
             assert!(has_supported_extension(Path::new(&format!(
                 "file.{extension}"
             ))));
         }
-        assert!(!has_supported_extension(Path::new("video.mkv")));
+        for unsupported in ["archive.rar", "page.psd", "sheet.numbers", "clip.ogv"] {
+            assert!(!has_supported_extension(Path::new(unsupported)));
+        }
     }
 
     #[test]

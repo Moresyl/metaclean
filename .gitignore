@@ -4,7 +4,10 @@
 /coverage
 /src-tauri/target
 .firecrawl/
+/docs/
 *.log
+*.msi
+.tmp-*
 *.tsbuildinfo
 /src-tauri/icons/android/
 /src-tauri/icons/ios/

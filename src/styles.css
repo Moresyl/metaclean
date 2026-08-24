@@ -1,222 +1,2779 @@
+/* ==========================================================================
+   MetaClean — Windows 11 Fluent design system
+
+   Neutrals are pure grayscale (rgba over the base), so nothing reads as
+   tinted or dirty. Green appears only where it carries meaning: the accent
+   button, the navigation indicator, selection, and success states.
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   1. Tokens — light
+   Fills, strokes and text follow the Win11 common-control palette: layered
+   backgrounds do the separating, so almost nothing needs a visible box.
+   -------------------------------------------------------------------------- */
 :root {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI Variable Text", "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
-  font-size: 13px;
+  /* Type — Win11 type ramp */
+  --font-ui: "Segoe UI Variable Text", "Segoe UI", -apple-system, BlinkMacSystemFont,
+    "Microsoft YaHei UI", "PingFang SC", "Hiragino Sans GB", system-ui, sans-serif;
+  --font-display: "Segoe UI Variable Display", "Segoe UI Variable Text", "Segoe UI",
+    -apple-system, "Microsoft YaHei UI", "PingFang SC", system-ui, sans-serif;
+
+  --text-xs: 11px;
+  --text-sm: 12px; /* Caption */
+  --text-base: 14px; /* Body */
+  --text-md: 14px; /* Body strong */
+  --text-lg: 18px; /* Body large */
+  --text-xl: 20px; /* Subtitle */
+
+  --leading-tight: 1.3;
+  --leading-snug: 1.4;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.6;
+
+  /* Spacing — 4px base */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 32px;
+  --space-8: 40px;
+
+  /* Radius — Win11 only has two: 4px for controls, 8px for surfaces */
+  --r-xs: 4px;
+  --r-sm: 4px;
+  --r-md: 8px;
+  --r-lg: 8px;
+  --r-xl: 8px;
+  --r-pill: 999px;
+
+  /* Backgrounds — window base, content layer, cards */
+  --mica: #eeeeee;
+  --layer: #fafafa;
+  --layer-alt: #f0f0f0;
+  --dialog: #f3f3f3;
+  --dialog-footer: #eeeeee;
+  --card: #ffffff;
+  --card-hover: #f6f6f6;
+  --card-press: #f2f2f2;
+
+  /* Control fills */
+  --control: #ffffff;
+  --control-hover: #f9f9f9;
+  --control-press: #f5f5f5;
+  --control-disabled: #f5f5f5;
+  --control-alt: rgba(0, 0, 0, 0.0241);
+  --control-alt-hover: rgba(0, 0, 0, 0.0578);
+
+  /* Subtle fills — hover/press on otherwise transparent surfaces */
+  --subtle-hover: rgba(0, 0, 0, 0.0373);
+  --subtle-press: rgba(0, 0, 0, 0.0241);
+
+  /* Strokes */
+  --stroke: rgba(0, 0, 0, 0.0578);
+  --stroke-bottom: rgba(0, 0, 0, 0.1622);
+  --stroke-strong: rgba(0, 0, 0, 0.4458);
+  --divider: rgba(0, 0, 0, 0.0803);
+  --card-stroke: rgba(0, 0, 0, 0.0578);
+  --surface-stroke: rgba(117, 117, 117, 0.4);
+
+  /* Text */
+  --text: rgba(0, 0, 0, 0.8956);
+  --text-secondary: rgba(0, 0, 0, 0.6063);
+  --text-tertiary: rgba(0, 0, 0, 0.4458);
+  --text-disabled: rgba(0, 0, 0, 0.3614);
+
+  /* Accent — the only chromatic family in the system */
+  --accent: #107c41;
+  --accent-hover: #278955;
+  --accent-press: #3f9566;
+  --accent-text: #0c6135;
+  --accent-subtle: #e2efe8;
+  --accent-subtle-hover: #d5e8de;
+  --on-accent: #ffffff;
+  --on-accent-disabled: rgba(255, 255, 255, 0.7);
+
+  /* Status */
+  --danger: #b02323;
+  --danger-text: #8a1c1c;
+  --danger-subtle: #fdf1f1;
+
+  /* Focus — Win11 draws a dark outer ring with a light inner ring */
+  --focus-outer: rgba(0, 0, 0, 0.8956);
+  --focus-inner: #ffffff;
+
+  /* Elevation — cards use strokes, only overlays get a shadow */
+  --shadow-flyout: 0 8px 16px rgba(0, 0, 0, 0.14);
+  --shadow-dialog: 0 32px 64px rgba(0, 0, 0, 0.19), 0 2px 21px rgba(0, 0, 0, 0.16);
+  --smoke: rgba(0, 0, 0, 0.3);
+
+  /* Motion — Fluent point-to-point curves */
+  --dur-instant: 83ms;
+  --dur-fast: 100ms;
+  --dur-base: 167ms;
+  --dur-slow: 250ms;
+  --ease-standard: cubic-bezier(0, 0, 0, 1);
+  --ease-decelerate: cubic-bezier(0.1, 0.9, 0.2, 1);
+  --ease-spring: cubic-bezier(0.13, 1.62, 0, 0.92);
+
+  /* Optical nudge — lucide glyphs sit ~0.5px low against cap height */
+  --icon-nudge: -0.5px;
+
+  /* Glyphs drawn as data URIs so they track the theme */
+  --chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='7'%3E%3Cpath d='M1 1.3 6 5.6 11 1.3' fill='none' stroke='%238d8d8d' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  --check: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12'%3E%3Cpath d='M2.4 6.3 4.8 8.7 9.6 3.4' fill='none' stroke='%23ffffff' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+
+  color-scheme: light;
+  font-family: var(--font-ui);
+  font-size: var(--text-base);
   font-synthesis: none;
   color: var(--text);
-  background: var(--canvas);
-  --text: #111111;
-  --canvas: #f7f8f6;
-  --sidebar: #f0f3ef;
-  --topbar: rgba(255,255,255,.85);
-  --nav-text: #111111;
-  --nav-hover: #e7ebe7;
-  --green: #287a56;
-  --green-dark: #111111;
-  --green-action: #287a56;
-  --green-action-hover: #1f6949;
-  --green-soft: #e9f3ed;
-  --border: #dfe4df;
-  --border-soft: #edf0ed;
-  --muted: #111111;
-  --surface: #ffffff;
-  --surface-hover: #f4f9f6;
-  --surface-muted: #f1f3f1;
-  --danger: #a53c35;
-  --danger-soft: #fae9e7;
+  background: var(--mica);
+  accent-color: var(--accent);
 }
 
+/* --------------------------------------------------------------------------
+   2. Tokens — dark
+   Win11 flips the accent to a light tint and puts dark text on it.
+   -------------------------------------------------------------------------- */
 [data-theme="dark"] {
   color-scheme: dark;
-  --text: #f5f5f5;
-  --canvas: #101512;
-  --sidebar: #131a16;
-  --topbar: rgba(19,26,22,.92);
-  --nav-text: #f5f5f5;
-  --nav-hover: #202a23;
-  --green: #45a978;
-  --green-dark: #f5f5f5;
-  --green-action: #2c7a56;
-  --green-action-hover: #235f44;
-  --green-soft: #1b3427;
-  --border: #354139;
-  --border-soft: #29332d;
-  --muted: #f5f5f5;
-  --surface: #171d19;
-  --surface-hover: #1e2822;
-  --surface-muted: #202822;
-  --danger: #f09a92;
-  --danger-soft: #3a201f;
+
+  --mica: #202020;
+  --layer: #272727;
+  --layer-alt: #202020;
+  --dialog: #202020;
+  --dialog-footer: #1c1c1c;
+  --card: #2d2d2d;
+  --card-hover: #323232;
+  --card-press: #2a2a2a;
+
+  --control: #333333;
+  --control-hover: #383838;
+  --control-press: #2c2c2c;
+  --control-disabled: #2b2b2b;
+  --control-alt: rgba(255, 255, 255, 0.0326);
+  --control-alt-hover: rgba(255, 255, 255, 0.0605);
+
+  --subtle-hover: rgba(255, 255, 255, 0.0605);
+  --subtle-press: rgba(255, 255, 255, 0.0419);
+
+  --stroke: rgba(255, 255, 255, 0.0698);
+  --stroke-bottom: rgba(0, 0, 0, 0.24);
+  --stroke-strong: rgba(255, 255, 255, 0.5442);
+  --divider: rgba(255, 255, 255, 0.0837);
+  --card-stroke: rgba(0, 0, 0, 0.1);
+  --surface-stroke: rgba(117, 117, 117, 0.4);
+
+  --text: #ffffff;
+  --text-secondary: rgba(255, 255, 255, 0.786);
+  --text-tertiary: rgba(255, 255, 255, 0.5442);
+  --text-disabled: rgba(255, 255, 255, 0.3628);
+
+  --accent: #5fbf85;
+  --accent-hover: #6fc891;
+  --accent-press: #55a876;
+  --accent-text: #6bcb96;
+  --accent-subtle: rgba(95, 191, 133, 0.13);
+  --accent-subtle-hover: rgba(95, 191, 133, 0.2);
+  --on-accent: #0d1410;
+  --on-accent-disabled: rgba(13, 20, 16, 0.53);
+
+  --danger: #ff99a4;
+  --danger-text: #ffadb6;
+  --danger-subtle: rgba(255, 153, 164, 0.12);
+
+  --focus-outer: #ffffff;
+  --focus-inner: #1a1a1a;
+
+  --shadow-flyout: 0 8px 16px rgba(0, 0, 0, 0.26);
+  --shadow-dialog: 0 32px 64px rgba(0, 0, 0, 0.37), 0 2px 21px rgba(0, 0, 0, 0.37);
+  --smoke: rgba(0, 0, 0, 0.3);
+
+  --chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='7'%3E%3Cpath d='M1 1.3 6 5.6 11 1.3' fill='none' stroke='%239f9f9f' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  --check: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12'%3E%3Cpath d='M2.4 6.3 4.8 8.7 9.6 3.4' fill='none' stroke='%230d1410' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
 }
 
-* { box-sizing: border-box; }
-body { margin: 0; min-width: 760px; min-height: 100vh; overflow: hidden; background: var(--canvas); color: var(--text); }
-button, input, select { font: inherit; }
-button:focus-visible { outline: 2px solid var(--green); outline-offset: 2px; }
-.app-shell { display: grid; grid-template-columns: 208px minmax(0, 1fr); height: 100vh; }
-.sidebar { background: var(--sidebar); border-inline-end: 1px solid var(--border); padding: 20px 12px 14px; display: flex; flex-direction: column; }
-.brand { display: flex; align-items: center; gap: 10px; padding: 0 10px 22px; }
-.brand-mark { width: 32px; height: 32px; display: grid; place-items: center; border-radius: 6px; background: var(--green-action); color: white; font-weight: 750; }
-.brand strong, .brand span { display: block; }
-.brand strong { font-size: 14px; }
-.brand span { color: var(--muted); font-size: 12px; margin-top: 2px; }
-.sidebar nav { display: grid; gap: 4px; }
-.nav-item { border: 0; background: transparent; color: var(--nav-text); border-radius: 5px; padding: 10px 11px; display: flex; align-items: center; gap: 10px; font-size: 13px; font-weight: 600; cursor: pointer; text-align: start; }
-.nav-item:hover { background: var(--nav-hover); color: var(--text); }
-.nav-item.active { background: var(--green-soft); color: var(--green-dark); }
-.sidebar-footer { margin-top: auto; }
-.local-note { display: flex; gap: 8px; align-items: flex-start; color: var(--green-dark); padding: 12px 10px 4px; font-size: 12px; line-height: 1.45; }
-.local-note strong { display: block; font-size: 12px; }
-.app-version { display: block; padding: 5px 10px 0 33px; color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
-.workspace { min-width: 0; overflow: auto; scrollbar-width: none; }
-.workspace::-webkit-scrollbar, .file-list::-webkit-scrollbar, .update-dialog-notes::-webkit-scrollbar { width: 0; height: 0; }
-.topbar { height: 72px; padding: 0 28px; border-bottom: 1px solid var(--border); background: var(--topbar); display: flex; align-items: center; justify-content: space-between; }
-.topbar h1 { margin: 0; font-size: 18px; font-weight: 650; }
-.topbar p { margin: 4px 0 0; font-size: 12px; color: var(--muted); }
-.update-badge { border: 1px solid #91b8a1; background: var(--green-soft); color: var(--green-dark); border-radius: 5px; padding: 7px 10px; display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 650; cursor: pointer; }
-.window-actions button, .queue-card header button, .file-actions button { border: 0; background: transparent; color: var(--muted); cursor: pointer; }
-.content-grid { display: grid; grid-template-columns: minmax(420px, 1fr) 260px; align-items: start; gap: 18px; max-width: 1050px; margin: 0 auto; padding: 24px 28px 40px; }
-.main-column { display: grid; gap: 14px; min-width: 0; }
-.notice { border: 1px solid var(--border); background: var(--green-soft); color: var(--green-dark); border-radius: 5px; min-height: 42px; padding: 10px 13px; display: flex; align-items: center; gap: 9px; font-size: 12px; }
-.result-message { border: 1px solid var(--border); background: var(--surface); color: var(--green-dark); border-radius: 5px; padding: 11px 13px; font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; }
-.drop-zone { min-height: 250px; border: 1px dashed var(--border); border-radius: 6px; background: var(--surface); display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px; transition: border-color .15s, background .15s; }
-.drop-zone:hover { border-color: var(--green); background: var(--surface-hover); }
-.drop-icon { width: 46px; height: 46px; display: grid; place-items: center; color: var(--green); background: var(--green-soft); border-radius: 6px; }
-.drop-zone h2 { margin: 15px 0 5px; font-size: 18px; }
-.drop-zone p { margin: 0; color: var(--muted); font-size: 12px; }
-.primary-button, .scan-button { border: 0; border-radius: 5px; background: var(--green-action); color: white; display: flex; align-items: center; justify-content: center; gap: 7px; font-weight: 650; font-size: 13px; cursor: pointer; }
-.primary-button { margin-top: 17px; padding: 9px 16px; }
-.intake-actions { margin-top: 17px; display: flex; gap: 8px; }.intake-actions .primary-button { margin-top: 0; }.secondary-button { border: 1px solid var(--border); border-radius: 5px; background: var(--surface); color: var(--green-dark); display: flex; align-items: center; justify-content: center; gap: 7px; padding: 9px 16px; font-size: 13px; font-weight: 650; cursor: pointer; }.secondary-button:hover { background: var(--surface-hover); border-color: #a9c8b6; }
-.primary-button:hover, .scan-button:hover { background: var(--green-action-hover); }
-.format-list { display: flex; gap: 6px; margin-top: 18px; }
-.format-list span { padding: 3px 7px; border-radius: 3px; background: var(--surface-muted); color: var(--muted); font-size: 12px; }
-.queue-card, .options-card { border: 1px solid var(--border); border-radius: 6px; background: var(--surface); }
-.queue-card header { min-height: 49px; border-bottom: 1px solid var(--border-soft); padding: 0 14px; display: flex; align-items: center; justify-content: space-between; }
-.queue-card header > div { display: flex; align-items: baseline; gap: 8px; }
-.queue-card h2 { margin: 0; font-size: 13px; }
-.queue-card header span { color: var(--muted); font-size: 12px; }
-.queue-card header button { display: flex; gap: 5px; align-items: center; font-size: 12px; }
-.queue-card header button:disabled { opacity: .35; cursor: default; }
-.queue-tools { display: flex; align-items: center; gap: 6px; }
-.queue-tools select { border: 1px solid var(--border); border-radius: 4px; background: var(--surface); color: var(--muted); padding: 4px 22px 4px 6px; font-size: 12px; cursor: pointer; }
-.queue-tools select:focus-visible { outline: 2px solid var(--green); outline-offset: 2px; }
-.queue-tools .sort-direction { width: 22px; justify-content: center; font-size: 13px; }
-.visually-hidden { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
-.empty-queue { min-height: 92px; display: flex; align-items: center; justify-content: center; gap: 9px; color: var(--muted); font-size: 12px; }
-.file-list { max-height: 190px; overflow: auto; }
-.file-row { display: grid; grid-template-columns: 30px minmax(0,1fr) auto; align-items: center; gap: 8px; padding: 10px 12px; border-bottom: 1px solid var(--border-soft); }
-.file-row:last-child { border-bottom: 0; }
-.file-kind { width: 30px; height: 30px; display: grid; place-items: center; border-radius: 6px; color: var(--green); background: var(--green-soft); }
-.file-name { min-width: 0; }
-.file-name strong, .file-name span { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.file-name strong { font-size: 13px; }.file-name span { color: var(--muted); font-size: 12px; margin-top: 2px; }
-.file-name .file-size-delta { color: var(--green-dark); font-variant-numeric: tabular-nums; }
-.file-actions { display: flex; align-items: center; gap: 2px; }
-.file-actions button { width: 28px; height: 28px; display: grid; place-items: center; border-radius: 5px; }
-.file-actions button:hover { color: var(--green-dark); background: var(--green-soft); }
-.file-row.clean .file-kind { color: #fff; background: var(--green-action); }
-.file-row.error .file-kind { color: var(--danger); background: var(--danger-soft); }
-.finding-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 5px; }
-.finding-tags em { font-style: normal; font-size: 12px; color: var(--green-dark); background: var(--green-soft); border-radius: 3px; padding: 2px 5px; }
-.options-card { padding: 16px; position: sticky; top: 18px; }
-.eyebrow { color: var(--muted); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; margin-bottom: 9px; }
-.mode-option { width: 100%; border: 1px solid var(--border); background: var(--surface); border-radius: 7px; padding: 10px; display: flex; align-items: flex-start; gap: 9px; color: var(--nav-text); text-align: start; cursor: pointer; margin-top: 7px; }
-.mode-option.selected { border-color: #89b29c; background: var(--surface-hover); color: var(--green-dark); box-shadow: 0 0 0 1px var(--green-soft) inset; }
-.mode-option strong, .mode-option small { display: block; }.mode-option strong { font-size: 13px; }.mode-option small { color: var(--muted); font-size: 12px; margin-top: 3px; }
-.privacy-options { display: grid; gap: 7px; margin-top: 12px; }.privacy-options label { display: flex; align-items: center; gap: 7px; color: var(--nav-text); font-size: 12px; cursor: pointer; }.privacy-options input, .fidelity-options input { accent-color: var(--green); }
-.option-divider { height: 1px; background: var(--border-soft); margin: 16px 0; }
-.scan-summary > span { font-size: 12px; color: var(--muted); font-weight: 700; }
-.scan-summary ul { margin: 9px 0 16px; padding-inline-start: 17px; color: var(--muted); font-size: 12px; line-height: 1.8; }
-.scan-summary li::marker { color: #75a189; }
-.scan-button { width: 100%; padding: 10px 12px; }
-.scan-button:disabled { background: var(--border); color: var(--muted); cursor: not-allowed; }
-.safety-copy { text-align: center; color: var(--muted); font-size: 12px; margin: 8px 0 0; }
-.secondary-page { max-width: 920px; margin: 0 auto; padding: 26px 28px 40px; }
-.page-heading { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
-.page-heading h1 { margin: 0; font-size: 18px; font-weight: 650; }.page-heading p { margin: 5px 0 0; color: var(--muted); font-size: 12px; }
-.page-heading button { display: flex; align-items: center; gap: 6px; border: 1px solid var(--border); background: var(--surface); border-radius: 5px; padding: 7px 10px; color: var(--nav-text); font-size: 12px; cursor: pointer; }
-.page-heading button:disabled { opacity: .4; cursor: default; }
-.large-empty { min-height: 330px; border: 1px dashed var(--border); background: var(--surface); border-radius: 6px; display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--muted); }
-.large-empty strong { margin-top: 12px; color: var(--text); font-size: 14px; }.large-empty span { margin-top: 5px; font-size: 12px; }
-.history-list { display: grid; gap: 12px; }
-.history-card { border: 1px solid var(--border); background: var(--surface); border-radius: 6px; overflow: hidden; }
-.history-card header { display: flex; justify-content: space-between; align-items: center; padding: 12px 14px; background: var(--surface-muted); border-bottom: 1px solid var(--border-soft); }
-.history-card header strong, .history-card header span { display: block; }.history-card header strong { font-size: 13px; }.history-card header span { color: var(--muted); font-size: 12px; margin-top: 3px; }
-.history-card header em { font-style: normal; color: var(--text); background: var(--green-soft); padding: 4px 7px; border-radius: 3px; font-size: 12px; }
-.history-result { display: flex; gap: 9px; align-items: flex-start; padding: 10px 14px; border-bottom: 1px solid var(--border-soft); color: var(--green); }
-.history-result:last-child { border-bottom: 0; }.history-result span { min-width: 0; }.history-result strong, .history-result small { display: block; overflow-wrap: anywhere; }
-.history-result strong { color: var(--text); font-size: 13px; }.history-result small { color: var(--muted); font-size: 12px; margin-top: 3px; }
-.settings-page { max-width: 1040px; margin: 0 auto; padding: 24px 28px 40px; display: grid; grid-template-columns: 180px minmax(0, 1fr); gap: 26px; align-items: start; }
-.settings-nav { display: grid; gap: 3px; position: sticky; top: 20px; }
-.settings-nav button { width: 100%; border: 0; border-radius: 5px; background: transparent; color: var(--nav-text); padding: 10px 11px; display: flex; align-items: center; gap: 9px; text-align: start; font-size: 13px; cursor: pointer; }
-.settings-nav button:hover { background: var(--nav-hover); color: var(--text); }
-.settings-nav button.active { background: var(--green-soft); color: var(--green-dark); font-weight: 650; }
-.settings-panel { min-width: 0; }
-.settings-panel-heading { min-height: 54px; padding: 2px 2px 14px; }
-.settings-panel-heading h2 { margin: 0; font-size: 18px; font-weight: 650; }
-.settings-panel-heading p { margin: 5px 0 0; color: var(--muted); font-size: 12px; }
-.settings-list { border: 1px solid var(--border); border-radius: 6px; overflow: hidden; background: var(--surface); }
-.setting-item { min-height: 72px; padding: 15px 16px; border-bottom: 1px solid var(--border-soft); display: flex; align-items: center; justify-content: space-between; gap: 20px; background: var(--surface); }
-.setting-item:last-child { border-bottom: 0; }
-.setting-item h3, .safety-item h3 { margin: 0; font-size: 13px; font-weight: 650; }
-.setting-item p, .safety-item p { margin: 4px 0 0; color: var(--muted); font-size: 12px; line-height: 1.5; }
-.setting-item-stacked { display: block; }
-.setting-row { display: flex; align-items: center; justify-content: space-between; gap: 18px; }
-.setting-button, .settings-actions button, .update-dialog-actions button { border: 1px solid var(--border); background: var(--surface); color: var(--text); border-radius: 5px; min-height: 32px; padding: 6px 12px; font-size: 13px; font-weight: 600; cursor: pointer; }
-.setting-button:hover, .settings-actions button:hover, .update-dialog-actions button:hover { background: var(--surface-muted); }
-.setting-button:disabled, .settings-actions button:disabled, .update-dialog-actions button:disabled { opacity: .45; cursor: default; }
-.settings-actions { display: flex; gap: 7px; flex-shrink: 0; }
-.settings-actions button { display: flex; align-items: center; gap: 6px; }
-.settings-actions button.primary, .update-dialog-actions button.primary { border-color: var(--green-action); background: var(--green-action); color: #fff; }
-.settings-actions button.primary:hover, .update-dialog-actions button.primary:hover { background: var(--green-action-hover); }
-.locale-switch select { min-width: 160px; border: 1px solid var(--border); background: var(--surface); border-radius: 5px; color: var(--text); padding-block: 7px; padding-inline: 10px 30px; font-size: 13px; cursor: pointer; }
-.locale-switch select:focus-visible { outline: 2px solid var(--green-action); outline-offset: 2px; }
-.theme-choices { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0; max-width: 420px; margin-top: 14px; border: 1px solid var(--border); border-radius: 5px; overflow: hidden; }
-.theme-choices button { border: 0; border-inline-end: 1px solid var(--border); background: var(--surface); color: var(--nav-text); min-height: 38px; display: flex; align-items: center; justify-content: center; gap: 7px; font-size: 13px; font-weight: 600; cursor: pointer; }
-.theme-choices button:last-child { border-inline-end: 0; }
-.theme-choices button.selected { background: var(--green-soft); color: var(--green-dark); }
-.settings-choices { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 14px; }
-.settings-choices button { border: 1px solid var(--border); background: var(--surface); border-radius: 5px; padding: 13px; display: flex; gap: 10px; color: var(--nav-text); text-align: start; cursor: pointer; }
-.settings-choices button.selected { border-color: #89b29c; background: var(--green-soft); color: var(--green-dark); }
-.settings-choices strong, .settings-choices small { display: block; }.settings-choices strong { font-size: 13px; }.settings-choices small { color: var(--muted); font-size: 12px; margin-top: 4px; }
-.fidelity-options { display: grid; grid-template-columns: 1fr 1fr; gap: 0 20px; margin-top: 12px; }
-.fidelity-options label { min-height: 54px; padding: 10px 2px; border-bottom: 1px solid var(--border-soft); display: flex; align-items: flex-start; gap: 9px; color: var(--nav-text); font-size: 13px; cursor: pointer; }
-.fidelity-options input { margin-top: 2px; }
-.fidelity-options strong, .fidelity-options small { display: block; }.fidelity-options small { margin-top: 3px; color: var(--muted); font-size: 12px; line-height: 1.45; }
-.update-progress { display: block; width: 100%; height: 6px; margin-top: 13px; accent-color: var(--green-action); }
-.update-notes { margin-top: 13px; border-inline-start: 3px solid var(--green); background: var(--surface-muted); padding: 10px 12px; color: var(--nav-text); font-size: 12px; line-height: 1.5; }
-.update-notes strong { display: block; }.update-notes p { margin: 5px 0 0; max-height: 6em; overflow: auto; white-space: pre-wrap; color: var(--muted); scrollbar-width: none; }
-.setting-toggle { cursor: pointer; }
-.setting-toggle strong, .setting-toggle small { display: block; font-size: 12px; }.setting-toggle small { margin-top: 4px; color: var(--muted); }
-.setting-toggle input { width: 17px; height: 17px; accent-color: var(--green); }
-.safety-item { min-height: 76px; padding: 15px 16px; border-bottom: 1px solid var(--border-soft); display: grid; grid-template-columns: 24px minmax(0, 1fr) 20px; align-items: center; gap: 10px; color: var(--green-dark); }
-.safety-item:last-child { border-bottom: 0; }.safety-item div { color: var(--text); }.safety-item > svg:last-child { color: var(--green); }
-.scope-card { border: 1px solid var(--border); background: var(--surface); border-radius: 6px; padding: 18px; margin-bottom: 14px; }
-.scope-card h2 { margin: 0; font-size: 14px; }.scope-card p { color: var(--muted); font-size: 12px; line-height: 1.7; }
-.privacy-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 14px; }
-.privacy-grid article { border: 1px solid var(--border); background: var(--surface); border-radius: 6px; padding: 17px; color: var(--green); }.privacy-grid h2 { color: var(--text); font-size: 13px; margin: 12px 0 5px; }.privacy-grid p { color: var(--muted); font-size: 12px; line-height: 1.65; margin: 0; }
-.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+/* --------------------------------------------------------------------------
+   3. Reset + native desktop behavior
+   -------------------------------------------------------------------------- */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
 
-.update-dialog-backdrop { position: fixed; inset: 0; z-index: 1000; display: grid; place-items: center; padding: 24px; background: rgba(13, 18, 15, .46); }
-.update-dialog { position: relative; width: min(540px, 100%); max-height: calc(100vh - 48px); overflow: hidden; border: 1px solid var(--border); border-radius: 7px; background: var(--surface); padding: 24px; box-shadow: 0 18px 48px rgba(0, 0, 0, .24); }
-.update-dialog-close { position: absolute; inset-block-start: 12px; inset-inline-end: 12px; width: 32px; height: 32px; border: 0; border-radius: 5px; display: grid; place-items: center; color: var(--muted); background: transparent; cursor: pointer; }
-.update-dialog-close:hover { color: var(--text); background: var(--surface-muted); }
-.update-dialog-icon { width: 40px; height: 40px; display: grid; place-items: center; border-radius: 6px; background: var(--green-soft); color: var(--green-dark); }
-.update-dialog-eyebrow { margin: 16px 0 4px; color: var(--green-dark); font-size: 12px; font-weight: 650; }
-.update-dialog h2 { margin: 0; font-size: 18px; font-weight: 650; }
-.update-dialog-version { margin: 5px 0 0; color: var(--muted); font-size: 12px; }
-.update-dialog-notes { max-height: 260px; overflow: auto; margin-top: 18px; border: 1px solid var(--border); border-radius: 5px; background: var(--canvas); padding: 14px; scrollbar-width: none; }
-.update-dialog-notes strong { display: block; font-size: 13px; }.update-dialog-notes p { margin: 7px 0 0; color: var(--nav-text); font-size: 12px; line-height: 1.65; white-space: pre-wrap; overflow-wrap: anywhere; }
-.update-dialog-error { margin: 12px 0 0; color: var(--danger); font-size: 12px; }
-.update-dialog-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px; }
-.update-dialog-actions button { display: flex; align-items: center; justify-content: center; gap: 6px; }
+html,
+body {
+  height: 100%;
+}
 
-@media (max-width: 850px) {
-  .app-shell { grid-template-columns: 176px minmax(0, 1fr); }
-  .content-grid { grid-template-columns: 1fr; }
-  .options-card { position: static; }
-  .privacy-grid, .settings-choices, .fidelity-options { grid-template-columns: 1fr; }
-  .settings-page { grid-template-columns: 1fr; gap: 14px; }
-  .settings-nav { position: static; grid-template-columns: repeat(4, minmax(0, 1fr)); }
-  .settings-nav button { justify-content: center; padding-inline: 7px; }
-  .settings-nav button span { display: none; }
+body {
+  margin: 0;
+  min-width: 760px;
+  overflow: hidden;
+  background: var(--mica);
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: var(--text-base);
+  line-height: var(--leading-snug);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+
+  /* Native app chrome is not selectable and never shows a text caret. */
+  -webkit-user-select: none;
+  user-select: none;
+  cursor: default;
+
+  /* Kill browser-isms: rubber-band scroll, tap highlight, long-press callout. */
+  overscroll-behavior: none;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+}
+
+/* Content the user legitimately needs to copy — paths, names, release notes. */
+.selectable,
+.file-name strong,
+.history-result strong,
+.history-result small,
+.result-message,
+.update-dialog-notes p,
+.update-notes p {
+  -webkit-user-select: text;
+  user-select: text;
+  cursor: text;
+}
+
+::selection {
+  background: var(--accent-subtle-hover);
+  color: var(--accent-text);
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  cursor: default;
+}
+
+svg {
+  flex: none;
+  display: block;
+}
+
+img,
+svg {
+  -webkit-user-drag: none;
+}
+
+h1,
+h2,
+h3,
+p,
+ul {
+  margin: 0;
+}
+
+/* --------------------------------------------------------------------------
+   4. Scrollbars — Win11 overlay bars: a hairline at rest, a pill on hover
+   -------------------------------------------------------------------------- */
+.workspace,
+.file-list,
+.palette-results,
+.update-dialog-notes,
+.update-notes p {
+  scrollbar-width: thin;
+  scrollbar-color: var(--stroke-strong) transparent;
+}
+
+.workspace::-webkit-scrollbar,
+.file-list::-webkit-scrollbar,
+.palette-results::-webkit-scrollbar,
+.update-dialog-notes::-webkit-scrollbar,
+.update-notes p::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+.workspace::-webkit-scrollbar-track,
+.file-list::-webkit-scrollbar-track,
+.palette-results::-webkit-scrollbar-track,
+.update-dialog-notes::-webkit-scrollbar-track,
+.update-notes p::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.workspace::-webkit-scrollbar-thumb,
+.file-list::-webkit-scrollbar-thumb,
+.palette-results::-webkit-scrollbar-thumb,
+.update-dialog-notes::-webkit-scrollbar-thumb,
+.update-notes p::-webkit-scrollbar-thumb {
+  border: 4px solid transparent;
+  border-radius: var(--r-pill);
+  background-clip: content-box;
+  background-color: var(--text-tertiary);
+  transition: border-width var(--dur-base) var(--ease-standard);
+}
+
+.workspace:hover::-webkit-scrollbar-thumb,
+.file-list:hover::-webkit-scrollbar-thumb,
+.palette-results:hover::-webkit-scrollbar-thumb,
+.update-dialog-notes:hover::-webkit-scrollbar-thumb,
+.update-notes p:hover::-webkit-scrollbar-thumb {
+  border-width: 3px;
+}
+
+.workspace::-webkit-scrollbar-thumb:hover,
+.file-list::-webkit-scrollbar-thumb:hover,
+.palette-results::-webkit-scrollbar-thumb:hover {
+  background-color: var(--text-secondary);
+}
+
+/* --------------------------------------------------------------------------
+   5. Focus — Win11's two-tone rectangle, keyboard only
+   -------------------------------------------------------------------------- */
+:focus-visible {
+  outline: 2px solid var(--focus-outer);
+  outline-offset: 1px;
+  box-shadow: 0 0 0 1px var(--focus-inner);
+}
+
+/* --------------------------------------------------------------------------
+   6. Shell — a Mica window base with the content in a raised layer
+   -------------------------------------------------------------------------- */
+
+/* The window is one frame: a caption strip the app paints itself, and the
+   shell below it. The rows are fixed so the content area stays exactly the
+   height it had when Windows still drew the caption. */
+.window-frame {
+  display: grid;
+  grid-template-rows: 32px minmax(0, 1fr);
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+  background: var(--mica);
+}
+
+.app-shell {
+  display: grid;
+  grid-template-columns: 216px minmax(0, 1fr);
+  min-height: 0;
+  background: var(--mica);
+  isolation: isolate;
+}
+
+/* The signature NavigationView frame: rounded only where it meets the pane,
+   with a hairline that lifts it off the window base. */
+.workspace {
+  min-width: 0;
+  overflow: auto;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  background: var(--layer);
+  border-inline-start: 1px solid var(--card-stroke);
+  border-block-start: 1px solid var(--card-stroke);
+  border-start-start-radius: var(--r-md);
+}
+
+/* --------------------------------------------------------------------------
+   6b. Title bar — the system caption, redrawn at the system's own metrics
+   32px tall, 46x32 caption buttons, #c42b1c on close. Anything else reads as
+   a web page wearing a window.
+   -------------------------------------------------------------------------- */
+.titlebar {
+  position: relative;
+  z-index: 30;
+  display: flex;
+  align-items: stretch;
+  justify-content: flex-end;
+  background: var(--mica);
+}
+
+/* The centre of a caption is prime real estate that Windows spends on a title
+   the sidebar already shows. It goes to the one control that reaches every
+   other one instead. */
+.command-center {
+  position: absolute;
+  inset-block: 3px;
+  inset-inline: 0;
+  width: min(340px, 34%);
+  margin-inline: auto;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding-inline: var(--space-2) 4px;
+  border: 1px solid var(--stroke);
+  border-radius: var(--r-sm);
+  background: var(--control-alt);
+  color: var(--text-tertiary);
+  font-size: var(--text-sm);
+  transition:
+    background-color var(--dur-fast) var(--ease-standard),
+    color var(--dur-fast) var(--ease-standard);
+}
+
+.command-center:hover {
+  background: var(--control-alt-hover);
+  color: var(--text-secondary);
+}
+
+.command-center:active {
+  background: var(--subtle-press);
+}
+
+.command-center svg {
+  flex: none;
+  translate: 0 var(--icon-nudge);
+}
+
+.command-center span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.command-center kbd,
+.palette-item kbd {
+  flex: none;
+  margin-inline-start: auto;
+  padding: 0 5px;
+  border: 1px solid var(--stroke-bottom);
+  border-radius: 3px;
+  background: var(--card);
+  color: var(--text-tertiary);
+  font-family: inherit;
+  font-size: var(--text-xs);
+  line-height: 17px;
+}
+
+.caption-buttons {
+  position: relative;
+  z-index: 1;
+  display: flex;
+}
+
+.caption-button {
+  width: 46px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--text);
+  transition: background-color var(--dur-instant) linear;
+}
+
+.caption-button:focus-visible {
+  outline-offset: -3px;
+}
+
+.caption-button:hover {
+  background: var(--subtle-hover);
+}
+
+.caption-button:active {
+  background: var(--subtle-press);
+}
+
+/* The one hard-coded colour in the app: Windows paints this exact red and a
+   near-miss is more conspicuous than no colour at all. */
+.caption-button.close:hover {
+  background: #c42b1c;
+  color: #ffffff;
+}
+
+.caption-button.close:active {
+  background: #c84031;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+/* --------------------------------------------------------------------------
+   7. Navigation pane
+   Selection is neutral: only the indicator pill and the icon carry accent.
+   -------------------------------------------------------------------------- */
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: var(--space-2) var(--space-1) var(--space-2) var(--space-2);
+  background: var(--mica);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 6px var(--space-3) var(--space-5);
+}
+
+.brand-mark {
+  width: 30px;
+  height: 30px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: var(--r-md);
+  background: linear-gradient(145deg, #34a86a, #0c6134);
+  color: #fff;
+  font-size: var(--text-md);
+  font-weight: 600;
+  line-height: 1;
+  /* The "M" bowl reads heavy at the baseline; lift it to optical center. */
+  padding-bottom: 1px;
+}
+
+.brand > div {
+  min-width: 0;
+}
+
+.brand strong,
+.brand span {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.brand strong {
+  font-size: var(--text-md);
+  font-weight: 600;
+}
+
+.brand span {
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+}
+
+.sidebar nav {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.nav-item,
+.settings-nav button {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  min-height: 36px;
+  padding: 0 var(--space-3);
+  border: 0;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--text);
+  font-size: var(--text-base);
+  font-weight: 400;
+  text-align: start;
+  transition:
+    background-color var(--dur-fast) var(--ease-standard),
+    color var(--dur-fast) var(--ease-standard);
+}
+
+.nav-item svg,
+.settings-nav button svg {
+  flex: none;
+  translate: 0 var(--icon-nudge);
+  color: var(--text-secondary);
+  transition: color var(--dur-fast) var(--ease-standard);
+}
+
+.nav-item:hover,
+.settings-nav button:hover {
+  background: var(--subtle-hover);
+}
+
+.nav-item:active,
+.settings-nav button:active {
+  background: var(--subtle-press);
+  color: var(--text-secondary);
+  transition-duration: var(--dur-instant);
+}
+
+.nav-item.active,
+.settings-nav button.active {
+  background: var(--subtle-hover);
+  font-weight: 600;
+}
+
+.nav-item.active svg,
+.settings-nav button.active svg {
+  color: var(--accent-text);
+}
+
+/* Windows 11 selection indicator — grows out of the leading edge */
+.nav-item::before,
+.settings-nav button::before {
+  content: "";
+  position: absolute;
+  inset-inline-start: 0;
+  inset-block-start: 50%;
+  width: 3px;
+  height: 0;
+  border-radius: var(--r-pill);
+  background: var(--accent);
+  translate: 0 -50%;
+  transition: height var(--dur-base) var(--ease-spring);
+}
+
+.nav-item.active::before,
+.settings-nav button.active::before {
+  height: 16px;
+}
+
+.sidebar-footer {
+  margin-top: auto;
+  display: grid;
+  gap: 2px;
+  padding-top: var(--space-4);
+}
+
+/* Optical alignment: a shared 16px icon column keeps the note text and the
+   version string on the same edge as the nav labels above. */
+.local-note,
+.app-version {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr);
+  gap: var(--space-3);
+  align-items: start;
+  padding: 6px var(--space-3);
+  font-size: var(--text-sm);
+  line-height: var(--leading-snug);
+}
+
+.local-note {
+  color: var(--text-secondary);
+}
+
+.local-note svg {
+  translate: 0 1px;
+  color: var(--accent-text);
+}
+
+.local-note strong {
+  display: block;
+  color: var(--text);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.app-version {
+  color: var(--text-tertiary);
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.app-version::before {
+  content: "";
+}
+
+/* --------------------------------------------------------------------------
+   8. Page header — opaque and sticky, the way a Win11 content frame behaves
+   -------------------------------------------------------------------------- */
+.topbar {
+  position: sticky;
+  inset-block-start: 0;
+  z-index: 20;
+  flex: none;
+  padding: 13px var(--space-6) 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  background: var(--layer);
+}
+
+.topbar h1 {
+  font-family: var(--font-display);
+  font-size: var(--text-xl);
+  font-weight: 600;
+  line-height: var(--leading-tight);
+}
+
+.topbar p {
+  margin-top: 1px;
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  line-height: var(--leading-snug);
+}
+
+.update-badge {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 32px;
+  /* Leading icon carries visual weight — trim the start padding to optically
+     centre the label inside the pill. */
+  padding: 0 var(--space-3) 0 10px;
+  border: 1px solid var(--stroke);
+  border-radius: var(--r-sm);
+  background: var(--accent-subtle);
+  color: var(--accent-text);
+  font-size: var(--text-base);
+  font-weight: 600;
+  transition:
+    background-color var(--dur-fast) var(--ease-standard),
+    transform var(--dur-instant) var(--ease-standard);
+}
+
+.update-badge svg {
+  translate: 0 var(--icon-nudge);
+}
+
+.update-badge:hover {
+  background: var(--accent-subtle-hover);
+}
+
+.update-badge:active {
+  transform: scale(0.98);
+}
+
+/* --------------------------------------------------------------------------
+   9. Clean page layout
+   The window is a fixed size, so the queue — not the page — absorbs the
+   leftover height and scrolls.
+   -------------------------------------------------------------------------- */
+.content-grid {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(420px, 1fr) 276px;
+  grid-template-rows: minmax(0, 1fr);
+  align-items: start;
+  gap: var(--space-4);
+  width: 100%;
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 0 var(--space-6) var(--space-4);
+}
+
+.main-column {
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 0;
+  min-height: 0;
+}
+
+.main-column > * {
+  flex: none;
+}
+
+.main-column > .queue-card {
+  flex: 1;
+}
+
+/* Empty queue: the intake is the hero, the placeholder stays a slim footnote.
+   Otherwise two empty states split the column and neither reads as the target. */
+.main-column:has(.empty-queue) > .drop-zone {
+  flex: 1;
+}
+
+.main-column:has(.empty-queue) > .queue-card {
+  flex: none;
+}
+
+.result-message {
+  padding: 10px var(--space-3);
+  border: 1px solid var(--card-stroke);
+  border-radius: var(--r-sm);
+  background: var(--card);
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  line-height: var(--leading-normal);
+  overflow-wrap: anywhere;
+  animation: slide-in var(--dur-base) var(--ease-decelerate);
+}
+
+/* --------------------------------------------------------------------------
+   10. Drop zone
+   -------------------------------------------------------------------------- */
+.drop-zone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 210px;
+  padding: var(--space-5);
+  border: 1px dashed var(--stroke-strong);
+  border-radius: var(--r-md);
+  background: var(--card);
+  transition:
+    border-color var(--dur-base) var(--ease-standard),
+    background-color var(--dur-base) var(--ease-standard),
+    box-shadow var(--dur-base) var(--ease-standard);
+}
+
+.drop-zone:hover {
+  background: var(--card-hover);
+}
+
+/* Live drag feedback — the affordance a native drop target is expected to have */
+.drop-zone.drag-active {
+  border-style: solid;
+  border-color: var(--accent);
+  background: var(--accent-subtle);
+  box-shadow: var(--shadow-flyout);
+}
+
+.drop-icon {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: var(--r-md);
+  background: var(--accent-subtle);
+  color: var(--accent-text);
+  transition:
+    transform var(--dur-slow) var(--ease-spring),
+    background-color var(--dur-base) var(--ease-standard);
+}
+
+.drop-zone.drag-active .drop-icon {
+  transform: translateY(-2px) scale(1.06);
+  background: var(--card);
+}
+
+.drop-zone h2 {
+  margin: var(--space-3) 0 2px;
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+  font-weight: 600;
+}
+
+.drop-zone p {
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+}
+
+.format-list {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-1);
+  margin-top: var(--space-4);
+}
+
+.format-list span {
+  padding: 2px 8px;
+  border-radius: var(--r-xs);
+  background: var(--control-alt);
+  color: var(--text-secondary);
+  font-size: var(--text-xs);
+  font-weight: 600;
+}
+
+/* Once the queue has content the intake collapses to a slim bar: the list is
+   what the user is looking at now, so it gets the height. */
+.drop-zone.compact {
+  flex-direction: row;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  gap: var(--space-3);
+  min-height: 0;
+  padding: var(--space-2) var(--space-3) var(--space-2) var(--space-4);
+  border-style: solid;
+  border-color: var(--card-stroke);
+}
+
+.drop-zone.compact .drop-icon,
+.drop-zone.compact p,
+.drop-zone.compact .format-list {
+  display: none;
+}
+
+.drop-zone.compact h2 {
+  margin: 0;
+  margin-inline-end: auto;
+  font-family: var(--font-ui);
+  font-size: var(--text-base);
+  font-weight: 400;
+  color: var(--text-secondary);
+}
+
+.drop-zone.compact .intake-actions {
+  margin-top: 0;
+}
+
+/* --------------------------------------------------------------------------
+   11. Buttons
+   Fluent gives every button a 32px box, a 4px radius, and a darker bottom
+   stroke that reads as a physical edge.
+   -------------------------------------------------------------------------- */
+.primary-button,
+.secondary-button,
+.scan-button,
+.setting-button,
+.settings-actions button,
+.update-dialog-actions button,
+.page-heading button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: 32px;
+  padding: 4px var(--space-3);
+  border-radius: var(--r-sm);
+  font-size: var(--text-base);
+  font-weight: 600;
+  white-space: nowrap;
+  transition:
+    background-color var(--dur-fast) var(--ease-standard),
+    border-color var(--dur-fast) var(--ease-standard),
+    color var(--dur-fast) var(--ease-standard),
+    box-shadow var(--dur-fast) var(--ease-standard),
+    transform var(--dur-instant) var(--ease-standard);
+}
+
+.primary-button svg,
+.secondary-button svg,
+.scan-button svg,
+.setting-button svg,
+.settings-actions button svg,
+.update-dialog-actions button svg,
+.page-heading button svg {
+  translate: 0 var(--icon-nudge);
+}
+
+.primary-button:active:not(:disabled),
+.secondary-button:active:not(:disabled),
+.scan-button:active:not(:disabled),
+.setting-button:active:not(:disabled),
+.settings-actions button:active:not(:disabled),
+.update-dialog-actions button:active:not(:disabled),
+.page-heading button:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+/* Accent button */
+.primary-button,
+.scan-button,
+.settings-actions button.primary,
+.update-dialog-actions button.primary {
+  border: 1px solid transparent;
+  background: var(--accent);
+  color: var(--on-accent);
+  box-shadow: inset 0 -1px 0 rgba(0, 0, 0, 0.22);
+}
+
+.primary-button:hover:not(:disabled),
+.scan-button:hover:not(:disabled),
+.settings-actions button.primary:hover:not(:disabled),
+.update-dialog-actions button.primary:hover:not(:disabled) {
+  background: var(--accent-hover);
+}
+
+.primary-button:active:not(:disabled),
+.scan-button:active:not(:disabled),
+.settings-actions button.primary:active:not(:disabled),
+.update-dialog-actions button.primary:active:not(:disabled) {
+  background: var(--accent-press);
+  color: var(--on-accent-disabled);
+  box-shadow: none;
+}
+
+/* Standard button */
+.secondary-button,
+.setting-button,
+.settings-actions button,
+.update-dialog-actions button,
+.page-heading button {
+  border: 1px solid var(--stroke);
+  border-bottom-color: var(--stroke-bottom);
+  background: var(--control);
+  color: var(--text);
+}
+
+.secondary-button:hover:not(:disabled),
+.setting-button:hover:not(:disabled),
+.settings-actions button:hover:not(:disabled),
+.update-dialog-actions button:hover:not(:disabled),
+.page-heading button:hover:not(:disabled) {
+  background: var(--control-hover);
+}
+
+.secondary-button:active:not(:disabled),
+.setting-button:active:not(:disabled),
+.settings-actions button:active:not(:disabled),
+.update-dialog-actions button:active:not(:disabled),
+.page-heading button:active:not(:disabled) {
+  background: var(--control-press);
+  border-bottom-color: var(--stroke);
+  color: var(--text-secondary);
+}
+
+/* Disabled — Win11 drops the elevation edge entirely */
+.primary-button:disabled,
+.secondary-button:disabled,
+.scan-button:disabled,
+.setting-button:disabled,
+.settings-actions button:disabled,
+.update-dialog-actions button:disabled,
+.page-heading button:disabled {
+  border-color: transparent;
+  background: var(--control-disabled);
+  color: var(--text-disabled);
+  box-shadow: none;
+}
+
+/* Leading icons take weight on the start edge, so trim that padding. */
+.primary-button,
+.secondary-button,
+.page-heading button,
+.settings-actions button,
+.update-dialog-actions button {
+  padding-inline-start: 10px;
+}
+
+.intake-actions {
+  display: flex;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+}
+
+.scan-button {
+  width: 100%;
+}
+
+/* --------------------------------------------------------------------------
+   12. Cards — a hairline stroke, no shadow. Fluent separates with layers.
+   -------------------------------------------------------------------------- */
+.options-card,
+.history-card,
+.scope-card,
+.privacy-grid article,
+.setting-item,
+.safety-item,
+.file-row {
+  border: 1px solid var(--card-stroke);
+  border-radius: var(--r-sm);
+  background: var(--card);
+}
+
+/* --------------------------------------------------------------------------
+   13. File queue
+   The queue itself is not a card — the rows are, the way Win11 Settings
+   lists items. That removes a whole level of nesting.
+   -------------------------------------------------------------------------- */
+.queue-card {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.queue-card header {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  min-height: 28px;
+  padding: 0 2px var(--space-2);
+}
+
+.queue-card header > div:first-child {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.queue-card h2 {
+  font-size: var(--text-base);
+  font-weight: 600;
+}
+
+.queue-card header > div:first-child span {
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.queue-tools {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  flex: none;
+}
+
+.queue-tools label {
+  display: flex;
+}
+
+.queue-tools select {
+  padding-block: 3px;
+  padding-inline: var(--space-2) 26px;
+  border: 1px solid var(--stroke);
+  border-bottom-color: var(--stroke-bottom);
+  border-radius: var(--r-sm);
+  background-color: var(--control);
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  transition: background-color var(--dur-fast) var(--ease-standard);
+}
+
+.queue-tools select:hover {
+  background-color: var(--control-hover);
+}
+
+/* Subtle buttons — transparent until touched, like Win11 command bars */
+.queue-card header button,
+.file-actions button,
+.update-dialog-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--text-secondary);
+  transition:
+    background-color var(--dur-fast) var(--ease-standard),
+    color var(--dur-fast) var(--ease-standard),
+    opacity var(--dur-fast) var(--ease-standard),
+    transform var(--dur-instant) var(--ease-standard);
+}
+
+.queue-card header button:hover:not(:disabled),
+.file-actions button:hover,
+.update-dialog-close:hover {
+  background: var(--subtle-hover);
+  color: var(--text);
+}
+
+.queue-card header button:active:not(:disabled),
+.file-actions button:active,
+.update-dialog-close:active {
+  background: var(--subtle-press);
+  transform: scale(0.96);
+}
+
+.queue-card header button {
+  padding: 4px var(--space-2);
+  font-size: var(--text-sm);
+}
+
+.queue-card header button svg {
+  translate: 0 var(--icon-nudge);
+}
+
+.queue-card header button:disabled {
+  color: var(--text-disabled);
+}
+
+.queue-tools .sort-direction {
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  font-size: var(--text-base);
+  line-height: 1;
+}
+
+.empty-queue {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: 88px;
+  border-radius: var(--r-md);
+  background: var(--layer-alt);
+  color: var(--text-tertiary);
+  font-size: var(--text-sm);
+}
+
+.empty-queue svg {
+  opacity: 0.7;
+}
+
+.file-list {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  display: grid;
+  align-content: start;
+  gap: var(--space-1);
+  padding-inline-end: 2px;
+}
+
+.file-row {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 10px var(--space-3);
+  transition: background-color var(--dur-fast) var(--ease-standard);
+  animation: row-in var(--dur-base) var(--ease-decelerate) backwards;
+}
+
+.file-row:hover {
+  background: var(--card-hover);
+}
+
+.file-kind {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--r-sm);
+  background: var(--control-alt);
+  color: var(--text-secondary);
+  transition:
+    background-color var(--dur-base) var(--ease-standard),
+    color var(--dur-base) var(--ease-standard);
+}
+
+.file-row.scanned .file-kind,
+.file-row.scanning .file-kind {
+  background: var(--accent-subtle);
+  color: var(--accent-text);
+}
+
+.file-row.scanning .file-kind {
+  animation: pulse 1.6s var(--ease-standard) infinite;
+}
+
+.file-row.clean .file-kind {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.file-row.error .file-kind {
+  background: var(--danger-subtle);
+  color: var(--danger-text);
+}
+
+/* Name on top, status and size sharing a baseline below — the size trails to
+   the right edge so the numbers form a scannable column. */
+.file-name {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: baseline;
+  column-gap: var(--space-3);
+  min-width: 0;
+}
+
+.file-name strong,
+.file-name > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.file-name strong {
+  grid-row: 1;
+  grid-column: 1 / -1;
+  font-size: var(--text-base);
+  font-weight: 600;
+}
+
+.file-name > span {
+  grid-row: 2;
+  grid-column: 1;
+  margin-top: 1px;
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+}
+
+.file-row.error .file-name > span:not(.file-size-delta) {
+  color: var(--danger-text);
+}
+
+.file-name .file-size-delta {
+  grid-row: 2;
+  grid-column: 2;
+  justify-self: end;
+  /* A byte count is a technical value: keep "469 KB" in that order even when
+     the surrounding UI runs right-to-left. */
+  direction: ltr;
+  color: var(--text-tertiary);
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.finding-tags {
+  grid-row: 3;
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  margin-top: 6px;
+}
+
+.finding-tags em {
+  padding: 1px 7px;
+  border-radius: var(--r-xs);
+  background: var(--accent-subtle);
+  color: var(--accent-text);
+  font-style: normal;
+  font-size: var(--text-xs);
+  font-weight: 600;
+}
+
+/* Row actions reveal on hover, the way native file lists behave —
+   still focusable, so keyboard users get them via :focus-within. */
+.file-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  opacity: 0;
+  transition: opacity var(--dur-fast) var(--ease-standard);
+}
+
+.file-row:hover .file-actions,
+.file-actions:focus-within {
+  opacity: 1;
+}
+
+.file-actions button {
+  width: 30px;
+  height: 30px;
+}
+
+/* An open row keeps its actions visible: hiding the control that closes the
+   panel the moment the pointer leaves is a trap. */
+.file-item.open .file-actions {
+  opacity: 1;
+}
+
+.file-disclosure svg {
+  transition: rotate var(--dur-fast) var(--ease-standard);
+}
+
+.file-disclosure.open svg {
+  rotate: 90deg;
+}
+
+[dir="rtl"] .file-disclosure:not(.open) svg {
+  rotate: 180deg;
+}
+
+/* --------------------------------------------------------------------------
+   13b. Row detail — what a scan actually found, per finding
+   The list row answers "is this file dirty"; this answers "with what, and what
+   will happen to it".
+   -------------------------------------------------------------------------- */
+.file-item.open .file-row {
+  background: var(--card-hover);
+}
+
+.file-detail {
+  /* Closes the list's own row gap so the panel reads as part of the row. */
+  margin-top: calc(var(--space-1) * -1);
+  /* Lines the panel up with the file name, past the 32px kind glyph. */
+  padding: var(--space-3) var(--space-3) var(--space-4) 56px;
+  background: var(--layer-alt);
+  animation: detail-in var(--dur-base) var(--ease-decelerate);
+}
+
+.file-detail dl {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 3px var(--space-4);
+  margin: 0;
+  font-size: var(--text-sm);
+}
+
+.file-detail dl > div {
+  display: contents;
+}
+
+.file-detail dt {
+  color: var(--text-tertiary);
+  white-space: nowrap;
+}
+
+.file-detail dd {
+  margin: 0;
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+}
+
+.detail-findings {
+  display: grid;
+  gap: 3px;
+  margin: var(--space-3) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.detail-findings li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: var(--space-3);
+  font-size: var(--text-sm);
+}
+
+.detail-finding-label {
+  overflow: hidden;
+  color: var(--text-secondary);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.detail-finding-count {
+  color: var(--text-tertiary);
+  font-variant-numeric: tabular-nums;
+}
+
+.detail-finding-state {
+  padding: 1px 8px;
+  border-radius: var(--r-pill);
+  font-size: var(--text-xs);
+  font-weight: 600;
+}
+
+.detail-finding-state.pending {
+  background: var(--accent-subtle);
+  color: var(--accent-text);
+}
+
+.detail-finding-state.removed {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.detail-finding-state.kept {
+  background: var(--control-alt-hover);
+  color: var(--text-tertiary);
+}
+
+/* --------------------------------------------------------------------------
+   14. Clean options panel
+   One card, grouped by dividers — no boxes inside boxes.
+   -------------------------------------------------------------------------- */
+.options-card {
+  position: sticky;
+  top: 0;
+  padding: var(--space-3) 0 var(--space-3);
+}
+
+.eyebrow {
+  padding: 0 var(--space-3) var(--space-2);
+  font-size: var(--text-base);
+  font-weight: 600;
+}
+
+/* Mode options are a radio group: the dot is the whole affordance, so the
+   rows stay flat instead of turning into two more boxes. */
+.mode-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  width: 100%;
+  padding: 7px var(--space-3);
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  text-align: start;
+  transition: background-color var(--dur-fast) var(--ease-standard);
+}
+
+.mode-option svg {
+  display: none;
+}
+
+.mode-option::before {
+  content: "";
+  flex: none;
+  width: 20px;
+  height: 20px;
+  border: 1px solid var(--stroke-strong);
+  border-radius: 50%;
+  background: var(--control-alt);
+  transition:
+    border-color var(--dur-fast) var(--ease-standard),
+    border-width var(--dur-fast) var(--ease-standard),
+    background-color var(--dur-fast) var(--ease-standard);
+}
+
+.mode-option:hover {
+  background: var(--subtle-hover);
+}
+
+.mode-option:hover::before {
+  background: var(--control-alt-hover);
+}
+
+.mode-option:active::before {
+  border-width: 6px;
+}
+
+/* Win11 draws the checked dot as a thick accent ring around a light center. */
+.mode-option.selected::before {
+  border: 6px solid var(--accent);
+  background: var(--on-accent);
+}
+
+.mode-option strong,
+.mode-option small {
+  display: block;
+}
+
+.mode-option strong {
+  font-size: var(--text-base);
+  font-weight: 400;
+}
+
+.mode-option small {
+  margin-top: 1px;
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  line-height: var(--leading-snug);
+}
+
+.privacy-options {
+  display: grid;
+  padding: 0 var(--space-2);
+}
+
+.privacy-options label {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  min-height: 30px;
+  padding: 2px var(--space-2);
+  border-radius: var(--r-sm);
+  color: var(--text);
+  font-size: var(--text-base);
+  line-height: var(--leading-snug);
+  transition: background-color var(--dur-fast) var(--ease-standard);
+}
+
+.privacy-options label:hover {
+  background: var(--subtle-hover);
+}
+
+/* Fluent checkbox — 20px, 4px radius, accent fill with a white check */
+.privacy-options input[type="checkbox"],
+.fidelity-options input[type="checkbox"],
+.setting-toggle input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  flex: none;
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  border: 1px solid var(--stroke-strong);
+  border-radius: var(--r-sm);
+  background: var(--control-alt);
+  transition:
+    background-color var(--dur-fast) var(--ease-standard),
+    border-color var(--dur-fast) var(--ease-standard);
+}
+
+.privacy-options label:hover input[type="checkbox"],
+.fidelity-options label:hover input[type="checkbox"],
+.setting-toggle:hover input[type="checkbox"] {
+  background: var(--control-alt-hover);
+}
+
+.privacy-options input[type="checkbox"]:checked,
+.fidelity-options input[type="checkbox"]:checked,
+.setting-toggle input[type="checkbox"]:checked {
+  border-color: var(--accent);
+  background: var(--accent) var(--check) center / 12px 12px no-repeat;
+}
+
+.privacy-options label:hover input[type="checkbox"]:checked,
+.fidelity-options label:hover input[type="checkbox"]:checked,
+.setting-toggle:hover input[type="checkbox"]:checked {
+  border-color: var(--accent-hover);
+  background-color: var(--accent-hover);
+}
+
+.option-divider {
+  height: 1px;
+  margin: var(--space-3) 0;
+  background: var(--divider);
+}
+
+.scan-summary {
+  padding: 0 var(--space-3);
+}
+
+.scan-summary > span {
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+/* Supporting detail, not a list of tasks — chips keep it quiet and compact. */
+.scan-summary ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  margin: 6px 0 var(--space-3);
+  padding: 0;
+  list-style: none;
+}
+
+.scan-summary li {
+  padding: 1px 7px;
+  border-radius: var(--r-xs);
+  background: var(--control-alt);
+  color: var(--text-secondary);
+  font-size: var(--text-xs);
+}
+
+.scan-summary + .scan-button {
+  width: calc(100% - var(--space-6));
+  margin-inline: var(--space-3);
+}
+
+.safety-copy {
+  margin: 6px var(--space-3) 0;
+  color: var(--text-tertiary);
+  font-size: var(--text-sm);
+  line-height: var(--leading-snug);
+}
+
+/* --------------------------------------------------------------------------
+   15. Secondary pages
+   -------------------------------------------------------------------------- */
+.secondary-page {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 940px;
+  margin: 0 auto;
+  padding: 0 var(--space-6) var(--space-4);
+}
+
+/* The page title lives in the header, so this row carries only trailing
+   actions — keep them flush with the content edge. */
+.page-heading {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-4);
+  margin-bottom: var(--space-3);
+}
+
+.page-heading button {
+  flex: none;
+  font-weight: 400;
+}
+
+.large-empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 260px;
+  border-radius: var(--r-md);
+  background: var(--layer-alt);
+  color: var(--text-tertiary);
+}
+
+.large-empty > svg {
+  opacity: 0.7;
+}
+
+.large-empty strong {
+  margin-top: var(--space-3);
+  color: var(--text);
+  font-size: var(--text-md);
+  font-weight: 600;
+}
+
+.large-empty span {
+  margin-top: 4px;
+  font-size: var(--text-sm);
+}
+
+/* --------------------------------------------------------------------------
+   16. History
+   -------------------------------------------------------------------------- */
+.history-list {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.history-card {
+  overflow: hidden;
+  animation: row-in var(--dur-base) var(--ease-decelerate) backwards;
+}
+
+.history-card header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: 10px var(--space-4);
+  border-bottom: 1px solid var(--divider);
+}
+
+.history-card header strong,
+.history-card header span {
+  display: block;
+}
+
+.history-card header strong {
+  font-size: var(--text-base);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.history-card header span {
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+}
+
+.history-card header em {
+  flex: none;
+  padding: 2px var(--space-2);
+  border-radius: var(--r-xs);
+  background: var(--accent-subtle);
+  color: var(--accent-text);
+  font-style: normal;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.history-result {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: 9px var(--space-4);
+  color: var(--accent-text);
+}
+
+.history-result.failed,
+.history-result.failed small {
+  color: var(--danger-text);
+}
+
+.history-result > svg {
+  translate: 0 2px;
+}
+
+.history-result span {
+  min-width: 0;
+}
+
+.history-result strong,
+.history-result small {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.history-result strong {
+  color: var(--text);
+  font-size: var(--text-base);
+  font-weight: 400;
+}
+
+.history-result small {
+  margin-top: 1px;
+  color: var(--text-tertiary);
+  font-size: var(--text-sm);
+  line-height: var(--leading-snug);
+}
+
+/* --------------------------------------------------------------------------
+   17. Privacy
+   -------------------------------------------------------------------------- */
+.privacy-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-1);
+  margin-bottom: var(--space-1);
+}
+
+.privacy-grid article {
+  padding: var(--space-4);
+  color: var(--accent-text);
+  transition: background-color var(--dur-fast) var(--ease-standard);
+}
+
+.privacy-grid article:hover {
+  background: var(--card-hover);
+}
+
+.privacy-grid h2 {
+  margin: var(--space-3) 0 4px;
+  color: var(--text);
+  font-size: var(--text-base);
+  font-weight: 600;
+}
+
+.privacy-grid p {
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  line-height: var(--leading-normal);
+}
+
+.scope-card {
+  padding: var(--space-4) var(--space-5);
+}
+
+.scope-card h2 {
+  margin-bottom: 6px;
+  font-size: var(--text-md);
+  font-weight: 600;
+}
+
+.scope-card p {
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  line-height: var(--leading-relaxed);
+}
+
+.scope-card p + p {
+  margin-top: 6px;
+}
+
+/* --------------------------------------------------------------------------
+   18. Settings
+   Win11 Settings stacks one card per row with a 4px gutter.
+   -------------------------------------------------------------------------- */
+.settings-page {
+  display: grid;
+  grid-template-columns: 176px minmax(0, 1fr);
+  align-items: start;
+  gap: var(--space-6);
+  width: 100%;
+  max-width: 1060px;
+  margin: 0 auto;
+  padding: 0 var(--space-6) var(--space-4);
+}
+
+.settings-nav {
+  position: sticky;
+  top: 0;
+  display: grid;
+  gap: var(--space-1);
+}
+
+.settings-panel {
+  min-width: 0;
+  animation: fade-in var(--dur-base) var(--ease-decelerate);
+}
+
+.settings-panel-heading {
+  padding: 0 2px var(--space-3);
+}
+
+.settings-panel-heading h2 {
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+  font-weight: 600;
+}
+
+.settings-panel-heading p {
+  margin-top: 2px;
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  line-height: var(--leading-normal);
+}
+
+.settings-list {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.setting-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-5);
+  min-height: 60px;
+  padding: var(--space-3) var(--space-4);
+}
+
+.setting-item h3,
+.safety-item h3 {
+  font-size: var(--text-base);
+  font-weight: 400;
+}
+
+.setting-item p,
+.safety-item p {
+  margin-top: 2px;
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  line-height: var(--leading-normal);
+}
+
+.setting-item-stacked {
+  display: block;
+}
+
+.setting-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-5);
+}
+
+.setting-button,
+.settings-actions button,
+.update-dialog-actions button {
+  flex: none;
+  font-weight: 400;
+}
+
+.settings-actions {
+  display: flex;
+  flex: none;
+  gap: var(--space-2);
+}
+
+/* Native selects keep their system dropdown; only the closed state is themed. */
+.locale-switch select,
+.queue-tools select {
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: var(--chevron);
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+}
+
+[dir="rtl"] .locale-switch select,
+[dir="rtl"] .queue-tools select {
+  background-position: left 10px center;
+}
+
+.locale-switch {
+  flex: none;
+}
+
+.locale-switch select {
+  min-width: 180px;
+  min-height: 32px;
+  padding-block: 4px;
+  padding-inline: var(--space-3) 32px;
+  border: 1px solid var(--stroke);
+  border-bottom-color: var(--stroke-bottom);
+  border-radius: var(--r-sm);
+  background-color: var(--control);
+  color: var(--text);
+  font-size: var(--text-base);
+  transition: background-color var(--dur-fast) var(--ease-standard);
+}
+
+.locale-switch select:hover {
+  background-color: var(--control-hover);
+}
+
+/* Segmented control — one continuous track, 4px inner radius per segment */
+.theme-choices {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  max-width: 420px;
+  margin-top: var(--space-3);
+  padding: var(--space-1);
+  gap: var(--space-1);
+  border: 1px solid var(--stroke);
+  border-radius: var(--r-md);
+  background: var(--control-alt);
+}
+
+.theme-choices button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: 32px;
+  border: 1px solid transparent;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: var(--text-base);
+  transition:
+    background-color var(--dur-fast) var(--ease-standard),
+    border-color var(--dur-fast) var(--ease-standard),
+    color var(--dur-fast) var(--ease-standard),
+    transform var(--dur-instant) var(--ease-standard);
+}
+
+.theme-choices button svg {
+  translate: 0 var(--icon-nudge);
+}
+
+.theme-choices button:hover:not(.selected) {
+  background: var(--subtle-hover);
+  color: var(--text);
+}
+
+.theme-choices button:active {
+  transform: scale(0.98);
+}
+
+.theme-choices button.selected {
+  border-color: var(--stroke);
+  border-bottom-color: var(--stroke-bottom);
+  background: var(--control);
+  color: var(--text);
+  font-weight: 600;
+}
+
+.theme-choices button.selected svg {
+  color: var(--accent-text);
+}
+
+/* Selectable cards — same radio semantics as the clean panel */
+.settings-choices {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-1);
+  margin-top: var(--space-3);
+}
+
+.settings-choices button {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  padding: var(--space-3);
+  border: 1px solid var(--stroke);
+  border-radius: var(--r-sm);
+  background: var(--control-alt);
+  color: var(--text);
+  text-align: start;
+  transition:
+    background-color var(--dur-fast) var(--ease-standard),
+    border-color var(--dur-fast) var(--ease-standard),
+    transform var(--dur-instant) var(--ease-standard);
+}
+
+.settings-choices button svg {
+  translate: 0 1px;
+  color: var(--text-tertiary);
+  transition: color var(--dur-fast) var(--ease-standard);
+}
+
+.settings-choices button:hover:not(.selected) {
+  background: var(--control-alt-hover);
+}
+
+.settings-choices button:active {
+  transform: scale(0.99);
+}
+
+.settings-choices button.selected {
+  border-color: var(--accent);
+  background: var(--accent-subtle);
+}
+
+.settings-choices button.selected svg {
+  color: var(--accent-text);
+}
+
+.settings-choices strong,
+.settings-choices small {
+  display: block;
+}
+
+.settings-choices strong {
+  font-size: var(--text-base);
+  font-weight: 600;
+}
+
+.settings-choices small {
+  margin-top: 2px;
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  line-height: var(--leading-snug);
+}
+
+.fidelity-options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 var(--space-4);
+  margin-top: var(--space-2);
+}
+
+.fidelity-options label {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  padding: 9px var(--space-2);
+  border-radius: var(--r-sm);
+  color: var(--text);
+  font-size: var(--text-base);
+  transition: background-color var(--dur-fast) var(--ease-standard);
+}
+
+.fidelity-options label:hover {
+  background: var(--subtle-hover);
+}
+
+.fidelity-options strong,
+.fidelity-options small {
+  display: block;
+}
+
+.fidelity-options strong {
+  font-weight: 400;
+}
+
+.fidelity-options small {
+  margin-top: 2px;
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  line-height: var(--leading-snug);
+}
+
+.setting-toggle {
+  gap: var(--space-5);
+}
+
+.setting-toggle strong,
+.setting-toggle small {
+  display: block;
+}
+
+.setting-toggle strong {
+  font-size: var(--text-base);
+  font-weight: 400;
+}
+
+.setting-toggle small {
+  margin-top: 2px;
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  line-height: var(--leading-normal);
+}
+
+.update-progress {
+  display: block;
+  width: 100%;
+  height: 4px;
+  margin-top: var(--space-3);
+  border: 0;
+  border-radius: var(--r-pill);
+  accent-color: var(--accent);
+  overflow: hidden;
+}
+
+.update-notes {
+  margin-top: var(--space-3);
+  padding: var(--space-3);
+  border-radius: var(--r-sm);
+  background: var(--control-alt);
+  font-size: var(--text-sm);
+  line-height: var(--leading-normal);
+  animation: slide-in var(--dur-base) var(--ease-decelerate);
+}
+
+.update-notes strong {
+  display: block;
+  color: var(--text);
+  font-weight: 600;
+}
+
+.update-notes p {
+  max-height: 6em;
+  margin-top: 4px;
+  overflow: auto;
+  color: var(--text-secondary);
+  white-space: pre-wrap;
+}
+
+.safety-item {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr) 20px;
+  align-items: center;
+  gap: var(--space-4);
+  min-height: 60px;
+  padding: var(--space-3) var(--space-4);
+  color: var(--accent-text);
+}
+
+.safety-item div {
+  color: var(--text);
+}
+
+/* --------------------------------------------------------------------------
+   19. Update dialog — Fluent ContentDialog with a filled command area
+   -------------------------------------------------------------------------- */
+.update-dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  padding: var(--space-6);
+  background: var(--smoke);
+  animation: fade-in var(--dur-base) var(--ease-standard);
+}
+
+.update-dialog {
+  position: relative;
+  width: min(540px, 100%);
+  max-height: calc(100vh - 48px);
+  overflow: hidden;
+  padding: var(--space-6);
+  border: 1px solid var(--surface-stroke);
+  border-radius: var(--r-md);
+  background: var(--dialog);
+  box-shadow: var(--shadow-dialog);
+  animation: dialog-in var(--dur-slow) var(--ease-decelerate);
+}
+
+.update-dialog-close {
+  position: absolute;
+  inset-block-start: var(--space-3);
+  inset-inline-end: var(--space-3);
+  width: 32px;
+  height: 32px;
+  color: var(--text-tertiary);
+}
+
+.update-dialog-icon {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--r-md);
+  background: var(--accent-subtle);
+  color: var(--accent-text);
+}
+
+.update-dialog-eyebrow {
+  margin: var(--space-4) 0 2px;
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+}
+
+.update-dialog h2 {
+  font-family: var(--font-display);
+  font-size: var(--text-xl);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.update-dialog-version {
+  margin-top: 2px;
+  color: var(--text-tertiary);
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.update-dialog-notes {
+  max-height: 240px;
+  margin-top: var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  overflow: auto;
+  border-radius: var(--r-sm);
+  background: var(--control-alt);
+}
+
+.update-dialog-notes strong {
+  display: block;
+  font-size: var(--text-base);
+  font-weight: 600;
+}
+
+.update-dialog-notes p {
+  margin-top: 6px;
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  line-height: var(--leading-normal);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.update-dialog-error {
+  margin-top: var(--space-3);
+  color: var(--danger-text);
+  font-size: var(--text-sm);
+}
+
+/* Full-bleed command area, the way a ContentDialog closes off its footer. */
+.update-dialog-actions {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  gap: var(--space-2);
+  margin: var(--space-6) calc(var(--space-6) * -1) calc(var(--space-6) * -1);
+  padding: var(--space-6);
+  border-top: 1px solid var(--divider);
+  background: var(--dialog-footer);
+}
+
+/* --------------------------------------------------------------------------
+   19b. Flyout menu — the right-click menu the undecorated window gave up
+   -------------------------------------------------------------------------- */
+.menu-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+}
+
+.flyout-menu {
+  position: fixed;
+  min-width: 168px;
+  max-width: 320px;
+  padding: var(--space-1);
+  border: 1px solid var(--surface-stroke);
+  border-radius: var(--r-md);
+  background: var(--dialog);
+  box-shadow: var(--shadow-flyout);
+  animation: flyout-in var(--dur-base) var(--ease-decelerate);
+}
+
+.flyout-menu:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-flyout);
+}
+
+.flyout-menu button {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  padding: 7px var(--space-2);
+  border: 0;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--text);
+  font-size: var(--text-base);
+  text-align: start;
+}
+
+.flyout-menu button.active:not(:disabled) {
+  background: var(--subtle-hover);
+}
+
+.flyout-menu button:active:not(:disabled) {
+  background: var(--subtle-press);
+}
+
+.flyout-menu button:disabled {
+  color: var(--text-disabled);
+}
+
+.flyout-menu button.danger:not(:disabled) {
+  color: var(--danger-text);
+}
+
+.menu-icon,
+.palette-icon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 16px;
+  color: var(--text-secondary);
+  translate: 0 var(--icon-nudge);
+}
+
+.flyout-menu button.danger .menu-icon {
+  color: inherit;
+}
+
+.flyout-menu button:disabled .menu-icon,
+.palette-item:disabled .palette-icon {
+  color: var(--text-disabled);
+}
+
+.menu-label,
+.palette-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.menu-accelerator {
+  flex: none;
+  color: var(--text-tertiary);
+  font-size: var(--text-sm);
+}
+
+.flyout-menu button:disabled .menu-accelerator {
+  color: var(--text-disabled);
+}
+
+.flyout-menu hr {
+  height: 1px;
+  margin: var(--space-1) var(--space-2);
+  border: 0;
+  background: var(--divider);
+}
+
+/* --------------------------------------------------------------------------
+   19c. Tooltip — one element, moved to whatever carries data-tip
+   -------------------------------------------------------------------------- */
+.tooltip {
+  position: fixed;
+  z-index: 95;
+  max-width: 320px;
+  padding: 5px var(--space-2);
+  border: 1px solid var(--surface-stroke);
+  border-radius: var(--r-sm);
+  background: var(--dialog);
+  color: var(--text);
+  font-size: var(--text-sm);
+  line-height: var(--leading-snug);
+  box-shadow: var(--shadow-flyout);
+  pointer-events: none;
+  animation: tooltip-in var(--dur-base) var(--ease-decelerate);
+}
+
+/* Moving between two tipped controls should not replay the entrance. */
+.tooltip.immediate {
+  animation-duration: var(--dur-instant);
+}
+
+.tooltip.above {
+  animation-name: tooltip-in-above;
+}
+
+/* --------------------------------------------------------------------------
+   19d. Command palette — every command in the app, one keystroke away
+   -------------------------------------------------------------------------- */
+.palette-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  align-content: start;
+  justify-items: center;
+  padding: 11vh var(--space-6) var(--space-6);
+  background: var(--smoke);
+  animation: fade-in var(--dur-fast) var(--ease-standard);
+}
+
+.command-palette {
+  display: flex;
+  flex-direction: column;
+  width: min(540px, 100%);
+  max-height: 100%;
+  border: 1px solid var(--surface-stroke);
+  border-radius: var(--r-md);
+  background: var(--dialog);
+  box-shadow: var(--shadow-dialog);
+  overflow: hidden;
+  animation: dialog-in var(--dur-base) var(--ease-decelerate);
+}
+
+.palette-search {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--divider);
+  color: var(--text-tertiary);
+}
+
+.palette-search svg {
+  flex: none;
+  translate: 0 var(--icon-nudge);
+}
+
+.palette-search input {
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font-family: inherit;
+  font-size: var(--text-lg);
+  -webkit-user-select: text;
+  user-select: text;
+  cursor: text;
+}
+
+.palette-search input:focus,
+.palette-search input:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+
+.palette-search input::placeholder {
+  color: var(--text-tertiary);
+}
+
+.palette-results {
+  overflow: auto;
+  padding: var(--space-1);
+  overscroll-behavior: contain;
+}
+
+.palette-group {
+  padding: var(--space-2) var(--space-2) var(--space-1);
+  color: var(--text-tertiary);
+  font-size: var(--text-xs);
+  font-weight: 600;
+}
+
+.palette-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  padding: 8px var(--space-3);
+  border: 0;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--text);
+  font-size: var(--text-base);
+  text-align: start;
+}
+
+.palette-item.active:not(:disabled) {
+  background: var(--subtle-hover);
+}
+
+/* Same indicator pill the navigation pane uses — one idea of "selected". */
+.palette-item.active:not(:disabled)::before {
+  content: "";
+  position: absolute;
+  inset-inline-start: 0;
+  inset-block: 8px;
+  width: 3px;
+  border-radius: var(--r-pill);
+  background: var(--accent);
+}
+
+.palette-item:active:not(:disabled) {
+  background: var(--subtle-press);
+}
+
+.palette-item:disabled {
+  color: var(--text-disabled);
+}
+
+.palette-empty {
+  padding: var(--space-6) var(--space-4);
+  color: var(--text-tertiary);
+  font-size: var(--text-sm);
+  text-align: center;
+}
+
+/* --------------------------------------------------------------------------
+   20. Utilities
+   -------------------------------------------------------------------------- */
+.sr-only,
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* --------------------------------------------------------------------------
+   21. Motion
+   -------------------------------------------------------------------------- */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+
+@keyframes row-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+
+@keyframes dialog-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+}
+
+@keyframes page-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+@keyframes pulse {
+  50% {
+    opacity: 0.5;
+  }
+}
+
+/* Flyouts and tooltips grow out of the edge they are anchored to, which is
+   what makes them read as attached to the thing that opened them. */
+@keyframes flyout-in {
+  from {
+    opacity: 0;
+    transform: scale(0.97) translateY(-4px);
+  }
+}
+
+@keyframes tooltip-in {
+  from {
+    opacity: 0;
+    transform: translateY(-3px);
+  }
+}
+
+@keyframes tooltip-in-above {
+  from {
+    opacity: 0;
+    transform: translateY(3px);
+  }
+}
+
+@keyframes detail-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+
+/* Page transition — keyed on the active pane in App.tsx */
+.page-enter {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  animation: page-in var(--dur-slow) var(--ease-decelerate);
+}
+
+/* Stagger the first rows of a freshly populated queue */
+.file-item:nth-child(1) .file-row { animation-delay: 0ms; }
+.file-item:nth-child(2) .file-row { animation-delay: 20ms; }
+.file-item:nth-child(3) .file-row { animation-delay: 40ms; }
+.file-item:nth-child(4) .file-row { animation-delay: 60ms; }
+.file-item:nth-child(n + 5) .file-row { animation-delay: 80ms; }
+
+.history-card:nth-child(1) { animation-delay: 0ms; }
+.history-card:nth-child(2) { animation-delay: 30ms; }
+.history-card:nth-child(n + 3) { animation-delay: 60ms; }
+
+/* --------------------------------------------------------------------------
+   22. Responsive
+   -------------------------------------------------------------------------- */
+@media (max-width: 900px) {
+  .app-shell {
+    grid-template-columns: 180px minmax(0, 1fr);
+  }
+
+  .content-grid,
+  .settings-page,
+  .secondary-page {
+    padding-inline: var(--space-4);
+  }
+
+  /* Stacked panes each take their natural height and the page scrolls again. */
+  .content-grid {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto;
+  }
+
+  .main-column > .queue-card {
+    flex: none;
+  }
+
+  .file-list {
+    max-height: 260px;
+  }
+
+  .options-card {
+    position: static;
+  }
+
+  .privacy-grid,
+  .settings-choices,
+  .fidelity-options {
+    grid-template-columns: 1fr;
+  }
+
+  .settings-page {
+    grid-template-columns: 1fr;
+    gap: var(--space-3);
+  }
+
+  .settings-nav {
+    position: static;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    padding: var(--space-1);
+    gap: var(--space-1);
+    border: 1px solid var(--stroke);
+    border-radius: var(--r-md);
+    background: var(--control-alt);
+  }
+
+  .settings-nav button {
+    justify-content: center;
+    padding-inline: var(--space-2);
+  }
+
+  .settings-nav button span,
+  .settings-nav button::before {
+    display: none;
+  }
+
+  .settings-nav button.active {
+    border: 1px solid var(--stroke);
+    border-bottom-color: var(--stroke-bottom);
+    background: var(--control);
+  }
+}
+
+/* --------------------------------------------------------------------------
+   23. Accessibility preferences
+   -------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+@media (prefers-contrast: more) {
+  :root {
+    --stroke: rgba(0, 0, 0, 0.45);
+    --card-stroke: rgba(0, 0, 0, 0.45);
+    --divider: rgba(0, 0, 0, 0.45);
+    --stroke-strong: rgba(0, 0, 0, 0.72);
+    --text-secondary: rgba(0, 0, 0, 0.82);
+    --text-tertiary: rgba(0, 0, 0, 0.75);
+  }
+
+  [data-theme="dark"] {
+    --stroke: rgba(255, 255, 255, 0.45);
+    --card-stroke: rgba(255, 255, 255, 0.45);
+    --divider: rgba(255, 255, 255, 0.45);
+    --stroke-strong: rgba(255, 255, 255, 0.8);
+    --text-secondary: rgba(255, 255, 255, 0.92);
+    --text-tertiary: rgba(255, 255, 255, 0.86);
+  }
+
+  .file-actions {
+    opacity: 1;
+  }
 }

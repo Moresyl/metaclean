@@ -1,12 +1,22 @@
 import type { FileEntry, ScanReport } from "../types";
 
-const IMAGE_EXTENSIONS = new Set(["jpg", "jpeg", "jpe", "png", "webp", "gif"]);
-const AUDIO_EXTENSIONS = new Set(["mp3", "wav", "flac"]);
-const VIDEO_EXTENSIONS = new Set([
-  "mp4", "mov", "m4v", "m4a", "3g2", "3gp", "3gp2", "3gpp", "f4a", "f4b", "f4p",
-  "f4v", "lrv", "m4b", "m4p", "mqv", "qt",
+/* These mirror the engine's intake list. They only choose the glyph on a queue
+   row — the format itself is settled by the file's own signature during the
+   scan, never by its name. */
+const IMAGE_EXTENSIONS = new Set([
+  "jpg", "jpeg", "jpe", "png", "webp", "gif", "bmp", "dib", "tif", "tiff",
+  "heic", "heif", "heics", "heifs", "hif", "avif", "avifs",
+  // Raw negatives: TIFF containers under a private magic word, plus Canon's
+  // CR3, which is an ISO base media file instead.
+  "cr2", "cr3", "crw", "nef", "nrw", "arw", "srf", "sr2", "orf", "rw2", "rwl",
+  "dng", "pef", "srw", "raf", "3fr", "erf", "mef", "mos", "iiq", "kdc", "dcr", "k25",
 ]);
-const DOCUMENT_EXTENSIONS = new Set(["docx", "xlsx", "pptx", "odt"]);
+const AUDIO_EXTENSIONS = new Set(["mp3", "wav", "flac", "wma", "m4a", "f4a", "f4b", "m4b", "m4p", "mka"]);
+const VIDEO_EXTENSIONS = new Set([
+  "mp4", "mov", "m4v", "3g2", "3gp", "3gp2", "3gpp", "f4p", "f4v", "lrv", "mqv", "qt",
+  "avi", "asf", "wmv", "mkv", "mks", "mk3d", "webm",
+]);
+const DOCUMENT_EXTENSIONS = new Set(["docx", "xlsx", "pptx", "odt", "epub"]);
 const TEXT_EXTENSIONS = new Set([
   "txt", "md", "markdown", "html", "htm", "xhtml", "svg", "xml", "json", "csv", "tsv",
   "yaml", "yml", "log", "srt", "vtt",

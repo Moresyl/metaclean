@@ -46,19 +46,30 @@ MetaClean 把这些统统找出来并清除——全过程只在你自己的电�
 
 ## 清理范围
 
+91 种扩展名，全部由原生 Rust 代码处理——不依赖 ExifTool，也不会重新编码。
+
 | 格式 | 扩展名 | 清理内容 |
 | --- | --- | --- |
 | JPEG | `.jpg` `.jpeg` `.jpe` | EXIF/GPS、XMP、IPTC、图片注释、JUMBF/C2PA 段；ICC 默认保留，也可明确移除 |
 | PNG | `.png` | EXIF、文本元数据、C2PA/JUMBF 块；可选移除 ICC 配置 |
 | WebP | `.webp` | EXIF、XMP、C2PA 块；可选移除 ICC 配置 |
 | GIF | `.gif` | 注释与 XMP 应用元数据，不重新编码动画帧 |
+| BMP | `.bmp` `.dib` | 被编辑器拿来写编号的两个保留字段、V5 头里内嵌的 ICC 配置，以及贴在最后一个像素之后、任何看图软件都不会显示的 EXIF/XMP |
+| TIFF | `.tif` `.tiff` | EXIF、GPS、IPTC、XMP 目录；采用原地压缩 IFD 的方式删除，条带、分块与预览图的偏移量全部保持有效 |
+| 相机 RAW | `.cr2` `.cr3` `.crw` `.nef` `.nrw` `.arw` `.srf` `.sr2` `.orf` `.rw2` `.rwl` `.dng` `.pef` `.srw` `.raf` `.3fr` `.erf` `.mef` `.mos` `.iiq` `.kdc` `.dcr` `.k25` | 同样的原地目录压缩，另外处理 MakerNote 与 GPS 目录。富士的内嵌 JPEG 预览图、佳能 CR3 的条目数据都在原位清理，传感器数据从不重写 |
+| HEIF 与 AVIF | `.heic` `.heif` `.heics` `.heifs` `.hif` `.avif` `.avifs` | 按条目粒度清空 EXIF、XMP、C2PA 条目，完整保留定位图像所需的条目表 |
 | 音频 | `.mp3` `.wav` `.flac` | ID3/APEv2、RIFF INFO/XMP/BWF/iXML、FLAC Vorbis 评论、封面与 XMP |
 | ISO 媒体 | `.mp4` `.mov` `.m4v` `.m4a` `.3g2` `.3gp` `.3gp2` `.3gpp` `.f4a` `.f4b` `.f4p` `.f4v` `.lrv` `.m4b` `.m4p` `.mqv` `.qt` | ISO BMFF/QuickTime 用户数据、XMP、作者与位置原子，不移动媒体字节 |
-| Office | `.docx` `.xlsx` `.pptx` `.odt` | 作者与应用属性、批注、自定义 XML；DOCX 修订会被固化——接受插入内容，移除删除标记内容 |
+| AVI | `.avi` | 元数据块被改名为 RIFF 自带的 `JUNK` 填充标记并清零，无论 `idx1` 索引采用哪种偏移基准都不会错位 |
+| Matroska 与 WebM | `.mkv` `.mka` `.mks` `.mk3d` `.webm` | 标签、附件与写入程序信息，通过在原字节上覆写 EBML `Void` 元素来作废，索引表继续有效 |
+| ASF | `.asf` `.wmv` `.wma` | 内容描述与整个 `WM/` 属性空间被格式自带的填充对象覆盖，头部对象计数保持真实 |
+| 文档 | `.docx` `.xlsx` `.pptx` `.odt` `.epub` | 作者与应用属性、批注、自定义 XML；DOCX 修订会被固化——接受插入内容，移除删除标记内容。EPUB 会清掉 Dublin Core 中的人名与日期，以及 Calibre/Sigil/Kobo/Apple/Adobe 留下的痕迹 |
 | PDF | `.pdf` | 移除 Info 字典与 XMP，再完整重序列化，丢弃残留在增量更新历史里的元数据 |
 | 文本与标记 | `.txt` `.md` `.markdown` `.html` `.htm` `.xhtml` `.svg` `.xml` `.json` `.csv` `.tsv` `.yaml` `.yml` `.log` `.srt` `.vtt` | 不可见 Unicode，以及 Markdown Front Matter、HTML/XHTML、SVG 中的作者/生成器信息 |
 
-**明确不做的事：** 统计型文本水印、像素域水印、不受支持的视频容器、旧版二进制 Office 文件（`.doc` / `.xls` / `.ppt`）以及未知二进制格式。遇到这些，MetaClean 会直接拒绝，而不是冒险改坏你的文件。
+上面每一种容器的字节偏移量都不会改变。凡是靠位置索引自身的文件，我们从不做删除——元数据要么被原地压缩，要么被清零，要么被该格式本身就定义好的填充元素覆盖。所以清理之后，一张 RAW 底片、一份 Matroska 索引表或一个 AVI 索引，和清理之前一样有效。
+
+**明确不做的事：** 统计型文本水印、像素域水印、旧版二进制 Office 文件（`.doc` / `.xls` / `.ppt`）以及未知二进制格式。遇到这些，MetaClean 会直接拒绝，而不是冒险改坏你的文件。
 
 ## 安全保障
 
@@ -74,12 +85,12 @@ MetaClean 把这些统统找出来并清除——全过程只在你自己的电�
 
 - 支持批量拖入文件或文件夹，也可以用系统原生选择器递归导入目录
 - 四个页面：**文件净化**、**处理记录**、**隐私说明**、**设置**
-- 可选的 Windows 资源管理器右键菜单，覆盖全部 47 种受支持扩展名（Windows 11 上位于**显示更多选项**中）
+- 可选的 Windows 资源管理器右键菜单，覆盖全部 91 种受支持扩展名（Windows 11 上位于**显示更多选项**中）
 - 关闭窗口后驻留系统托盘，右键托盘图标可重新打开或彻底退出
 - 默认保留 JPEG 显示方向、ICC/sRGB 色彩配置与文件时间戳，三项均可独立关闭
 - 安装版可在应用内检查、下载并安装通过签名验证的稳定版，显示下载进度后自动重启；Windows 便携版与 Linux 非 AppImage 包会回退到官方 Releases 页面
 - 启动更新检查可以单独关闭，恢复完全离线运行
-- 26 种完整界面语言，覆盖欧洲、亚洲与阿拉伯语 RTL；跟随系统/浅色/深色主题、输出方式、保真选项、本地处理记录都会持久保存
+- 32 种完整界面语言，覆盖欧洲、东亚与东南亚、南亚，以及阿拉伯语和波斯语的 RTL 布局；跟随系统/浅色/深色主题、输出方式、保真选项、本地处理记录都会持久保存
 
 ## 从源码构建
 
@@ -107,6 +118,8 @@ pnpm tauri build                                # 各平台安装包
 每次分支构建还会在 Windows、macOS 和 Linux 启动 E2E 专用桌面二进制；内嵌 WebDriver 与测试命令受 Cargo feature 隔离，不会进入生产包。推送版本标签后，GitHub Actions 会构建完整发布矩阵：Windows x64 的 NSIS/MSI/便携 ZIP 与 x86 的 NSIS/便携 ZIP、macOS 的 Apple Silicon 与 Intel 双 DMG、Linux 的 DEB/RPM/AppImage。Release 还会生成五个平台目标的签名更新包与静态 `latest.json`，全部安装包冒烟通过并生成完整 SHA-256 清单后才公开发布。更新签名不等于操作系统代码签名；macOS 签名与公证仍需 Apple 凭据，未配置时 DMG 仍是未签名状态。
 
 测试覆盖率与发布验收证据记录在 [VALIDATION.md](VALIDATION.md)。
+版本变更记录在 [CHANGELOG.md](CHANGELOG.md)。
+不显示元数据具体内容的设计取舍、各格式的清理策略，以及明确不做的边界，都写在 [SUPPORT_POLICY.md](SUPPORT_POLICY.md)。
 
 ## 参与贡献
 

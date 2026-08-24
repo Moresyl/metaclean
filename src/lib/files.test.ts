@@ -3,10 +3,18 @@ import { actionableFindingCount, classifyFile, entryFromFile, entryFromPath, mer
 
 describe("classifyFile", () => {
   const groups = {
-    image: ["jpg", "jpeg", "jpe", "png", "webp", "gif"],
-    audio: ["mp3", "wav", "flac"],
-    video: ["mp4", "mov", "m4v", "m4a", "3g2", "3gp", "3gp2", "3gpp", "f4a", "f4b", "f4p", "f4v", "lrv", "m4b", "m4p", "mqv", "qt"],
-    document: ["docx", "xlsx", "pptx", "odt"],
+    image: [
+      "jpg", "jpeg", "jpe", "png", "webp", "gif", "bmp", "dib", "tif", "tiff",
+      "heic", "heif", "heics", "heifs", "hif", "avif", "avifs",
+      "cr2", "cr3", "crw", "nef", "nrw", "arw", "srf", "sr2", "orf", "rw2", "rwl",
+      "dng", "pef", "srw", "raf", "3fr", "erf", "mef", "mos", "iiq", "kdc", "dcr", "k25",
+    ],
+    audio: ["mp3", "wav", "flac", "wma", "m4a", "f4a", "f4b", "m4b", "m4p", "mka"],
+    video: [
+      "mp4", "mov", "m4v", "3g2", "3gp", "3gp2", "3gpp", "f4p", "f4v", "lrv", "mqv", "qt",
+      "avi", "asf", "wmv", "mkv", "mks", "mk3d", "webm",
+    ],
+    document: ["docx", "xlsx", "pptx", "odt", "epub"],
     pdf: ["pdf"],
     text: ["txt", "md", "markdown", "html", "htm", "xhtml", "svg", "xml", "json", "csv", "tsv", "yaml", "yml", "log", "srt", "vtt"],
   } as const;
@@ -14,15 +22,19 @@ describe("classifyFile", () => {
     extensions.map((extension) => [`sample.${extension.toUpperCase()}`, kind] as const),
   );
 
-  it("defines exactly 47 supported extensions", () => {
-    expect(supportedCases).toHaveLength(47);
+  /* The engine's SUPPORTED_EXTENSIONS is the same 91 entries. A row that shows
+     a generic glyph for a file the engine happily cleans is the visible half of
+     the two lists drifting apart. */
+  it("covers every one of the engine's 91 supported extensions", () => {
+    expect(supportedCases).toHaveLength(91);
+    expect(new Set(supportedCases.map(([name]) => name)).size).toBe(91);
   });
 
   it.each(supportedCases)("classifies %s case-insensitively", (name, expected) => {
     expect(classifyFile(name)).toBe(expected);
   });
 
-  it.each(["archive.zip", "raw.tiff", "no-extension"])("rejects unsupported %s", (name) => {
+  it.each(["archive.rar", "page.psd", "sheet.numbers", "no-extension"])("rejects unsupported %s", (name) => {
     expect(classifyFile(name)).toBe("unknown");
   });
 });

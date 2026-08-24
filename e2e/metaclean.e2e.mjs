@@ -1,4 +1,16 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+
+/**
+ * Counted from the source list rather than written down, so the switcher is
+ * checked against what the app actually publishes. A hard-coded number here
+ * only ever records how many locales existed the day someone last edited it.
+ */
+const PUBLISHED_LOCALES = [
+  ...readFileSync(new URL("../src/lib/locales.ts", import.meta.url), "utf8")
+    .match(/export const LOCALES = \[(.*?)\n\] as const;/su)[1]
+    .matchAll(/\{ code: "/gu),
+].length;
 
 async function openSettingsPage() {
   const navigation = await $$(".sidebar nav button");
@@ -41,7 +53,7 @@ describe("MetaClean desktop application", () => {
 
     const locale = await $(".locale-switch select");
     await locale.waitForDisplayed();
-    assert.equal((await locale.$$("option")).length, 26);
+    assert.equal((await locale.$$("option")).length, PUBLISHED_LOCALES);
     await browser.tauri.execute(() => {
       const select = document.querySelector(".locale-switch select");
       select.value = "ar";

@@ -32,6 +32,11 @@ test("keeps Windows release builds on the GUI subsystem", async () => {
   assert.match(mainSource, /^#!\[cfg_attr\(not\(debug_assertions\), windows_subsystem = "windows"\)\]$/mu);
 });
 
+/** The interface below the title bar, which is what the layout is designed to. */
+const CONTENT_HEIGHT = 570;
+/** The caption strip the app draws itself, at the metrics Windows uses. */
+const CAPTION_HEIGHT = 32;
+
 test("keeps the desktop window at a fixed size", async () => {
   const tauriConfig = JSON.parse(await readFile(new URL("../src-tauri/tauri.conf.json", import.meta.url), "utf8"));
   const [mainWindow] = tauriConfig.app.windows;
@@ -49,13 +54,37 @@ test("keeps the desktop window at a fixed size", async () => {
     },
     {
       width: 1100,
-      height: 570,
+      height: CONTENT_HEIGHT + CAPTION_HEIGHT,
       minWidth: 1100,
-      minHeight: 570,
+      minHeight: CONTENT_HEIGHT + CAPTION_HEIGHT,
       maxWidth: 1100,
-      maxHeight: 570,
+      maxHeight: CONTENT_HEIGHT + CAPTION_HEIGHT,
       resizable: false,
       maximizable: false,
     },
   );
+});
+
+test("keeps both READMEs on the shipped interface-language count", async () => {
+  const locales = await readFile(new URL("../src/lib/locales.ts", import.meta.url), "utf8");
+  const declared = locales.match(/export const LOCALES = \[(.*?)\n\] as const;/su)?.[1];
+  assert.ok(declared, "LOCALES could not be parsed");
+  const count = [...declared.matchAll(/\{ code: "/gu)].length;
+
+  // A language nobody knows we ship is a language nobody switches to, so the
+  // published number is checked against the list rather than kept by hand.
+  assert.match(await readFile(new URL("../README.md", import.meta.url), "utf8"), new RegExp(`^- ${count} complete interface languages`, "mu"));
+  assert.match(await readFile(new URL("../README.zh-CN.md", import.meta.url), "utf8"), new RegExp(`^- ${count} 种完整界面语言`, "mu"));
+});
+
+test("draws its own caption, and pays for it in window height", async () => {
+  const tauriConfig = JSON.parse(await readFile(new URL("../src-tauri/tauri.conf.json", import.meta.url), "utf8"));
+  const [mainWindow] = tauriConfig.app.windows;
+  const styles = await readFile(new URL("../src/styles.css", import.meta.url), "utf8");
+
+  // Folding the caption into the client area would cost the interface 32px
+  // unless the window grows by exactly that much, so the two move together.
+  assert.equal(mainWindow.decorations, false);
+  assert.equal(mainWindow.shadow, true);
+  assert.match(styles, new RegExp(`grid-template-rows:\\s*${CAPTION_HEIGHT}px minmax\\(0, 1fr\\)`, "u"));
 });

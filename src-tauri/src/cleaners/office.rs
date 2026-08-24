@@ -136,11 +136,102 @@ fn is_comment_part(name: &str) -> bool {
         || lower.starts_with("customxml/")
 }
 
+fn document_finding(label: &str, count: usize) -> Finding {
+    Finding {
+        category: "document_metadata".into(),
+        label: label.into(),
+        count,
+        severity: FindingSeverity::Privacy,
+    }
+}
+
+/// An EPUB is a zip too, so it rides the same plumbing. Its package document
+/// carries the Dublin Core block, and readers leave their own sediment beside
+/// it: Calibre bookmarks, Apple purchase receipts, Adobe rights files.
+fn is_reader_part(name: &str) -> bool {
+    let lower = name.to_ascii_lowercase();
+    lower.ends_with("calibre_bookmarks.txt")
+        || lower.ends_with("itunesmetadata.plist")
+        || lower.ends_with("itunesartwork")
+        || lower.ends_with("com.apple.ibooks.display-options.xml")
+        || lower.ends_with("rights.xml")
+        || lower.ends_with(".sigil")
+}
+
+/// Dublin Core terms that name a person or a moment. `title`, `identifier` and
+/// `language` stay: the specification requires them, and an EPUB missing one is
+/// a broken file rather than a private one.
+const EPUB_TERMS: &[&str] = &[
+    "creator",
+    "contributor",
+    "publisher",
+    "description",
+    "subject",
+    "rights",
+    "date",
+    "source",
+    "coverage",
+];
+
+fn epub_element(name: &str) -> Regex {
+    Regex::new(&format!(
+        r"(?is)<(?:[\w-]+:)?{}(?:\s[^>]*)?>.*?</(?:[\w-]+:)?{}\s*>|<(?:[\w-]+:)?{}(?:\s[^>]*)?/\s*>",
+        regex::escape(name),
+        regex::escape(name),
+        regex::escape(name)
+    ))
+    .expect("EPUB element regex must compile")
+}
+
+/// Both halves stop at the first `<`, so a reader tag can never swallow the
+/// element that follows it — the alternation is leftmost-first, and a greedy
+/// `.*?` here would eat the required `dcterms:modified` next door.
+fn calibre_meta() -> Regex {
+    Regex::new(
+        r#"(?is)<meta[^>]*(?:calibre|sigil|kobo|epubcheck)[^>]*/\s*>|<meta[^>]*(?:calibre|sigil|kobo|epubcheck)[^>]*>[^<]*</meta\s*>"#,
+    )
+    .expect("EPUB reader metadata regex must compile")
+}
+
+/// The one timestamp EPUB 3 refuses to live without. It cannot be deleted, so it
+/// is pinned to the epoch, where it identifies nobody.
+fn modified_meta() -> Regex {
+    Regex::new(r#"(?is)(<meta[^>]*dcterms:modified[^>]*>)[^<]*(</meta\s*>)"#)
+        .expect("EPUB modified regex must compile")
+}
+
+fn strip_epub_metadata(xml: &str) -> (String, usize) {
+    let mut output = xml.to_owned();
+    let mut removed = 0;
+    for term in EPUB_TERMS {
+        let pattern = epub_element(term);
+        removed += pattern.find_iter(&output).count();
+        output = pattern.replace_all(&output, "").into_owned();
+    }
+    let calibre = calibre_meta();
+    removed += calibre.find_iter(&output).count();
+    output = calibre.replace_all(&output, "").into_owned();
+    let modified = modified_meta();
+    removed += modified
+        .find_iter(&output)
+        .filter(|found| !found.as_str().contains("1970-01-01T00:00:00Z"))
+        .count();
+    output = modified
+        .replace_all(&output, "${1}1970-01-01T00:00:00Z${2}")
+        .into_owned();
+    (output, removed)
+}
+
+fn is_package_document(name: &str) -> bool {
+    name.to_ascii_lowercase().ends_with(".opf")
+}
+
 pub fn inspect(data: &[u8]) -> Result<Vec<Finding>> {
     let mut archive = read_archive(data)?;
     let mut metadata = 0;
     let mut comments = 0;
     let mut revisions = 0;
+    let mut publication = 0;
     let mut expanded = 0u64;
     for index in 0..archive.len() {
         let mut file = archive.by_index(index)?;
@@ -153,11 +244,19 @@ pub fn inspect(data: &[u8]) -> Result<Vec<Finding>> {
             comments += 1;
             continue;
         }
-        if !name.ends_with(".xml") {
+        if is_reader_part(&name) {
+            publication += 1;
+            continue;
+        }
+        if !name.ends_with(".xml") && !is_package_document(&name) {
             continue;
         }
         let mut xml = String::new();
         if file.read_to_string(&mut xml).is_err() {
+            continue;
+        }
+        if is_package_document(&name) {
+            publication += strip_epub_metadata(&xml).1;
             continue;
         }
         if name.starts_with("docProps/") || name.ends_with("settings.xml") || name == "meta.xml" {
@@ -177,6 +276,9 @@ pub fn inspect(data: &[u8]) -> Result<Vec<Finding>> {
     if revisions > 0 {
         findings.push(privacy_finding("修订记录", revisions));
     }
+    if publication > 0 {
+        findings.push(document_finding("出版信息与阅读器残留", publication));
+    }
     Ok(findings)
 }
 
@@ -193,7 +295,7 @@ pub fn clean(data: &[u8]) -> Result<(Vec<u8>, Vec<Finding>)> {
     for index in 0..archive.len() {
         let mut file = archive.by_index(index)?;
         let name = file.name().to_owned();
-        if is_comment_part(&name) {
+        if is_comment_part(&name) || is_reader_part(&name) {
             continue;
         }
         if file.is_dir() {
@@ -206,9 +308,12 @@ pub fn clean(data: &[u8]) -> Result<(Vec<u8>, Vec<Finding>)> {
         }
         let mut content = Vec::new();
         file.read_to_end(&mut content)?;
-        if name.ends_with(".xml") || name.ends_with(".rels") {
+        if name.ends_with(".xml") || name.ends_with(".rels") || is_package_document(&name) {
             if let Ok(xml) = std::str::from_utf8(&content) {
                 let mut cleaned = xml.to_owned();
+                if is_package_document(&name) {
+                    cleaned = strip_epub_metadata(&cleaned).0;
+                }
                 if name.starts_with("docProps/")
                     || name.ends_with("settings.xml")
                     || name == "meta.xml"
@@ -285,6 +390,61 @@ mod tests {
             .unwrap();
         assert!(!meta.contains("Claude"));
         assert!(!meta.contains("editing-cycles"));
+    }
+
+    #[test]
+    fn strips_epub_publication_data_but_keeps_what_the_spec_requires() {
+        let mut writer = ZipWriter::new(Cursor::new(Vec::new()));
+        let options = SimpleFileOptions::default();
+        writer.start_file("mimetype", options).unwrap();
+        writer.write_all(b"application/epub+zip").unwrap();
+        writer.start_file("OEBPS/content.opf", options).unwrap();
+        writer
+            .write_all(
+                br#"<package unique-identifier="bookid"><metadata><dc:title>Notes</dc:title><dc:identifier id="bookid">urn:uuid:1234</dc:identifier><dc:language>zh</dc:language><dc:creator>Alice Zhang</dc:creator><dc:publisher>Home Press</dc:publisher><dc:date>2024-03-09</dc:date><meta name="calibre:timestamp" content="2024-03-09T11:00:00"/><meta property="dcterms:modified">2024-03-09T11:00:00Z</meta></metadata></package>"#,
+            )
+            .unwrap();
+        writer
+            .start_file("META-INF/calibre_bookmarks.txt", options)
+            .unwrap();
+        writer.write_all(b"last read position: alice").unwrap();
+        let data = writer.finish().unwrap().into_inner();
+
+        let findings = inspect(&data).unwrap();
+        assert!(findings
+            .iter()
+            .any(|finding| finding.category == "document_metadata"));
+
+        let (cleaned, _) = clean(&data).unwrap();
+        let mut archive = ZipArchive::new(Cursor::new(cleaned)).unwrap();
+        assert!(archive.by_name("META-INF/calibre_bookmarks.txt").is_err());
+        let mut opf = String::new();
+        archive
+            .by_name("OEBPS/content.opf")
+            .unwrap()
+            .read_to_string(&mut opf)
+            .unwrap();
+        assert!(!opf.contains("Alice Zhang"));
+        assert!(!opf.contains("Home Press"));
+        assert!(!opf.contains("2024-03-09"));
+        assert!(!opf.contains("calibre"));
+        // Title, identifier and language are load-bearing; the timestamp is
+        // pinned rather than removed because EPUB 3 demands one.
+        assert!(opf.contains("<dc:title>Notes</dc:title>"));
+        assert!(opf.contains("urn:uuid:1234"));
+        assert!(opf.contains("<dc:language>zh</dc:language>"));
+        assert!(opf.contains("1970-01-01T00:00:00Z"));
+    }
+
+    #[test]
+    fn re_inspecting_a_cleaned_epub_reports_nothing_left() {
+        let mut writer = ZipWriter::new(Cursor::new(Vec::new()));
+        let options = SimpleFileOptions::default();
+        writer.start_file("content.opf", options).unwrap();
+        writer.write_all(br#"<package><metadata><dc:creator>Bob</dc:creator><meta property="dcterms:modified">2024-01-01T00:00:00Z</meta></metadata></package>"#).unwrap();
+        let data = writer.finish().unwrap().into_inner();
+        let (cleaned, _) = clean(&data).unwrap();
+        assert!(inspect(&cleaned).unwrap().is_empty());
     }
 
     #[test]

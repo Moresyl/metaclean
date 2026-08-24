@@ -1,13 +1,14 @@
 import { FileCheck2, History, Settings, ShieldCheck } from "lucide-react";
 import type { Page } from "../types";
+import { commandKeyLabel } from "../lib/keys";
 import { useI18n } from "../lib/i18n";
 import { useUpdate } from "../contexts/UpdateContext";
 
-const navigation: Array<{ page: Page; label: string; icon: typeof FileCheck2 }> = [
-  { page: "clean", label: "文件净化", icon: FileCheck2 },
-  { page: "history", label: "处理记录", icon: History },
-  { page: "privacy", label: "隐私说明", icon: ShieldCheck },
-  { page: "settings", label: "设置", icon: Settings },
+const navigation: Array<{ page: Page; label: string; icon: typeof FileCheck2; key: string }> = [
+  { page: "clean", label: "文件净化", icon: FileCheck2, key: "1" },
+  { page: "history", label: "处理记录", icon: History, key: "2" },
+  { page: "privacy", label: "隐私说明", icon: ShieldCheck, key: "3" },
+  { page: "settings", label: "设置", icon: Settings, key: "4" },
 ];
 
 export default function Sidebar({ page, onNavigate }: { page: Page; onNavigate: (page: Page) => void }) {
@@ -21,9 +22,15 @@ export default function Sidebar({ page, onNavigate }: { page: Page; onNavigate: 
         <div><strong>MetaClean</strong><span>{text("文件隐私净化器", "File privacy cleaner")}</span></div>
       </div>
       <nav aria-label={text("主导航", "Main navigation")}>
-        {navigation.map(({ page: target, label, icon: Icon }) => (
-          <button className={`nav-item ${page === target ? "active" : ""}`} key={target} type="button" onClick={() => onNavigate(target)}>
-            <Icon size={17} strokeWidth={1.8} />{labels[target] ?? label}
+        {navigation.map(({ page: target, label, icon: Icon, key }) => (
+          <button
+            className={`nav-item ${page === target ? "active" : ""}`}
+            key={target}
+            type="button"
+            data-tip={`${labels[target] ?? label} · ${commandKeyLabel()}${key}`}
+            onClick={() => onNavigate(target)}
+          >
+            <Icon size={17} strokeWidth={1.8} /><span>{labels[target] ?? label}</span>
           </button>
         ))}
       </nav>

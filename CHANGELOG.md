@@ -5,6 +5,61 @@ All notable changes to MetaClean are documented here. The project follows
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-08-24
+
+### Added
+
+- MetaClean now cleans the container families it previously refused, each with a
+  strategy that removes metadata without relocating a single byte, so no strip,
+  cue, index or item offset ever shifts:
+  - TIFF and 23 camera raw formats, by compacting image file directories in
+    place and rewriting the pointer behind them. Strip, tile, MakerNote-relative
+    and embedded-preview offsets all stay valid.
+  - Fujifilm RAF, by cleaning the embedded JPEG preview — which carries the full
+    EXIF block, GPS and serial number included — and zero-padding it back to its
+    original extent.
+  - HEIC, HEIF, AVIF and Canon CR3, at item granularity: EXIF, XMP and C2PA item
+    payloads are zeroed where they lie in `mdat` and their extents set to zero,
+    leaving the item table that locates the picture intact.
+  - AVI, by renaming private chunks to RIFF's own `JUNK` padding tag and zeroing
+    the payload, so `idx1` keeps its meaning under either offset convention.
+  - Matroska, WebM, MKA, MKS and MK3D, by stamping the EBML `Void` identifier
+    over a tag block and widening its length field to absorb the difference.
+  - ASF, WMV and WMA, by stamping the padding GUID over content-description and
+    metadata objects while the header's object count stays honest.
+  - BMP and DIB, covering the reserved header words, V5 embedded ICC profiles
+    and EXIF or XMP stapled past the last pixel.
+- EPUB is now cleaned alongside the other office formats. Dublin Core terms that
+  name a person or a moment are removed, reader sediment from Calibre, Sigil,
+  Kobo, epubcheck, Apple and Adobe is deleted, and the `dcterms:modified`
+  timestamp EPUB 3 refuses to live without is pinned to the epoch rather than
+  dropped. The identifier, title and language the specification requires are
+  preserved, because an EPUB missing one is a broken file rather than a private
+  one.
+- A command palette reaches every window command from the keyboard, and
+  right-click context menus are drawn for the surfaces that lost the system ones
+  when window decorations were turned off.
+- Expanding a file in the queue opens a detail panel with its detected format,
+  source, output and backup paths, and every finding category labelled as
+  removed, kept or pending.
+- Six interface languages: Català, فارسی, Hrvatski, Magyar, മലയാളം and Tiếng Việt.
+  Persian joins Arabic in right-to-left layout.
+
+### Changed
+
+- The intake allowlist grew from 47 to 91 extensions across the Rust engine,
+  frontend classification, and the NSIS and MSI shell integrations.
+- The window draws its own title bar, and grew by exactly the caption's 32
+  pixels to 1100 by 602 so the interface below it kept its full height.
+- Interface chrome was rebuilt against Windows 11 Fluent metrics, with a green
+  accent that no longer tints the neutral surfaces around it.
+- Tooltips are served by a single document-level host that reads `data-tip` off
+  whatever the pointer or focus ring lands on.
+- The shipped locale count is now derived from the locale list by the unit,
+  release and end-to-end tests rather than written down in three places.
+- `SUPPORT_POLICY.md` now documents the offset-preserving strategy and test bar
+  used by every newly supported container family.
+
 ## [0.4.2] - 2026-08-20
 
 ### Added
@@ -221,4 +276,5 @@ All notable changes to MetaClean are documented here. The project follows
 [0.4.0]: https://github.com/Moresyl/metaclean/compare/v0.3.0...v0.4.0
 [0.4.1]: https://github.com/Moresyl/metaclean/compare/v0.4.0...v0.4.1
 [0.4.2]: https://github.com/Moresyl/metaclean/compare/v0.4.1...v0.4.2
-[Unreleased]: https://github.com/Moresyl/metaclean/compare/v0.4.2...HEAD
+[0.5.0]: https://github.com/Moresyl/metaclean/compare/v0.4.2...v0.5.0
+[Unreleased]: https://github.com/Moresyl/metaclean/compare/v0.5.0...HEAD

@@ -20,30 +20,55 @@ the file, detected format, actionable categories and counts, explicit errors,
 source/output sizes and output location. Cleanup is verified against the exact
 in-memory candidate before it can be written.
 
-## Explicitly refused format families
+## The bar a format has to clear
 
-The following extensions are not aliases for an existing cleaner. They remain
-outside the intake allowlist and fail closed if supplied directly.
+A format enters the allowlist only with malformed-input tests, container
+boundary validation, payload-preservation evidence and a post-clean inspection
+that fails closed on residual traces. Recognizing an extension or deleting a
+count of bytes is not enough.
 
-| Family | Extensions | Safety decision |
+The hard cases all fail the same way: every one of them keeps absolute byte
+offsets somewhere — a strip pointer, a cue index, an item extent — and a
+metadata block that is simply deleted drags every offset behind it out of
+alignment. That is why so many tools either refuse these containers or
+re-encode them. MetaClean does neither. Each of the families below is cleaned
+by a strategy that removes the metadata **without moving a single byte of the
+file**, so the offsets that were true before the clean are still true after it.
+
+| Family | Extensions | How the offsets are kept honest |
 | --- | --- | --- |
-| TIFF | `.tif`, `.tiff` | Refused. Multi-IFD pointer graphs, embedded previews and MakerNote-relative offsets require a dedicated parser and rewriter; applying the JPEG EXIF strategy would risk image or camera-data corruption. |
-| HEIF/AVIF | `.heic`, `.heif`, `.avif` | Refused. These ISO BMFF still-image brands use a `meta` item graph (`iloc`, `iinf`, `iref` and `iprp`) rather than the media-atom layout handled by MetaClean. The video cleaner explicitly rejects image brands. |
-| BMP | `.bmp` | Refused. V5 headers can reference embedded or linked color profiles. MetaClean has no BMP-specific profile/offset rewriter and will not silently discard color behavior. |
-| Camera RAW | `.arw`, `.cr2`, `.cr3`, `.dng`, `.nef`, `.nrw`, `.orf`, `.pef`, `.raf`, `.rw2`, `.srw` | Refused individually. These formats mix proprietary MakerNotes, preview images and offset-sensitive TIFF or ISO BMFF structures; a generic metadata rewrite is not considered safe. |
-| AVI | `.avi` | Refused. AVI uses RIFF, but its `LIST`/`INFO`, `IDIT` and embedded metadata layout is not interchangeable with the format-specific WAV cleaner. |
-| Matroska/WebM | `.mkv`, `.webm` | Refused. EBML unknown-size elements, segment information, tags, attachments, chapters and CRC elements require a dedicated structural rewriter. |
-| ASF/WMV | `.asf`, `.wmv` | Refused. Header extensions, content descriptions, metadata objects and indexes require an ASF-specific parser and verifier. |
+| TIFF | `.tif`, `.tiff` | Directory entries are deleted by compacting the IFD in place and rewriting the next-directory pointer behind them, so a directory only ever shrinks and the file never shifts. Sub-IFD, Exif, GPS and Interop pointer graphs are walked to a bounded depth; a pointer removed at one level has the directory it named cleaned too, rather than being orphaned. |
+| Camera RAW | `.cr2`, `.crw`, `.nef`, `.nrw`, `.arw`, `.srf`, `.sr2`, `.orf`, `.rw2`, `.rwl`, `.dng`, `.pef`, `.srw`, `.3fr`, `.erf`, `.mef`, `.mos`, `.iiq`, `.kdc`, `.dcr`, `.k25` | A raw negative from every major vendor is a TIFF wearing a private magic word, so the same in-place walker covers them. Because nothing moves, strip, tile, MakerNote-relative and embedded-preview offsets stay valid — which is precisely the reason it is safe to strip a negative rather than refuse it. |
+| Fujifilm RAF | `.raf` | A RAF is not a TIFF but a fixed header naming three byte ranges, one of which is a JPEG preview carrying a complete EXIF block — GPS, serial number, timestamps, the lot. Refusing the format would leave the worst of the leak in place. The preview is cleaned as an ordinary JPEG, written back at its original offset and zero-padded to its original extent, so only the length field changes and the sensor data is never read or rewritten. |
+| HEIF/AVIF | `.heic`, `.heif`, `.heics`, `.heifs`, `.hif`, `.avif`, `.avifs` | Cleaned at item granularity rather than box granularity. In a HEIF the `meta` box is not a place to hang a title — it holds `iinf`, `iloc` and `iprp`, the table that says where the picture is, and deleting it deletes the image. So the item table is read, the items whose payload is an EXIF block, an XMP packet or a C2PA manifest are zeroed where they lie in `mdat`, and their extent length is set to zero. Every other item's offset survives untouched. |
+| Canon CR3 | `.cr3` | An ISO base media file like a HEIC, cleaned by the same item walker, plus the four bare TIFF directories — IFD0, Exif, MakerNote and GPS — that Canon parks inside a private box. |
+| AVI | `.avi` | Nothing is deleted. Some encoders write `idx1` offsets relative to `movi` and some relative to the file, so removing a chunk ahead of the media desynchronises half the players in existence. A private chunk is instead renamed to `JUNK` — RIFF's own padding tag, which every parser is required to skip — and its payload is zeroed. The file keeps its length and the index keeps its meaning. |
+| Matroska/WebM | `.mkv`, `.mka`, `.mks`, `.mk3d`, `.webm` | EBML defines `Void` for exactly this situation, and permits a length field written wider than strictly necessary. A tag block is retired by stamping the one-byte `Void` identifier over its own and widening the length to absorb the difference, so the element occupies the same bytes it always did and the cue index stays true. Strings the specification insists on keeping are zero-filled instead, which EBML reads back as empty. |
+| ASF/WMV/WMA | `.asf`, `.wmv`, `.wma` | ASF defines a padding object so a writer can reserve space it does not intend to use, and every reader must skip it. A content-description or metadata object is retired by stamping the padding GUID over its own and blanking the body. The header's object count stays honest, no length changes, and the media object never moves. |
+| BMP | `.bmp`, `.dib` | BMP has no metadata standard, which is exactly why it leaks: the two reserved header words are scratch space editors write ID numbers into, a V5 header can carry an embedded ICC profile, and because the format never declares the file ends at the last pixel, tools staple EXIF or XMP onto the tail. All three are handled; an embedded profile is released back to `LCS_sRGB` rather than left dangling. |
 
-A future format may move into the supported list only with malformed-input
-tests, container-boundary validation, payload-preservation evidence and a
-post-clean inspection that fails closed on residual traces. Merely recognizing
-an extension or deleting a count of bytes is insufficient.
+Every strategy above is covered by tests that assert the picture and the media
+payload survive byte-identical, that the index, item table or object count still
+resolves afterwards, that tags which merely look like metadata are left alone,
+and that malformed input fails closed.
+
+## Still refused
+
+These fail closed. MetaClean does not accept them, and does not pretend to.
+
+| Out of scope | Why |
+| --- | --- |
+| Legacy binary Office (`.doc`, `.xls`, `.ppt`) | OLE compound documents interleave metadata with content in a structure whose in-place removal cannot be verified to the standard above. |
+| Statistical text watermarks | Detecting them requires a model, and removing them requires rewriting the author's prose. MetaClean edits bytes, not meaning — and would have to send text off the device to do otherwise. |
+| Pixel-domain watermarks | Removal means re-encoding the image, which contradicts the payload-preservation guarantee that makes the rest of this policy safe. |
+| Unknown binary formats | An unrecognized container is refused rather than run through a generic rewrite. |
 
 ## Current supported scope
 
-The authoritative allowlist contains 47 extensions and is shared by the Rust
-engine, frontend classification and Windows shell integration. It covers JPEG,
-PNG, WebP and GIF; MP3, WAV and FLAC; 17 validated ISO BMFF/QuickTime media
-extensions; DOCX, XLSX, PPTX and ODT; PDF; and 16 UTF-8 text/markup extensions.
-CI rejects any mismatch between those manifests.
+The authoritative allowlist contains 91 extensions and is shared by the Rust
+engine, frontend classification and Windows shell integration. It covers 17
+still-image extensions across JPEG, PNG, WebP, GIF, BMP, TIFF, HEIF and AVIF;
+23 camera raw formats; 10 audio extensions across MP3, WAV, FLAC, WMA and the
+MPEG-4 audio brands; 19 video containers across MP4/QuickTime, AVI, ASF/WMV and
+Matroska/WebM; DOCX, XLSX, PPTX, ODT and EPUB; PDF; and 16 UTF-8 text and
+markup extensions. CI rejects any mismatch between those manifests.

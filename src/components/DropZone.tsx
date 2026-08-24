@@ -1,33 +1,49 @@
 import { FilePlus2, FolderOpen } from "lucide-react";
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import type { FileEntry } from "../types";
 import { entryFromFile } from "../lib/files";
+import { pickPaths } from "../lib/pick";
 import { useI18n } from "../lib/i18n";
 
 interface DropZoneProps {
   onAdd: (entries: FileEntry[]) => void;
   onAddNativePaths: (paths: string[]) => Promise<void>;
+  /** Set while a native (Tauri) drag hovers the window. */
+  dragActive?: boolean;
+  /** Collapse to a slim intake bar once the queue has files to show. */
+  compact?: boolean;
 }
 
-export default function DropZone({ onAdd, onAddNativePaths }: DropZoneProps) {
+export default function DropZone({ onAdd, onAddNativePaths, dragActive = false, compact = false }: DropZoneProps) {
   const { text } = useI18n();
   const inputRef = useRef<HTMLInputElement>(null);
+  const [browserDrag, setBrowserDrag] = useState(false);
+  const hovering = dragActive || browserDrag;
   async function choose(directory: boolean) {
     try {
-      const { open } = await import("@tauri-apps/plugin-dialog");
-      const paths = await open({ multiple: !directory, directory });
-      if (paths) {
-        await onAddNativePaths(Array.isArray(paths) ? paths : [paths]);
-      }
+      const paths = await pickPaths(directory);
+      if (paths) await onAddNativePaths(paths);
     } catch {
       if (!directory) inputRef.current?.click();
     }
   }
   return (
-    <section className="drop-zone" onDragOver={(event) => event.preventDefault()} onDrop={(event) => {
-      event.preventDefault();
-      onAdd(Array.from(event.dataTransfer.files, entryFromFile));
-    }}>
+    <section
+      className={`drop-zone ${compact ? "compact" : ""} ${hovering ? "drag-active" : ""}`}
+      onDragEnter={() => setBrowserDrag(true)}
+      onDragOver={(event) => {
+        event.preventDefault();
+        setBrowserDrag(true);
+      }}
+      onDragLeave={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setBrowserDrag(false);
+      }}
+      onDrop={(event) => {
+        event.preventDefault();
+        setBrowserDrag(false);
+        onAdd(Array.from(event.dataTransfer.files, entryFromFile));
+      }}
+    >
       <div className="drop-icon"><FilePlus2 size={27} /></div>
       <h2>{text("拖入要净化的文件", "Drop files to clean")}</h2>
       <p>{text("先扫描隐私痕迹，再由你确认是否清理", "Scan privacy traces first, then confirm cleanup")}</p>

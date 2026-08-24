@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { ArrowUpCircle, Sparkles } from "lucide-react";
+import { ArrowUpCircle, FileCheck2, FilePlus2, FolderOpen, History, Moon, MonitorCog, ScanSearch, Settings, ShieldCheck, Sun, Trash2 } from "lucide-react";
 import Sidebar from "./components/Sidebar";
 import DropZone from "./components/DropZone";
 import FileQueue from "./components/FileQueue";
@@ -8,17 +8,25 @@ import HistoryPage from "./components/HistoryPage";
 import PrivacyPage from "./components/PrivacyPage";
 import SettingsPage from "./components/SettingsPage";
 import UpdateDialog from "./components/UpdateDialog";
+import TitleBar from "./components/TitleBar";
+import TooltipHost from "./components/TooltipHost";
+import CommandPalette, { type Command } from "./components/CommandPalette";
 import { actionableFindingCount, entryFromPath, mergeEntries } from "./lib/files";
 import { installZoomLock } from "./lib/window";
+import { commandKeyLabel } from "./lib/keys";
+import { pickPaths } from "./lib/pick";
 import type { CleanMode, FileEntry, HistoryEntry, IntakeResult, Page } from "./types";
 import type { CleanResult, ScanReport } from "./types";
 import { useI18n } from "./lib/i18n";
+import { useTheme } from "./contexts/ThemeContext";
 import { useUpdate } from "./contexts/UpdateContext";
 
 export default function App() {
   const { text } = useI18n();
   const update = useUpdate();
+  const theme = useTheme();
   const [page, setPage] = useState<Page>("clean");
+  const [commandsOpen, setCommandsOpen] = useState(false);
   const [entries, setEntries] = useState<FileEntry[]>([]);
   const [mode, setModeState] = useState<CleanMode>(() => localStorage.getItem("metaclean.outputMode") === "replace" ? "replace" : "copy");
   const [preserveTimestamps, setPreserveTimestampsState] = useState(() => localStorage.getItem("metaclean.preserveTimestamps") !== "false");
@@ -30,6 +38,7 @@ export default function App() {
   });
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string>();
+  const [dragActive, setDragActive] = useState(false);
   const addEntries = useCallback((incoming: FileEntry[]) => setEntries((current) => mergeEntries(current, incoming)), []);
   const addNativePaths = useCallback(async (paths: string[]) => {
     if (!paths.length) return;
@@ -58,6 +67,7 @@ export default function App() {
   useEffect(() => {
     let dispose: (() => void) | undefined;
     void import("@tauri-apps/api/webview").then(({ getCurrentWebview }) => getCurrentWebview().onDragDropEvent((event) => {
+      setDragActive(event.payload.type === "enter" || event.payload.type === "over");
       if (event.payload.type === "drop") void addNativePaths(event.payload.paths);
     })).then((unlisten) => { dispose = unlisten; }).catch(() => undefined);
     void import("@tauri-apps/api/core").then(({ invoke }) => invoke<string[]>("get_launch_paths"))
@@ -79,15 +89,20 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    const navigateWithShortcut = (event: KeyboardEvent) => {
+    const runShortcut = (event: KeyboardEvent) => {
       if (!(event.ctrlKey || event.metaKey) || event.altKey) return;
+      if (event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        setCommandsOpen((open) => !open);
+        return;
+      }
       const destination = ({ "1": "clean", "2": "history", "3": "privacy", "4": "settings" } as const)[event.key];
       if (!destination) return;
       event.preventDefault();
       setPage(destination);
     };
-    window.addEventListener("keydown", navigateWithShortcut);
-    return () => window.removeEventListener("keydown", navigateWithShortcut);
+    window.addEventListener("keydown", runShortcut);
+    return () => window.removeEventListener("keydown", runShortcut);
   }, []);
 
   const scanned = entries.length > 0 && entries.every((entry) => entry.status === "scanned" || entry.status === "clean" || entry.status === "error");
@@ -137,24 +152,60 @@ export default function App() {
     }
   }
 
+  async function choose(directory: boolean) {
+    try {
+      const paths = await pickPaths(directory);
+      if (paths) await addNativePaths(paths);
+    } catch {
+      /* Only the desktop build has a system picker; the drop zone has its own fallback. */
+    }
+  }
+
+  /* Everything the window can do, in one list. The palette searches it, and it
+     doubles as the inventory that keeps the accelerators honest. */
+  const modifier = commandKeyLabel();
+  const go = text("前往", "Go to");
+  const act = text("操作", "Actions");
+  const appearance = text("外观", "Appearance");
+  const commands: Command[] = [
+    { id: "go-clean", group: go, label: text("文件净化", "Clean files"), icon: <FileCheck2 size={15} />, accelerator: `${modifier}1`, run: () => setPage("clean") },
+    { id: "go-history", group: go, label: text("处理记录", "History"), icon: <History size={15} />, accelerator: `${modifier}2`, run: () => setPage("history") },
+    { id: "go-privacy", group: go, label: text("隐私说明", "Privacy"), icon: <ShieldCheck size={15} />, accelerator: `${modifier}3`, run: () => setPage("privacy") },
+    { id: "go-settings", group: go, label: text("设置", "Settings"), icon: <Settings size={15} />, accelerator: `${modifier}4`, run: () => setPage("settings") },
+    { id: "pick-files", group: act, label: text("选择文件", "Choose files"), icon: <FilePlus2 size={15} />, run: () => void choose(false) },
+    { id: "pick-folder", group: act, label: text("选择文件夹", "Choose folder"), icon: <FolderOpen size={15} />, run: () => void choose(true) },
+    { id: "scan", group: act, label: text("扫描隐私痕迹", "Scan privacy traces"), icon: <ScanSearch size={15} />, disabled: busy || !entries.length || scanned, run: () => { setPage("clean"); void scan(); } },
+    { id: "clean", group: act, label: text("确认并开始清理", "Confirm and clean"), icon: <ShieldCheck size={15} />, disabled: busy || !scanned || !cleanableEntries.length, run: () => { setPage("clean"); void clean(); } },
+    { id: "clear", group: act, label: text("清空队列", "Clear queue"), icon: <Trash2 size={15} />, disabled: !entries.length, run: () => setEntries([]) },
+    { id: "theme-light", group: appearance, label: text("浅色", "Light"), icon: <Sun size={15} />, disabled: theme.mode === "light", run: () => theme.setMode("light") },
+    { id: "theme-dark", group: appearance, label: text("深色", "Dark"), icon: <Moon size={15} />, disabled: theme.mode === "dark", run: () => theme.setMode("dark") },
+    { id: "theme-system", group: appearance, label: text("跟随系统", "System"), icon: <MonitorCog size={15} />, disabled: theme.mode === "system", run: () => theme.setMode("system") },
+  ];
+
   return (
     <>
+    <div className="window-frame">
+    <TitleBar onOpenCommands={() => setCommandsOpen(true)} />
     <div className="app-shell">
       <Sidebar page={page} onNavigate={setPage} />
       <main className="workspace">
-        <header className="topbar"><div><h1>{page === "clean" ? text("文件净化", "Clean files") : page === "history" ? text("处理记录", "History") : page === "privacy" ? text("隐私说明", "Privacy") : text("设置", "Settings")}</h1><p>{page === "clean" ? text("清除文件里的隐私痕迹，分享前更安心", "Remove private traces before sharing") : text("MetaClean · 纯本地文件隐私工具", "MetaClean · Local file privacy tool")}</p></div>{update.status === "available" ? <button className="update-badge" type="button" onClick={update.showUpdatePrompt} aria-label={text(`发现新版本 ${update.info?.availableVersion}`, `Version ${update.info?.availableVersion} is available`)}><ArrowUpCircle size={16}/><span>{text(`更新至 v${update.info?.availableVersion}`, `Update to v${update.info?.availableVersion}`)}</span></button> : null}</header>
+        <header className="topbar"><div><h1>{page === "clean" ? text("文件净化", "Clean files") : page === "history" ? text("处理记录", "History") : page === "privacy" ? text("隐私说明", "Privacy") : text("设置", "Settings")}</h1><p>{page === "clean" ? text("清除文件里的隐私痕迹，分享前更安心", "Remove private traces before sharing") : page === "history" ? text("记录仅保存在此设备的应用数据中，不包含文件内容。", "History stays on this device and never stores file content.") : page === "privacy" ? text("MetaClean 的处理边界清晰且可验证。", "MetaClean has clear, verifiable processing boundaries.") : text("MetaClean · 纯本地文件隐私工具", "MetaClean · Local file privacy tool")}</p></div>{update.status === "available" ? <button className="update-badge" type="button" onClick={update.showUpdatePrompt} aria-label={text(`发现新版本 ${update.info?.availableVersion}`, `Version ${update.info?.availableVersion} is available`)}><ArrowUpCircle size={16}/><span>{text(`更新至 v${update.info?.availableVersion}`, `Update to v${update.info?.availableVersion}`)}</span></button> : null}</header>
+        <div className="page-enter" key={page}>
         {page === "clean" ? <div className="content-grid">
           <div className="main-column">
-            <div className="notice"><Sparkles size={15} /><span><strong>{text("所有处理均在本机完成。", "All processing happens locally. ")}</strong>{text("MetaClean 不上传、不保存、也不分析你的文件内容。", "MetaClean never uploads, stores, or analyzes your file content.")}</span></div>
             {message ? <div className="result-message" role="status">{message}</div> : null}
-            <DropZone onAdd={addEntries} onAddNativePaths={addNativePaths} />
-            <FileQueue entries={entries} preserveColorProfile={preserveColorProfile} removeExtendedAttributes={removeExtendedAttributes} onClear={() => setEntries([])} onRemove={(id) => setEntries((current) => current.filter((entry) => entry.id !== id))} onReveal={(path) => void reveal(path)} />
+            <DropZone onAdd={addEntries} onAddNativePaths={addNativePaths} dragActive={dragActive} compact={entries.length > 0} />
+            <FileQueue entries={entries} preserveColorProfile={preserveColorProfile} removeExtendedAttributes={removeExtendedAttributes} onClear={() => setEntries([])} onRemove={(id) => setEntries((current) => current.filter((entry) => entry.id !== id))} onReveal={(path) => void reveal(path)} onNotify={setMessage} />
           </div>
           <CleanOptions mode={mode} onModeChange={setMode} preserveTimestamps={preserveTimestamps} onPreserveTimestampsChange={setPreserveTimestamps} preserveOrientation={preserveOrientation} onPreserveOrientationChange={setPreserveOrientation} preserveColorProfile={preserveColorProfile} onPreserveColorProfileChange={setPreserveColorProfile} removeExtendedAttributes={removeExtendedAttributes} onRemoveExtendedAttributesChange={setRemoveExtendedAttributes} disabled={!entries.length} scanned={scanned} hasFindings={cleanableEntries.length > 0} busy={busy} onAction={() => void (scanned ? clean() : scan())} />
         </div> : page === "history" ? <HistoryPage entries={history} onClear={() => saveHistory([])} /> : page === "privacy" ? <PrivacyPage /> : <SettingsPage mode={mode} onModeChange={setMode} preserveTimestamps={preserveTimestamps} onPreserveTimestampsChange={setPreserveTimestamps} preserveOrientation={preserveOrientation} onPreserveOrientationChange={setPreserveOrientation} preserveColorProfile={preserveColorProfile} onPreserveColorProfileChange={setPreserveColorProfile} removeExtendedAttributes={removeExtendedAttributes} onRemoveExtendedAttributesChange={setRemoveExtendedAttributes} />}
+        </div>
       </main>
     </div>
+    </div>
     <UpdateDialog />
+    <TooltipHost />
+    {commandsOpen ? <CommandPalette commands={commands} onClose={() => setCommandsOpen(false)} /> : null}
     </>
   );
 }
