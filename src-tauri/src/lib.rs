@@ -17,6 +17,7 @@ use tauri_plugin_window_state::StateFlags;
 static ALLOW_EXIT: AtomicBool = AtomicBool::new(false);
 static CLOSE_TO_TRAY: AtomicBool = AtomicBool::new(false);
 const PORTABLE_MARKER: &str = "metaclean-portable.marker";
+const MAX_BATCH_FILES: usize = 10_000;
 const UPDATE_NETWORK_HELP: &str = "无法连接已签名更新源。请检查 GitHub 网络或 HTTPS_PROXY 后重试，也可从正式发布页手动下载安装包。 / Could not reach the signed update feed. Check GitHub access or HTTPS_PROXY, then retry, or download the installer from the Releases page.";
 const UPDATE_CHANGED: &str = "可用版本在确认后发生了变化，请先重新检查并查看新版本说明。 / The available release changed after confirmation. Check again and review the new release before installing.";
 
@@ -43,6 +44,15 @@ fn reviewed_update_matches(available: &str, expected: &str) -> bool {
         == expected.strip_prefix('v').unwrap_or(expected)
 }
 
+fn validate_batch_size(count: usize) -> Result<(), String> {
+    if count > MAX_BATCH_FILES {
+        return Err(format!(
+            "单次任务最多处理 {MAX_BATCH_FILES} 个输入，当前收到 {count} 个"
+        ));
+    }
+    Ok(())
+}
+
 #[derive(Clone, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 struct UpdateRuntime {
@@ -59,31 +69,42 @@ struct UpdateDownloadProgress {
 }
 
 #[tauri::command]
-fn scan_files(paths: Vec<String>) -> Vec<ScanReport> {
-    engine::scan_paths(&paths)
+async fn scan_files(paths: Vec<String>) -> Result<Vec<ScanReport>, String> {
+    validate_batch_size(paths.len())?;
+    tauri::async_runtime::spawn_blocking(move || engine::scan_paths(&paths))
+        .await
+        .map_err(|error| format!("扫描任务异常结束：{error}"))
 }
 
 #[tauri::command]
-fn expand_paths(paths: Vec<String>) -> intake::IntakeResult {
-    intake::expand_paths(&paths)
+async fn expand_paths(paths: Vec<String>) -> Result<intake::IntakeResult, String> {
+    validate_batch_size(paths.len())?;
+    tauri::async_runtime::spawn_blocking(move || intake::expand_paths(&paths))
+        .await
+        .map_err(|error| format!("目录导入任务异常结束：{error}"))
 }
 
 #[tauri::command]
-fn clean_files(request: CleanRequest) -> Vec<CleanResult> {
-    request
-        .paths
-        .iter()
-        .map(|path| {
-            engine::clean_file_with_options(
-                std::path::Path::new(path),
-                &request.mode,
-                request.preserve_timestamps,
-                request.preserve_orientation,
-                request.preserve_color_profile,
-                request.remove_extended_attributes,
-            )
-        })
-        .collect()
+async fn clean_files(request: CleanRequest) -> Result<Vec<CleanResult>, String> {
+    validate_batch_size(request.paths.len())?;
+    tauri::async_runtime::spawn_blocking(move || {
+        request
+            .paths
+            .iter()
+            .map(|path| {
+                engine::clean_file_isolated_with_options(
+                    std::path::Path::new(path),
+                    &request.mode,
+                    request.preserve_timestamps,
+                    request.preserve_orientation,
+                    request.preserve_color_profile,
+                    request.remove_extended_attributes,
+                )
+            })
+            .collect()
+    })
+    .await
+    .map_err(|error| format!("清理任务异常结束：{error}"))
 }
 
 #[tauri::command]
@@ -408,13 +429,22 @@ pub fn run_cli_action() -> Option<i32> {
 mod update_tests {
     use super::{
         close_action, export_audit_report_to, portable_marker_exists, reviewed_update_matches,
-        self_update_supported_for, updater_network_error, CloseAction, PORTABLE_MARKER,
+        self_update_supported_for, updater_network_error, validate_batch_size, CloseAction,
+        MAX_BATCH_FILES, PORTABLE_MARKER,
     };
 
     #[test]
     fn close_behavior_defaults_to_exit_and_can_hide_to_tray() {
         assert_eq!(close_action(false), CloseAction::Exit);
         assert_eq!(close_action(true), CloseAction::HideToTray);
+    }
+
+    #[test]
+    fn rejects_oversized_ipc_batches_before_starting_worker_tasks() {
+        assert!(validate_batch_size(MAX_BATCH_FILES).is_ok());
+        let error = validate_batch_size(MAX_BATCH_FILES + 1).unwrap_err();
+        assert!(error.contains("10000"));
+        assert!(error.contains("10001"));
     }
 
     #[test]

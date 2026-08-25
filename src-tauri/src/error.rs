@@ -14,6 +14,8 @@ pub enum CleanError {
     TooLarge(String),
     #[error("拒绝处理符号链接：{0}")]
     Symlink(String),
+    #[error("源文件在清理期间发生变化，已停止替换：{0}")]
+    SourceChanged(String),
     #[error("ZIP 处理失败：{0}")]
     Zip(#[from] zip::result::ZipError),
     #[error("PDF 处理失败：{0}")]

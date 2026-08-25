@@ -1,10 +1,10 @@
 use base64::{engine::general_purpose::STANDARD as BASE64, Engine as _};
 use regex::Regex;
+use std::sync::OnceLock;
 
-use super::{bmp, heif, image, media, text};
+use super::{bmp, heif, image, jxl, media, text};
 use crate::models::{Finding, FindingSeverity};
 
-const MAX_EMBEDDED_IMAGES: usize = 100;
 const MAX_EMBEDDED_BYTES: usize = 16 * 1024 * 1024;
 const MAX_EMBEDDED_DEPTH: usize = 4;
 
@@ -17,11 +17,14 @@ fn metadata_finding(count: usize) -> Finding {
     }
 }
 
-fn html_patterns() -> Vec<Regex> {
-    vec![
-        Regex::new(r#"(?is)<meta\b[^>]*(?:name|property)\s*=\s*["'](?:generator|author|ai[_-]?(?:generated|model)|c2pa)["'][^>]*>"#).unwrap(),
-        Regex::new(r#"(?is)\sdata-(?:ai|llm|model|c2pa)[\w-]*\s*=\s*(?:"[^"]*"|'[^']*')"#).unwrap(),
-    ]
+fn html_patterns() -> &'static [Regex; 2] {
+    static PATTERNS: OnceLock<[Regex; 2]> = OnceLock::new();
+    PATTERNS.get_or_init(|| {
+        [
+            Regex::new(r#"(?is)<meta\b[^>]*(?:name|property)\s*=\s*["'](?:generator|author|ai[_-]?(?:generated|model)|c2pa)["'][^>]*>"#).unwrap(),
+            Regex::new(r#"(?is)\sdata-(?:ai|llm|model|c2pa)[\w-]*\s*=\s*(?:"[^"]*"|'[^']*')"#).unwrap(),
+        ]
+    })
 }
 
 fn frontmatter(value: &str) -> Option<(usize, usize)> {
@@ -29,19 +32,40 @@ fn frontmatter(value: &str) -> Option<(usize, usize)> {
         return None;
     }
     let start = value.find('\n')? + 1;
-    let end = value[start..].find("\n---")? + start;
+    let end = frontmatter_end_pattern().find(&value[start..])?.start() + start;
     Some((start, end))
 }
 
-fn markdown_pattern() -> Regex {
-    Regex::new(r"(?im)^\s*(?:generator|author|creator|last_modified_by|ai[_-]?(?:generated|model)|model|c2pa)\s*:.*(?:\r?\n|$)").unwrap()
+fn frontmatter_end_pattern() -> &'static Regex {
+    static PATTERN: OnceLock<Regex> = OnceLock::new();
+    PATTERN.get_or_init(|| {
+        Regex::new(r"(?m)^---[\t ]*\r?$").expect("frontmatter fence regex must compile")
+    })
 }
 
-fn data_image_pattern() -> Regex {
-    Regex::new(
-        r#"(?i)data:image/(?P<mime>[a-z0-9+.-]+)(?P<params>;[^\s\"')<>]+)?,(?P<payload>[A-Za-z0-9+/=\s%._~:-]+)"#,
-    )
-    .unwrap()
+fn markdown_pattern() -> &'static Regex {
+    static PATTERN: OnceLock<Regex> = OnceLock::new();
+    PATTERN.get_or_init(|| {
+        Regex::new(r"(?im)^\s*(?:generator|author|creator|last_modified_by|ai[_-]?(?:generated|model)|model|c2pa)\s*:.*(?:\r?\n|$)").unwrap()
+    })
+}
+
+fn data_image_pattern() -> &'static Regex {
+    static PATTERN: OnceLock<Regex> = OnceLock::new();
+    PATTERN.get_or_init(|| {
+        Regex::new(
+            r#"(?i)data:image/(?P<mime>[a-z0-9+.-]+)(?P<params>;[^\s\"')<>]+)?,(?P<payload>[A-Za-z0-9+/=\s%._~:-]+)"#,
+        )
+        .unwrap()
+    })
+}
+
+fn svg_metadata_pattern() -> &'static Regex {
+    static PATTERN: OnceLock<Regex> = OnceLock::new();
+    PATTERN.get_or_init(|| {
+        Regex::new(r"(?is)<metadata\b[^>]*>.*?</metadata\s*>")
+            .expect("SVG metadata regex must compile")
+    })
 }
 
 fn decode_hex(value: u8) -> Option<u8> {
@@ -55,17 +79,31 @@ fn decode_hex(value: u8) -> Option<u8> {
 
 fn decode_data_uri(payload: &str, base64: bool) -> Option<Vec<u8>> {
     let decoded = if base64 {
-        let mut compact: String = payload
-            .chars()
-            .filter(|character| !character.is_whitespace())
-            .collect();
+        let max_encoded = MAX_EMBEDDED_BYTES.div_ceil(3) * 4;
+        let compact_length = payload
+            .bytes()
+            .filter(|byte| !byte.is_ascii_whitespace())
+            .take(max_encoded + 1)
+            .count();
+        if compact_length > max_encoded {
+            return None;
+        }
+        let mut compact = String::with_capacity(compact_length + 3);
+        compact.extend(
+            payload
+                .chars()
+                .filter(|character| !character.is_whitespace()),
+        );
         while !compact.len().is_multiple_of(4) {
             compact.push('=');
         }
         BASE64.decode(compact).ok()?
     } else {
+        if payload.len() > MAX_EMBEDDED_BYTES * 3 {
+            return None;
+        }
         let bytes = payload.as_bytes();
-        let mut output = Vec::with_capacity(bytes.len());
+        let mut output = Vec::with_capacity(bytes.len().min(MAX_EMBEDDED_BYTES));
         let mut index = 0;
         while index < bytes.len() {
             if bytes[index] == b'%' {
@@ -76,6 +114,9 @@ fn decode_data_uri(payload: &str, base64: bool) -> Option<Vec<u8>> {
             } else {
                 output.push(bytes[index]);
                 index += 1;
+            }
+            if output.len() > MAX_EMBEDDED_BYTES {
+                return None;
             }
         }
         output
@@ -115,21 +156,23 @@ fn first_non_whitespace(data: &[u8]) -> Option<u8> {
 
 fn inspect_embedded_bytes(data: &[u8], mime: &str, depth: usize) -> usize {
     if data.starts_with(&[0xff, 0xd8, 0xff]) {
-        image::inspect_jpeg(data).map_or(0, |items| privacy_count(&items))
+        image::inspect_jpeg(data).map_or(1, |items| privacy_count(&items))
     } else if data.starts_with(b"\x89PNG\r\n\x1a\n") {
-        image::inspect_png(data).map_or(0, |items| privacy_count(&items))
+        image::inspect_png(data).map_or(1, |items| privacy_count(&items))
     } else if data.len() >= 12 && &data[..4] == b"RIFF" && &data[8..12] == b"WEBP" {
-        image::inspect_webp(data).map_or(0, |items| privacy_count(&items))
+        image::inspect_webp(data).map_or(1, |items| privacy_count(&items))
+    } else if data.starts_with(b"\xff\x0a") || data.starts_with(b"\0\0\0\x0cJXL \r\n\x87\n") {
+        jxl::inspect(data).map_or(1, |items| privacy_count(&items))
     } else if data.starts_with(b"GIF87a") || data.starts_with(b"GIF89a") {
-        media::inspect_gif(data).map_or(0, |items| privacy_count(&items))
-    } else if bmp::is_bmp(data) {
-        bmp::inspect(data).map_or(0, |items| privacy_count(&items))
+        media::inspect_gif(data).map_or(1, |items| privacy_count(&items))
+    } else if data.starts_with(b"BM") {
+        bmp::inspect(data).map_or(1, |items| privacy_count(&items))
     } else if heif::is_heif(data) {
-        heif::inspect(data).map_or(0, |items| privacy_count(&items))
+        heif::inspect(data).map_or(1, |items| privacy_count(&items))
     } else if depth < MAX_EMBEDDED_DEPTH
         && (mime.contains("svg") || first_non_whitespace(data) == Some(b'<'))
     {
-        std::str::from_utf8(data).map_or(0, |value| {
+        std::str::from_utf8(data).map_or(1, |value| {
             inspect_with_depth(value, "svg", depth + 1)
                 .iter()
                 .map(|finding| finding.count)
@@ -147,6 +190,8 @@ fn clean_embedded_bytes(data: &[u8], mime: &str, depth: usize) -> Option<Vec<u8>
         image::clean_png_with_options(data, true).ok()?
     } else if data.len() >= 12 && &data[..4] == b"RIFF" && &data[8..12] == b"WEBP" {
         image::clean_webp_with_options(data, true).ok()?
+    } else if jxl::is_jxl(data) {
+        jxl::clean(data).ok()?
     } else if data.starts_with(b"GIF87a") || data.starts_with(b"GIF89a") {
         media::clean_gif(data).ok()?
     } else if bmp::is_bmp(data) {
@@ -168,7 +213,6 @@ fn clean_embedded_bytes(data: &[u8], mime: &str, depth: usize) -> Option<Vec<u8>
 fn inspect_embedded(value: &str, depth: usize) -> usize {
     data_image_pattern()
         .captures_iter(value)
-        .take(MAX_EMBEDDED_IMAGES)
         .filter_map(|capture| {
             let params = capture.name("params").map_or("", |value| value.as_str());
             let data = decode_data_uri(
@@ -185,7 +229,7 @@ fn clean_embedded(value: &str, depth: usize) -> String {
     let pattern = data_image_pattern();
     let mut output = String::with_capacity(value.len());
     let mut cursor = 0;
-    for capture in pattern.captures_iter(value).take(MAX_EMBEDDED_IMAGES) {
+    for capture in pattern.captures_iter(value) {
         let whole = capture.get(0).unwrap();
         output.push_str(&value[cursor..whole.start()]);
         let params = capture.name("params").map_or("", |item| item.as_str());
@@ -220,10 +264,7 @@ fn inspect_with_depth(value: &str, extension: &str, depth: usize) -> Vec<Finding
             .iter()
             .map(|pattern| pattern.find_iter(value).count())
             .sum(),
-        "svg" => Regex::new(r"(?is)<metadata\b[^>]*>.*?</metadata\s*>")
-            .unwrap()
-            .find_iter(value)
-            .count(),
+        "svg" => svg_metadata_pattern().find_iter(value).count(),
         "md" | "markdown" => frontmatter(value)
             .map(|(start, end)| markdown_pattern().find_iter(&value[start..end]).count())
             .unwrap_or(0),
@@ -257,12 +298,7 @@ fn clean_with_depth(value: &str, extension: &str, depth: usize) -> (String, Vec<
                 output = pattern.replace_all(&output, "").into_owned();
             }
         }
-        "svg" => {
-            output = Regex::new(r"(?is)<metadata\b[^>]*>.*?</metadata\s*>")
-                .unwrap()
-                .replace_all(&output, "")
-                .into_owned()
-        }
+        "svg" => output = svg_metadata_pattern().replace_all(&output, "").into_owned(),
         "md" | "markdown" => {
             if let Some((start, end)) = frontmatter(&output) {
                 let cleaned = markdown_pattern()
@@ -281,6 +317,24 @@ fn clean_with_depth(value: &str, extension: &str, depth: usize) -> (String, Vec<
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn png_chunk(kind: &[u8; 4], payload: &[u8]) -> Vec<u8> {
+        let mut output = (payload.len() as u32).to_be_bytes().to_vec();
+        output.extend_from_slice(kind);
+        output.extend_from_slice(payload);
+        output.extend_from_slice(&image::png_crc32(&output[4..]).to_be_bytes());
+        output
+    }
+
+    fn private_png() -> Vec<u8> {
+        let mut png = b"\x89PNG\r\n\x1a\n".to_vec();
+        png.extend(png_chunk(b"IHDR", &[0, 0, 0, 1, 0, 0, 0, 1, 8, 6, 0, 0, 0]));
+        png.extend(png_chunk(b"tEXt", b"Author\0Alice"));
+        png.extend(png_chunk(b"IDAT", b"pixels"));
+        png.extend(png_chunk(b"IEND", b""));
+        png
+    }
+
     #[test]
     fn removes_html_generator_and_ai_attributes() {
         let source =
@@ -306,14 +360,17 @@ mod tests {
     }
 
     #[test]
+    fn does_not_treat_a_longer_yaml_value_as_the_closing_fence() {
+        let source = "---\r\ntitle: Hello\r\n---not-a-fence\r\ngenerator: Claude\r\n---\r\nBody";
+        let cleaned = clean(source, "md").0;
+        assert!(cleaned.contains("---not-a-fence"));
+        assert!(!cleaned.contains("Claude"));
+        assert!(cleaned.ends_with("Body"));
+    }
+
+    #[test]
     fn cleans_metadata_inside_embedded_base64_images() {
-        let mut png = b"\x89PNG\r\n\x1a\n".to_vec();
-        png.extend_from_slice(&5u32.to_be_bytes());
-        png.extend_from_slice(b"tEXtAlice");
-        png.extend_from_slice(&[0; 4]);
-        png.extend_from_slice(&0u32.to_be_bytes());
-        png.extend_from_slice(b"IEND");
-        png.extend_from_slice(&[0; 4]);
+        let png = private_png();
         let source = format!(
             "<img src=\"data:image/png;base64,{}\">",
             BASE64.encode(&png)
@@ -334,5 +391,82 @@ mod tests {
         let decoded = BASE64.decode(payload).unwrap();
         assert!(!decoded.windows(4).any(|window| window == b"tEXt"));
         assert!(decoded.windows(4).any(|window| window == b"IEND"));
+    }
+
+    #[test]
+    fn cleans_metadata_inside_embedded_jpeg_xl() {
+        let jxl_box = |kind: &[u8; 4], payload: &[u8]| {
+            let mut bytes = ((payload.len() + 8) as u32).to_be_bytes().to_vec();
+            bytes.extend_from_slice(kind);
+            bytes.extend_from_slice(payload);
+            bytes
+        };
+        let mut jxl = b"\0\0\0\x0cJXL \r\n\x87\n".to_vec();
+        jxl.extend(jxl_box(b"ftyp", b"jxl \0\0\0\0jxl "));
+        jxl.extend(jxl_box(b"Exif", b"\0\0\0\0II*\0Alice"));
+        jxl.extend(jxl_box(b"jxlc", b"\xff\x0aIMAGE-CODESTREAM"));
+        let source = format!(
+            "<img src=\"data:image/jxl;base64,{}\">",
+            BASE64.encode(&jxl)
+        );
+
+        assert!(inspect(&source, "html")
+            .iter()
+            .any(|finding| finding.category == "embedded_image_metadata"));
+        let cleaned = clean(&source, "html").0;
+        let payload = data_image_pattern()
+            .captures(&cleaned)
+            .unwrap()
+            .name("payload")
+            .unwrap()
+            .as_str();
+        let decoded = BASE64.decode(payload).unwrap();
+        assert_eq!(decoded.len(), jxl.len());
+        assert!(!decoded.windows(4).any(|window| window == b"Exif"));
+        jxl::verify_cleaned(&decoded).unwrap();
+    }
+
+    #[test]
+    fn scans_and_cleans_embedded_images_after_the_hundredth_item() {
+        let benign = "<img src=\"data:image/png;base64,AAAA\">";
+        let mut source = benign.repeat(100);
+        source.push_str(&format!(
+            "<img src=\"data:image/png;base64,{}\">",
+            BASE64.encode(private_png())
+        ));
+
+        assert!(inspect(&source, "html")
+            .iter()
+            .any(|finding| finding.category == "embedded_image_metadata"));
+        let cleaned = clean(&source, "html").0;
+        assert_ne!(cleaned, source);
+        assert!(inspect(&cleaned, "html").is_empty());
+    }
+
+    #[test]
+    fn rejects_embedded_payloads_that_exceed_the_decode_budget() {
+        let oversized_base64 = "A".repeat(MAX_EMBEDDED_BYTES.div_ceil(3) * 4 + 1);
+        assert!(decode_data_uri(&oversized_base64, true).is_none());
+
+        let oversized_plain = "a".repeat(MAX_EMBEDDED_BYTES + 1);
+        assert!(decode_data_uri(&oversized_plain, false).is_none());
+    }
+
+    #[test]
+    fn treats_recognized_but_unverifiable_embedded_images_as_residual() {
+        let mut corrupted = private_png();
+        corrupted[20] ^= 1;
+        let source = format!(
+            "<img src=\"data:image/png;base64,{}\">",
+            BASE64.encode(corrupted)
+        );
+
+        let findings = inspect(&source, "html");
+        assert!(findings
+            .iter()
+            .any(|finding| finding.category == "embedded_image_metadata"));
+        let cleaned = clean(&source, "html").0;
+        assert_eq!(cleaned, source);
+        assert!(!inspect(&cleaned, "html").is_empty());
     }
 }

@@ -44,12 +44,18 @@ fn chunks(data: &[u8], span: Range<usize>) -> Result<Vec<Chunk>> {
             .then(|| data.get(offset + 8..offset + 12))
             .flatten()
             .and_then(|bytes| bytes.try_into().ok());
+        if matches!(&kind, b"LIST" | b"RIFF") && list_type.is_none() {
+            return Err(invalid("AVI LIST 数据块缺少类型"));
+        }
         chunks.push(Chunk {
             kind,
             list_type,
             range: offset..end,
         });
         offset = end;
+    }
+    if offset != span.end {
+        return Err(invalid("AVI 数据块尾存在截断数据"));
     }
     Ok(chunks)
 }
@@ -71,6 +77,7 @@ fn private(chunk: &Chunk) -> bool {
             | b"strn"
             | b"_PMX"
             | b"XMP "
+            | b"C2PA"
             | b"tdat"
             | b"Tdat"
     )
@@ -88,7 +95,7 @@ fn descend(chunk: &Chunk) -> bool {
 
 fn collect(data: &[u8], span: Range<usize>, depth: usize, found: &mut Vec<Chunk>) -> Result<()> {
     if depth > 8 {
-        return Ok(());
+        return Err(invalid("AVI LIST 嵌套超过安全上限"));
     }
     for chunk in chunks(data, span)? {
         if private(&chunk) {
@@ -109,39 +116,62 @@ fn private_chunks(data: &[u8]) -> Result<Vec<Chunk>> {
     if !is_avi(data) {
         return Err(invalid("不是有效 AVI"));
     }
-    let declared = u32::from_le_bytes(data[4..8].try_into().unwrap()) as usize + 8;
-    let end = declared.min(data.len());
-    if end < 12 {
-        return Err(invalid("AVI RIFF 长度不匹配"));
-    }
     let mut found = Vec::new();
-    collect(data, 12..end, 0, &mut found)?;
-    // Anything appended past the RIFF chunk is outside the format entirely.
-    if data.len() > declared {
+    let mut offset = 0usize;
+    while data.get(offset..offset + 4) == Some(b"RIFF") {
+        let header_end = offset
+            .checked_add(12)
+            .filter(|end| *end <= data.len())
+            .ok_or_else(|| invalid("AVI 顶层 RIFF 头不完整"))?;
+        if !matches!(&data[offset + 8..header_end], b"AVI " | b"AVIX") {
+            break;
+        }
+        let declared =
+            u32::from_le_bytes(data[offset + 4..offset + 8].try_into().unwrap()) as usize;
+        let end = offset
+            .checked_add(8)
+            .and_then(|start| start.checked_add(declared))
+            .filter(|end| declared >= 4 && *end <= data.len())
+            .ok_or_else(|| invalid("AVI RIFF 长度不匹配"))?;
+        collect(data, offset + 12..end, 0, &mut found)?;
+        offset = end;
+    }
+    // Bytes after the final complete AVI/AVIX form are outside the container.
+    if data.len() > offset {
         found.push(Chunk {
             kind: *b"junk",
             list_type: None,
-            range: declared..data.len(),
+            range: offset..data.len(),
         });
     }
     Ok(found)
 }
 
-fn findings(count: usize) -> Vec<Finding> {
-    if count == 0 {
-        Vec::new()
-    } else {
-        vec![Finding {
+fn findings(chunks: &[Chunk]) -> Vec<Finding> {
+    let mut findings = Vec::new();
+    let metadata = chunks.iter().filter(|chunk| chunk.kind != *b"C2PA").count();
+    if metadata > 0 {
+        findings.push(Finding {
             category: "video_metadata".into(),
             label: "AVI INFO 标签、拍摄时间与 XMP".into(),
-            count,
+            count: metadata,
             severity: FindingSeverity::Privacy,
-        }]
+        });
     }
+    let provenance = chunks.iter().filter(|chunk| chunk.kind == *b"C2PA").count();
+    if provenance > 0 {
+        findings.push(Finding {
+            category: "provenance".into(),
+            label: "AVI C2PA 来源标记".into(),
+            count: provenance,
+            severity: FindingSeverity::Provenance,
+        });
+    }
+    findings
 }
 
 pub fn inspect(data: &[u8]) -> Result<Vec<Finding>> {
-    Ok(findings(private_chunks(data)?.len()))
+    Ok(findings(&private_chunks(data)?))
 }
 
 pub fn clean(data: &[u8]) -> Result<(Vec<u8>, Vec<Finding>)> {
@@ -159,7 +189,7 @@ pub fn clean(data: &[u8]) -> Result<(Vec<u8>, Vec<Finding>)> {
         let end = chunk.range.end.min(output.len());
         output[chunk.range.start + 8..end].fill(0);
     }
-    Ok((output, findings(chunks.len())))
+    Ok((output, findings(&chunks)))
 }
 
 pub fn verify_cleaned(data: &[u8]) -> Result<()> {
@@ -258,9 +288,56 @@ mod tests {
     }
 
     #[test]
+    fn preserves_concatenated_open_dml_avix_segments() {
+        let mut source = sample();
+        let mut second_body = b"AVIX".to_vec();
+        let mut movi = b"movi".to_vec();
+        movi.extend(chunk(b"01dc", b"SECOND-SEGMENT-FRAME"));
+        second_body.extend(chunk(b"LIST", &movi));
+        let second = chunk(b"RIFF", &second_body);
+        source.extend_from_slice(&second);
+
+        let (cleaned, _) = clean(&source).unwrap();
+        assert_eq!(cleaned.len(), source.len());
+        assert!(contains(&cleaned, b"SECOND-SEGMENT-FRAME"));
+        assert!(contains(&cleaned, b"AVIX"));
+        verify_cleaned(&cleaned).unwrap();
+    }
+
+    #[test]
+    fn removes_the_standard_riff_c2pa_chunk_as_provenance() {
+        let mut body = b"AVI ".to_vec();
+        body.extend(chunk(b"C2PA", b"manifest"));
+        let source = chunk(b"RIFF", &body);
+        let findings = inspect(&source).unwrap();
+        assert_eq!(findings[0].category, "provenance");
+        assert_eq!(findings[0].severity, FindingSeverity::Provenance);
+        let (cleaned, _) = clean(&source).unwrap();
+        assert!(!contains(&cleaned, b"manifest"));
+        verify_cleaned(&cleaned).unwrap();
+    }
+
+    #[test]
     fn rejects_containers_that_are_not_avi() {
         assert!(inspect(b"RIFF\0\0\0\0WAVE").is_err());
         assert!(inspect(b"RIFF").is_err());
         assert!(!is_avi(b"\x89PNG\r\n\x1a\n"));
+    }
+
+    #[test]
+    fn rejects_truncated_and_over_nested_list_layouts() {
+        let mut truncated_body = b"AVI ".to_vec();
+        truncated_body.extend_from_slice(b"tail");
+        assert!(inspect(&chunk(b"RIFF", &truncated_body)).is_err());
+
+        let mut nested = chunk(b"IART", b"private");
+        for _ in 0..10 {
+            let mut list = b"hdrl".to_vec();
+            list.extend(nested);
+            nested = chunk(b"LIST", &list);
+        }
+        let mut body = b"AVI ".to_vec();
+        body.extend(nested);
+        assert!(inspect(&chunk(b"RIFF", &body)).is_err());
     }
 }

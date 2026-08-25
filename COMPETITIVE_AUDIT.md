@@ -11,6 +11,13 @@ A second baseline was added on 2026-08-23 and refreshed on 2026-08-24 against
 It is the AI-provenance cleaner MetaClean was originally built to replace with a
 desktop application and is compared in its own section below.
 
+A third baseline was audited on 2026-08-26 against the active official
+`jvoisin/mat2` main branch at commit
+`126e232b6c17766c647bb456d08eb82c53434b5b` (2026-08-25), after its 0.15.0
+release added JPEG XL and AVIF and its subsequent ODF hardening. It is compared
+separately below so a fast-moving Linux privacy tool is not hidden behind an
+older fork or a README-only format count.
+
 This is an evidence ledger, not a claim that every competitor feature is
 already matched. A row is complete only when the repository contains the named
 implementation and tests.
@@ -28,13 +35,13 @@ implementation and tests.
 | macOS extended attributes | Optional blanket `xattr` removal | Read-only scan plus explicit opt-in removal of six known provenance/download keys; all xattrs are preserved by default and unrelated Finder/resource-fork/tag/custom keys survive | Exceeds on selective preservation; real macOS filesystem regression gated in CI |
 | PDF privacy | ExifTool reversible update; old metadata may remain recoverable | Full `lopdf` reserialization with regression tests proving old metadata bytes are absent and embedded JPEG XObjects have their private blocks removed | Exceeds |
 | Office privacy | No native Office revision/comment workflow | DOCX/XLSX/PPTX/ODT properties, comments, custom XML and DOCX revisions, plus EPUB Dublin Core terms, reader sediment from Calibre/Sigil/Kobo/Apple/Adobe, and a `dcterms:modified` stamp pinned to the epoch rather than dropped | Exceeds |
-| Audio privacy | Only `.m4a` appears in the actual application whitelist | MP3/WAV/FLAC tag, artwork, XMP and broadcast metadata cleaning, plus WMA and the MPEG-4 audio brands — 10 audio extensions in all | Exceeds |
+| Audio privacy | Only `.m4a` appears in the actual application whitelist | MP3/WAV/FLAC/AIFF tag, artwork, XMP and broadcast metadata cleaning, plus WMA and the MPEG-4 audio brands — 13 audio extensions in all | Exceeds |
 | Text/AI traces | Not a primary capability | Every Unicode noncharacter, reserved default-ignorable range, private-use character, front matter and HTML/SVG generator or AI attribute, with context preservation for legitimate emoji, scripts, flags, CJK variants and directional text | Exceeds |
 | Desktop integration | File/folder picker and drag/drop | Adds Windows Explorer context commands and tray workflow | Exceeds on Windows |
 | Result table ergonomics | Sorts name/type/size/before/after, shows size delta, reveal-in-folder and copyable errors | Stable name/extension/source-size/output-size/finding-count sorting, per-file size delta, reveal-in-folder, explicit failure text, persistent history and a per-file detail panel naming the detected format, source/output/backup paths and each finding category as removed, kept or pending | Exceeds on per-file disclosure without exposing values |
 | Native application chrome | Full app menus, keyboard accelerators, window-state restore and macOS dock integration | Native menus and accelerators plus a fixed 1180 × 720 enterprise workspace, compact icon rail, self-drawn product caption, command palette, rebuilt context menus and persistent local-status bar | Exceeds |
 | Version discovery | No polling; manual Releases link | Optional startup/manual stable-release discovery with official-link validation | Exceeds |
-| Actual application intake | README lists 90+ ExifTool writer formats, but `SUPPORTED_EXTENSIONS` in `src/domain/files/file_types.ts` is a 30-entry whitelist and both drop/folder paths enforce it | 91 extensions traverse the real application intake, classification, shell integration and tests, and every one of the baseline's 30 is inside them | Exceeds; strict superset of the competitor's real intake |
+| Actual application intake | README lists 90+ ExifTool writer formats, but `SUPPORTED_EXTENSIONS` in `src/domain/files/file_types.ts` is a 30-entry whitelist and both drop/folder paths enforce it | 105 extensions traverse the real application intake, classification, shell integration and tests, and every one of the baseline's 30 is inside them | Exceeds; strict superset of the competitor's real intake |
 | Specialized image/video families | TIFF/TIF, HEIC/HEIF, BMP, AVIF, ten RAW extensions and AVI/M4A/WMV are admitted through ExifTool, with documented partial-removal and rendering risks | TIFF, HEIF/AVIF, BMP, 23 camera raw formats, AVI, Matroska/WebM and ASF/WMV are each cleaned by a native offset-preserving strategy — in-place IFD compaction, item-extent zeroing, RIFF `JUNK` renaming, EBML `Void` stamping and ASF padding-GUID stamping — so no strip, cue or item offset ever shifts | Exceeds; support without the rewrite risk |
 | Raw negative writes | `.raf` is refused outright ("RAF metadata removal is disabled because writing this format can damage the original"); every other raw format is forced to a copy and can never replace the original | RAF's embedded JPEG preview — which carries the full EXIF block including GPS and serial number — is cleaned in place and zero-padded to its original extent; raw formats support replacement because a compacted directory cannot move sensor data | Exceeds on the one file family where refusal leaks the most |
 | Localization | 26 shipped catalogs, but only `en` (126 keys) and `ro` are complete; 24 of 26 are partial, most at 61/126 keys and `pt` at 13/126 | 32 complete interface locales — a superset of all 26 the baseline ships, plus zh-TW, el, id, ko, ms and nb — every one carrying all 133 source strings, with a catalog that throws at module load on any gap and a test that puts each new locale under coverage automatically | Exceeds on count and, decisively, on completeness |
@@ -54,7 +61,7 @@ revisions, text/AI traces, atomic backup semantics, Windows shell integration,
 secure version discovery, localization completeness and explicit theme control.
 It now matches the three-family installed-app CI matrix while keeping the test
 driver absent from production builds. Its explicit real-app intake grew from 26
-to 91 extensions without routing unknown binary formats through a generic
+to 105 extensions without routing unknown binary formats through a generic
 rewrite, and now strictly contains ExifCleaner's 30-extension application
 whitelist even though the latter's README separately enumerates 90+ ExifTool
 writer formats. Candidate bytes are re-detected and re-inspected before any
@@ -92,7 +99,7 @@ delivery as much as capability.
 | Layer A — invisible Unicode | Invisible Unicode, exotic spaces, bidi controls, tag characters, noncharacters and reserved ranges, via deterministic scripts | The same classes plus all private-use planes in `cleaners/text.rs`; all 66 noncharacters and reserved default-ignorable ranges are covered | Exceeds; adds private-use planes |
 | Joiner correctness | Context rules preserve selected emoji and complex-script use while stripping floating controls | Context preservation also covers expanded emoji symbols, complete tag flags, CJK variants, Egyptian/Duployan/music layout controls and paired directional embeddings/isolates | Exceeds on the verified preservation set |
 | Layer B — statistical watermarks | Agent rewrite plus an optional `rewrite_text.py` hook | Deliberately out of scope, documented as such in both READMEs and `SUPPORT_POLICY.md` | Divergence by design; see below |
-| File formats | PNG, JPEG, WebP, AVIF, HEIC, BMP, GIF, TIFF, SVG, PDF, DOCX, XLSX, PPTX, EPUB, ODT, HTML, Markdown, MP4/MOV/M4A/M4V, WAV, MP3 | All of the above are inside the 91-extension allowlist, alongside 23 camera raw formats, AVI, ASF/WMV, Matroska/WebM and FLAC | Exceeds; strict superset |
+| File formats | PNG, JPEG, WebP, AVIF, HEIC, BMP, GIF, TIFF, SVG, PDF, DOCX, XLSX, PPTX, EPUB, ODT, HTML, Markdown, MP4/MOV/M4A/M4V, WAV, MP3 | All of the above are inside the 105-extension allowlist, alongside JPEG XL, the full ODF family, 23 camera raw formats, AVI, ASF/WMV, Matroska/WebM, FLAC and AIFF | Exceeds; strict superset |
 | C2PA / provenance | C2PA, EXIF, XMP and document properties, including WAV C2PA and C2PA carried by an ID3v2 prefix before FLAC | The same, plus JUMBF/C2PA in JPEG, PNG, WebP and HEIF item payloads, WAV C2PA, ID3-prefixed FLAC, DOCX revision resolution, deep PDF JPEG cleanup and embedded raster data-URI cleanup | Exceeds |
 | Auditability | HTTP response and agent transcript | A versioned JSON report exported atomically from the desktop queue, with aggregate and per-file outcomes but no raw sensitive metadata values | Exceeds on enterprise-safe local evidence |
 | Privacy of the operation itself | Content is posted to a local HTTP service; Layer B routes the text through an agent | Files are never read by anything but the local process, and there is no network path for content in any mode | Exceeds |
@@ -104,14 +111,38 @@ the prose — which means either shipping a model or sending the text to one. Bo
 contradict "your files never leave your computer." Byte-level cleaning is the
 whole product boundary, and this is the edge of it, not an unfinished feature.
 
+## mat2 baseline
+
+`jvoisin/mat2` main at
+`126e232b6c17766c647bb456d08eb82c53434b5b` is a Python 3.11 library and CLI
+with Dolphin and Nemo integrations; its own README points desktop users to the
+separate GTK Metadata Cleaner application. Its broad parser set remains an
+important safety baseline rather than being treated as a command-line-only
+product that can be dismissed on presentation.
+
+| Capability | mat2 baseline | MetaClean current | Status |
+|---|---|---|---|
+| Delivery | Python library/CLI plus Linux file-manager integrations; a separate GTK application is recommended for GUI use | One integrated Tauri desktop application, native menus, history, inspection/confirmation, Windows shell integration and installers for Windows, macOS and Linux | Exceeds on integrated cross-platform delivery |
+| Runtime dependencies | Python plus format-dependent Mutagen, Poppler, GDK Pixbuf, librsvg, ExifTool and optional FFmpeg | Rust-native parsers in the shipped process, with no ExifTool, Python, Perl or FFmpeg runtime | Exceeds on deployment surface |
+| Safe replacement | Writes a cleaned copy by default; `--inplace` is explicitly without backup | Writes a unique cleaned copy by default; replacement always creates a unique backup before guarded atomic replacement and refuses a source changed since it was read | Exceeds on race and recovery safety |
+| Metadata inspection | `--show` lists detected harmful metadata | Read-only scan exposes only category and count; values such as GPS, authors and provenance never enter UI, history, clipboard or accessibility state | Deliberate privacy-minimizing divergence |
+| JPEG XL | Added in 0.15.0 through ExifTool's lightweight path | Native naked-codestream recognition plus structural validation of `jxlc` and ordered `jxlp` containers; EXIF, XMP, JUMBF/C2PA, Brotli-wrapped metadata and JPEG reconstruction data are retired without moving the codestream | Exceeds on native bounded container verification |
+| OpenDocument privacy | Current main removes properties, comments, tracked changes and optional settings across ODF surfaces | The same privacy surfaces are handled across 11 ODF extensions, with bounded ZIP expansion, structural namespace matching, untouched-entry streaming and candidate re-inspection before output | Parity on privacy scope; exceeds on integrated pre-write verification |
+| Failure isolation | Individual parsers report errors to the CLI | Per-file scanner and cleaner panics are contained; a malformed file cannot abort the remaining batch or expose a panic payload | Exceeds on batch containment |
+| Format breadth outside MetaClean's contract | Also advertises archives, torrent, CSS, PPM and additional Ogg-family formats | Refuses unknown binaries, generic archives and pixel-rewriting formats unless a native privacy surface can be bounded and re-verified | Deliberate fail-closed divergence, not claimed as parity |
+
 ## Remaining parity backlog
 
-No known in-scope product or release parity backlog remains within either baseline after
-the 2026-08-24 watermarks-remover main refresh. The
-one delta against ExifCleaner is a distribution channel rather than a
-capability: it publishes an AUR package (`paru -S exifcleaner-bin`) and
-MetaClean does not. That is a publishing decision, out of scope for the source
-tree.
+No known in-scope product or release parity backlog remains against the
+ExifCleaner or watermarks-remover baselines after the 2026-08-26 refresh. The
+mat2 comparison intentionally records its broader archive, torrent, CSS, PPM
+and Ogg-family surface instead of claiming a false universal superset. Adding
+any of those requires the same native, bounded and re-verifiable cleaner bar;
+generic pass-through to ExifTool or FFmpeg is not accepted as equivalent.
+
+The one distribution delta against ExifCleaner is its AUR package
+(`paru -S exifcleaner-bin`). That is a publishing decision, out of scope for
+the source tree and explicitly excluded from this work session.
 
 The raw-value metadata viewer and the Layer B statistical rewrite remain
 deliberate privacy divergences, not missing deliverables. Word/WPS

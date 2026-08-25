@@ -256,6 +256,18 @@ describe("desktop components", () => {
     expect(await screen.findByRole("button", { name: "启用" })).toBeDisabled();
   });
 
+  it("reports Windows integration failures without leaving the control busy", async () => {
+    invokeMock.mockImplementation((command: string) => command === "get_context_menu_status"
+      ? Promise.resolve({ available: true, enabled: false, detail: "可启用" })
+      : Promise.reject(new Error("registry denied")));
+    wrap(<SettingsPage mode="copy" onModeChange={vi.fn()} preserveTimestamps onPreserveTimestampsChange={vi.fn()} preserveOrientation onPreserveOrientationChange={vi.fn()} preserveColorProfile onPreserveColorProfileChange={vi.fn()} removeExtendedAttributes={false} onRemoveExtendedAttributesChange={vi.fn()} closeToTray={false} onCloseToTrayChange={vi.fn()} />);
+    fireEvent.click(screen.getByRole("button", { name: "系统与更新" }));
+    const enable = await screen.findByRole("button", { name: "启用" });
+    fireEvent.click(enable);
+    expect(await screen.findByText(/更新右键菜单失败.*registry denied/)).toBeInTheDocument();
+    await waitFor(() => expect(enable).toBeEnabled());
+  });
+
   it("shows release notes and opens the GitHub release from the update prompt", async () => {
     checkForUpdateMock.mockResolvedValue({
       status: "available",

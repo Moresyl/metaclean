@@ -22,7 +22,7 @@ function Probe() {
     <span>{update.status}</span>
     <span>{update.currentVersion}</span>
     <span>{update.error}</span>
-    <span>{String(update.runtime.selfUpdateSupported)}</span>
+    <span data-testid="self-update-supported">{String(update.runtime.selfUpdateSupported)}</span>
     <span>{update.progress?.downloaded}</span>
     <span data-testid="prompt-open">{String(update.promptOpen)}</span>
     <button type="button" onClick={() => void update.checkUpdate()}>check</button>
@@ -65,6 +65,13 @@ describe("UpdateProvider", () => {
     expect(screen.getByText("offline")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "open" }));
     await waitFor(() => expect(openUrlMock).toHaveBeenCalledWith("https://github.com/Moresyl/metaclean/releases/latest"));
+  });
+
+  it("falls back safely when the native runtime response is malformed", async () => {
+    getUpdateRuntimeMock.mockResolvedValue(undefined);
+    render(<UpdateProvider><Probe /></UpdateProvider>);
+    expect(await screen.findByTestId("self-update-supported")).toHaveTextContent("false");
+    expect(screen.getByRole("button", { name: "check" })).toBeEnabled();
   });
 
   it("deduplicates concurrent checks", async () => {

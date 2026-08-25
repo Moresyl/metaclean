@@ -2461,6 +2461,7 @@ version = "0.6.1"
 dependencies = [
  "base64 0.22.1",
  "filetime",
+ "libc",
  "lopdf",
  "quick-xml",
  "regex",

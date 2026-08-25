@@ -1,6 +1,6 @@
 use std::io::Cursor;
 
-use lopdf::{Dictionary, Document, Object};
+use lopdf::{Dictionary, Document, LoadOptions, Object, Stream};
 
 use crate::{
     error::Result,
@@ -9,53 +9,140 @@ use crate::{
 
 use super::image;
 
-fn embedded_image_findings(document: &Document) -> usize {
-    document
-        .objects
-        .values()
-        .filter_map(|object| match object {
-            Object::Stream(stream)
-                if stream
-                    .dict
-                    .get(b"Subtype")
-                    .is_ok_and(|value| value.as_name().is_ok_and(|name| name == b"Image")) =>
-            {
-                Some(stream)
+const MAX_PDF_DECOMPRESSED_STREAM_BYTES: usize = 64 * 1024 * 1024;
+const MAX_PDF_OBJECT_DEPTH: usize = 64;
+
+fn load_document(data: &[u8]) -> Result<Document> {
+    Ok(Document::load_mem_with_options(
+        data,
+        LoadOptions::with_max_decompressed_size(MAX_PDF_DECOMPRESSED_STREAM_BYTES),
+    )?)
+}
+
+fn direct_jpeg_stream(stream: &Stream) -> Result<bool> {
+    if !name_is(&stream.dict, b"Subtype", b"Image") {
+        return Ok(false);
+    }
+    let Ok(filter) = stream.dict.get(b"Filter") else {
+        return Ok(false);
+    };
+    let filters: Vec<&[u8]> = if let Ok(name) = filter.as_name() {
+        vec![name]
+    } else {
+        filter
+            .as_array()?
+            .iter()
+            .map(Object::as_name)
+            .collect::<lopdf::Result<_>>()?
+    };
+    let dct = filters
+        .iter()
+        .filter(|name| matches!(**name, b"DCTDecode" | b"DCT"))
+        .count();
+    if dct == 0 {
+        return Ok(false);
+    }
+    if filters.len() != 1 {
+        return Err(crate::error::CleanError::InvalidFormat(
+            "PDF JPEG 图像使用复合过滤器，无法证明其元数据已清理".into(),
+        ));
+    }
+    if !stream.content.starts_with(&[0xff, 0xd8, 0xff]) {
+        return Err(crate::error::CleanError::InvalidFormat(
+            "PDF DCT 图像流缺少 JPEG 签名".into(),
+        ));
+    }
+    Ok(true)
+}
+
+fn embedded_image_findings(document: &Document) -> Result<usize> {
+    let mut count = 0;
+    for object in document.objects.values() {
+        let Object::Stream(stream) = object else {
+            continue;
+        };
+        if direct_jpeg_stream(stream)? && !image::inspect_jpeg(&stream.content)?.is_empty() {
+            count += 1;
+        }
+    }
+    Ok(count)
+}
+
+fn name_is(dictionary: &Dictionary, key: &[u8], expected: &[u8]) -> bool {
+    dictionary
+        .get(key)
+        .is_ok_and(|value| value.as_name().is_ok_and(|name| name == expected))
+}
+
+fn is_annotation(dictionary: &Dictionary) -> bool {
+    name_is(dictionary, b"Type", b"Annot")
+        || dictionary.get(b"Rect").is_ok() && dictionary.get(b"Subtype").is_ok()
+}
+
+fn private_dictionary_count(dictionary: &Dictionary, depth: usize) -> Result<usize> {
+    if depth > MAX_PDF_OBJECT_DEPTH {
+        return Err(crate::error::CleanError::InvalidFormat(
+            "PDF 直接对象嵌套超过 64 层安全上限".into(),
+        ));
+    }
+    let mut count = [b"Metadata".as_slice(), b"PieceInfo", b"LastModified"]
+        .iter()
+        .filter(|key| dictionary.get(key).is_ok())
+        .count();
+    if is_annotation(dictionary) {
+        count += [b"T".as_slice(), b"M", b"CreationDate"]
+            .iter()
+            .filter(|key| dictionary.get(key).is_ok())
+            .count();
+    }
+    for (key, value) in dictionary.iter() {
+        if key == b"Params" {
+            if let Ok(params) = value.as_dict() {
+                count += [b"CreationDate".as_slice(), b"ModDate", b"CheckSum"]
+                    .iter()
+                    .filter(|name| params.get(name).is_ok())
+                    .count();
             }
-            _ => None,
-        })
-        .map(|stream| &stream.content)
-        .filter(|content| {
-            content.starts_with(&[0xff, 0xd8, 0xff])
-                && image::inspect_jpeg(content).is_ok_and(|findings| !findings.is_empty())
-        })
-        .count()
+        }
+        count += private_object_count(value, depth + 1)?;
+    }
+    Ok(count)
+}
+
+fn private_object_count(object: &Object, depth: usize) -> Result<usize> {
+    if depth > MAX_PDF_OBJECT_DEPTH {
+        return Err(crate::error::CleanError::InvalidFormat(
+            "PDF 直接对象嵌套超过 64 层安全上限".into(),
+        ));
+    }
+    match object {
+        Object::Dictionary(dictionary) => private_dictionary_count(dictionary, depth + 1),
+        Object::Stream(stream) => private_dictionary_count(&stream.dict, depth + 1),
+        Object::Array(values) => values.iter().try_fold(0usize, |count, value| {
+            Ok(count + private_object_count(value, depth + 1)?)
+        }),
+        _ => Ok(0),
+    }
 }
 
 pub fn inspect(data: &[u8]) -> Result<Vec<Finding>> {
-    let document = Document::load_mem(data)?;
+    let document = load_document(data)?;
     let mut count = 0;
-    if let Ok(Object::Dictionary(info)) = document.trailer.get(b"Info") {
-        count += info.len();
-    }
     if document.trailer.get(b"Info").is_ok() {
         count += 1;
     }
+    if document.trailer.get(b"ID").is_ok() {
+        count += 1;
+    }
     for object in document.objects.values() {
-        match object {
-            Object::Stream(stream)
-                if stream
-                    .dict
-                    .get(b"Type")
-                    .is_ok_and(|value| value.as_name().is_ok_and(|name| name == b"Metadata")) =>
-            {
-                count += 1
+        count += private_object_count(object, 0)?;
+        if let Object::Stream(stream) = object {
+            if name_is(&stream.dict, b"Type", b"Metadata") {
+                count += 1;
             }
-            Object::Dictionary(dict) if dict.get(b"Metadata").is_ok() => count += 1,
-            _ => {}
         }
     }
-    count += embedded_image_findings(&document);
+    count += embedded_image_findings(&document)?;
     Ok(if count > 0 {
         vec![Finding {
             category: "pdf_metadata".into(),
@@ -70,8 +157,17 @@ pub fn inspect(data: &[u8]) -> Result<Vec<Finding>> {
 
 pub fn clean(data: &[u8]) -> Result<(Vec<u8>, Vec<Finding>)> {
     let findings = inspect(data)?;
-    let mut document = Document::load_mem(data)?;
+    let mut document = load_document(data)?;
+    let info_id = document
+        .trailer
+        .get(b"Info")
+        .ok()
+        .and_then(|value| value.as_reference().ok());
     document.trailer.remove(b"Info");
+    document.trailer.remove(b"ID");
+    if let Some(info_id) = info_id {
+        document.objects.remove(&info_id);
+    }
     let metadata_ids: Vec<_> = document
         .objects
         .iter()
@@ -88,27 +184,13 @@ pub fn clean(data: &[u8]) -> Result<(Vec<u8>, Vec<Finding>)> {
         })
         .collect();
     for object in document.objects.values_mut() {
-        if let Object::Dictionary(dictionary) = object {
-            dictionary.remove(b"Metadata");
-            scrub_dictionary(dictionary);
-        }
+        scrub_object(object, 0)?;
         if let Object::Stream(stream) = object {
-            stream.dict.remove(b"Metadata");
-            scrub_dictionary(&mut stream.dict);
-            if stream
-                .dict
-                .get(b"Subtype")
-                .is_ok_and(|value| value.as_name().is_ok_and(|name| name == b"Image"))
-            {
+            if direct_jpeg_stream(stream)? {
                 let content = stream.content.clone();
-                if content.starts_with(&[0xff, 0xd8, 0xff]) {
-                    if let Ok((cleaned, removed)) =
-                        image::clean_jpeg_with_options(&content, true, true)
-                    {
-                        if !removed.is_empty() && cleaned != content {
-                            stream.set_content(cleaned);
-                        }
-                    }
+                let (cleaned, removed) = image::clean_jpeg_with_options(&content, true, true)?;
+                if !removed.is_empty() && cleaned != content {
+                    stream.set_content(cleaned);
                 }
             }
         }
@@ -124,21 +206,45 @@ pub fn clean(data: &[u8]) -> Result<(Vec<u8>, Vec<Finding>)> {
     Ok((output.into_inner(), findings))
 }
 
-fn scrub_dictionary(dictionary: &mut Dictionary) {
-    for key in [
-        b"Author".as_slice(),
-        b"Creator",
-        b"Producer",
-        b"Title",
-        b"Subject",
-        b"Keywords",
-        b"CreationDate",
-        b"ModDate",
-        b"PieceInfo",
-        b"LastModified",
-    ] {
+fn scrub_object(object: &mut Object, depth: usize) -> Result<()> {
+    if depth > MAX_PDF_OBJECT_DEPTH {
+        return Err(crate::error::CleanError::InvalidFormat(
+            "PDF 直接对象嵌套超过 64 层安全上限".into(),
+        ));
+    }
+    match object {
+        Object::Dictionary(dictionary) => scrub_dictionary(dictionary, depth + 1)?,
+        Object::Stream(stream) => scrub_dictionary(&mut stream.dict, depth + 1)?,
+        Object::Array(values) => {
+            for value in values {
+                scrub_object(value, depth + 1)?;
+            }
+        }
+        _ => {}
+    }
+    Ok(())
+}
+
+fn scrub_dictionary(dictionary: &mut Dictionary, depth: usize) -> Result<()> {
+    for key in [b"Metadata".as_slice(), b"PieceInfo", b"LastModified"] {
         dictionary.remove(key);
     }
+    if is_annotation(dictionary) {
+        for key in [b"T".as_slice(), b"M", b"CreationDate"] {
+            dictionary.remove(key);
+        }
+    }
+    for (key, value) in dictionary.iter_mut() {
+        if key == b"Params" {
+            if let Ok(params) = value.as_dict_mut() {
+                for name in [b"CreationDate".as_slice(), b"ModDate", b"CheckSum"] {
+                    params.remove(name);
+                }
+            }
+        }
+        scrub_object(value, depth + 1)?;
+    }
+    Ok(())
 }
 
 #[cfg(test)]
@@ -188,6 +294,79 @@ mod tests {
         let result = Document::load_mem(&cleaned).unwrap();
         assert!(result.trailer.get(b"Info").is_err());
         assert!(!cleaned.windows(5).any(|window| window == b"Alice"));
+    }
+
+    #[test]
+    fn preserves_bookmark_titles_while_removing_nested_identity_metadata() {
+        let mut document = Document::with_version("1.7");
+        let info_id = document.add_object(dictionary! {
+            "Author" => Object::string_literal("Alice"),
+            "Title" => Object::string_literal("Private document title"),
+        });
+        document.trailer.set("Info", info_id);
+        document.trailer.set(
+            "ID",
+            Object::Array(vec![
+                Object::string_literal("stable-id-one"),
+                Object::string_literal("stable-id-two"),
+            ]),
+        );
+
+        let bookmark_id = document.add_object(dictionary! {
+            "Title" => Object::string_literal("Keep bookmark"),
+        });
+        let annotation_id = document.add_object(dictionary! {
+            "Type" => "Annot",
+            "Subtype" => "Text",
+            "Rect" => vec![0.into(), 0.into(), 10.into(), 10.into()],
+            "T" => Object::string_literal("Reviewer Alice"),
+            "M" => Object::string_literal("D:20260826010000+08'00'"),
+            "Contents" => Object::string_literal("Keep comment body"),
+        });
+        let attachment_id = document.add_object(dictionary! {
+            "Type" => "Filespec",
+            "F" => Object::string_literal("report.txt"),
+            "Params" => Object::Dictionary(dictionary! {
+                "CreationDate" => Object::string_literal("D:20260826010000+08'00'"),
+                "ModDate" => Object::string_literal("D:20260826010100+08'00'"),
+                "CheckSum" => Object::string_literal("private-fingerprint"),
+                "Size" => 42,
+            }),
+        });
+        let root_id = document.add_object(dictionary! {
+            "Type" => "Catalog",
+            "Bookmark" => bookmark_id,
+            "Annotation" => annotation_id,
+            "Attachment" => attachment_id,
+        });
+        document.trailer.set("Root", root_id);
+        let mut source = Vec::new();
+        document.save_to(&mut source).unwrap();
+
+        assert!(!inspect(&source).unwrap().is_empty());
+        let (cleaned, _) = clean(&source).unwrap();
+        let result = Document::load_mem(&cleaned).unwrap();
+        assert!(result.trailer.get(b"Info").is_err());
+        assert!(result.trailer.get(b"ID").is_err());
+        assert!(cleaned.windows(13).any(|value| value == b"Keep bookmark"));
+        assert!(cleaned
+            .windows(17)
+            .any(|value| value == b"Keep comment body"));
+        for object in result.objects.values() {
+            if let Object::Dictionary(dictionary) = object {
+                if is_annotation(dictionary) {
+                    assert!(dictionary.get(b"T").is_err());
+                    assert!(dictionary.get(b"M").is_err());
+                }
+                if let Ok(params) = dictionary.get(b"Params").and_then(Object::as_dict) {
+                    assert!(params.get(b"CreationDate").is_err());
+                    assert!(params.get(b"ModDate").is_err());
+                    assert!(params.get(b"CheckSum").is_err());
+                    assert!(params.get(b"Size").is_ok());
+                }
+            }
+        }
+        assert!(inspect(&cleaned).unwrap().is_empty());
     }
 
     #[test]
@@ -246,5 +425,48 @@ mod tests {
         let content = &image_stream.content;
         assert_eq!(content.as_slice(), &[0xff, 0xd8, 0xff, 0xd9]);
         assert!(image::inspect_jpeg(content).unwrap().is_empty());
+    }
+
+    #[test]
+    fn refuses_ambiguous_or_malformed_embedded_dct_streams() {
+        let malformed = lopdf::Stream::new(
+            dictionary! {
+                "Subtype" => "Image",
+                "Filter" => "DCTDecode",
+            },
+            b"not-a-jpeg".to_vec(),
+        );
+        assert!(direct_jpeg_stream(&malformed).is_err());
+
+        let composite = lopdf::Stream::new(
+            dictionary! {
+                "Subtype" => "Image",
+                "Filter" => Object::Array(vec![
+                    Object::Name(b"ASCII85Decode".to_vec()),
+                    Object::Name(b"DCTDecode".to_vec()),
+                ]),
+            },
+            vec![0xff, 0xd8, 0xff, 0xd9],
+        );
+        assert!(direct_jpeg_stream(&composite).is_err());
+
+        let non_dct = lopdf::Stream::new(
+            dictionary! {
+                "Subtype" => "Image",
+                "Filter" => "FlateDecode",
+            },
+            vec![0xff, 0xd8, 0xff, 0xd9],
+        );
+        assert!(!direct_jpeg_stream(&non_dct).unwrap());
+    }
+
+    #[test]
+    fn rejects_direct_object_trees_beyond_the_depth_limit() {
+        let mut object = Object::Null;
+        for _ in 0..=MAX_PDF_OBJECT_DEPTH {
+            object = Object::Array(vec![object]);
+        }
+        assert!(private_object_count(&object, 0).is_err());
+        assert!(scrub_object(&mut object, 0).is_err());
     }
 }

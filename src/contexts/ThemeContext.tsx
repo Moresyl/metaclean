@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { readStorage, writeStorage } from "../lib/storage";
 
 export type ThemeMode = "system" | "light" | "dark";
 
@@ -12,7 +13,7 @@ const DARK_MEDIA_QUERY = "(prefers-color-scheme: dark)";
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
 function storedTheme(): ThemeMode {
-  const value = localStorage.getItem(THEME_STORAGE_KEY);
+  const value = readStorage(THEME_STORAGE_KEY);
   return value === "light" || value === "dark" ? value : "system";
 }
 
@@ -36,7 +37,7 @@ export function ThemeProvider({ children, initialMode }: { children: ReactNode; 
   const [mode, setModeState] = useState<ThemeMode>(initialMode ?? storedTheme);
 
   const setMode = useCallback((next: ThemeMode) => {
-    localStorage.setItem(THEME_STORAGE_KEY, next);
+    writeStorage(THEME_STORAGE_KEY, next);
     setModeState(next);
   }, []);
 

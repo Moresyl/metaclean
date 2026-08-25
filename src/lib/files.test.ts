@@ -1,20 +1,21 @@
 import { describe, expect, it } from "vitest";
-import { actionableFindingCount, classifyFile, entryFromFile, entryFromPath, mergeEntries } from "./files";
+import type { ScanReport } from "../types";
+import { actionableFindingCount, applyScanReports, classifyFile, entryFromFile, entryFromPath, markEntryPaths, mergeEntries } from "./files";
 
 describe("classifyFile", () => {
   const groups = {
     image: [
-      "jpg", "jpeg", "jpe", "png", "webp", "gif", "bmp", "dib", "tif", "tiff",
+      "jpg", "jpeg", "jpe", "png", "webp", "jxl", "gif", "bmp", "dib", "tif", "tiff",
       "heic", "heif", "heics", "heifs", "hif", "avif", "avifs",
       "cr2", "cr3", "crw", "nef", "nrw", "arw", "srf", "sr2", "orf", "rw2", "rwl",
       "dng", "pef", "srw", "raf", "3fr", "erf", "mef", "mos", "iiq", "kdc", "dcr", "k25",
     ],
-    audio: ["mp3", "wav", "flac", "wma", "m4a", "f4a", "f4b", "m4b", "m4p", "mka"],
+    audio: ["mp3", "wav", "flac", "aif", "aiff", "aifc", "wma", "m4a", "f4a", "f4b", "m4b", "m4p", "mka"],
     video: [
       "mp4", "mov", "m4v", "3g2", "3gp", "3gp2", "3gpp", "f4p", "f4v", "lrv", "mqv", "qt",
       "avi", "asf", "wmv", "mkv", "mks", "mk3d", "webm",
     ],
-    document: ["docx", "xlsx", "pptx", "odt", "epub"],
+    document: ["docx", "xlsx", "pptx", "odt", "ods", "odp", "odg", "odf", "odb", "odm", "ott", "ots", "otp", "otg", "epub"],
     pdf: ["pdf"],
     text: ["txt", "md", "markdown", "html", "htm", "xhtml", "svg", "xml", "json", "csv", "tsv", "yaml", "yml", "log", "srt", "vtt"],
   } as const;
@@ -22,12 +23,12 @@ describe("classifyFile", () => {
     extensions.map((extension) => [`sample.${extension.toUpperCase()}`, kind] as const),
   );
 
-  /* The engine's SUPPORTED_EXTENSIONS is the same 91 entries. A row that shows
+  /* The engine's SUPPORTED_EXTENSIONS is the same 105 entries. A row that shows
      a generic glyph for a file the engine happily cleans is the visible half of
      the two lists drifting apart. */
-  it("covers every one of the engine's 91 supported extensions", () => {
-    expect(supportedCases).toHaveLength(91);
-    expect(new Set(supportedCases.map(([name]) => name)).size).toBe(91);
+  it("covers every one of the engine's 105 supported extensions", () => {
+    expect(supportedCases).toHaveLength(105);
+    expect(new Set(supportedCases.map(([name]) => name)).size).toBe(105);
   });
 
   it.each(supportedCases)("classifies %s case-insensitively", (name, expected) => {
@@ -72,6 +73,34 @@ describe("mergeEntries", () => {
     const first = entryFromPath("first.jpg");
     const second = entryFromPath("second.mp4");
     expect(mergeEntries([first], [first, second])).toEqual([first, second]);
+  });
+});
+
+describe("scan result reconciliation", () => {
+  it("updates only paths that belong to the active scan", () => {
+    const requested = entryFromPath("C:\\work\\first.jpg");
+    const addedLater = entryFromPath("C:\\work\\later.png");
+    const scanning = markEntryPaths([requested, addedLater], [requested.path!], "scanning");
+    expect(scanning.map((entry) => entry.status)).toEqual(["scanning", "ready"]);
+
+    const report: ScanReport = {
+      path: requested.path!, name: requested.name, format: "JPEG", size: 10,
+      supported: true, findings: [],
+    };
+    const completed = applyScanReports(scanning, [requested.path!], [report]);
+    expect(completed[0]).toMatchObject({ status: "scanned", report });
+    expect(completed[1]).toEqual(addedLater);
+  });
+
+  it("leaves a requested path retryable when the engine omits its report", () => {
+    const priorReport: ScanReport = {
+      path: "C:\\work\\first.jpg", name: "first.jpg", format: "JPEG", size: 10,
+      supported: true, findings: [],
+    };
+    const entry = { ...entryFromPath(priorReport.path), status: "clean" as const, report: priorReport };
+    const scanning = markEntryPaths([entry], [entry.path!], "scanning");
+    expect(scanning[0]).toMatchObject({ status: "scanning", report: undefined, result: undefined });
+    expect(applyScanReports(scanning, [entry.path!], [])[0]).toMatchObject({ status: "ready", report: undefined, result: undefined });
   });
 });
 

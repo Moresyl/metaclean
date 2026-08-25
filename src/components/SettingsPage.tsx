@@ -66,6 +66,7 @@ export default function SettingsPage({
 }: SettingsPageProps) {
   const [section, setSection] = useState<SettingsSection>("appearance");
   const [contextMenu, setContextMenu] = useState<ContextMenuStatus>();
+  const [contextMenuError, setContextMenuError] = useState<string>();
   const [busy, setBusy] = useState(false);
   const [linkError, setLinkError] = useState<string>();
   const { locale, setLocale, text } = useI18n();
@@ -76,15 +77,24 @@ export default function SettingsPage({
     void import("@tauri-apps/api/core")
       .then(({ invoke }) => invoke<ContextMenuStatus>("get_context_menu_status"))
       .then(setContextMenu)
-      .catch(() => undefined);
-  }, []);
+      .catch((error) => setContextMenuError(text(
+        `无法读取右键菜单状态：${String(error)}`,
+        `Could not read the context-menu status: ${String(error)}`,
+      )));
+  }, [text]);
 
   async function toggleContextMenu() {
     if (!contextMenu?.available) return;
     setBusy(true);
+    setContextMenuError(undefined);
     try {
       const { invoke } = await import("@tauri-apps/api/core");
       setContextMenu(await invoke<ContextMenuStatus>("set_context_menu_enabled", { enabled: !contextMenu.enabled }));
+    } catch (error) {
+      setContextMenuError(text(
+        `更新右键菜单失败：${String(error)}`,
+        `Could not update the context menu: ${String(error)}`,
+      ));
     } finally {
       setBusy(false);
     }
@@ -259,7 +269,7 @@ export default function SettingsPage({
           />
           <div className={ITEM}>
             <div className="flex items-center gap-3">
-              <Head title={text("Windows 右键菜单", "Windows context menu")} detail={contextMenu ? text(contextMenu.detail, contextMenu.available ? (contextMenu.enabled ? "Enabled for supported file types. On Windows 11, use Show more options." : "Enable the File Explorer command for supported types. On Windows 11, it appears under Show more options.") : "Context-menu integration is available on Windows only.") : text("正在检测资源管理器集成…", "Checking File Explorer integration…")} />
+              <Head title={text("Windows 右键菜单", "Windows context menu")} detail={contextMenuError ?? (contextMenu ? text(contextMenu.detail, contextMenu.available ? (contextMenu.enabled ? "Enabled for supported file types. On Windows 11, use Show more options." : "Enable the File Explorer command for supported types. On Windows 11, it appears under Show more options.") : "Context-menu integration is available on Windows only.") : text("正在检测资源管理器集成…", "Checking File Explorer integration…"))} />
               <Button size="sm" disabled={!contextMenu?.available || busy} onClick={() => void toggleContextMenu()}>
                 {busy ? text("处理中…", "Working…") : contextMenu?.enabled ? text("停用", "Disable") : text("启用", "Enable")}
               </Button>

@@ -103,6 +103,9 @@ pub fn is_iso_media(data: &[u8]) -> bool {
         return false;
     }
     let payload = &data[atom.range.start + atom.header_len..atom.range.end];
+    if !(payload.len() - 8).is_multiple_of(4) {
+        return false;
+    }
     supported_brand(&payload[..4])
         || payload
             .get(8..)
@@ -305,6 +308,7 @@ mod tests {
         }
         let heic = atom(b"ftyp", b"heic\0\0\0\0heicmif1");
         assert!(!is_iso_media(&heic));
+        assert!(!is_iso_media(&atom(b"ftyp", b"isom\0\0\0\0x")));
     }
 
     #[test]

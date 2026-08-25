@@ -32,11 +32,24 @@ mod platform {
         format!(r"Software\Classes\SystemFileAssociations\.{extension}\shell\{VERB}")
     }
 
+    fn command_value(executable: &str) -> String {
+        format!(r#""{executable}" "%1""#)
+    }
+
     pub fn status() -> ContextMenuStatus {
         let classes = RegKey::predef(HKEY_CURRENT_USER);
-        let enabled = SUPPORTED_EXTENSIONS
-            .iter()
-            .all(|extension| classes.open_subkey(verb_path(extension)).is_ok());
+        let executable = env::current_exe()
+            .ok()
+            .map(|path| path.to_string_lossy().into_owned());
+        let enabled = executable.as_deref().is_some_and(|executable| {
+            let expected = command_value(executable);
+            SUPPORTED_EXTENSIONS.iter().all(|extension| {
+                classes
+                    .open_subkey(format!(r"{}\command", verb_path(extension)))
+                    .and_then(|command| command.get_value::<String, _>(""))
+                    .is_ok_and(|command| command == expected)
+            })
+        });
         ContextMenuStatus {
             available: true,
             enabled,
@@ -57,7 +70,7 @@ mod platform {
             verb.set_value("", &"使用 MetaClean 扫描 / Scan with MetaClean")?;
             verb.set_value("Icon", &format!(r#""{executable}""#))?;
             let (command, _) = verb.create_subkey("command")?;
-            command.set_value("", &format!(r#""{executable}" "%1""#))?;
+            command.set_value("", &command_value(&executable))?;
         }
         Ok(status())
     }
@@ -72,6 +85,19 @@ mod platform {
             }
         }
         Ok(status())
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use super::command_value;
+
+        #[test]
+        fn context_menu_command_quotes_both_executable_and_file() {
+            assert_eq!(
+                command_value(r"C:\Program Files\MetaClean\MetaClean.exe"),
+                r#""C:\Program Files\MetaClean\MetaClean.exe" "%1""#
+            );
+        }
     }
 }
 

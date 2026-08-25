@@ -4,6 +4,7 @@ import App from "./App";
 import { I18nProvider } from "./lib/i18n";
 import { UpdateProvider } from "./contexts/UpdateContext";
 import { ThemeProvider } from "./contexts/ThemeContext";
+import type { ScanReport } from "./types";
 
 vi.mock("@tauri-apps/api/webview", () => ({ getCurrentWebview: () => ({ onDragDropEvent: () => Promise.resolve(() => undefined) }) }));
 const invokeMock = vi.hoisted(() => vi.fn());
@@ -112,6 +113,79 @@ describe("App", () => {
     revealMock.mockRejectedValueOnce(new Error("无法打开文件夹"));
     fireEvent.click(screen.getByRole("button", { name: "C:\\work\\notes.cleaned.txt" }));
     await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("无法打开文件夹"));
+  });
+
+  it("starts only one native scan when the action is triggered twice before React rerenders", async () => {
+    let finishScan: ((reports: ScanReport[]) => void) | undefined;
+    const pendingScan = new Promise<ScanReport[]>((resolve) => { finishScan = resolve; });
+    invokeMock.mockImplementation((command: string) => {
+      if (command === "get_launch_paths") return Promise.resolve(["C:\\work\\notes.txt"]);
+      if (command === "expand_paths") return Promise.resolve({ files: ["C:\\work\\notes.txt"], skippedCount: 0, issues: [], limitReached: false });
+      if (command === "scan_files") return pendingScan;
+      if (command === "set_close_to_tray") return Promise.resolve(undefined);
+      return Promise.reject(new Error(`unexpected ${command}`));
+    });
+    renderApp();
+    await screen.findByText("notes.txt");
+    const button = screen.getByRole("button", { name: "扫描隐私痕迹" });
+    fireEvent.click(button);
+    fireEvent.click(button);
+    await waitFor(() => expect(invokeMock.mock.calls.filter(([command]) => command === "scan_files")).toHaveLength(1));
+    finishScan?.([]);
+    await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("扫描完成"));
+  });
+
+  it("keeps files retryable when the native cleaner omits a result", async () => {
+    invokeMock.mockImplementation((command: string) => {
+      if (command === "get_launch_paths") return Promise.resolve(["C:\\work\\notes.txt"]);
+      if (command === "expand_paths") return Promise.resolve({ files: ["C:\\work\\notes.txt"], skippedCount: 0, issues: [], limitReached: false });
+      if (command === "scan_files") return Promise.resolve([{ path: "C:\\work\\notes.txt", name: "notes.txt", format: "Text", size: 4, supported: true, findings: [{ category: "unicode", label: "Invisible Unicode", count: 1, severity: "privacy" }] }]);
+      if (command === "clean_files") return Promise.resolve([{ sourcePath: "C:\\foreign.txt", outputPath: "C:\\foreign.cleaned.txt", sourceSize: 4, outputSize: 3, removed: [], success: true }]);
+      if (command === "set_close_to_tray") return Promise.resolve(undefined);
+      return Promise.reject(new Error(`unexpected ${command}`));
+    });
+    renderApp();
+    await screen.findByText("notes.txt");
+    fireEvent.click(screen.getByRole("button", { name: "扫描隐私痕迹" }));
+    await screen.findByText("发现 1 项痕迹");
+    fireEvent.click(screen.getByRole("button", { name: "确认并开始清理" }));
+    await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("1 个未返回结果、可重试"));
+    expect(screen.getByRole("button", { name: "确认并开始清理" })).toBeEnabled();
+    expect(localStorage.getItem("metaclean.history")).toBeNull();
+  });
+
+  it("does not let duplicate or foreign scan reports hide a missing path", async () => {
+    const report = { path: "C:\\work\\first.txt", name: "first.txt", format: "Text", size: 4, supported: true, findings: [] };
+    invokeMock.mockImplementation((command: string) => {
+      if (command === "get_launch_paths") return Promise.resolve(["C:\\work\\first.txt", "C:\\work\\second.txt"]);
+      if (command === "expand_paths") return Promise.resolve({ files: ["C:\\work\\first.txt", "C:\\work\\second.txt"], skippedCount: 0, issues: [], limitReached: false });
+      if (command === "scan_files") return Promise.resolve([report, report, { ...report, path: "C:\\foreign.txt" }]);
+      if (command === "set_close_to_tray") return Promise.resolve(undefined);
+      return Promise.reject(new Error(`unexpected ${command}`));
+    });
+    renderApp();
+    await screen.findByText("second.txt");
+    fireEvent.click(screen.getByRole("button", { name: "扫描隐私痕迹" }));
+    await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("1 个文件未返回结果"));
+    expect(screen.getByRole("button", { name: "扫描隐私痕迹" })).toBeEnabled();
+  });
+
+  it("keeps an explicitly failed cleanup retryable", async () => {
+    invokeMock.mockImplementation((command: string) => {
+      if (command === "get_launch_paths") return Promise.resolve(["C:\\work\\notes.txt"]);
+      if (command === "expand_paths") return Promise.resolve({ files: ["C:\\work\\notes.txt"], skippedCount: 0, issues: [], limitReached: false });
+      if (command === "scan_files") return Promise.resolve([{ path: "C:\\work\\notes.txt", name: "notes.txt", format: "Text", size: 4, supported: true, findings: [{ category: "unicode", label: "Invisible Unicode", count: 1, severity: "privacy" }] }]);
+      if (command === "clean_files") return Promise.resolve([{ sourcePath: "C:\\work\\notes.txt", sourceSize: 4, removed: [], success: false, error: "文件暂时被占用" }]);
+      if (command === "set_close_to_tray") return Promise.resolve(undefined);
+      return Promise.reject(new Error(`unexpected ${command}`));
+    });
+    renderApp();
+    await screen.findByText("notes.txt");
+    fireEvent.click(screen.getByRole("button", { name: "扫描隐私痕迹" }));
+    await screen.findByText("发现 1 项痕迹");
+    fireEvent.click(screen.getByRole("button", { name: "确认并开始清理" }));
+    await screen.findByText("文件暂时被占用");
+    expect(screen.getByRole("button", { name: "确认并开始清理" })).toBeEnabled();
   });
 
   it("persists ICC preservation and treats profiles as actionable only when removal is selected", async () => {

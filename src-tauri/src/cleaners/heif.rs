@@ -10,7 +10,7 @@
 //! zero so every reader now sees an empty item. Nothing moves, every other
 //! item's offset survives, and the picture is untouched.
 
-use std::ops::Range;
+use std::{collections::HashSet, ops::Range};
 
 use crate::{
     error::{CleanError, Result},
@@ -38,6 +38,7 @@ fn invalid(message: &str) -> CleanError {
 struct Node {
     kind: [u8; 4],
     range: Range<usize>,
+    box_header: usize,
     header: usize,
 }
 
@@ -69,10 +70,11 @@ fn parse_box(data: &[u8], offset: usize, parent_end: usize) -> Result<Node> {
         }
         value => (value as usize, 8),
     };
+    let box_header = header;
     let header = if kind == *b"uuid" {
-        header + 16
+        box_header + 16
     } else {
-        header
+        box_header
     };
     let end = offset
         .checked_add(size)
@@ -81,6 +83,7 @@ fn parse_box(data: &[u8], offset: usize, parent_end: usize) -> Result<Node> {
     Ok(Node {
         kind,
         range: offset..end,
+        box_header,
         header,
     })
 }
@@ -132,6 +135,9 @@ pub fn is_heif(data: &[u8]) -> bool {
         return false;
     }
     let payload = &data[node.payload()];
+    if !(payload.len() - 8).is_multiple_of(4) {
+        return false;
+    }
     supported_brand(&payload[..4])
         || payload
             .get(8..)
@@ -146,7 +152,7 @@ pub fn is_canon_raw(data: &[u8]) -> bool {
         return false;
     }
     let payload = &data[node.payload()];
-    payload[..4] == *b"crx "
+    (payload.len() - 8).is_multiple_of(4) && payload[..4] == *b"crx "
 }
 
 // --- item table -------------------------------------------------------------
@@ -226,6 +232,9 @@ impl<'a> Reader<'a> {
 fn item_types(data: &[u8], iinf: &Node) -> Result<Vec<(u32, Item)>> {
     let mut reader = Reader::new(data, iinf.payload());
     let version = reader.u8()?;
+    if version > 1 {
+        return Err(invalid("HEIF iinf 版本无效"));
+    }
     reader.take(3)?;
     let count = if version == 0 {
         u32::from(reader.u16()?)
@@ -233,6 +242,7 @@ fn item_types(data: &[u8], iinf: &Node) -> Result<Vec<(u32, Item)>> {
         reader.u32()?
     };
     let mut items = Vec::new();
+    let mut ids = HashSet::new();
     let mut offset = reader.at;
     for _ in 0..count {
         let entry = parse_box(data, offset, iinf.range.end)?;
@@ -246,11 +256,17 @@ fn item_types(data: &[u8], iinf: &Node) -> Result<Vec<(u32, Item)>> {
         if version < 2 {
             continue;
         }
+        if version > 3 {
+            return Err(invalid("HEIF infe 版本无效"));
+        }
         let id = if version == 2 {
             u32::from(reader.u16()?)
         } else {
             reader.u32()?
         };
+        if !ids.insert(id) {
+            return Err(invalid("HEIF 项目信息包含重复 ID"));
+        }
         reader.u16()?;
         let kind: [u8; 4] = reader.take(4)?.try_into().unwrap();
         reader.string()?;
@@ -258,12 +274,12 @@ fn item_types(data: &[u8], iinf: &Node) -> Result<Vec<(u32, Item)>> {
             b"Exif" => Some(Item::Exif),
             b"jumb" | b"c2pa" => Some(Item::Provenance),
             b"mime" => {
-                let content = reader.string().unwrap_or_default();
+                let content = reader.string()?;
                 let content = String::from_utf8_lossy(content).to_ascii_lowercase();
-                if content.contains("rdf+xml") || content.contains("xmp") {
-                    Some(Item::Xmp)
-                } else if content.contains("c2pa") {
+                if content.contains("c2pa") {
                     Some(Item::Provenance)
+                } else if content.contains("rdf+xml") || content.contains("xmp") {
+                    Some(Item::Xmp)
                 } else {
                     None
                 }
@@ -289,11 +305,20 @@ struct Extent {
 struct Located {
     id: u32,
     extents: Vec<Extent>,
+    locatable: bool,
 }
 
-fn item_locations(data: &[u8], iloc: &Node, idat: Option<&Node>) -> Result<Vec<Located>> {
+fn item_locations(
+    data: &[u8],
+    iloc: &Node,
+    idat: Option<&Node>,
+    media: &[Range<usize>],
+) -> Result<Vec<Located>> {
     let mut reader = Reader::new(data, iloc.payload());
     let version = reader.u8()?;
+    if version > 2 {
+        return Err(invalid("HEIF iloc 版本无效"));
+    }
     reader.take(3)?;
     let sizes = reader.u8()?;
     let (offset_size, length_size) = (usize::from(sizes >> 4), usize::from(sizes & 0x0f));
@@ -305,21 +330,31 @@ fn item_locations(data: &[u8], iloc: &Node, idat: Option<&Node>) -> Result<Vec<L
         reader.u32()?
     };
     let mut located = Vec::new();
+    let mut ids = HashSet::new();
     for _ in 0..count {
         let id = if version < 2 {
             u32::from(reader.u16()?)
         } else {
             reader.u32()?
         };
-        let construction = if version == 0 {
-            0
-        } else {
-            reader.u16()? & 0x0f
-        };
-        reader.u16()?;
+        if !ids.insert(id) {
+            return Err(invalid("HEIF 位置表包含重复 ID"));
+        }
+        let construction_field = if version == 0 { 0 } else { reader.u16()? };
+        if construction_field & 0xfff0 != 0 {
+            return Err(invalid("HEIF iloc 构造方式保留位非零"));
+        }
+        let construction = construction_field & 0x0f;
+        let data_reference = reader.u16()?;
         let base = reader.sized(base_size)?;
         let extent_count = reader.u16()?;
         let mut extents = Vec::new();
+        let inline_storage = (construction == 1)
+            .then(|| idat.map(Node::payload))
+            .flatten();
+        let locatable = data_reference == 0
+            && construction <= 1
+            && (construction == 0 || inline_storage.is_some());
         for _ in 0..extent_count {
             if index_size > 0 && version > 0 {
                 reader.sized(index_size)?;
@@ -328,31 +363,48 @@ fn item_locations(data: &[u8], iloc: &Node, idat: Option<&Node>) -> Result<Vec<L
             let length_at = reader.at;
             let length = reader.sized(length_size)?;
             let length_field = length_at..reader.at;
-            let origin = match construction {
-                0 => 0,
-                1 => idat.map(|node| node.payload().start as u64).unwrap_or(0),
-                _ => continue,
+            if !locatable {
+                continue;
+            }
+            let origin = match inline_storage.as_ref() {
+                Some(storage) => storage.start as u64,
+                None => 0,
             };
             let Some(start) = origin
                 .checked_add(base)
                 .and_then(|value| value.checked_add(offset))
                 .and_then(|value| usize::try_from(value).ok())
             else {
-                continue;
+                return Err(invalid("HEIF 项目偏移超出平台范围"));
             };
             let Some(end) = usize::try_from(length)
                 .ok()
                 .and_then(|width| start.checked_add(width))
                 .filter(|end| *end <= data.len())
             else {
-                continue;
+                return Err(invalid("HEIF 项目范围越界"));
             };
+            let inside_storage = inline_storage.as_ref().map_or_else(
+                || {
+                    media
+                        .iter()
+                        .any(|span| start >= span.start && end <= span.end)
+                },
+                |span| start >= span.start && end <= span.end,
+            );
+            if length > 0 && !inside_storage {
+                return Err(invalid("HEIF 项目范围不在 mdat / idat 载荷内"));
+            }
             extents.push(Extent {
                 data: start..end,
                 length_field,
             });
         }
-        located.push(Located { id, extents });
+        located.push(Located {
+            id,
+            extents,
+            locatable,
+        });
     }
     Ok(located)
 }
@@ -413,14 +465,28 @@ fn plan(data: &[u8]) -> Result<Plan> {
         return Err(invalid("不是受支持的 HEIF / AVIF 容器"));
     }
     let top = siblings(data, 0..data.len())?;
+    let media: Vec<_> = top
+        .iter()
+        .filter(|node| node.kind == *b"mdat")
+        .map(Node::payload)
+        .collect();
     let mut plan = Plan::default();
     let mut anchored = false;
 
-    if let Some(meta) = top.iter().find(|node| node.kind == *b"meta") {
+    let metadata_boxes: Vec<_> = top.iter().filter(|node| node.kind == *b"meta").collect();
+    if metadata_boxes.len() > 1 {
+        return Err(invalid("HEIF 包含重复的顶层 meta 盒"));
+    }
+    if let Some(meta) = metadata_boxes.first() {
         // A top-level `meta` is a full box, so four bytes of version and flags
         // sit between the header and the first child.
         let inner = meta.payload().start + 4..meta.range.end;
         let children = siblings(data, inner)?;
+        for kind in [b"iinf", b"iloc", b"idat"] {
+            if children.iter().filter(|node| node.kind == *kind).count() > 1 {
+                return Err(invalid("HEIF meta 盒包含重复的关键子盒"));
+            }
+        }
         let idat = children.iter().find(|node| node.kind == *b"idat");
         let types = match children.iter().find(|node| node.kind == *b"iinf") {
             Some(iinf) => item_types(data, iinf)?,
@@ -428,14 +494,29 @@ fn plan(data: &[u8]) -> Result<Plan> {
         };
         if let Some(iloc) = children.iter().find(|node| node.kind == *b"iloc") {
             anchored = true;
-            let located = item_locations(data, iloc, idat)?;
+            let located = item_locations(data, iloc, idat, &media)?;
             for (id, item) in &types {
                 let Some(entry) = located.iter().find(|entry| entry.id == *id) else {
-                    continue;
+                    return Err(invalid("HEIF 元数据项目缺少位置条目"));
                 };
+                if !entry.locatable {
+                    return Err(invalid("HEIF 元数据项目使用不支持的外部或派生存储"));
+                }
                 let bytes: usize = entry.extents.iter().map(|extent| extent.data.len()).sum();
                 if bytes == 0 {
                     continue;
+                }
+                let overlaps_other_item = entry.extents.iter().any(|extent| {
+                    located.iter().any(|other| {
+                        other.id != *id
+                            && other.extents.iter().any(|candidate| {
+                                extent.data.start < candidate.data.end
+                                    && candidate.data.start < extent.data.end
+                            })
+                    })
+                });
+                if overlaps_other_item {
+                    return Err(invalid("HEIF 元数据范围与其他项目载荷重叠"));
                 }
                 match item {
                     Item::Exif => plan.exif += 1,
@@ -446,6 +527,8 @@ fn plan(data: &[u8]) -> Result<Plan> {
                     plan.lengths.push(extent.length_field.clone());
                 }
             }
+        } else if !types.is_empty() {
+            return Err(invalid("HEIF 元数据项目缺少 iloc 位置表"));
         }
         for node in children {
             if retired(&node.kind, user_type(data, &node)) {
@@ -508,7 +591,7 @@ pub fn clean(data: &[u8]) -> Result<(Vec<u8>, Vec<Finding>)> {
     let mut output = data.to_vec();
     for node in &plan.retire {
         output[node.range.start + 4..node.range.start + 8].copy_from_slice(b"free");
-        output[node.range.start + 8..node.range.end].fill(0);
+        output[node.range.start + node.box_header..node.range.end].fill(0);
     }
     for range in &plan.blank {
         output[range.clone()].fill(0);
@@ -547,6 +630,14 @@ mod tests {
     fn wrap(kind: &[u8; 4], payload: &[u8]) -> Vec<u8> {
         let mut bytes = ((payload.len() + 8) as u32).to_be_bytes().to_vec();
         bytes.extend_from_slice(kind);
+        bytes.extend_from_slice(payload);
+        bytes
+    }
+
+    fn wrap_extended(kind: &[u8; 4], payload: &[u8]) -> Vec<u8> {
+        let mut bytes = 1u32.to_be_bytes().to_vec();
+        bytes.extend_from_slice(kind);
+        bytes.extend_from_slice(&((payload.len() + 16) as u64).to_be_bytes());
         bytes.extend_from_slice(payload);
         bytes
     }
@@ -616,6 +707,52 @@ mod tests {
         build(mdat_at)
     }
 
+    fn item_without_local_storage(construction: u16) -> Vec<u8> {
+        let ftyp = wrap(b"ftyp", b"heic\0\0\0\0mif1heic");
+
+        let mut iinf_payload = vec![0u8, 0, 0, 0];
+        iinf_payload.extend_from_slice(&1u16.to_be_bytes());
+        iinf_payload.extend(infe(1, b"Exif", "exif", None));
+
+        let mut iloc_payload = vec![1u8, 0, 0, 0, 0x44, 0x00];
+        iloc_payload.extend_from_slice(&1u16.to_be_bytes());
+        iloc_payload.extend_from_slice(&1u16.to_be_bytes());
+        iloc_payload.extend_from_slice(&construction.to_be_bytes());
+        iloc_payload.extend_from_slice(&0u16.to_be_bytes());
+        iloc_payload.extend_from_slice(&1u16.to_be_bytes());
+        iloc_payload.extend_from_slice(&0u32.to_be_bytes());
+        iloc_payload.extend_from_slice(&4u32.to_be_bytes());
+
+        let mut meta_payload = vec![0u8, 0, 0, 0];
+        meta_payload.extend(wrap(b"iinf", &iinf_payload));
+        meta_payload.extend(wrap(b"iloc", &iloc_payload));
+        let mut file = ftyp;
+        file.extend(wrap(b"meta", &meta_payload));
+        file
+    }
+
+    fn metadata_item_without_iloc() -> Vec<u8> {
+        let mut iinf_payload = vec![0u8, 0, 0, 0];
+        iinf_payload.extend_from_slice(&1u16.to_be_bytes());
+        iinf_payload.extend(infe(1, b"Exif", "exif", None));
+        let mut meta_payload = vec![0u8, 0, 0, 0];
+        meta_payload.extend(wrap(b"iinf", &iinf_payload));
+        let mut file = wrap(b"ftyp", b"heic\0\0\0\0mif1heic");
+        file.extend(wrap(b"meta", &meta_payload));
+        file
+    }
+
+    fn iloc_payload(data: &[u8]) -> Range<usize> {
+        let top = siblings(data, 0..data.len()).unwrap();
+        let meta = top.iter().find(|node| node.kind == *b"meta").unwrap();
+        siblings(data, meta.payload().start + 4..meta.range.end)
+            .unwrap()
+            .into_iter()
+            .find(|node| node.kind == *b"iloc")
+            .unwrap()
+            .payload()
+    }
+
     #[test]
     fn blanks_exif_and_xmp_items_without_touching_the_picture() {
         let source = sample();
@@ -656,6 +793,62 @@ mod tests {
         assert!(!contains(&cleaned, b"bob@example.test"));
         assert!(contains(&cleaned, b"free"));
         verify_cleaned(&cleaned).unwrap();
+    }
+
+    #[test]
+    fn preserves_extended_box_length_when_retiring_uuid_metadata() {
+        let mut source = sample();
+        let box_at = source.len();
+        let mut uuid_payload = ADOBE_XMP_UUID.to_vec();
+        uuid_payload.extend_from_slice(b"<xmp>extended-box@example.test</xmp>");
+        source.extend(wrap_extended(b"uuid", &uuid_payload));
+
+        let (cleaned, _) = clean(&source).unwrap();
+        assert_eq!(&cleaned[box_at..box_at + 4], &1u32.to_be_bytes());
+        assert_eq!(&cleaned[box_at + 4..box_at + 8], b"free");
+        assert_eq!(
+            &cleaned[box_at + 8..box_at + 16],
+            &source[box_at + 8..box_at + 16]
+        );
+        assert!(cleaned[box_at + 16..].iter().all(|byte| *byte == 0));
+        verify_cleaned(&cleaned).unwrap();
+    }
+
+    #[test]
+    fn rejects_item_extents_outside_declared_local_storage() {
+        assert!(inspect(&item_without_local_storage(0)).is_err());
+        assert!(inspect(&item_without_local_storage(1)).is_err());
+        assert!(inspect(&item_without_local_storage(2)).is_err());
+        assert!(inspect(&metadata_item_without_iloc()).is_err());
+    }
+
+    #[test]
+    fn rejects_duplicate_ids_and_metadata_overlapping_image_payloads() {
+        const HEADER: usize = 8;
+        const ITEM_WIDTH: usize = 14;
+        const OFFSET_IN_ITEM: usize = 6;
+
+        let mut duplicate = sample();
+        let iloc = iloc_payload(&duplicate);
+        let third_id = iloc.start + HEADER + 2 * ITEM_WIDTH;
+        duplicate[third_id..third_id + 2].copy_from_slice(&2u16.to_be_bytes());
+        assert!(inspect(&duplicate).is_err());
+
+        let mut missing_location = sample();
+        let iloc = iloc_payload(&missing_location);
+        let exif_id = iloc.start + HEADER + ITEM_WIDTH;
+        missing_location[exif_id..exif_id + 2].copy_from_slice(&99u16.to_be_bytes());
+        assert!(inspect(&missing_location).is_err());
+
+        let mut overlapping = sample();
+        let iloc = iloc_payload(&overlapping);
+        let image_offset = iloc.start + HEADER + OFFSET_IN_ITEM;
+        let exif_offset = iloc.start + HEADER + ITEM_WIDTH + OFFSET_IN_ITEM;
+        let value: [u8; 4] = overlapping[image_offset..image_offset + 4]
+            .try_into()
+            .unwrap();
+        overlapping[exif_offset..exif_offset + 4].copy_from_slice(&value);
+        assert!(inspect(&overlapping).is_err());
     }
 
     #[test]
@@ -711,7 +904,15 @@ mod tests {
     #[test]
     fn rejects_videos_and_malformed_containers() {
         assert!(!is_heif(&wrap(b"ftyp", b"isom\0\0\0\0isommp42")));
+        assert!(!is_heif(&wrap(b"ftyp", b"heic\0\0\0\0x")));
         assert!(inspect(&wrap(b"ftyp", b"heic\0\0\0\0mif1heic")).is_err());
         assert!(inspect(b"not-a-box").is_err());
+
+        let mut duplicate_meta = sample();
+        let top = siblings(&duplicate_meta, 0..duplicate_meta.len()).unwrap();
+        let meta = top.iter().find(|node| node.kind == *b"meta").unwrap();
+        let bytes = duplicate_meta[meta.range.clone()].to_vec();
+        duplicate_meta.extend(bytes);
+        assert!(inspect(&duplicate_meta).is_err());
     }
 }

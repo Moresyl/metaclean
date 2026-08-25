@@ -168,7 +168,7 @@ fn stale_seek(data: &[u8], element: &Element) -> bool {
 
 fn collect(data: &[u8], span: Range<usize>, depth: usize, plan: &mut Plan) -> Result<()> {
     if depth > MAX_DEPTH {
-        return Ok(());
+        return Err(invalid("Matroska 元素嵌套超过安全上限"));
     }
     for element in elements(data, span)? {
         if matches!(element.id, TAGS | ATTACHMENTS | DATE_UTC) {
@@ -389,5 +389,16 @@ mod tests {
         assert!(inspect(b"RIFF\0\0\0\0AVI ").is_err());
         assert!(!is_matroska(b"\x1aE\xdf"));
         assert!(inspect(&element(&[0x1a, 0x45, 0xdf, 0xa3], b"\x42\x82\x88matroska")).is_err());
+    }
+
+    #[test]
+    fn rejects_elements_nested_beyond_the_audit_limit() {
+        let mut nested = element(&[0x12, 0x54, 0xc3, 0x67], b"private");
+        for _ in 0..10 {
+            nested = element(&[0xae], &nested);
+        }
+        let mut file = element(&[0x1a, 0x45, 0xdf, 0xa3], b"\x42\x82\x88matroska");
+        file.extend(element(&[0x18, 0x53, 0x80, 0x67], &nested));
+        assert!(inspect(&file).is_err());
     }
 }

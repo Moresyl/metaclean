@@ -46,24 +46,26 @@ MetaClean 把这些统统找出来并清除——全过程只在你自己的电�
 
 ## 清理范围
 
-91 种扩展名，全部由原生 Rust 代码处理——不依赖 ExifTool，也不会重新编码。
+105 种扩展名，全部由原生 Rust 代码处理——不依赖 ExifTool，也不会重新编码。
 
 | 格式 | 扩展名 | 清理内容 |
 | --- | --- | --- |
 | JPEG | `.jpg` `.jpeg` `.jpe` | EXIF/GPS、XMP、IPTC、图片注释、JUMBF/C2PA 段；ICC 默认保留，也可明确移除 |
 | PNG | `.png` | EXIF、文本元数据、C2PA/JUMBF 块；可选移除 ICC 配置 |
 | WebP | `.webp` | EXIF、XMP、C2PA 块；可选移除 ICC 配置 |
+| JPEG XL | `.jxl` | 原位作废容器中的 EXIF、XMP、JUMBF/C2PA、Brotli 包装元数据与 JPEG 重建数据；裸码流会被识别并原样保留 |
 | GIF | `.gif` | 注释与 XMP 应用元数据，不重新编码动画帧 |
 | BMP | `.bmp` `.dib` | 被编辑器拿来写编号的两个保留字段、V5 头里内嵌的 ICC 配置，以及贴在最后一个像素之后、任何看图软件都不会显示的 EXIF/XMP |
 | TIFF | `.tif` `.tiff` | EXIF、GPS、IPTC、XMP 目录；采用原地压缩 IFD 的方式删除，条带、分块与预览图的偏移量全部保持有效 |
 | 相机 RAW | `.cr2` `.cr3` `.crw` `.nef` `.nrw` `.arw` `.srf` `.sr2` `.orf` `.rw2` `.rwl` `.dng` `.pef` `.srw` `.raf` `.3fr` `.erf` `.mef` `.mos` `.iiq` `.kdc` `.dcr` `.k25` | 同样的原地目录压缩，另外处理 MakerNote 与 GPS 目录。富士的内嵌 JPEG 预览图、佳能 CR3 的条目数据都在原位清理，传感器数据从不重写 |
 | HEIF 与 AVIF | `.heic` `.heif` `.heics` `.heifs` `.hif` `.avif` `.avifs` | 按条目粒度清空 EXIF、XMP、C2PA 条目，完整保留定位图像所需的条目表 |
 | 音频 | `.mp3` `.wav` `.flac` | ID3/APEv2、RIFF INFO/XMP/BWF/iXML/C2PA、FLAC Vorbis 评论、封面、XMP 与前置 ID3/C2PA |
+| AIFF | `.aif` `.aiff` `.aifc` | 原生名称、作者、版权、注释与评论块，以及 ID3、XMP、C2PA；不重新编码音频采样 |
 | ISO 媒体 | `.mp4` `.mov` `.m4v` `.m4a` `.3g2` `.3gp` `.3gp2` `.3gpp` `.f4a` `.f4b` `.f4p` `.f4v` `.lrv` `.m4b` `.m4p` `.mqv` `.qt` | ISO BMFF/QuickTime 用户数据、XMP、作者与位置原子，不移动媒体字节 |
 | AVI | `.avi` | 元数据块被改名为 RIFF 自带的 `JUNK` 填充标记并清零，无论 `idx1` 索引采用哪种偏移基准都不会错位 |
 | Matroska 与 WebM | `.mkv` `.mka` `.mks` `.mk3d` `.webm` | 标签、附件与写入程序信息，通过在原字节上覆写 EBML `Void` 元素来作废，索引表继续有效 |
 | ASF | `.asf` `.wmv` `.wma` | 内容描述与整个 `WM/` 属性空间被格式自带的填充对象覆盖，头部对象计数保持真实 |
-| 文档 | `.docx` `.xlsx` `.pptx` `.odt` `.epub` | 作者与应用属性、批注、自定义 XML；DOCX 修订会被固化——接受插入内容，移除删除标记内容。EPUB 会清掉 Dublin Core 中的人名与日期，以及 Calibre/Sigil/Kobo/Apple/Adobe 留下的痕迹 |
+| 文档 | `.docx` `.xlsx` `.pptx` `.odt` `.ods` `.odp` `.odg` `.odf` `.odb` `.odm` `.ott` `.ots` `.otp` `.otg` `.epub` | 作者与应用属性、批注、自定义 XML；DOCX 与 OpenDocument 修订会被固化——接受插入内容，移除删除标记内容。EPUB 会清掉 Dublin Core 中的人名与日期，以及 Calibre/Sigil/Kobo/Apple/Adobe 留下的痕迹 |
 | PDF | `.pdf` | 移除 Info 字典、XMP 与内嵌 JPEG 图片中的元数据，再完整重序列化，丢弃残留在增量更新历史里的元数据 |
 | 文本与标记 | `.txt` `.md` `.markdown` `.html` `.htm` `.xhtml` `.svg` `.xml` `.json` `.csv` `.tsv` `.yaml` `.yml` `.log` `.srt` `.vtt` | 不可见 Unicode、Markdown Front Matter、HTML/XHTML/SVG 的作者与生成器信息，以及内嵌 Data URI 图片中的元数据 |
 
@@ -87,7 +89,7 @@ MetaClean 把这些统统找出来并清除——全过程只在你自己的电�
 - 四个页面：**文件净化**、**处理记录**、**隐私说明**、**设置**
 - 固定 1180 × 720 企业工作台，使用紧凑图标导航与持续可见的“仅本地”状态栏
 - 可导出带版本的本地 JSON 审计报告，记录逐文件发现项与处理结果，但不包含原始元数据值
-- 可选的 Windows 资源管理器右键菜单，覆盖全部 91 种受支持扩展名（Windows 11 上位于**显示更多选项**中）
+- 可选的 Windows 资源管理器右键菜单，覆盖全部 105 种受支持扩展名（Windows 11 上位于**显示更多选项**中）
 - 关闭窗口默认彻底退出；也可在设置中改为驻留系统托盘，再从托盘菜单重新打开或退出
 - 设置 → 系统与更新中提供项目主页与问题反馈入口
 - 默认保留 JPEG 显示方向、ICC/sRGB 色彩配置与文件时间戳，三项均可独立关闭

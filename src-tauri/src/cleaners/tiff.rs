@@ -287,16 +287,23 @@ fn read_entries(reader: &Reader, at: usize, count: usize) -> Result<Vec<Entry>> 
             let kind = reader.u16(base + 2)?;
             let items = reader.u32(base + 4)? as usize;
             let inline = reader.u32(base + 8)?;
-            let width = type_size(kind).saturating_mul(items);
-            let external = (width > 4)
-                .then(|| {
-                    let start = inline as usize;
-                    start
-                        .checked_add(width)
-                        .filter(|end| *end <= reader.data.len())
-                        .map(|end| start..end)
-                })
-                .flatten();
+            let item_size = type_size(kind);
+            if item_size == 0 {
+                return Err(invalid("TIFF 条目类型无效或不受支持"));
+            }
+            let width = item_size
+                .checked_mul(items)
+                .ok_or_else(|| invalid("TIFF 条目值长度溢出"))?;
+            let external = if width > 4 {
+                let start = inline as usize;
+                let end = start
+                    .checked_add(width)
+                    .filter(|end| *end <= reader.data.len())
+                    .ok_or_else(|| invalid("TIFF 条目外置值越界"))?;
+                Some(start..end)
+            } else {
+                None
+            };
             Ok(Entry {
                 tag,
                 bytes: reader.data[base..base + ENTRY].try_into().unwrap(),
@@ -359,8 +366,11 @@ fn walk(
     survey: &mut Survey,
     seen: &mut Vec<usize>,
 ) -> Result<u32> {
-    if depth > MAX_DEPTH || seen.contains(&at) {
-        return Ok(0);
+    if depth > MAX_DEPTH {
+        return Err(invalid("TIFF 目录嵌套超过安全上限"));
+    }
+    if seen.contains(&at) {
+        return Err(invalid("TIFF 目录包含循环或重复引用"));
     }
     if seen.len() >= MAX_DIRECTORIES {
         return Err(invalid("TIFF 目录数量超过安全上限"));
@@ -673,6 +683,28 @@ pub fn verify_raf_cleaned(
 mod tests {
     use super::*;
 
+    #[test]
+    fn rejects_ifd_chains_nested_beyond_the_audit_limit() {
+        let mut source = b"II*\0\x08\0\0\0".to_vec();
+        for index in 0..6usize {
+            source.extend_from_slice(&1u16.to_le_bytes());
+            source.extend_from_slice(&EXIF_POINTER.to_le_bytes());
+            source.extend_from_slice(&4u16.to_le_bytes());
+            source.extend_from_slice(&1u32.to_le_bytes());
+            let child = if index == 5 { 0 } else { 8 + (index + 1) * 18 };
+            source.extend_from_slice(&(child as u32).to_le_bytes());
+            source.extend_from_slice(&0u32.to_le_bytes());
+        }
+        assert!(inspect_tiff(&source, false).is_err());
+    }
+
+    #[test]
+    fn rejects_cyclic_ifd_chains() {
+        let mut source = b"II*\0\x08\0\0\0\0\0".to_vec();
+        source.extend_from_slice(&8u32.to_le_bytes());
+        assert!(inspect_tiff(&source, false).is_err());
+    }
+
     struct Builder {
         entries: Vec<(u16, u16, u32, Vec<u8>)>,
     }
@@ -933,6 +965,20 @@ mod tests {
         assert!(inspect_tiff(b"II\x2b\x00\x08\0\0\0", false).is_err());
         assert!(!is_tiff(b"BM\0\0\0\0"));
         assert!(is_tiff(&sample()));
+
+        let mut invalid_external = b"II*\0\x08\0\0\0".to_vec();
+        invalid_external.extend_from_slice(&1u16.to_le_bytes());
+        invalid_external.extend_from_slice(&0x013bu16.to_le_bytes());
+        invalid_external.extend_from_slice(&2u16.to_le_bytes());
+        invalid_external.extend_from_slice(&16u32.to_le_bytes());
+        invalid_external.extend_from_slice(&u32::MAX.to_le_bytes());
+        invalid_external.extend_from_slice(&0u32.to_le_bytes());
+        assert!(inspect_tiff(&invalid_external, false).is_err());
+
+        let mut unknown_type = invalid_external;
+        unknown_type[12..14].copy_from_slice(&99u16.to_le_bytes());
+        unknown_type[18..22].copy_from_slice(&0u32.to_le_bytes());
+        assert!(inspect_tiff(&unknown_type, false).is_err());
     }
 
     #[test]
@@ -942,7 +988,7 @@ mod tests {
         let exif = b"Exif\0\0Alice-was-here".to_vec();
         preview.extend_from_slice(&((exif.len() + 2) as u16).to_be_bytes());
         preview.extend_from_slice(&exif);
-        preview.extend_from_slice(&[0xff, 0xda, 0x00, 0x02]);
+        preview.extend_from_slice(&[0xff, 0xda, 0x00, 0x08, 0x01, 0x01, 0x00, 0x00, 0x3f, 0x00]);
         preview.extend_from_slice(b"SCAN");
         preview.extend_from_slice(&[0xff, 0xd9]);
 

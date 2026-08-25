@@ -95,6 +95,20 @@
         <RemoveRegistryKey Id="RemoveMetaCleanContext88" Root="HKCU" Key="Software\Classes\SystemFileAssociations\.log\shell\MetaClean" Action="removeOnUninstall" />
         <RemoveRegistryKey Id="RemoveMetaCleanContext89" Root="HKCU" Key="Software\Classes\SystemFileAssociations\.srt\shell\MetaClean" Action="removeOnUninstall" />
         <RemoveRegistryKey Id="RemoveMetaCleanContext90" Root="HKCU" Key="Software\Classes\SystemFileAssociations\.vtt\shell\MetaClean" Action="removeOnUninstall" />
+        <RemoveRegistryKey Id="RemoveMetaCleanContext91" Root="HKCU" Key="Software\Classes\SystemFileAssociations\.aif\shell\MetaClean" Action="removeOnUninstall" />
+        <RemoveRegistryKey Id="RemoveMetaCleanContext92" Root="HKCU" Key="Software\Classes\SystemFileAssociations\.aiff\shell\MetaClean" Action="removeOnUninstall" />
+        <RemoveRegistryKey Id="RemoveMetaCleanContext93" Root="HKCU" Key="Software\Classes\SystemFileAssociations\.aifc\shell\MetaClean" Action="removeOnUninstall" />
+        <RemoveRegistryKey Id="RemoveMetaCleanContext94" Root="HKCU" Key="Software\Classes\SystemFileAssociations\.ods\shell\MetaClean" Action="removeOnUninstall" />
+        <RemoveRegistryKey Id="RemoveMetaCleanContext95" Root="HKCU" Key="Software\Classes\SystemFileAssociations\.odp\shell\MetaClean" Action="removeOnUninstall" />
+        <RemoveRegistryKey Id="RemoveMetaCleanContext96" Root="HKCU" Key="Software\Classes\SystemFileAssociations\.odg\shell\MetaClean" Action="removeOnUninstall" />
+        <RemoveRegistryKey Id="RemoveMetaCleanContext97" Root="HKCU" Key="Software\Classes\SystemFileAssociations\.odf\shell\MetaClean" Action="removeOnUninstall" />
+        <RemoveRegistryKey Id="RemoveMetaCleanContext98" Root="HKCU" Key="Software\Classes\SystemFileAssociations\.odb\shell\MetaClean" Action="removeOnUninstall" />
+        <RemoveRegistryKey Id="RemoveMetaCleanContext99" Root="HKCU" Key="Software\Classes\SystemFileAssociations\.odm\shell\MetaClean" Action="removeOnUninstall" />
+        <RemoveRegistryKey Id="RemoveMetaCleanContext100" Root="HKCU" Key="Software\Classes\SystemFileAssociations\.ott\shell\MetaClean" Action="removeOnUninstall" />
+        <RemoveRegistryKey Id="RemoveMetaCleanContext101" Root="HKCU" Key="Software\Classes\SystemFileAssociations\.ots\shell\MetaClean" Action="removeOnUninstall" />
+        <RemoveRegistryKey Id="RemoveMetaCleanContext102" Root="HKCU" Key="Software\Classes\SystemFileAssociations\.otp\shell\MetaClean" Action="removeOnUninstall" />
+        <RemoveRegistryKey Id="RemoveMetaCleanContext103" Root="HKCU" Key="Software\Classes\SystemFileAssociations\.otg\shell\MetaClean" Action="removeOnUninstall" />
+        <RemoveRegistryKey Id="RemoveMetaCleanContext104" Root="HKCU" Key="Software\Classes\SystemFileAssociations\.jxl\shell\MetaClean" Action="removeOnUninstall" />
         <RemoveRegistryKey Id="RemoveMetaCleanInstallState" Root="HKCU" Key="Software\moresl\MetaClean" Action="removeOnUninstall" />
         <RemoveRegistryKey Id="RemoveMetaCleanCleanupState" Root="HKCU" Key="Software\MetaClean" Action="removeOnUninstall" />
       </Component>

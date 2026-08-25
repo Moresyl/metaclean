@@ -9,6 +9,7 @@ import {
   type UpdateProgress,
   type UpdateRuntime,
 } from "../lib/update";
+import { readStorage, removeStorage, writeStorage } from "../lib/storage";
 
 type UpdateStatus = "idle" | "checking" | "current" | "available" | "updating" | "error";
 
@@ -34,6 +35,15 @@ const DISMISSED_VERSION_KEY = "metaclean.update.dismissedVersion";
 const DEFAULT_RUNTIME: UpdateRuntime = { selfUpdateSupported: false, portable: false };
 const UpdateContext = createContext<UpdateContextValue | null>(null);
 
+function normalizeRuntime(value: unknown): UpdateRuntime {
+  if (!value || typeof value !== "object") return DEFAULT_RUNTIME;
+  const candidate = value as Partial<UpdateRuntime>;
+  if (typeof candidate.selfUpdateSupported !== "boolean" || typeof candidate.portable !== "boolean") {
+    return DEFAULT_RUNTIME;
+  }
+  return { selfUpdateSupported: candidate.selfUpdateSupported, portable: candidate.portable };
+}
+
 export function UpdateProvider({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<UpdateStatus>("idle");
   const [info, setInfo] = useState<UpdateInfo>();
@@ -42,11 +52,11 @@ export function UpdateProvider({ children }: { children: ReactNode }) {
   const [progress, setProgress] = useState<UpdateProgress>();
   const [runtime, setRuntime] = useState<UpdateRuntime>(DEFAULT_RUNTIME);
   const [promptOpen, setPromptOpen] = useState(false);
-  const [autoCheckEnabled, setAutoCheckState] = useState(() => localStorage.getItem(AUTO_CHECK_KEY) !== "false");
+  const [autoCheckEnabled, setAutoCheckState] = useState(() => readStorage(AUTO_CHECK_KEY) !== "false");
   const checking = useRef(false);
 
   const setAutoCheckEnabled = useCallback((enabled: boolean) => {
-    localStorage.setItem(AUTO_CHECK_KEY, String(enabled));
+    writeStorage(AUTO_CHECK_KEY, String(enabled));
     setAutoCheckState(enabled);
   }, []);
 
@@ -61,7 +71,7 @@ export function UpdateProvider({ children }: { children: ReactNode }) {
         setInfo(result.info);
         setCurrentVersion(result.info.currentVersion);
         setStatus("available");
-        setPromptOpen(localStorage.getItem(DISMISSED_VERSION_KEY) !== result.info.availableVersion);
+        setPromptOpen(readStorage(DISMISSED_VERSION_KEY) !== result.info.availableVersion);
       } else {
         setInfo(undefined);
         setCurrentVersion(result.currentVersion);
@@ -83,13 +93,13 @@ export function UpdateProvider({ children }: { children: ReactNode }) {
 
   const showUpdatePrompt = useCallback(() => {
     if (!info) return;
-    localStorage.removeItem(DISMISSED_VERSION_KEY);
+    removeStorage(DISMISSED_VERSION_KEY);
     setPromptOpen(true);
   }, [info]);
 
   const dismissUpdatePrompt = useCallback(() => {
     if (info?.availableVersion) {
-      localStorage.setItem(DISMISSED_VERSION_KEY, info.availableVersion);
+      writeStorage(DISMISSED_VERSION_KEY, info.availableVersion);
     }
     setPromptOpen(false);
   }, [info?.availableVersion]);
@@ -123,7 +133,7 @@ export function UpdateProvider({ children }: { children: ReactNode }) {
       .then((version) => { if (active) setCurrentVersion(version); })
       .catch(() => undefined);
     void getUpdateRuntime()
-      .then((value) => { if (active) setRuntime(value); })
+      .then((value) => { if (active) setRuntime(normalizeRuntime(value)); })
       .catch(() => undefined);
     return () => { active = false; };
   }, []);

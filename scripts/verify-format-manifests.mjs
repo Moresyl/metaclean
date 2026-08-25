@@ -5,7 +5,7 @@ import { readFile } from "node:fs/promises";
  * every other list here is checked against the Rust one, so only a fixed number
  * can catch the Rust list itself losing an entry.
  */
-const EXPECTED = 91;
+const EXPECTED = 105;
 
 const root = new URL("../", import.meta.url);
 const read = (path) => readFile(new URL(path, root), "utf8");

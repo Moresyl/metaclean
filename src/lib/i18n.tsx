@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { htmlLanguage, initialLocale, textDirection, translate, type Locale } from "./locales";
+import { readStorage, writeStorage } from "./storage";
 
 export type { Locale } from "./locales";
 
@@ -13,9 +14,7 @@ const I18nContext = createContext<I18nValue | null>(null);
 
 export function I18nProvider({ children }: { children: ReactNode }) {
   const [locale, setLocaleState] = useState<Locale>(() => {
-    let stored: string | null = null;
-    try { stored = localStorage.getItem("metaclean.locale"); } catch { /* use system locale */ }
-    return initialLocale(stored, navigator.language);
+    return initialLocale(readStorage("metaclean.locale") ?? null, navigator.language);
   });
   useEffect(() => {
     document.documentElement.lang = htmlLanguage(locale);
@@ -23,7 +22,7 @@ export function I18nProvider({ children }: { children: ReactNode }) {
   }, [locale]);
   const value = useMemo<I18nValue>(() => ({
     locale,
-    setLocale: (next) => { try { localStorage.setItem("metaclean.locale", next); } catch { /* state still updates */ } setLocaleState(next); },
+    setLocale: (next) => { writeStorage("metaclean.locale", next); setLocaleState(next); },
     text: (zh, en) => translate(locale, zh, en),
   }), [locale]);
   return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>;

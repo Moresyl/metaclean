@@ -49,43 +49,68 @@ fn layout(data: &[u8]) -> Result<Layout> {
     }
     let off_bits = u32_at(data, OFF_BITS)? as usize;
     let dib = u32_at(data, FILE_HEADER)? as usize;
-    if dib < MIN_DIB || FILE_HEADER + dib > data.len() || off_bits > data.len() {
+    if dib < MIN_DIB
+        || FILE_HEADER + dib > data.len()
+        || off_bits < FILE_HEADER + dib
+        || off_bits > data.len()
+    {
         return Err(invalid("BMP 信息头无效"));
     }
 
     // A twelve byte core header keeps its dimensions in sixteen bit fields;
     // every later version widened them to thirty two.
-    let (width, height, bits, declared) = if dib == MIN_DIB {
+    let (width, height, planes, bits, compression, declared) = if dib == MIN_DIB {
         let read = |at: usize| -> Result<i32> {
-            Ok(i16::from_le_bytes(
+            Ok(u16::from_le_bytes(
                 data.get(at..at + 2)
                     .ok_or_else(|| invalid("BMP 信息头越界"))?
                     .try_into()
                     .unwrap(),
-            )
-            .into())
+            ) as i32)
         };
         (
             read(FILE_HEADER + 4)?,
             read(FILE_HEADER + 6)?,
+            u16::from_le_bytes(data[FILE_HEADER + 8..FILE_HEADER + 10].try_into().unwrap()),
             u32::from(u16::from_le_bytes(
                 data[FILE_HEADER + 10..FILE_HEADER + 12].try_into().unwrap(),
             )),
+            0,
             0usize,
         )
     } else {
         (
             u32_at(data, FILE_HEADER + 4)? as i32,
             u32_at(data, FILE_HEADER + 8)? as i32,
+            u16::from_le_bytes(
+                data.get(FILE_HEADER + 12..FILE_HEADER + 14)
+                    .ok_or_else(|| invalid("BMP 信息头越界"))?
+                    .try_into()
+                    .unwrap(),
+            ),
             u32::from(u16::from_le_bytes(
                 data.get(FILE_HEADER + 14..FILE_HEADER + 16)
                     .ok_or_else(|| invalid("BMP 信息头越界"))?
                     .try_into()
                     .unwrap(),
             )),
+            u32_at(data, FILE_HEADER + 16)?,
             u32_at(data, FILE_HEADER + 20)? as usize,
         )
     };
+    if width <= 0
+        || height == 0
+        || planes != 1
+        || !(matches!(bits, 1 | 4 | 8 | 16 | 24 | 32) || bits == 0 && matches!(compression, 4 | 5))
+        || !matches!(compression, 0..=6)
+        || (compression == 1 && bits != 8)
+        || (compression == 2 && bits != 4)
+        || (matches!(compression, 3 | 6) && !matches!(bits, 16 | 32))
+        || (matches!(compression, 1 | 2) && (declared == 0 || height < 0))
+        || (matches!(compression, 4 | 5) && declared == 0)
+    {
+        return Err(invalid("BMP 尺寸、位深或压缩信息无效"));
+    }
 
     let rows = height.unsigned_abs() as usize;
     let stride = (u64::from(width.unsigned_abs())
@@ -94,10 +119,13 @@ fn layout(data: &[u8]) -> Result<Layout> {
         / 32)
         .saturating_mul(4) as usize;
     // A compressed bitmap has no predictable stride, so trust its own count.
-    let pixels = if declared > 0 {
+    let measured_pixels = stride
+        .checked_mul(rows)
+        .ok_or_else(|| invalid("BMP 像素尺寸溢出"))?;
+    let pixels = if matches!(compression, 1 | 2 | 4 | 5) {
         declared
     } else {
-        stride.saturating_mul(rows)
+        measured_pixels
     };
     let pixels_end = off_bits
         .checked_add(pixels)
@@ -114,10 +142,14 @@ fn layout(data: &[u8]) -> Result<Layout> {
             let at = u32_at(data, FILE_HEADER + 112)? as usize;
             let size = u32_at(data, FILE_HEADER + 116)? as usize;
             let start = FILE_HEADER + at;
-            Ok(start
+            let end = start
                 .checked_add(size)
                 .filter(|end| size > 0 && *end <= data.len())
-                .map(|_| (start, size)))
+                .ok_or_else(|| invalid("BMP ICC 配置文件越界"))?;
+            if start < FILE_HEADER + dib || start < pixels_end && off_bits < end {
+                return Err(invalid("BMP ICC 配置文件与结构或像素重叠"));
+            }
+            Ok(Some((start, size)))
         })
         .transpose()?
         .flatten();
@@ -141,7 +173,11 @@ fn trailing(data: &[u8], layout: &Layout, keep_profile: bool) -> usize {
 fn findings(data: &[u8], layout: &Layout) -> Vec<Finding> {
     let mut findings = Vec::new();
     let appended = trailing(data, layout, true);
-    let count = usize::from(appended > 0) + usize::from(layout.reserved);
+    let private_profile_gap = layout.profile.is_some_and(|(start, _)| {
+        start > layout.pixels_end && data[layout.pixels_end..start].iter().any(|byte| *byte != 0)
+    });
+    let count =
+        usize::from(appended > 0) + usize::from(layout.reserved) + usize::from(private_profile_gap);
     if count > 0 {
         findings.push(Finding {
             category: "image_metadata".into(),
@@ -180,6 +216,8 @@ pub fn clean(data: &[u8], preserve_color_profile: bool) -> Result<(Vec<u8>, Vec<
             }
             output[FILE_HEADER + 56..FILE_HEADER + 60].copy_from_slice(&PROFILE_SRGB.to_le_bytes());
             output[FILE_HEADER + 112..FILE_HEADER + 120].fill(0);
+        } else if start > layout.pixels_end {
+            output[layout.pixels_end..start].fill(0);
         }
     }
     let size = u32::try_from(output.len()).map_err(|_| invalid("BMP 体积超出格式上限"))?;
@@ -191,6 +229,16 @@ pub fn verify_cleaned(data: &[u8], preserve_color_profile: bool) -> Result<()> {
     let layout = layout(data)?;
     if trailing(data, &layout, preserve_color_profile) > 0 || layout.reserved {
         return Err(CleanError::Verification("BMP 中仍残留附加数据".into()));
+    }
+    if preserve_color_profile
+        && layout.profile.is_some_and(|(start, _)| {
+            start > layout.pixels_end
+                && data[layout.pixels_end..start].iter().any(|byte| *byte != 0)
+        })
+    {
+        return Err(CleanError::Verification(
+            "BMP ICC 前仍存在非零尾部间隙".into(),
+        ));
     }
     if layout.profile.is_some() != preserve_color_profile && layout.profile.is_some() {
         return Err(CleanError::Verification(
@@ -256,6 +304,7 @@ mod tests {
     #[test]
     fn honours_the_colour_profile_choice_for_version_five_headers() {
         let pixels = vec![0x22u8; 4 * 4];
+        let private_gap = b"PRIVATE-GAP";
         let profile = b"ICC-PROFILE-BODY".to_vec();
         let mut dib = 124u32.to_le_bytes().to_vec();
         dib.extend_from_slice(&2i32.to_le_bytes());
@@ -266,7 +315,7 @@ mod tests {
         dib[56..60].copy_from_slice(&PROFILE_EMBEDDED.to_le_bytes());
         let off_bits = FILE_HEADER + dib.len();
         // The profile offset is measured from the start of the info header.
-        let profile_at = (dib.len() + pixels.len()) as u32;
+        let profile_at = (dib.len() + pixels.len() + private_gap.len()) as u32;
         dib[112..116].copy_from_slice(&profile_at.to_le_bytes());
         dib[116..120].copy_from_slice(&(profile.len() as u32).to_le_bytes());
         let mut source = b"BM".to_vec();
@@ -275,6 +324,7 @@ mod tests {
         source.extend_from_slice(&(off_bits as u32).to_le_bytes());
         source.extend(dib);
         source.extend(pixels);
+        source.extend(private_gap);
         source.extend(profile);
 
         assert!(inspect(&source)
@@ -284,6 +334,7 @@ mod tests {
 
         let (kept, _) = clean(&source, true).unwrap();
         assert!(contains(&kept, b"ICC-PROFILE-BODY"));
+        assert!(!contains(&kept, private_gap));
         verify_cleaned(&kept, true).unwrap();
 
         let (stripped, _) = clean(&source, false).unwrap();
@@ -297,5 +348,21 @@ mod tests {
         assert!(inspect(b"BM").is_err());
         assert!(inspect(b"\x89PNG\r\n\x1a\n").is_err());
         assert!(!is_bmp(b"II\x2a\x00\x08\0\0\0"));
+    }
+
+    #[test]
+    fn rejects_headers_that_could_make_cleanup_truncate_structure() {
+        let mut invalid_offset = sample();
+        invalid_offset[OFF_BITS..OFF_BITS + 4].copy_from_slice(&(FILE_HEADER as u32).to_le_bytes());
+        assert!(inspect(&invalid_offset).is_err());
+
+        let mut invalid_planes = sample();
+        invalid_planes[FILE_HEADER + 12..FILE_HEADER + 14].fill(0);
+        assert!(inspect(&invalid_planes).is_err());
+
+        let mut unmeasured_compressed = sample();
+        unmeasured_compressed[FILE_HEADER + 16..FILE_HEADER + 20]
+            .copy_from_slice(&1u32.to_le_bytes());
+        assert!(inspect(&unmeasured_compressed).is_err());
     }
 }

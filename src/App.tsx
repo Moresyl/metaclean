@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { ArrowUpCircle, FileCheck2, FilePlus2, FolderOpen, History, Moon, MonitorCog, ScanSearch, Settings, ShieldCheck, Sun, Trash2 } from "lucide-react";
 import Sidebar from "./components/Sidebar";
@@ -13,10 +13,12 @@ import TitleBar from "./components/TitleBar";
 import StatusBar from "./components/StatusBar";
 import TooltipHost from "./components/TooltipHost";
 import CommandPalette, { type Command } from "./components/CommandPalette";
-import { actionableFindingCount, entryFromPath, mergeEntries } from "./lib/files";
+import { actionableFindingCount, applyScanReports, entryFromPath, markEntryPaths, mergeEntries } from "./lib/files";
 import { installZoomLock } from "./lib/window";
 import { commandKeyLabel } from "./lib/keys";
 import { pickPaths } from "./lib/pick";
+import { loadHistory, persistHistory } from "./lib/history";
+import { readStorage, writeStorage } from "./lib/storage";
 import type { CleanMode, FileEntry, HistoryEntry, IntakeResult, Page } from "./types";
 import type { CleanResult, ScanReport } from "./types";
 import { useI18n } from "./lib/i18n";
@@ -30,16 +32,15 @@ export default function App() {
   const [page, setPage] = useState<Page>("clean");
   const [commandsOpen, setCommandsOpen] = useState(false);
   const [entries, setEntries] = useState<FileEntry[]>([]);
-  const [mode, setModeState] = useState<CleanMode>(() => localStorage.getItem("metaclean.outputMode") === "replace" ? "replace" : "copy");
-  const [preserveTimestamps, setPreserveTimestampsState] = useState(() => localStorage.getItem("metaclean.preserveTimestamps") !== "false");
-  const [preserveOrientation, setPreserveOrientationState] = useState(() => localStorage.getItem("metaclean.preserveOrientation") !== "false");
-  const [preserveColorProfile, setPreserveColorProfileState] = useState(() => localStorage.getItem("metaclean.preserveColorProfile") !== "false");
-  const [removeExtendedAttributes, setRemoveExtendedAttributesState] = useState(() => localStorage.getItem("metaclean.removeExtendedAttributes") === "true");
-  const [closeToTray, setCloseToTrayState] = useState(() => localStorage.getItem("metaclean.closeToTray") === "true");
-  const [history, setHistory] = useState<HistoryEntry[]>(() => {
-    try { return JSON.parse(localStorage.getItem("metaclean.history") ?? "[]") as HistoryEntry[]; } catch { return []; }
-  });
+  const [mode, setModeState] = useState<CleanMode>(() => readStorage("metaclean.outputMode") === "replace" ? "replace" : "copy");
+  const [preserveTimestamps, setPreserveTimestampsState] = useState(() => readStorage("metaclean.preserveTimestamps") !== "false");
+  const [preserveOrientation, setPreserveOrientationState] = useState(() => readStorage("metaclean.preserveOrientation") !== "false");
+  const [preserveColorProfile, setPreserveColorProfileState] = useState(() => readStorage("metaclean.preserveColorProfile") !== "false");
+  const [removeExtendedAttributes, setRemoveExtendedAttributesState] = useState(() => readStorage("metaclean.removeExtendedAttributes") === "true");
+  const [closeToTray, setCloseToTrayState] = useState(() => readStorage("metaclean.closeToTray") === "true");
+  const [history, setHistory] = useState<HistoryEntry[]>(loadHistory);
   const [busy, setBusy] = useState(false);
+  const operationRef = useRef(false);
   const [message, setMessage] = useState<string>();
   const [dragActive, setDragActive] = useState(false);
   const addEntries = useCallback((incoming: FileEntry[]) => setEntries((current) => mergeEntries(current, incoming)), []);
@@ -60,13 +61,14 @@ export default function App() {
       setMessage(text(`无法展开所选路径：${String(error)}`, `Could not expand the selected paths: ${String(error)}`));
     }
   }, [addEntries, text]);
-  const setMode = useCallback((next: CleanMode) => { setModeState(next); localStorage.setItem("metaclean.outputMode", next); }, []);
-  const setPreserveTimestamps = useCallback((next: boolean) => { setPreserveTimestampsState(next); localStorage.setItem("metaclean.preserveTimestamps", String(next)); }, []);
-  const setPreserveOrientation = useCallback((next: boolean) => { setPreserveOrientationState(next); localStorage.setItem("metaclean.preserveOrientation", String(next)); }, []);
-  const setPreserveColorProfile = useCallback((next: boolean) => { setPreserveColorProfileState(next); localStorage.setItem("metaclean.preserveColorProfile", String(next)); }, []);
-  const setRemoveExtendedAttributes = useCallback((next: boolean) => { setRemoveExtendedAttributesState(next); localStorage.setItem("metaclean.removeExtendedAttributes", String(next)); }, []);
-  const setCloseToTray = useCallback((next: boolean) => { setCloseToTrayState(next); localStorage.setItem("metaclean.closeToTray", String(next)); }, []);
-  const saveHistory = useCallback((next: HistoryEntry[]) => { const limited = next.slice(0, 100); setHistory(limited); localStorage.setItem("metaclean.history", JSON.stringify(limited)); }, []);
+  const setMode = useCallback((next: CleanMode) => { setModeState(next); writeStorage("metaclean.outputMode", next); }, []);
+  const setPreserveTimestamps = useCallback((next: boolean) => { setPreserveTimestampsState(next); writeStorage("metaclean.preserveTimestamps", String(next)); }, []);
+  const setPreserveOrientation = useCallback((next: boolean) => { setPreserveOrientationState(next); writeStorage("metaclean.preserveOrientation", String(next)); }, []);
+  const setPreserveColorProfile = useCallback((next: boolean) => { setPreserveColorProfileState(next); writeStorage("metaclean.preserveColorProfile", String(next)); }, []);
+  const setRemoveExtendedAttributes = useCallback((next: boolean) => { setRemoveExtendedAttributesState(next); writeStorage("metaclean.removeExtendedAttributes", String(next)); }, []);
+  const setCloseToTray = useCallback((next: boolean) => { setCloseToTrayState(next); writeStorage("metaclean.closeToTray", String(next)); }, []);
+  const addHistory = useCallback((entry: HistoryEntry) => setHistory((current) => persistHistory([entry, ...current])), []);
+  const clearHistory = useCallback(() => setHistory(persistHistory([])), []);
 
   useEffect(() => {
     let dispose: (() => void) | undefined;
@@ -115,41 +117,56 @@ export default function App() {
   }, []);
 
   const scanned = entries.length > 0 && entries.every((entry) => entry.status === "scanned" || entry.status === "clean" || entry.status === "error");
-  const cleanableEntries = entries.filter((entry) => entry.status === "scanned" && actionableFindingCount(entry.report, preserveColorProfile, removeExtendedAttributes) > 0);
+  const cleanableEntries = entries.filter((entry) => (
+    entry.status === "scanned" || (entry.status === "error" && entry.result?.success === false)
+  ) && actionableFindingCount(entry.report, preserveColorProfile, removeExtendedAttributes) > 0);
 
   async function scan() {
+    if (operationRef.current) return;
     const paths = entries.flatMap((entry) => entry.path ? [entry.path] : []);
     if (paths.length !== entries.length) { setMessage(text("浏览器模式无法取得完整路径，请在桌面应用中选择文件。", "Browser mode cannot access full paths. Choose files in the desktop app.")); return; }
-    setBusy(true); setMessage(undefined); setEntries((current) => current.map((entry) => ({ ...entry, status: "scanning" })));
+    operationRef.current = true;
+    setBusy(true); setMessage(undefined); setEntries((current) => markEntryPaths(current, paths, "scanning"));
     try {
       const { invoke } = await import("@tauri-apps/api/core");
       const reports = await invoke<ScanReport[]>("scan_files", { paths });
-      const byPath = new Map(reports.map((report) => [report.path, report]));
-      setEntries((current) => current.map((entry) => { const report = entry.path ? byPath.get(entry.path) : undefined; return { ...entry, report, status: report?.error ? "error" : "scanned" }; }));
-      const count = reports.reduce((total, report) => total + report.findings.reduce((sum, finding) => sum + finding.count, 0), 0);
-      setMessage(text(`扫描完成：${count} 项痕迹等待确认。`, `Scan complete: ${count} trace(s) await confirmation.`));
-    } catch (error) { setEntries((current) => current.map((entry) => ({ ...entry, status: "error" }))); setMessage(text(`扫描失败：${String(error)}`, `Scan failed: ${String(error)}`)); }
-    finally { setBusy(false); }
+      const requested = new Set(paths);
+      const relevant = [...new Map(reports
+        .filter((report) => requested.has(report.path))
+        .map((report) => [report.path, report])).values()];
+      setEntries((current) => applyScanReports(current, paths, relevant));
+      const count = relevant.reduce((total, report) => total + report.findings.reduce((sum, finding) => sum + finding.count, 0), 0);
+      const missing = paths.length - relevant.length;
+      setMessage(text(`扫描完成：${count} 项痕迹等待确认。${missing > 0 ? ` ${missing} 个文件未返回结果，可重试扫描。` : ""}`, `Scan complete: ${count} trace(s) await confirmation.${missing > 0 ? ` ${missing} file(s) returned no result and can be retried.` : ""}`));
+    } catch (error) { setEntries((current) => markEntryPaths(current, paths, "error")); setMessage(text(`扫描失败：${String(error)}`, `Scan failed: ${String(error)}`)); }
+    finally { operationRef.current = false; setBusy(false); }
   }
 
   async function clean() {
+    if (operationRef.current) return;
     const paths = cleanableEntries.flatMap((entry) => entry.path ? [entry.path] : []);
     if (!paths.length) return;
+    operationRef.current = true;
     setBusy(true); setMessage(undefined);
     try {
       const { invoke } = await import("@tauri-apps/api/core");
       const results = await invoke<CleanResult[]>("clean_files", { request: { paths, mode, preserveTimestamps, preserveOrientation, preserveColorProfile, removeExtendedAttributes } });
-      const byPath = new Map(results.map((result) => [result.sourcePath, result]));
+      const requested = new Set(paths);
+      const relevant = [...new Map(results
+        .filter((result) => requested.has(result.sourcePath))
+        .map((result) => [result.sourcePath, result])).values()];
+      const byPath = new Map(relevant.map((result) => [result.sourcePath, result]));
       setEntries((current) => current.map((entry) => {
         const result = entry.path ? byPath.get(entry.path) : undefined;
         return result ? { ...entry, status: result.success ? "clean" : "error", result } : entry;
       }));
-      const successes = results.filter((result) => result.success);
-      const failures = results.length - successes.length;
-      setMessage(text(`${successes.length} 个文件清理完成${failures ? `，${failures} 个失败` : ""}。${successes[0]?.outputPath ? ` 输出：${successes[0].outputPath}` : ""}`, `${successes.length} file(s) cleaned${failures ? `; ${failures} failed` : ""}.${successes[0]?.outputPath ? ` Output: ${successes[0].outputPath}` : ""}`));
-      saveHistory([{ id: crypto.randomUUID(), createdAt: new Date().toISOString(), mode, results }, ...history]);
+      const successes = relevant.filter((result) => result.success);
+      const failures = relevant.length - successes.length;
+      const missing = paths.length - relevant.length;
+      setMessage(text(`${successes.length} 个文件清理完成${failures ? `，${failures} 个失败` : ""}${missing > 0 ? `，${missing} 个未返回结果、可重试` : ""}。${successes[0]?.outputPath ? ` 输出：${successes[0].outputPath}` : ""}`, `${successes.length} file(s) cleaned${failures ? `; ${failures} failed` : ""}${missing > 0 ? `; ${missing} returned no result and can be retried` : ""}.${successes[0]?.outputPath ? ` Output: ${successes[0].outputPath}` : ""}`));
+      if (relevant.length) addHistory({ id: crypto.randomUUID(), createdAt: new Date().toISOString(), mode, results: relevant });
     } catch (error) { setMessage(text(`清理失败：${String(error)}`, `Cleanup failed: ${String(error)}`)); }
-    finally { setBusy(false); }
+    finally { operationRef.current = false; setBusy(false); }
   }
 
   async function reveal(path: string) {
@@ -185,7 +202,7 @@ export default function App() {
     { id: "pick-folder", group: act, label: text("选择文件夹", "Choose folder"), icon: <FolderOpen size={14} />, run: () => void choose(true) },
     { id: "scan", group: act, label: text("扫描隐私痕迹", "Scan privacy traces"), icon: <ScanSearch size={14} />, disabled: busy || !entries.length || scanned, run: () => { setPage("clean"); void scan(); } },
     { id: "clean", group: act, label: text("确认并开始清理", "Confirm and clean"), icon: <ShieldCheck size={14} />, disabled: busy || !scanned || !cleanableEntries.length, run: () => { setPage("clean"); void clean(); } },
-    { id: "clear", group: act, label: text("清空队列", "Clear queue"), icon: <Trash2 size={14} />, disabled: !entries.length, run: () => setEntries([]) },
+    { id: "clear", group: act, label: text("清空队列", "Clear queue"), icon: <Trash2 size={14} />, disabled: busy || !entries.length, run: () => setEntries([]) },
     { id: "theme-light", group: appearance, label: text("浅色", "Light"), icon: <Sun size={14} />, disabled: theme.mode === "light", run: () => theme.setMode("light") },
     { id: "theme-dark", group: appearance, label: text("深色", "Dark"), icon: <Moon size={14} />, disabled: theme.mode === "dark", run: () => theme.setMode("dark") },
     { id: "theme-system", group: appearance, label: text("跟随系统", "System"), icon: <MonitorCog size={14} />, disabled: theme.mode === "system", run: () => theme.setMode("system") },
@@ -237,10 +254,10 @@ export default function App() {
               </div>
             ) : null}
             <DropZone onAdd={addEntries} onAddNativePaths={addNativePaths} dragActive={dragActive} compact={entries.length > 0} />
-            <FileQueue entries={entries} preserveColorProfile={preserveColorProfile} removeExtendedAttributes={removeExtendedAttributes} onClear={() => setEntries([])} onRemove={(id) => setEntries((current) => current.filter((entry) => entry.id !== id))} onReveal={(path) => void reveal(path)} onNotify={setMessage} />
+            <FileQueue entries={entries} preserveColorProfile={preserveColorProfile} removeExtendedAttributes={removeExtendedAttributes} busy={busy} onClear={() => setEntries([])} onRemove={(id) => setEntries((current) => current.filter((entry) => entry.id !== id))} onReveal={(path) => void reveal(path)} onNotify={setMessage} />
           </div>
           <CleanOptions mode={mode} onModeChange={setMode} preserveTimestamps={preserveTimestamps} onPreserveTimestampsChange={setPreserveTimestamps} preserveOrientation={preserveOrientation} onPreserveOrientationChange={setPreserveOrientation} preserveColorProfile={preserveColorProfile} onPreserveColorProfileChange={setPreserveColorProfile} removeExtendedAttributes={removeExtendedAttributes} onRemoveExtendedAttributesChange={setRemoveExtendedAttributes} disabled={!entries.length} scanned={scanned} hasFindings={cleanableEntries.length > 0} busy={busy} onAction={() => void (scanned ? clean() : scan())} />
-        </div> : page === "history" ? <HistoryPage entries={history} onClear={() => saveHistory([])} /> : page === "privacy" ? <PrivacyPage /> : <SettingsPage mode={mode} onModeChange={setMode} preserveTimestamps={preserveTimestamps} onPreserveTimestampsChange={setPreserveTimestamps} preserveOrientation={preserveOrientation} onPreserveOrientationChange={setPreserveOrientation} preserveColorProfile={preserveColorProfile} onPreserveColorProfileChange={setPreserveColorProfile} removeExtendedAttributes={removeExtendedAttributes} onRemoveExtendedAttributesChange={setRemoveExtendedAttributes} closeToTray={closeToTray} onCloseToTrayChange={setCloseToTray} />}
+        </div> : page === "history" ? <HistoryPage entries={history} onClear={clearHistory} /> : page === "privacy" ? <PrivacyPage /> : <SettingsPage mode={mode} onModeChange={setMode} preserveTimestamps={preserveTimestamps} onPreserveTimestampsChange={setPreserveTimestamps} preserveOrientation={preserveOrientation} onPreserveOrientationChange={setPreserveOrientation} preserveColorProfile={preserveColorProfile} onPreserveColorProfileChange={setPreserveColorProfile} removeExtendedAttributes={removeExtendedAttributes} onRemoveExtendedAttributesChange={setRemoveExtendedAttributes} closeToTray={closeToTray} onCloseToTrayChange={setCloseToTray} />}
         </div>
       </main>
     </div>

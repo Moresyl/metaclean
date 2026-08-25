@@ -1,7 +1,8 @@
 use std::{
     ffi::{OsStr, OsString},
     fs,
-    io::Write,
+    fs::OpenOptions,
+    io::{Read, Write},
     path::{Path, PathBuf},
 };
 
@@ -90,6 +91,32 @@ pub fn privacy_extended_attribute_count(path: &Path) -> Result<usize> {
 
 pub const MAX_INPUT_BYTES: u64 = 256 * 1024 * 1024;
 
+fn open_without_following_links(path: &Path) -> Result<fs::File> {
+    let mut options = OpenOptions::new();
+    options.read(true);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt;
+        options.custom_flags(libc::O_NOFOLLOW);
+    }
+    #[cfg(windows)]
+    {
+        use std::os::windows::fs::OpenOptionsExt;
+        const FILE_FLAG_OPEN_REPARSE_POINT: u32 = 0x0020_0000;
+        options.custom_flags(FILE_FLAG_OPEN_REPARSE_POINT);
+    }
+    let file = options.open(path)?;
+    #[cfg(windows)]
+    {
+        use std::os::windows::fs::MetadataExt;
+        const FILE_ATTRIBUTE_REPARSE_POINT: u32 = 0x0000_0400;
+        if file.metadata()?.file_attributes() & FILE_ATTRIBUTE_REPARSE_POINT != 0 {
+            return Err(CleanError::Symlink(display_path(path)));
+        }
+    }
+    Ok(file)
+}
+
 pub fn validate_input(path: &Path) -> Result<fs::Metadata> {
     let metadata = fs::symlink_metadata(path)?;
     if metadata.file_type().is_symlink() {
@@ -102,6 +129,29 @@ pub fn validate_input(path: &Path) -> Result<fs::Metadata> {
         return Err(CleanError::TooLarge(display_path(path)));
     }
     Ok(metadata)
+}
+
+pub fn read_validated_input(path: &Path) -> Result<(fs::Metadata, Vec<u8>)> {
+    validate_input(path)?;
+    let file = open_without_following_links(path)?;
+    let metadata = file.metadata()?;
+    if !metadata.is_file() {
+        return Err(CleanError::InvalidFormat("输入不是普通文件".into()));
+    }
+    if metadata.len() > MAX_INPUT_BYTES {
+        return Err(CleanError::TooLarge(display_path(path)));
+    }
+
+    let mut bytes = Vec::with_capacity(metadata.len().min(MAX_INPUT_BYTES) as usize);
+    file.take(MAX_INPUT_BYTES + 1).read_to_end(&mut bytes)?;
+    if bytes.len() as u64 > MAX_INPUT_BYTES {
+        return Err(CleanError::TooLarge(display_path(path)));
+    }
+    if bytes.len() as u64 != metadata.len() {
+        return Err(CleanError::SourceChanged(display_path(path)));
+    }
+    validate_input(path)?;
+    Ok((metadata, bytes))
 }
 
 pub fn cleaned_path(source: &Path) -> PathBuf {
@@ -154,6 +204,7 @@ pub fn atomic_write_with_metadata(
             filetime::set_file_times(temp.path(), metadata.accessed, metadata.modified)?;
         }
         metadata.apply_extended_attributes(temp.path(), remove_private_xattrs)?;
+        fs::set_permissions(temp.path(), metadata.permissions.clone())?;
     }
     temp.persist(path)
         .map_err(|error| CleanError::Io(error.error))?;
@@ -163,27 +214,84 @@ pub fn atomic_write_with_metadata(
     Ok(())
 }
 
-pub fn unique_path(preferred: PathBuf) -> PathBuf {
-    if !preferred.exists() {
-        return preferred;
+pub fn atomic_replace_if_unchanged(
+    path: &Path,
+    expected: &[u8],
+    bytes: &[u8],
+    source_metadata: &FileMetadataSnapshot,
+    preserve_timestamps: bool,
+    remove_private_xattrs: bool,
+) -> Result<()> {
+    let (_, current) = read_validated_input(path)?;
+    if current != expected {
+        return Err(CleanError::SourceChanged(display_path(path)));
+    }
+    atomic_write_with_metadata(
+        path,
+        bytes,
+        Some(source_metadata),
+        preserve_timestamps,
+        remove_private_xattrs,
+    )
+}
+
+pub fn atomic_create_unique_with_metadata(
+    preferred: &Path,
+    bytes: &[u8],
+    source_metadata: Option<&FileMetadataSnapshot>,
+    preserve_timestamps: bool,
+    remove_private_xattrs: bool,
+) -> Result<PathBuf> {
+    let parent = preferred
+        .parent()
+        .ok_or_else(|| CleanError::InvalidFormat("输出路径没有父目录".into()))?;
+    fs::create_dir_all(parent)?;
+    let mut temp = tempfile::NamedTempFile::new_in(parent)?;
+    temp.write_all(bytes)?;
+    temp.as_file_mut().sync_all()?;
+    if let Some(metadata) = source_metadata {
+        if preserve_timestamps {
+            filetime::set_file_times(temp.path(), metadata.accessed, metadata.modified)?;
+        }
+        metadata.apply_extended_attributes(temp.path(), remove_private_xattrs)?;
+        fs::set_permissions(temp.path(), metadata.permissions.clone())?;
+    }
+
+    for index in 1..=10_000 {
+        let candidate = numbered_path(preferred, index);
+        match temp.persist_noclobber(&candidate) {
+            Ok(_) => {
+                if let Some(metadata) = source_metadata {
+                    fs::set_permissions(&candidate, metadata.permissions.clone())?;
+                }
+                return Ok(candidate);
+            }
+            Err(error) if error.error.kind() == std::io::ErrorKind::AlreadyExists => {
+                temp = error.file;
+            }
+            Err(error) => return Err(CleanError::Io(error.error)),
+        }
+    }
+    Err(CleanError::Io(std::io::Error::new(
+        std::io::ErrorKind::AlreadyExists,
+        "无法分配不覆盖现有文件的输出路径",
+    )))
+}
+
+fn numbered_path(preferred: &Path, index: usize) -> PathBuf {
+    if index == 1 {
+        return preferred.to_owned();
     }
     let parent = preferred.parent().unwrap_or_else(|| Path::new("."));
     let stem = preferred
         .file_stem()
         .and_then(|value| value.to_str())
         .unwrap_or("cleaned");
-    let extension = preferred.extension().and_then(|value| value.to_str());
-    for index in 2..10_000 {
-        let name = match extension {
-            Some(ext) => format!("{stem}-{index}.{ext}"),
-            None => format!("{stem}-{index}"),
-        };
-        let candidate = parent.join(name);
-        if !candidate.exists() {
-            return candidate;
-        }
-    }
-    preferred
+    let name = match preferred.extension().and_then(|value| value.to_str()) {
+        Some(extension) => format!("{stem}-{index}.{extension}"),
+        None => format!("{stem}-{index}"),
+    };
+    parent.join(name)
 }
 
 #[cfg(test)]
@@ -211,21 +319,19 @@ mod tests {
     }
 
     #[test]
-    fn generates_backup_and_unique_collision_paths() {
+    fn generates_backup_and_numbered_collision_paths() {
         let dir = tempfile::tempdir().unwrap();
         let source = dir.path().join("report.pdf");
         assert_eq!(backup_path(&source), dir.path().join("report.pdf.bak"));
 
         let preferred = dir.path().join("report.cleaned.pdf");
-        fs::write(&preferred, b"existing").unwrap();
         assert_eq!(
-            unique_path(preferred),
+            numbered_path(&preferred, 2),
             dir.path().join("report.cleaned-2.pdf")
         );
 
         let no_extension = dir.path().join("output");
-        fs::write(&no_extension, b"existing").unwrap();
-        assert_eq!(unique_path(no_extension), dir.path().join("output-2"));
+        assert_eq!(numbered_path(&no_extension, 2), dir.path().join("output-2"));
     }
 
     #[test]
@@ -243,6 +349,52 @@ mod tests {
         fs::write(&path, b"old").unwrap();
         atomic_write_with_metadata(&path, b"new", None, false, false).unwrap();
         assert_eq!(fs::read(path).unwrap(), b"new");
+    }
+
+    #[test]
+    fn bounded_read_and_guarded_replace_refuse_changed_sources() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("file.txt");
+        fs::write(&path, b"original").unwrap();
+        let (metadata, original) = read_validated_input(&path).unwrap();
+        let snapshot = FileMetadataSnapshot::capture(&path, &metadata).unwrap();
+
+        fs::write(&path, b"edited elsewhere").unwrap();
+        let result =
+            atomic_replace_if_unchanged(&path, &original, b"cleaned", &snapshot, true, false);
+        assert!(matches!(result, Err(CleanError::SourceChanged(_))));
+        assert_eq!(fs::read(&path).unwrap(), b"edited elsewhere");
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn bounded_read_does_not_follow_windows_file_symlinks() {
+        use std::os::windows::fs::symlink_file;
+
+        let dir = tempfile::tempdir().unwrap();
+        let target = dir.path().join("private.txt");
+        let link = dir.path().join("link.txt");
+        fs::write(&target, b"private").unwrap();
+        if symlink_file(&target, &link).is_err() {
+            return;
+        }
+        assert!(matches!(
+            read_validated_input(&link),
+            Err(CleanError::Symlink(_))
+        ));
+    }
+
+    #[test]
+    fn unique_atomic_create_never_clobbers_an_existing_output() {
+        let dir = tempfile::tempdir().unwrap();
+        let preferred = dir.path().join("report.cleaned.txt");
+        fs::write(&preferred, b"existing").unwrap();
+        let output =
+            atomic_create_unique_with_metadata(&preferred, b"new", None, false, false).unwrap();
+
+        assert_eq!(output, dir.path().join("report.cleaned-2.txt"));
+        assert_eq!(fs::read(preferred).unwrap(), b"existing");
+        assert_eq!(fs::read(output).unwrap(), b"new");
     }
 
     #[test]

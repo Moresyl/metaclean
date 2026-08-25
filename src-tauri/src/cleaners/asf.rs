@@ -39,6 +39,10 @@ const METADATA_OBJECT: [u8; GUID] = [
 const METADATA_LIBRARY_OBJECT: [u8; GUID] = [
     0x94, 0x1c, 0x23, 0x44, 0x98, 0x94, 0xd1, 0x49, 0xa1, 0x41, 0x1d, 0x13, 0x4e, 0x45, 0x70, 0x54,
 ];
+const HEADER_EXTENSION_OBJECT: [u8; GUID] = [
+    0xb5, 0x03, 0xbf, 0x5f, 0x2e, 0xa9, 0xcf, 0x11, 0x8e, 0xe3, 0x00, 0xc0, 0x0c, 0x20, 0x53, 0x65,
+];
+const HEADER_EXTENSION_PREAMBLE: usize = OBJECT_HEADER + GUID + 2 + 4;
 
 fn invalid(message: &str) -> CleanError {
     CleanError::InvalidFormat(message.into())
@@ -78,16 +82,54 @@ fn private_objects(data: &[u8]) -> Result<Vec<Range<usize>>> {
         return Err(invalid("不是有效 ASF / WMV"));
     }
     let (_, header) = object_at(data, 0, data.len())?;
+    if header.len() < HEADER_PREAMBLE {
+        return Err(invalid("ASF Header 对象过短"));
+    }
+    let object_count =
+        u32::from_le_bytes(data[OBJECT_HEADER..OBJECT_HEADER + 4].try_into().unwrap());
+    let object_count = usize::try_from(object_count).map_err(|_| invalid("ASF 对象数量过大"))?;
     let mut found = Vec::new();
     let mut offset = HEADER_PREAMBLE;
-    while offset + OBJECT_HEADER <= header.end {
+    for _ in 0..object_count {
         let (guid, range) = object_at(data, offset, header.end)?;
+        if private(&guid) {
+            found.push(range.clone());
+        } else if guid == HEADER_EXTENSION_OBJECT {
+            collect_header_extension(data, &range, &mut found)?;
+        }
+        offset = range.end;
+    }
+    if offset != header.end {
+        return Err(invalid("ASF Header 对象数量或尾部长度不匹配"));
+    }
+    Ok(found)
+}
+
+fn collect_header_extension(
+    data: &[u8],
+    extension: &Range<usize>,
+    found: &mut Vec<Range<usize>>,
+) -> Result<()> {
+    if extension.len() < HEADER_EXTENSION_PREAMBLE {
+        return Err(invalid("ASF Header Extension 对象过短"));
+    }
+    let size_at = extension.start + OBJECT_HEADER + GUID + 2;
+    let extension_size = u32::from_le_bytes(data[size_at..size_at + 4].try_into().unwrap());
+    let extension_size =
+        usize::try_from(extension_size).map_err(|_| invalid("ASF Header Extension 数据过大"))?;
+    let mut offset = extension.start + HEADER_EXTENSION_PREAMBLE;
+    let expected_end = offset
+        .checked_add(extension_size)
+        .filter(|value| *value == extension.end)
+        .ok_or_else(|| invalid("ASF Header Extension 长度不匹配"))?;
+    while offset < expected_end {
+        let (guid, range) = object_at(data, offset, expected_end)?;
         if private(&guid) {
             found.push(range.clone());
         }
         offset = range.end;
     }
-    Ok(found)
+    Ok(())
 }
 
 fn findings(count: usize) -> Vec<Finding> {
@@ -182,5 +224,34 @@ mod tests {
         truncated.extend_from_slice(&9_000u64.to_le_bytes());
         truncated.extend_from_slice(&[0; 16]);
         assert!(inspect(&truncated).is_err());
+    }
+
+    #[test]
+    fn removes_metadata_nested_in_the_header_extension() {
+        let metadata = object(&METADATA_LIBRARY_OBJECT, b"WM/AlbumArtist=Alice");
+        let mut extension_payload = vec![0u8; GUID];
+        extension_payload.extend_from_slice(&6u16.to_le_bytes());
+        extension_payload.extend_from_slice(&(metadata.len() as u32).to_le_bytes());
+        extension_payload.extend(metadata);
+        let extension = object(&HEADER_EXTENSION_OBJECT, &extension_payload);
+        let stream = object(&[0x11; GUID], b"STREAM-PROPERTIES");
+        let mut header_payload = 2u32.to_le_bytes().to_vec();
+        header_payload.extend_from_slice(&[1, 2]);
+        header_payload.extend(stream);
+        header_payload.extend(extension);
+        let source = object(&HEADER_OBJECT, &header_payload);
+
+        assert_eq!(inspect(&source).unwrap()[0].count, 1);
+        let (cleaned, _) = clean(&source).unwrap();
+        assert!(!contains(&cleaned, b"AlbumArtist"));
+        verify_cleaned(&cleaned).unwrap();
+    }
+
+    #[test]
+    fn rejects_header_object_count_mismatches() {
+        let mut payload = 2u32.to_le_bytes().to_vec();
+        payload.extend_from_slice(&[1, 2]);
+        payload.extend(object(&[0x11; GUID], b"one object only"));
+        assert!(inspect(&object(&HEADER_OBJECT, &payload)).is_err());
     }
 }

@@ -8,7 +8,7 @@ import { useI18n } from "../lib/i18n";
 import { actionableFindingCount } from "../lib/files";
 import { copyText } from "../lib/window";
 
-interface FileQueueProps { entries: FileEntry[]; preserveColorProfile: boolean; removeExtendedAttributes: boolean; onRemove: (id: string) => void; onClear: () => void; onReveal: (path: string) => void; onNotify: (message: string) => void }
+interface FileQueueProps { entries: FileEntry[]; preserveColorProfile: boolean; removeExtendedAttributes: boolean; busy?: boolean; onRemove: (id: string) => void; onClear: () => void; onReveal: (path: string) => void; onNotify: (message: string) => void }
 
 type SortKey = "name" | "type" | "sourceSize" | "outputSize" | "findings";
 
@@ -47,7 +47,7 @@ function isKept(finding: Finding, preserveColorProfile: boolean, removeExtendedA
   return false;
 }
 
-export default function FileQueue({ entries, preserveColorProfile, removeExtendedAttributes, onRemove, onClear, onReveal, onNotify }: FileQueueProps) {
+export default function FileQueue({ entries, preserveColorProfile, removeExtendedAttributes, busy = false, onRemove, onClear, onReveal, onNotify }: FileQueueProps) {
   const { locale, text } = useI18n();
   const [sortKey, setSortKey] = useState<SortKey>("name");
   const [descending, setDescending] = useState(false);
@@ -148,7 +148,7 @@ export default function FileQueue({ entries, preserveColorProfile, removeExtende
       { id: "copy-path", label: text("复制路径", "Copy path"), icon: <Copy size={14} />, disabled: !location, run: () => location && void copy(location) },
       { id: "copy-name", label: text("复制文件名", "Copy file name"), icon: <Tag size={14} />, run: () => void copy(entry.name) },
       "separator",
-      { id: "remove", label: text("从队列中移除", "Remove from queue"), icon: <X size={14} />, danger: true, run: () => onRemove(entry.id) },
+      { id: "remove", label: text("从队列中移除", "Remove from queue"), icon: <X size={14} />, danger: true, disabled: busy, run: () => onRemove(entry.id) },
     ];
   };
 
@@ -208,7 +208,7 @@ export default function FileQueue({ entries, preserveColorProfile, removeExtende
           <FileDown size={14} strokeWidth={2} />
         </IconButton>
 
-        <Button variant="ghost" onClick={onClear} disabled={!entries.length}>
+        <Button variant="ghost" onClick={onClear} disabled={busy || !entries.length}>
           <Trash2 size={14} strokeWidth={2} />
           {text("清空", "Clear")}
         </Button>
@@ -327,6 +327,7 @@ export default function FileQueue({ entries, preserveColorProfile, removeExtende
                       size="sm"
                       aria-label={text(`移除 ${entry.name}`, `Remove ${entry.name}`)}
                       className="enabled:hover:bg-danger/12 enabled:hover:text-danger"
+                      disabled={busy}
                       onClick={() => onRemove(entry.id)}
                     >
                       <X size={14} strokeWidth={2} />

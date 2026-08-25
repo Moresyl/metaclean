@@ -5,6 +5,21 @@ use serde::Serialize;
 use crate::engine;
 
 const MAX_DISCOVERED_FILES: usize = 10_000;
+const MAX_VISITED_ENTRIES: usize = 50_000;
+
+fn is_link_or_reparse_point(metadata: &fs::Metadata) -> bool {
+    if metadata.file_type().is_symlink() {
+        return true;
+    }
+    #[cfg(windows)]
+    {
+        use std::os::windows::fs::MetadataExt;
+        const FILE_ATTRIBUTE_REPARSE_POINT: u32 = 0x0000_0400;
+        metadata.file_attributes() & FILE_ATTRIBUTE_REPARSE_POINT != 0
+    }
+    #[cfg(not(windows))]
+    false
+}
 const MAX_RECURSION_DEPTH: usize = 64;
 const MAX_REPORTED_ISSUES: usize = 100;
 
@@ -36,20 +51,52 @@ impl IntakeResult {
     }
 }
 
+struct WalkBudget {
+    remaining: usize,
+}
+
+impl WalkBudget {
+    fn new() -> Self {
+        Self {
+            remaining: MAX_VISITED_ENTRIES,
+        }
+    }
+
+    fn reserve(&mut self) -> bool {
+        if self.remaining == 0 {
+            return false;
+        }
+        self.remaining -= 1;
+        true
+    }
+}
+
 pub fn expand_paths(paths: &[String]) -> IntakeResult {
     let mut result = IntakeResult::default();
+    let mut budget = WalkBudget::new();
     for path in paths {
         if result.limit_reached {
             break;
         }
-        visit(Path::new(path), false, 0, &mut result);
+        if !budget.reserve() {
+            result.limit_reached = true;
+            result.skip(Path::new(path), "已达到单次目录遍历 50000 个条目的安全上限");
+            break;
+        }
+        visit(Path::new(path), false, 0, &mut budget, &mut result);
     }
     result.files.sort();
     result.files.dedup();
     result
 }
 
-fn visit(path: &Path, from_directory: bool, depth: usize, result: &mut IntakeResult) {
+fn visit(
+    path: &Path,
+    from_directory: bool,
+    depth: usize,
+    budget: &mut WalkBudget,
+    result: &mut IntakeResult,
+) {
     if result.files.len() >= MAX_DISCOVERED_FILES {
         result.limit_reached = true;
         result.skip(path, "已达到单次导入 10000 个文件的安全上限");
@@ -66,8 +113,8 @@ fn visit(path: &Path, from_directory: bool, depth: usize, result: &mut IntakeRes
             return;
         }
     };
-    if metadata.file_type().is_symlink() {
-        result.skip(path, "跳过符号链接");
+    if is_link_or_reparse_point(&metadata) {
+        result.skip(path, "跳过符号链接或重解析点");
         return;
     }
     if metadata.is_file() {
@@ -90,7 +137,12 @@ fn visit(path: &Path, from_directory: bool, depth: usize, result: &mut IntakeRes
         }
     };
     let mut children = Vec::new();
+    let mut walk_limit_reached = false;
     for entry in entries {
+        if !budget.reserve() {
+            walk_limit_reached = true;
+            break;
+        }
         match entry {
             Ok(entry) => children.push(entry.path()),
             Err(error) => result.skip(path, format!("无法读取目录项：{error}")),
@@ -101,7 +153,11 @@ fn visit(path: &Path, from_directory: bool, depth: usize, result: &mut IntakeRes
         if result.limit_reached {
             break;
         }
-        visit(&child, true, depth + 1, result);
+        visit(&child, true, depth + 1, budget, result);
+    }
+    if walk_limit_reached && !result.limit_reached {
+        result.limit_reached = true;
+        result.skip(path, "已达到单次目录遍历 50000 个条目的安全上限");
     }
 }
 
@@ -150,6 +206,15 @@ mod tests {
         assert!(result.issues[0].reason.starts_with("无法读取"));
     }
 
+    #[test]
+    fn walk_budget_is_strict_and_never_underflows() {
+        let mut budget = WalkBudget { remaining: 2 };
+        assert!(budget.reserve());
+        assert!(budget.reserve());
+        assert!(!budget.reserve());
+        assert!(!budget.reserve());
+    }
+
     #[cfg(unix)]
     #[test]
     fn refuses_directory_symlinks() {
@@ -162,6 +227,24 @@ mod tests {
         symlink(&target, &link).unwrap();
         let result = expand_paths(&[link.to_string_lossy().into_owned()]);
         assert!(result.files.is_empty());
-        assert_eq!(result.issues[0].reason, "跳过符号链接");
+        assert_eq!(result.issues[0].reason, "跳过符号链接或重解析点");
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn refuses_windows_directory_links_when_supported() {
+        use std::os::windows::fs::symlink_dir;
+
+        let root = tempfile::tempdir().unwrap();
+        let target = root.path().join("target");
+        fs::create_dir(&target).unwrap();
+        fs::write(target.join("photo.jpg"), b"jpeg").unwrap();
+        let link = root.path().join("link");
+        if symlink_dir(&target, &link).is_err() {
+            return;
+        }
+        let result = expand_paths(&[link.to_string_lossy().into_owned()]);
+        assert!(result.files.is_empty());
+        assert_eq!(result.issues[0].reason, "跳过符号链接或重解析点");
     }
 }

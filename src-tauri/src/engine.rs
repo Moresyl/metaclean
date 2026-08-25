@@ -1,15 +1,15 @@
-use std::{
-    fs,
-    path::{Path, PathBuf},
-};
+use std::path::{Path, PathBuf};
+
+#[cfg(test)]
+use std::fs;
 
 use crate::{
-    cleaners::{asf, avi, bmp, heif, image, media, mkv, office, pdf, tiff, video, web_text},
+    cleaners::{asf, avi, bmp, heif, image, jxl, media, mkv, office, pdf, tiff, video, web_text},
     error::{display_path, CleanError, Result},
     models::{CleanResult, Finding, FindingSeverity, OutputMode, ScanReport},
     safe_io::{
-        atomic_write_with_metadata, backup_path, cleaned_path, privacy_extended_attribute_count,
-        unique_path, validate_input, FileMetadataSnapshot,
+        atomic_create_unique_with_metadata, atomic_replace_if_unchanged, backup_path, cleaned_path,
+        privacy_extended_attribute_count, read_validated_input, FileMetadataSnapshot,
     },
 };
 
@@ -18,6 +18,7 @@ enum Format {
     Jpeg,
     Png,
     Webp,
+    Jxl,
     Gif,
     Bmp,
     Tiff,
@@ -28,6 +29,7 @@ enum Format {
     Mp3,
     Wav,
     Flac,
+    Aiff,
     IsoMedia,
     Avi,
     Asf,
@@ -39,14 +41,15 @@ enum Format {
 }
 
 pub const SUPPORTED_EXTENSIONS: &[&str] = &[
-    "jpg", "jpeg", "jpe", "png", "webp", "gif", "bmp", "dib", "tif", "tiff", "heic", "heif",
+    "jpg", "jpeg", "jpe", "png", "webp", "jxl", "gif", "bmp", "dib", "tif", "tiff", "heic", "heif",
     "heics", "heifs", "hif", "avif", "avifs", "cr2", "cr3", "crw", "nef", "nrw", "arw", "srf",
     "sr2", "orf", "rw2", "rwl", "dng", "pef", "srw", "raf", "3fr", "erf", "mef", "mos", "iiq",
-    "kdc", "dcr", "k25", "mp3", "wav", "flac", "mp4", "mov", "m4v", "m4a", "3g2", "3gp", "3gp2",
-    "3gpp", "f4a", "f4b", "f4p", "f4v", "lrv", "m4b", "m4p", "mqv", "qt", "avi", "asf", "wmv",
-    "wma", "mkv", "mka", "mks", "mk3d", "webm", "docx", "xlsx", "pptx", "odt", "epub", "pdf",
-    "txt", "md", "markdown", "html", "htm", "xhtml", "svg", "xml", "json", "csv", "tsv", "yaml",
-    "yml", "log", "srt", "vtt",
+    "kdc", "dcr", "k25", "mp3", "wav", "flac", "aif", "aiff", "aifc", "mp4", "mov", "m4v", "m4a",
+    "3g2", "3gp", "3gp2", "3gpp", "f4a", "f4b", "f4p", "f4v", "lrv", "m4b", "m4p", "mqv", "qt",
+    "avi", "asf", "wmv", "wma", "mkv", "mka", "mks", "mk3d", "webm", "docx", "xlsx", "pptx", "odt",
+    "ods", "odp", "odg", "odf", "odb", "odm", "ott", "ots", "otp", "otg", "epub", "pdf", "txt",
+    "md", "markdown", "html", "htm", "xhtml", "svg", "xml", "json", "csv", "tsv", "yaml", "yml",
+    "log", "srt", "vtt",
 ];
 
 const ISO_MEDIA_EXTENSIONS: &[&str] = &[
@@ -89,6 +92,9 @@ fn detect(path: &Path, data: &[u8]) -> Format {
     if data.len() >= 12 && &data[..4] == b"RIFF" && &data[8..12] == b"WEBP" {
         return Format::Webp;
     }
+    if extension(path) == "jxl" && jxl::is_jxl(data) {
+        return Format::Jxl;
+    }
     if data.starts_with(b"GIF87a") || data.starts_with(b"GIF89a") {
         return Format::Gif;
     }
@@ -100,6 +106,9 @@ fn detect(path: &Path, data: &[u8]) -> Format {
     }
     if media::is_flac(data) {
         return Format::Flac;
+    }
+    if media::is_aiff(data) {
+        return Format::Aiff;
     }
     if asf::is_asf(data) {
         return Format::Asf;
@@ -132,16 +141,15 @@ fn detect(path: &Path, data: &[u8]) -> Format {
     if bmp::is_bmp(data) {
         return Format::Bmp;
     }
-    // MP3 is last of the binary formats: a bare frame header is only two bytes
-    // of sync, which plenty of other containers match by accident.
-    if data.starts_with(b"ID3") || (data.len() >= 2 && data[0] == 0xff && data[1] & 0xe0 == 0xe0) {
+    // MP3 is last of the binary formats: even a validated frame header is a
+    // short signature which plenty of other containers can contain by chance.
+    if media::is_mp3(data) {
         return Format::Mp3;
     }
     if data.starts_with(b"%PDF-") {
         return Format::Pdf;
     }
-    if data.starts_with(b"PK") && matches!(ext.as_str(), "docx" | "xlsx" | "pptx" | "odt" | "epub")
-    {
+    if office::is_supported_container(data, &ext) {
         return Format::Office;
     }
     if TEXT_EXTENSIONS.contains(&ext.as_str()) && std::str::from_utf8(data).is_ok() {
@@ -155,6 +163,7 @@ fn format_name(format: Format) -> &'static str {
         Format::Jpeg => "JPEG",
         Format::Png => "PNG",
         Format::Webp => "WebP",
+        Format::Jxl => "JPEG XL",
         Format::Gif => "GIF",
         Format::Bmp => "BMP",
         Format::Tiff => "TIFF",
@@ -165,6 +174,7 @@ fn format_name(format: Format) -> &'static str {
         Format::Mp3 => "MP3",
         Format::Wav => "WAV",
         Format::Flac => "FLAC",
+        Format::Aiff => "AIFF",
         Format::IsoMedia => "MP4 / QuickTime",
         Format::Avi => "AVI",
         Format::Asf => "WMV / ASF",
@@ -190,6 +200,7 @@ fn inspect_data(path: &Path, format: Format, data: &[u8]) -> Result<Vec<Finding>
         Format::Jpeg => image::inspect_jpeg(data),
         Format::Png => image::inspect_png(data),
         Format::Webp => image::inspect_webp(data),
+        Format::Jxl => jxl::inspect(data),
         Format::Gif => media::inspect_gif(data),
         Format::Bmp => bmp::inspect(data),
         Format::Tiff => tiff::inspect_tiff(data, false),
@@ -199,11 +210,12 @@ fn inspect_data(path: &Path, format: Format, data: &[u8]) -> Result<Vec<Finding>
         Format::Mp3 => media::inspect_mp3(data),
         Format::Wav => media::inspect_wav(data),
         Format::Flac => media::inspect_flac(data),
+        Format::Aiff => media::inspect_aiff(data),
         Format::IsoMedia => video::inspect(data),
         Format::Avi => avi::inspect(data),
         Format::Asf => asf::inspect(data),
         Format::Matroska => mkv::inspect(data),
-        Format::Office => office::inspect(data),
+        Format::Office => office::inspect(data, &extension(path)),
         Format::Pdf => pdf::inspect(data),
         Format::Text => Ok(web_text::inspect(
             std::str::from_utf8(data)
@@ -227,6 +239,7 @@ fn clean_data(
         }
         Format::Png => image::clean_png_with_options(data, preserve_color_profile),
         Format::Webp => image::clean_webp_with_options(data, preserve_color_profile),
+        Format::Jxl => jxl::clean(data),
         Format::Gif => media::clean_gif(data),
         Format::Bmp => bmp::clean(data, preserve_color_profile),
         Format::Tiff => {
@@ -242,11 +255,12 @@ fn clean_data(
         Format::Mp3 => media::clean_mp3(data),
         Format::Wav => media::clean_wav(data),
         Format::Flac => media::clean_flac(data),
+        Format::Aiff => media::clean_aiff(data),
         Format::IsoMedia => video::clean(data),
         Format::Avi => avi::clean(data),
         Format::Asf => asf::clean(data),
         Format::Matroska => mkv::clean(data),
-        Format::Office => office::clean(data),
+        Format::Office => office::clean(data, &extension(path)),
         Format::Pdf => pdf::clean(data),
         Format::Text => {
             let (cleaned, findings) = web_text::clean(
@@ -281,6 +295,7 @@ fn verify_cleaned_data(
         }
         Format::Png => image::verify_png_cleaned(data, preserve_color_profile),
         Format::Webp => image::verify_webp_cleaned(data, preserve_color_profile),
+        Format::Jxl => jxl::verify_cleaned(data),
         Format::Bmp => bmp::verify_cleaned(data, preserve_color_profile),
         Format::Tiff => {
             tiff::verify_tiff_cleaned(data, false, preserve_orientation, preserve_color_profile)
@@ -328,24 +343,12 @@ pub fn scan_file(path: &Path) -> ScanReport {
         findings,
         error,
     };
-    let metadata = match validate_input(path) {
+    let (metadata, data) = match read_validated_input(path) {
         Ok(value) => value,
         Err(error) => {
             return base(
                 "Unknown".into(),
                 0,
-                false,
-                Vec::new(),
-                Some(error.to_string()),
-            )
-        }
-    };
-    let data = match fs::read(path) {
-        Ok(value) => value,
-        Err(error) => {
-            return base(
-                "Unknown".into(),
-                metadata.len(),
                 false,
                 Vec::new(),
                 Some(error.to_string()),
@@ -385,6 +388,69 @@ pub fn scan_file(path: &Path) -> ScanReport {
     }
 }
 
+fn scanner_failure_report(path: &str) -> ScanReport {
+    ScanReport {
+        path: display_path(Path::new(path)),
+        name: Path::new(path)
+            .file_name()
+            .and_then(|value| value.to_str())
+            .unwrap_or("未知文件")
+            .to_owned(),
+        format: "Unknown".into(),
+        size: 0,
+        supported: false,
+        findings: Vec::new(),
+        error: Some("内部扫描器发生异常，已安全隔离该文件".into()),
+    }
+}
+
+fn scan_path_isolated_with(path: &str, scan: impl FnOnce(&Path) -> ScanReport) -> ScanReport {
+    std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| scan(Path::new(path))))
+        .unwrap_or_else(|_| scanner_failure_report(path))
+}
+
+fn scan_path_isolated(path: &str) -> ScanReport {
+    scan_path_isolated_with(path, scan_file)
+}
+
+fn cleaner_failure_result(path: &Path) -> CleanResult {
+    CleanResult {
+        source_path: display_path(path),
+        output_path: None,
+        backup_path: None,
+        source_size: None,
+        output_size: None,
+        removed: Vec::new(),
+        success: false,
+        error: Some("内部清理器发生异常，已安全隔离该文件；请检查输出与备份状态".into()),
+    }
+}
+
+fn clean_path_isolated_with(path: &Path, clean: impl FnOnce(&Path) -> CleanResult) -> CleanResult {
+    std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| clean(path)))
+        .unwrap_or_else(|_| cleaner_failure_result(path))
+}
+
+pub fn clean_file_isolated_with_options(
+    source: &Path,
+    mode: &OutputMode,
+    preserve_timestamps: bool,
+    preserve_orientation: bool,
+    preserve_color_profile: bool,
+    remove_extended_attributes: bool,
+) -> CleanResult {
+    clean_path_isolated_with(source, |path| {
+        clean_file_with_options(
+            path,
+            mode,
+            preserve_timestamps,
+            preserve_orientation,
+            preserve_color_profile,
+            remove_extended_attributes,
+        )
+    })
+}
+
 pub fn clean_file_with_options(
     source: &Path,
     mode: &OutputMode,
@@ -403,16 +469,12 @@ pub fn clean_file_with_options(
         success: false,
         error: Some(error),
     };
-    let source_metadata = match validate_input(source) {
-        Ok(metadata) => metadata,
+    let (source_metadata, data) = match read_validated_input(source) {
+        Ok(value) => value,
         Err(error) => return fail(error.to_string()),
     };
     let metadata_snapshot = match FileMetadataSnapshot::capture(source, &source_metadata) {
         Ok(snapshot) => snapshot,
-        Err(error) => return fail(error.to_string()),
-    };
-    let data = match fs::read(source) {
-        Ok(value) => value,
         Err(error) => return fail(error.to_string()),
     };
     let format = detect(source, &data);
@@ -442,24 +504,45 @@ pub fn clean_file_with_options(
         return fail(error.to_string());
     }
     let (output, backup): (PathBuf, Option<PathBuf>) = match mode {
-        OutputMode::Copy => (unique_path(cleaned_path(source)), None),
+        OutputMode::Copy => {
+            let output = match atomic_create_unique_with_metadata(
+                &cleaned_path(source),
+                &cleaned,
+                Some(&metadata_snapshot),
+                preserve_timestamps,
+                remove_extended_attributes,
+            ) {
+                Ok(path) => path,
+                Err(error) => return fail(error.to_string()),
+            };
+            (output, None)
+        }
         OutputMode::Replace => {
-            let backup = unique_path(backup_path(source));
-            if let Err(error) =
-                atomic_write_with_metadata(&backup, &data, Some(&metadata_snapshot), true, false)
-            {
-                return fail(format!("创建备份失败：{error}"));
-            }
+            let backup = match atomic_create_unique_with_metadata(
+                &backup_path(source),
+                &data,
+                Some(&metadata_snapshot),
+                true,
+                false,
+            ) {
+                Ok(path) => path,
+                Err(error) => return fail(format!("创建备份失败：{error}")),
+            };
             (source.to_owned(), Some(backup))
         }
     };
-    if let Err(error) = atomic_write_with_metadata(
-        &output,
-        &cleaned,
-        Some(&metadata_snapshot),
-        preserve_timestamps,
-        remove_extended_attributes,
-    ) {
+    let write_result = match mode {
+        OutputMode::Copy => Ok(()),
+        OutputMode::Replace => atomic_replace_if_unchanged(
+            &output,
+            &data,
+            &cleaned,
+            &metadata_snapshot,
+            preserve_timestamps,
+            remove_extended_attributes,
+        ),
+    };
+    if let Err(error) = write_result {
         return CleanResult {
             source_path: display_path(source),
             output_path: None,
@@ -484,15 +567,48 @@ pub fn clean_file_with_options(
 }
 
 pub fn scan_paths(paths: &[String]) -> Vec<ScanReport> {
-    paths
-        .iter()
-        .map(|path| scan_file(Path::new(path)))
-        .collect()
+    const MAX_SCAN_WORKERS: usize = 2;
+    let workers = std::thread::available_parallelism()
+        .map_or(1, usize::from)
+        .min(MAX_SCAN_WORKERS)
+        .min(paths.len());
+    if workers <= 1 {
+        return paths.iter().map(|path| scan_path_isolated(path)).collect();
+    }
+    let chunk_size = paths.len().div_ceil(workers);
+    std::thread::scope(|scope| {
+        paths
+            .chunks(chunk_size)
+            .map(|chunk| {
+                (
+                    chunk,
+                    scope.spawn(move || {
+                        chunk
+                            .iter()
+                            .map(|path| scan_path_isolated(path))
+                            .collect::<Vec<_>>()
+                    }),
+                )
+            })
+            .collect::<Vec<_>>()
+            .into_iter()
+            .flat_map(|(chunk, worker)| {
+                worker.join().unwrap_or_else(|_| {
+                    chunk
+                        .iter()
+                        .map(|path| scanner_failure_report(path))
+                        .collect()
+                })
+            })
+            .collect()
+    })
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::io::Write;
+    use zip::{write::SimpleFileOptions, ZipWriter};
 
     #[test]
     fn builds_only_nonempty_extended_attribute_findings() {
@@ -501,6 +617,32 @@ mod tests {
         assert_eq!(finding.category, "macos_xattr");
         assert_eq!(finding.count, 2);
         assert_eq!(finding.severity, FindingSeverity::Informational);
+    }
+
+    #[test]
+    fn isolates_scanner_panics_without_exposing_the_panic_payload() {
+        let path = "private-document.pdf";
+        let report = scan_path_isolated_with(path, |_| panic!("secret parser state"));
+
+        assert_eq!(report.name, path);
+        assert!(!report.supported);
+        let error = report.error.unwrap();
+        assert!(error.contains("安全隔离"));
+        assert!(!error.contains("secret parser state"));
+    }
+
+    #[test]
+    fn isolates_cleaner_panics_without_writing_or_exposing_the_payload() {
+        let path = Path::new("private-document.pdf");
+        let result = clean_path_isolated_with(path, |_| panic!("secret parser state"));
+
+        assert_eq!(result.source_path, "private-document.pdf");
+        assert!(!result.success);
+        assert!(result.output_path.is_none());
+        assert!(result.backup_path.is_none());
+        let error = result.error.unwrap();
+        assert!(error.contains("安全隔离"));
+        assert!(!error.contains("secret parser state"));
     }
 
     fn chunk(kind: &[u8; 4], payload: &[u8], big_endian: bool) -> Vec<u8> {
@@ -518,7 +660,7 @@ mod tests {
             output.push(0);
         }
         if big_endian {
-            output.extend_from_slice(&[0, 0, 0, 0]);
+            output.extend_from_slice(&image::png_crc32(&output[4..]).to_be_bytes());
         }
         output
     }
@@ -531,21 +673,46 @@ mod tests {
             bytes
         }
 
+        fn aiff_chunk(kind: &[u8; 4], payload: &[u8]) -> Vec<u8> {
+            let mut bytes = kind.to_vec();
+            bytes.extend_from_slice(&(payload.len() as u32).to_be_bytes());
+            bytes.extend_from_slice(payload);
+            if payload.len() % 2 == 1 {
+                bytes.push(0);
+            }
+            bytes
+        }
+
         let jpeg = vec![0xff, 0xd8, 0xff, 0xfe, 0, 5, b't', b'a', b'g', 0xff, 0xd9];
 
         let mut png = b"\x89PNG\r\n\x1a\n".to_vec();
+        png.extend(chunk(
+            b"IHDR",
+            &[0, 0, 0, 1, 0, 0, 0, 1, 8, 6, 0, 0, 0],
+            true,
+        ));
         png.extend(chunk(b"tEXt", b"Author\0Alice", true));
+        png.extend(chunk(b"IDAT", b"pixels", true));
         png.extend(chunk(b"IEND", b"", true));
 
         let mut webp = b"RIFF\0\0\0\0WEBP".to_vec();
         webp.extend_from_slice(b"EXIF\x04\0\0\0data");
+        webp.extend(chunk(b"VP8 ", b"image", false));
         let webp_size = (webp.len() - 8) as u32;
         webp[4..8].copy_from_slice(&webp_size.to_le_bytes());
+
+        let mut jxl = b"\0\0\0\x0cJXL \r\n\x87\n".to_vec();
+        jxl.extend(atom(b"ftyp", b"jxl \0\0\0\0jxl "));
+        jxl.extend(atom(b"Exif", b"\0\0\0\0II*\0Alice"));
+        jxl.extend(atom(b"jxlc", b"\xff\x0aIMAGE-CODESTREAM"));
 
         let mut gif = b"GIF89a\x01\0\x01\0\0\0\0".to_vec();
         gif.extend_from_slice(b"\x21\xfe\x03tag\0\x3b");
 
-        let mp3 = b"ID3\x04\0\0\0\0\0\x03tag\xff\xfb\x90\x64audio".to_vec();
+        let mut mp3 = b"ID3\x04\0\0\0\0\0\x03tag".to_vec();
+        let mut mp3_frame = vec![0xff, 0xfb, 0x90, 0x64];
+        mp3_frame.resize(417, 0);
+        mp3.extend(mp3_frame);
 
         let mut wav = b"RIFF\0\0\0\0WAVE".to_vec();
         wav.extend(chunk(b"fmt ", &[1, 0, 1, 0], false));
@@ -560,6 +727,15 @@ mod tests {
         flac.extend_from_slice(&[0x84, 0, 0, 5]);
         flac.extend_from_slice(b"Alice");
         flac.extend_from_slice(b"\xff\xf8audio");
+
+        let mut aiff = b"FORM\0\0\0\0AIFF".to_vec();
+        let mut aiff_common = [0; 18];
+        aiff_common[1] = 1;
+        aiff.extend(aiff_chunk(b"COMM", &aiff_common));
+        aiff.extend(aiff_chunk(b"AUTH", b"Alice"));
+        aiff.extend(aiff_chunk(b"SSND", b"\0\0\0\0\0\0\0\0AUDIO-SAMPLES"));
+        let aiff_size = (aiff.len() - 8) as u32;
+        aiff[4..8].copy_from_slice(&aiff_size.to_be_bytes());
 
         let mut video = atom(b"ftyp", b"isom\0\0\0\0isommp42");
         let user_data = atom(b"udta", b"author=Alice;location=Shanghai");
@@ -594,6 +770,7 @@ mod tests {
             ("photo.jpg", jpeg),
             ("graphic.png", png),
             ("graphic.webp", webp),
+            ("graphic.jxl", jxl),
             ("animation.gif", gif),
             ("photo.bmp", bmp),
             ("photo.tif", tiff.clone()),
@@ -601,10 +778,44 @@ mod tests {
             ("recording.mp3", mp3),
             ("recording.wav", wav),
             ("recording.flac", flac),
+            ("recording.aiff", aiff),
             ("movie.mp4", video),
             ("movie.avi", avi),
             ("movie.mkv", matroska),
         ]
+    }
+
+    fn office_sample(extension: &str) -> Vec<u8> {
+        let mut writer = ZipWriter::new(std::io::Cursor::new(Vec::new()));
+        let options = SimpleFileOptions::default();
+        let stored =
+            SimpleFileOptions::default().compression_method(zip::CompressionMethod::Stored);
+        match extension {
+            "docx" => {
+                writer.start_file("[Content_Types].xml", options).unwrap();
+                writer.write_all(b"<Types/>").unwrap();
+                writer.start_file("word/document.xml", options).unwrap();
+                writer.write_all(b"<w:document/>").unwrap();
+            }
+            "epub" => {
+                writer.start_file("mimetype", stored).unwrap();
+                writer.write_all(b"application/epub+zip").unwrap();
+                writer
+                    .start_file("META-INF/container.xml", options)
+                    .unwrap();
+                writer.write_all(b"<container/>").unwrap();
+            }
+            "ods" => {
+                writer.start_file("mimetype", stored).unwrap();
+                writer
+                    .write_all(b"application/vnd.oasis.opendocument.spreadsheet")
+                    .unwrap();
+                writer.start_file("content.xml", options).unwrap();
+                writer.write_all(b"<office:document/>").unwrap();
+            }
+            _ => unreachable!(),
+        }
+        writer.finish().unwrap().into_inner()
     }
 
     /// A little endian TIFF whose single directory holds nothing but the two
@@ -652,6 +863,24 @@ mod tests {
 
     #[test]
     fn detects_all_supported_signatures_and_names() {
+        let aiff_chunk = |kind: &[u8; 4], payload: &[u8]| {
+            let mut bytes = kind.to_vec();
+            bytes.extend_from_slice(&(payload.len() as u32).to_be_bytes());
+            bytes.extend_from_slice(payload);
+            if payload.len() % 2 == 1 {
+                bytes.push(0);
+            }
+            bytes
+        };
+        let mut aiff = b"FORM\0\0\0\0AIFF".to_vec();
+        let mut common = [0; 18];
+        common[1] = 1;
+        aiff.extend(aiff_chunk(b"COMM", &common));
+        aiff.extend(aiff_chunk(b"SSND", b"\0\0\0\0\0\0\0\0"));
+        let aiff_size = (aiff.len() - 8) as u32;
+        aiff[4..8].copy_from_slice(&aiff_size.to_be_bytes());
+        let mut mp3 = vec![0xff, 0xfb, 0x90, 0x64];
+        mp3.resize(417, 0);
         let cases = [
             (
                 "photo.bin",
@@ -661,10 +890,12 @@ mod tests {
             ),
             ("photo.bin", b"\x89PNG\r\n\x1a\nrest", Format::Png, "PNG"),
             ("photo.bin", b"RIFF\x04\0\0\0WEBP", Format::Webp, "WebP"),
+            ("photo.jxl", b"\xff\x0arest", Format::Jxl, "JPEG XL"),
             ("photo.bin", b"GIF89a", Format::Gif, "GIF"),
-            ("audio.bin", b"\xff\xfb", Format::Mp3, "MP3"),
+            ("audio.bin", mp3.as_slice(), Format::Mp3, "MP3"),
             ("audio.bin", b"RIFF\x04\0\0\0WAVE", Format::Wav, "WAV"),
             ("audio.bin", b"fLaC", Format::Flac, "FLAC"),
+            ("audio.aiff", aiff.as_slice(), Format::Aiff, "AIFF"),
             (
                 "movie.mp4",
                 b"\0\0\0\x18ftypisom\0\0\0\0isommp42",
@@ -691,8 +922,6 @@ mod tests {
                 "Canon CR3",
             ),
             ("file.bin", b"%PDF-1.7", Format::Pdf, "PDF"),
-            ("file.docx", b"PKarchive", Format::Office, "Office"),
-            ("book.epub", b"PKarchive", Format::Office, "Office"),
             ("file.md", b"plain text", Format::Text, "Text"),
             ("file.bin", b"unknown", Format::Unsupported, "Unsupported"),
         ];
@@ -708,6 +937,16 @@ mod tests {
         assert_eq!(detect(Path::new("photo.tif"), &tiff), Format::Tiff);
         assert_eq!(detect(Path::new("photo.nef"), &tiff), Format::Raw);
         assert_eq!(format_name(Format::Raw), "RAW");
+        for extension in ["docx", "epub", "ods"] {
+            let sample = office_sample(extension);
+            let detected = detect(Path::new(&format!("file.{extension}")), &sample);
+            assert_eq!(detected, Format::Office, "{extension}");
+            assert_eq!(format_name(detected), "Office");
+        }
+        assert_eq!(
+            detect(Path::new("renamed.docx"), b"PKarchive"),
+            Format::Unsupported
+        );
 
         let mut raf = b"FUJIFILMCCD-RAW ".to_vec();
         raf.resize(93, 0);
@@ -726,7 +965,7 @@ mod tests {
 
     #[test]
     fn recognizes_every_supported_intake_extension() {
-        assert_eq!(SUPPORTED_EXTENSIONS.len(), 91);
+        assert_eq!(SUPPORTED_EXTENSIONS.len(), 105);
         for extension in SUPPORTED_EXTENSIONS {
             assert!(has_supported_extension(Path::new(&format!(
                 "file.{extension}"
@@ -928,6 +1167,7 @@ mod tests {
             ("broken.mp3", b"ID3\x04".as_slice()),
             ("broken.wav", b"RIFF\0\0\0\0WAVE".as_slice()),
             ("broken.flac", b"fLaC".as_slice()),
+            ("broken.aiff", b"FORM\0\0\0\x04AIFF".as_slice()),
             ("broken.mp4", b"\0\0\0\x18ftypisom".as_slice()),
         ] {
             let source = dir.path().join(name);
@@ -942,6 +1182,50 @@ mod tests {
             assert!(!cleaned_path(&source).exists());
         }
     }
+
+    #[test]
+    fn native_cleaners_never_panic_at_any_truncated_prefix() {
+        for (name, bytes) in supported_media_samples() {
+            let path = Path::new(name);
+            let format = detect(path, &bytes);
+            assert_ne!(format, Format::Unsupported, "invalid full fixture: {name}");
+            for end in 0..bytes.len() {
+                let prefix = &bytes[..end];
+                let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                    let _ = inspect_data(path, format, prefix);
+                    let _ = clean_data(path, format, prefix, true, true);
+                }));
+                assert!(result.is_ok(), "{name} panicked at byte boundary {end}");
+            }
+        }
+    }
+
+    #[test]
+    fn native_cleaners_never_panic_on_single_byte_corruption() {
+        for (name, bytes) in supported_media_samples() {
+            let path = Path::new(name);
+            let format = detect(path, &bytes);
+            assert_ne!(format, Format::Unsupported, "invalid full fixture: {name}");
+            for index in 0..bytes.len() {
+                for replacement in [0, 0xff] {
+                    if bytes[index] == replacement {
+                        continue;
+                    }
+                    let mut corrupted = bytes.clone();
+                    corrupted[index] = replacement;
+                    let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                        let _ = inspect_data(path, format, &corrupted);
+                        let _ = clean_data(path, format, &corrupted, true, true);
+                    }));
+                    assert!(
+                        result.is_ok(),
+                        "{name} panicked after byte {index} became {replacement:#04x}"
+                    );
+                }
+            }
+        }
+    }
+
     #[test]
     fn replace_creates_backup() {
         let dir = tempfile::tempdir().unwrap();

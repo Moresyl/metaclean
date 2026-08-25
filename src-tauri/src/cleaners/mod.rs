@@ -3,6 +3,7 @@ pub mod avi;
 pub mod bmp;
 pub mod heif;
 pub mod image;
+pub mod jxl;
 pub mod media;
 pub mod mkv;
 pub mod office;

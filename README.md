@@ -46,24 +46,26 @@ Grab the latest package from [GitHub Releases](https://github.com/Moresyl/metacl
 
 ## What it removes
 
-91 extensions, cleaned by native Rust code — no ExifTool, no re-encoding.
+105 extensions, cleaned by native Rust code — no ExifTool, no re-encoding.
 
 | Format | Extensions | Cleaned |
 | --- | --- | --- |
 | JPEG | `.jpg` `.jpeg` `.jpe` | EXIF/GPS, XMP, IPTC, comments, JUMBF/C2PA segments; ICC profiles are preserved by default or removable on request |
 | PNG | `.png` | EXIF, textual metadata, C2PA/JUMBF chunks; optional ICC profile removal |
 | WebP | `.webp` | EXIF, XMP, C2PA chunks; optional ICC profile removal |
+| JPEG XL | `.jxl` | Container EXIF, XMP, JUMBF/C2PA, Brotli-wrapped metadata and JPEG reconstruction data are retired in place; naked codestreams are accepted unchanged |
 | GIF | `.gif` | Comments and XMP application metadata without re-encoding frames |
 | BMP | `.bmp` `.dib` | The reserved header words editors write IDs into, V5 embedded ICC profiles, and EXIF or XMP stapled past the last pixel where no viewer shows it |
 | TIFF | `.tif` `.tiff` | EXIF, GPS, IPTC and XMP directories, removed by compacting the image file directory in place so every strip, tile and preview offset stays valid |
 | Camera RAW | `.cr2` `.cr3` `.crw` `.nef` `.nrw` `.arw` `.srf` `.sr2` `.orf` `.rw2` `.rwl` `.dng` `.pef` `.srw` `.raf` `.3fr` `.erf` `.mef` `.mos` `.iiq` `.kdc` `.dcr` `.k25` | The same in-place directory compaction, plus MakerNote and GPS directories. Fujifilm's embedded JPEG preview and Canon's CR3 item payloads are cleaned where they lie; sensor data is never rewritten |
 | HEIF & AVIF | `.heic` `.heif` `.heics` `.heifs` `.hif` `.avif` `.avifs` | EXIF, XMP and C2PA items zeroed at item granularity, leaving the item table that locates the picture intact |
 | Audio | `.mp3` `.wav` `.flac` | ID3/APEv2, RIFF INFO/XMP/BWF/iXML/C2PA, FLAC Vorbis comments, pictures, XMP and prefixed ID3/C2PA |
+| AIFF | `.aif` `.aiff` `.aifc` | Native name, author, copyright, annotation and comment chunks plus ID3, XMP and C2PA, without re-encoding samples |
 | ISO media | `.mp4` `.mov` `.m4v` `.m4a` `.3g2` `.3gp` `.3gp2` `.3gpp` `.f4a` `.f4b` `.f4p` `.f4v` `.lrv` `.m4b` `.m4p` `.mqv` `.qt` | ISO BMFF/QuickTime user data, XMP, author and location atoms without moving media bytes |
 | AVI | `.avi` | Metadata chunks renamed to RIFF's own `JUNK` padding tag and blanked, so the `idx1` index keeps its meaning under either offset convention |
 | Matroska & WebM | `.mkv` `.mka` `.mks` `.mk3d` `.webm` | Tags, attachments and writing-application strings retired by stamping EBML `Void` over them in the same bytes, leaving the cue index true |
 | ASF | `.asf` `.wmv` `.wma` | Content descriptions and the `WM/` attribute space overwritten with the format's own padding object; the header's object count stays honest |
-| Documents | `.docx` `.xlsx` `.pptx` `.odt` `.epub` | Author and application properties, comments, custom XML. DOCX revisions are resolved — insertions accepted, deletions removed. EPUB loses its Dublin Core people and dates plus Calibre/Sigil/Kobo/Apple/Adobe leftovers |
+| Documents | `.docx` `.xlsx` `.pptx` `.odt` `.ods` `.odp` `.odg` `.odf` `.odb` `.odm` `.ott` `.ots` `.otp` `.otg` `.epub` | Author and application properties, comments, custom XML. DOCX and OpenDocument revisions are resolved — insertions accepted, deletions removed. EPUB loses its Dublin Core people and dates plus Calibre/Sigil/Kobo/Apple/Adobe leftovers |
 | PDF | `.pdf` | Info dictionary, XMP and metadata inside embedded JPEG images, then a full reserialization that discards metadata stranded in incremental-update history |
 | Text & markup | `.txt` `.md` `.markdown` `.html` `.htm` `.xhtml` `.svg` `.xml` `.json` `.csv` `.tsv` `.yaml` `.yml` `.log` `.srt` `.vtt` | Invisible Unicode, generator/author metadata in Markdown front matter, HTML/XHTML and SVG, plus metadata inside embedded image data URIs |
 
@@ -89,7 +91,7 @@ before it.
 
 - Drag in files or folders, or recursively import a folder from the native picker
 - Four panes: **Clean**, **History**, **Privacy**, and **Settings**
-- Optional Windows File Explorer command across all 91 supported extensions — on Windows 11 it lives under **Show more options**
+- Optional Windows File Explorer command across all 105 supported extensions — on Windows 11 it lives under **Show more options**
 - Closing the window exits MetaClean by default; Settings can instead keep it in the system tray, where the tray menu can reopen or exit it
 - Repository and issue-report links are available in Settings → System & updates
 - Stable queue sorting by name, extension, source/output size or finding count, with per-file size savings and reveal-in-folder actions for completed outputs
