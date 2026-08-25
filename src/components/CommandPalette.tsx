@@ -101,16 +101,21 @@ export default function CommandPalette({ commands, onClose }: { commands: Comman
 
   let heading: string | undefined;
   return (
-    <div className="palette-layer" onPointerDown={onClose}>
+    <div
+      // Sits high rather than centred: the palette is answered by typing, and a
+      // box in the middle of the window pushes the answer below the eye line.
+      className="palette-layer animate-fade fixed inset-0 z-50 flex justify-center bg-canvas-deep/55 pt-[12vh] backdrop-blur-[2px]"
+      onPointerDown={onClose}
+    >
       <div
-        className="command-palette"
+        className="animate-pop flex h-fit max-h-[62vh] w-[min(560px,88vw)] flex-col overflow-hidden rounded-panel border border-line-strong bg-surface shadow-lift"
         role="dialog"
         aria-modal="true"
         aria-label={text("命令", "Commands")}
         onPointerDown={(event) => event.stopPropagation()}
       >
-        <div className="palette-search">
-          <Search size={15} strokeWidth={1.9} aria-hidden="true" />
+        <div className="flex shrink-0 items-center gap-2.5 border-b border-line px-3">
+          <Search size={14} strokeWidth={2} aria-hidden="true" className="shrink-0 text-muted" />
           <input
             ref={field}
             type="text"
@@ -122,6 +127,7 @@ export default function CommandPalette({ commands, onClose }: { commands: Comman
             spellCheck={false}
             autoComplete="off"
             value={query}
+            className="h-[42px] min-w-0 flex-1 bg-transparent text-md text-text outline-none placeholder:text-faint"
             onChange={(event) => setQuery(event.target.value)}
             onKeyDown={(event) => {
               if (event.key === "Escape") { event.preventDefault(); onClose(); return; }
@@ -132,10 +138,17 @@ export default function CommandPalette({ commands, onClose }: { commands: Comman
               if (event.key === "Enter") { event.preventDefault(); choose(matches[active]); }
             }}
           />
+          <kbd className="kbd hidden sm:block">Esc</kbd>
         </div>
-        <div className="palette-results" id="palette-results" role="listbox" aria-label={text("命令", "Commands")} ref={list}>
+        <div
+          className="min-h-0 flex-1 overflow-y-auto p-1.5"
+          id="palette-results"
+          role="listbox"
+          aria-label={text("命令", "Commands")}
+          ref={list}
+        >
           {matches.length === 0 ? (
-            <p className="palette-empty">{text("没有匹配的命令", "No matching command")}</p>
+            <p className="px-3 py-8 text-center text-base text-muted">{text("没有匹配的命令", "No matching command")}</p>
           ) : (
             matches.map((command, index) => {
               // Headings only survive the unfiltered list; once results are
@@ -144,19 +157,43 @@ export default function CommandPalette({ commands, onClose }: { commands: Comman
               if (label) heading = label;
               return (
                 <div key={command.id}>
-                  {label ? <div className="palette-group">{label}</div> : null}
+                  {label ? <div className="palette-group caption px-2 pt-2.5 pb-1">{label}</div> : null}
                   <button
                     type="button"
                     role="option"
                     aria-selected={index === active}
-                    className={`palette-item ${index === active ? "active" : ""}`}
+                    // Every row is set in the window's own ink, the selected one
+                    // included. The list used to grey fourteen commands so that
+                    // one could be legible, which is backwards: these are the
+                    // options somebody is choosing *between*, and they all have
+                    // to be readable at once for the choice to be made at all.
+                    // The cursor does not need the rest of the list to step out
+                    // of its way — it is a mint ground and a mint glyph, and on
+                    // a near-black panel that is not a subtle thing.
+                    //
+                    // `bg-surface-2`, which is what it was, is eight units of
+                    // lightness away from the panel behind it. On a surface
+                    // driven by arrow keys, where the highlight is the only
+                    // answer to "what does Enter do", eight units is not a
+                    // highlight. The tint is the same one every selected control
+                    // in this window wears, so it needs no learning.
+                    className={[
+                      "flex w-full items-center gap-2.5 rounded-control px-2 py-[7px] text-left text-base text-text",
+                      "transition-colors duration-75 disabled:pointer-events-none disabled:opacity-40",
+                      index === active ? "active bg-brand/12" : "",
+                    ].join(" ")}
                     disabled={command.disabled}
                     onPointerEnter={() => setActive(index)}
                     onClick={() => choose(command)}
                   >
-                    <span className="palette-icon" aria-hidden="true">{command.icon}</span>
-                    <span className="palette-label">{command.label}</span>
-                    {command.accelerator ? <kbd>{command.accelerator}</kbd> : null}
+                    <span
+                      className={`grid size-[15px] shrink-0 place-items-center ${index === active ? "text-brand" : "text-muted"}`}
+                      aria-hidden="true"
+                    >
+                      {command.icon}
+                    </span>
+                    <span className="min-w-0 flex-1 truncate">{command.label}</span>
+                    {command.accelerator ? <kbd className="kbd">{command.accelerator}</kbd> : null}
                   </button>
                 </div>
               );

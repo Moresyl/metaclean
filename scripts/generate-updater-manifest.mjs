@@ -25,6 +25,28 @@ function validateSignature(signature, signatureAsset) {
   }
 }
 
+export function validateUpdaterManifest(manifest, { version, repository }) {
+  validateRepository(repository);
+  if (!/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/u.test(version)) throw new Error(`Invalid updater version: ${version}`);
+  if (!manifest || typeof manifest !== "object") throw new Error("Updater manifest must be an object");
+  if (manifest.version !== version) throw new Error(`Updater manifest version ${String(manifest.version)} does not match release ${version}`);
+  if (typeof manifest.notes !== "string" || manifest.notes.trim().length === 0) throw new Error("Updater notes must not be empty");
+  if (typeof manifest.pub_date !== "string" || Number.isNaN(new Date(manifest.pub_date).valueOf())) throw new Error("Updater publication date is invalid");
+
+  const platforms = Object.entries(manifest.platforms ?? {});
+  if (platforms.length !== Object.keys(PLATFORM_ASSETS).length) throw new Error("Updater manifest has an incomplete platform matrix");
+  for (const [platform, resolveAsset] of Object.entries(PLATFORM_ASSETS)) {
+    const artifact = manifest.platforms?.[platform];
+    if (!artifact || typeof artifact !== "object") throw new Error(`Updater manifest is missing ${platform}`);
+    const asset = resolveAsset(version);
+    const expectedUrl = `https://github.com/${repository}/releases/download/v${version}/${encodeURIComponent(asset)}`;
+    if (artifact.url !== expectedUrl) throw new Error(`Updater URL is not the official release asset for ${platform}`);
+    if (typeof artifact.signature !== "string" || !artifact.signature.trim()) throw new Error(`Updater signature is empty for ${platform}`);
+    validateSignature(artifact.signature.trim(), `${asset}.sig`);
+  }
+  return manifest;
+}
+
 export async function generateUpdaterManifest({ assetDirectory, tag, repository, notes, pubDate, outputPath }) {
   if (!/^v\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/u.test(tag)) throw new Error(`Invalid release tag: ${tag}`);
   validateRepository(repository);
@@ -57,6 +79,7 @@ export async function generateUpdaterManifest({ assetDirectory, tag, repository,
     pub_date: normalizedDate.toISOString(),
     platforms
   };
+  validateUpdaterManifest(manifest, { version, repository });
   await writeFile(outputPath, `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
   return manifest;
 }

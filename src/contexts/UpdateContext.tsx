@@ -103,7 +103,8 @@ export function UpdateProvider({ children }: { children: ReactNode }) {
     setError(undefined);
     setProgress({ stage: "downloading", downloaded: 0 });
     try {
-      const installed = await installAvailableUpdate({ onProgress: setProgress });
+      if (!info?.availableVersion) throw new Error("没有经过确认的更新版本，请重新检查更新。 / No reviewed update is available. Check for updates again.");
+      const installed = await installAvailableUpdate({ expectedVersion: info.availableVersion, onProgress: setProgress });
       if (!installed) {
         setInfo(undefined);
         setProgress(undefined);
@@ -114,7 +115,7 @@ export function UpdateProvider({ children }: { children: ReactNode }) {
       setProgress(undefined);
       setStatus("error");
     }
-  }, [openRelease, runtime.selfUpdateSupported]);
+  }, [info?.availableVersion, openRelease, runtime.selfUpdateSupported]);
 
   useEffect(() => {
     let active = true;

@@ -29,7 +29,7 @@ export function installZoomLock(target: Window = window): () => void {
  * Imported on demand and allowed to fail, so the same interface still renders
  * under a plain browser — which is where the tests run it.
  */
-async function command(action: "minimize" | "close"): Promise<void> {
+async function command(action: "minimize" | "close" | "startDragging"): Promise<void> {
   try {
     const { getCurrentWindow } = await import("@tauri-apps/api/window");
     await getCurrentWindow()[action]();
@@ -40,6 +40,13 @@ async function command(action: "minimize" | "close"): Promise<void> {
 
 export const minimizeWindow = () => command("minimize");
 export const closeWindow = () => command("close");
+export const startWindowDragging = () => command("startDragging");
+
+/** Interactive caption controls must never become accidental drag handles. */
+export function isWindowDragTarget(target: EventTarget | null): boolean {
+  return target instanceof Element
+    && !target.closest("button, a, input, select, textarea, [role='button'], [data-no-drag]");
+}
 
 /**
  * Puts text on the clipboard.
@@ -59,7 +66,7 @@ export async function copyText(value: string): Promise<boolean> {
   const carrier = document.createElement("textarea");
   carrier.value = value;
   carrier.setAttribute("readonly", "");
-  carrier.className = "visually-hidden";
+  carrier.className = "sr-only";
   document.body.append(carrier);
   try {
     carrier.select();

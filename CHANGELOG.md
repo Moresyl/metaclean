@@ -5,6 +5,34 @@ All notable changes to MetaClean are documented here. The project follows
 
 ## [Unreleased]
 
+## [0.6.1] - 2026-08-25
+
+### Added
+
+- Settings now links directly to the official repository and issue tracker, and
+  offers an explicit choice between exiting on close and staying in the tray.
+- Signed update checks now fall back from the GitHub Release asset to the
+  official GitHub Pages feed when the primary manifest cannot be reached.
+
+### Changed
+
+- Reworked the desktop visual system around shared button and select controls,
+  consistent spacing and color tokens, clearer queue states, and scroll-safe
+  settings and cleanup panels in both light and dark themes.
+- The fallback updater feed is generated only from the exact signed manifest of
+  a successful official release and validates every supported platform URL and
+  signature before GitHub Pages deployment.
+
+### Fixed
+
+- Restored drag, minimize and close behavior for the custom title bar by adding
+  the exact Tauri window capabilities and an explicit non-interactive drag
+  handler. Closing exits by default instead of silently appearing inert.
+- Update checks and downloads now lead with actionable bilingual network help
+  instead of exposing only `error sending request for url`. Native update
+  resources are always released, and installation refuses a version that
+  changed after the user reviewed it.
+
 ## [0.6.0] - 2026-08-24
 
 ### Added
@@ -312,4 +340,6 @@ All notable changes to MetaClean are documented here. The project follows
 [0.4.1]: https://github.com/Moresyl/metaclean/compare/v0.4.0...v0.4.1
 [0.4.2]: https://github.com/Moresyl/metaclean/compare/v0.4.1...v0.4.2
 [0.5.0]: https://github.com/Moresyl/metaclean/compare/v0.4.2...v0.5.0
-[Unreleased]: https://github.com/Moresyl/metaclean/compare/v0.5.0...HEAD
+[0.6.0]: https://github.com/Moresyl/metaclean/compare/v0.5.0...v0.6.0
+[0.6.1]: https://github.com/Moresyl/metaclean/compare/v0.6.0...v0.6.1
+[Unreleased]: https://github.com/Moresyl/metaclean/compare/v0.6.1...HEAD

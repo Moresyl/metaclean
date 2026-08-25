@@ -94,6 +94,7 @@ describe("UpdateProvider", () => {
     fireEvent.click(screen.getByRole("button", { name: "install" }));
     await screen.findByText("updating");
     expect(screen.getByText("50")).toBeInTheDocument();
+    expect(installAvailableUpdateMock).toHaveBeenCalledWith(expect.objectContaining({ expectedVersion: "0.4.0" }));
   });
 
   it("opens the release page instead of self-updating a portable runtime", async () => {

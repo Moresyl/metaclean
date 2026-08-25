@@ -15,7 +15,33 @@ use tauri_plugin_updater::UpdaterExt;
 use tauri_plugin_window_state::StateFlags;
 
 static ALLOW_EXIT: AtomicBool = AtomicBool::new(false);
+static CLOSE_TO_TRAY: AtomicBool = AtomicBool::new(false);
 const PORTABLE_MARKER: &str = "metaclean-portable.marker";
+const UPDATE_NETWORK_HELP: &str = "无法连接已签名更新源。请检查 GitHub 网络或 HTTPS_PROXY 后重试，也可从正式发布页手动下载安装包。 / Could not reach the signed update feed. Check GitHub access or HTTPS_PROXY, then retry, or download the installer from the Releases page.";
+const UPDATE_CHANGED: &str = "可用版本在确认后发生了变化，请先重新检查并查看新版本说明。 / The available release changed after confirmation. Check again and review the new release before installing.";
+
+#[derive(Debug, PartialEq, Eq)]
+enum CloseAction {
+    Exit,
+    HideToTray,
+}
+
+fn close_action(close_to_tray: bool) -> CloseAction {
+    if close_to_tray {
+        CloseAction::HideToTray
+    } else {
+        CloseAction::Exit
+    }
+}
+
+fn updater_network_error(action: &str, error: impl std::fmt::Display) -> String {
+    format!("{action}。{UPDATE_NETWORK_HELP}\n技术详情 / Technical detail: {error}")
+}
+
+fn reviewed_update_matches(available: &str, expected: &str) -> bool {
+    available.strip_prefix('v').unwrap_or(available)
+        == expected.strip_prefix('v').unwrap_or(expected)
+}
 
 #[derive(Clone, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -101,6 +127,11 @@ fn set_context_menu_enabled(enabled: bool) -> Result<shell_integration::ContextM
     .map_err(|error| format!("更新 Windows 右键菜单失败：{error}"))
 }
 
+#[tauri::command]
+fn set_close_to_tray(enabled: bool) {
+    CLOSE_TO_TRAY.store(enabled, Ordering::SeqCst);
+}
+
 fn portable_marker_exists(executable: &std::path::Path) -> bool {
     executable
         .parent()
@@ -171,7 +202,10 @@ fn get_update_runtime() -> UpdateRuntime {
 }
 
 #[tauri::command]
-async fn install_update_and_restart(app: tauri::AppHandle) -> Result<bool, String> {
+async fn install_update_and_restart(
+    app: tauri::AppHandle,
+    expected_version: String,
+) -> Result<bool, String> {
     if !detect_update_runtime().self_update_supported {
         return Err("当前安装方式不支持应用内更新，请从官方发布页下载新版本。".into());
     }
@@ -183,10 +217,17 @@ async fn install_update_and_restart(app: tauri::AppHandle) -> Result<bool, Strin
     let Some(update) = updater
         .check()
         .await
-        .map_err(|error| format!("检查更新失败：{error}"))?
+        .map_err(|error| updater_network_error("检查更新失败 / Update check failed", error))?
     else {
         return Ok(false);
     };
+
+    if !reviewed_update_matches(&update.version, &expected_version) {
+        return Err(format!(
+            "{UPDATE_CHANGED}\nExpected {expected_version}; found {}",
+            update.version
+        ));
+    }
 
     let progress_app = app.clone();
     let mut downloaded = 0_u64;
@@ -206,7 +247,7 @@ async fn install_update_and_restart(app: tauri::AppHandle) -> Result<bool, Strin
             || {},
         )
         .await
-        .map_err(|error| format!("下载更新失败：{error}"))?;
+        .map_err(|error| updater_network_error("下载更新失败 / Update download failed", error))?;
 
     let _ = app.emit(
         "update-progress",
@@ -295,7 +336,17 @@ pub fn run() {
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
                 api.prevent_close();
-                let _ = window.hide();
+                match close_action(CLOSE_TO_TRAY.load(Ordering::SeqCst)) {
+                    CloseAction::HideToTray => {
+                        let _ = window.hide();
+                    }
+                    CloseAction::Exit => {
+                        ALLOW_EXIT.store(true, Ordering::SeqCst);
+                        let app = window.app_handle();
+                        app.remove_tray_by_id("main");
+                        app.exit(0);
+                    }
+                }
             }
         })
         .invoke_handler(tauri::generate_handler![
@@ -306,6 +357,7 @@ pub fn run() {
             get_launch_paths,
             get_context_menu_status,
             set_context_menu_enabled,
+            set_close_to_tray,
             get_update_runtime,
             install_update_and_restart
         ])
@@ -355,8 +407,33 @@ pub fn run_cli_action() -> Option<i32> {
 #[cfg(test)]
 mod update_tests {
     use super::{
-        export_audit_report_to, portable_marker_exists, self_update_supported_for, PORTABLE_MARKER,
+        close_action, export_audit_report_to, portable_marker_exists, reviewed_update_matches,
+        self_update_supported_for, updater_network_error, CloseAction, PORTABLE_MARKER,
     };
+
+    #[test]
+    fn close_behavior_defaults_to_exit_and_can_hide_to_tray() {
+        assert_eq!(close_action(false), CloseAction::Exit);
+        assert_eq!(close_action(true), CloseAction::HideToTray);
+    }
+
+    #[test]
+    fn updater_network_errors_lead_with_actionable_help() {
+        let message = updater_network_error(
+            "检查更新失败 / Update check failed",
+            "error sending request for url",
+        );
+        assert!(message.starts_with("检查更新失败 / Update check failed。无法连接已签名更新源。"));
+        assert!(message.contains("HTTPS_PROXY"));
+        assert!(message.ends_with("error sending request for url"));
+    }
+
+    #[test]
+    fn install_requires_the_exact_reviewed_update_version() {
+        assert!(reviewed_update_matches("0.6.1", "0.6.1"));
+        assert!(reviewed_update_matches("v0.6.1", "0.6.1"));
+        assert!(!reviewed_update_matches("0.6.2", "0.6.1"));
+    }
 
     #[test]
     fn portable_mode_requires_the_package_marker_next_to_the_executable() {

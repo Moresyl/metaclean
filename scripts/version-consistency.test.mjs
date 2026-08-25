@@ -21,10 +21,21 @@ test("keeps updater trust in the base config and signing in the release-only con
   const updater = tauriConfig.plugins?.updater;
 
   assert.match(updater.pubkey, /^[A-Za-z0-9+/]+=*$/u);
-  assert.deepEqual(updater.endpoints, ["https://github.com/Moresyl/metaclean/releases/latest/download/latest.json"]);
+  assert.deepEqual(updater.endpoints, [
+    "https://github.com/Moresyl/metaclean/releases/latest/download/latest.json",
+    "https://moresyl.github.io/metaclean/latest.json",
+  ]);
   assert.equal(updater.windows.installMode, "passive");
   assert.equal(tauriConfig.bundle.createUpdaterArtifacts, undefined);
   assert.equal(releaseConfig.bundle.createUpdaterArtifacts, true);
+});
+
+test("keeps the signed Pages fallback tied to successful releases", async () => {
+  const workflow = await readFile(new URL("../.github/workflows/update-feed.yml", import.meta.url), "utf8");
+  assert.match(workflow, /workflow_run:[\s\S]*workflows: \["Release"\][\s\S]*conclusion == 'success'/u);
+  assert.match(workflow, /gh release download[^\n]+--pattern latest\.json/u);
+  assert.match(workflow, /stage-updater-feed\.mjs/u);
+  assert.match(workflow, /actions\/deploy-pages@v4/u);
 });
 
 test("keeps Windows release builds on the GUI subsystem", async () => {
@@ -82,11 +93,11 @@ test("keeps both READMEs on the shipped interface-language count", async () => {
 test("draws its own caption and status bar within the fixed window", async () => {
   const tauriConfig = JSON.parse(await readFile(new URL("../src-tauri/tauri.conf.json", import.meta.url), "utf8"));
   const [mainWindow] = tauriConfig.app.windows;
-  const styles = await readFile(new URL("../src/styles.css", import.meta.url), "utf8");
+  const app = await readFile(new URL("../src/App.tsx", import.meta.url), "utf8");
 
   // The frame owns both persistent chrome rows; the workspace receives the
   // remaining fixed height and can reserve scrolling for the queue itself.
   assert.equal(mainWindow.decorations, false);
   assert.equal(mainWindow.shadow, true);
-  assert.match(styles, new RegExp(`grid-template-rows:\\s*${CAPTION_HEIGHT}px minmax\\(0, 1fr\\) ${STATUS_HEIGHT}px`, "u"));
+  assert.match(app, new RegExp(`grid-rows-\\[${CAPTION_HEIGHT}px_minmax\\(0,1fr\\)_${STATUS_HEIGHT}px\\]`, "u"));
 });

@@ -23,7 +23,7 @@ const installAvailableUpdateMock = vi.hoisted(() => vi.fn());
 const openUrlMock = vi.hoisted(() => vi.fn());
 vi.mock("@tauri-apps/plugin-dialog", () => ({ open: openMock, save: saveMock }));
 vi.mock("@tauri-apps/api/core", () => ({ invoke: invokeMock }));
-vi.mock("@tauri-apps/api/app", () => ({ getVersion: vi.fn().mockResolvedValue("0.6.0") }));
+vi.mock("@tauri-apps/api/app", () => ({ getVersion: vi.fn().mockResolvedValue("0.6.1") }));
 vi.mock("@tauri-apps/plugin-opener", () => ({ openUrl: openUrlMock }));
 vi.mock("../lib/update", () => ({
   RELEASES_PAGE_URL: "https://github.com/Moresyl/metaclean/releases/latest",
@@ -112,7 +112,7 @@ describe("desktop components", () => {
     fireEvent.click(screen.getByRole("button", { name: "导出审计报告" }));
     await waitFor(() => expect(invokeMock).toHaveBeenCalledWith("export_audit_report", expect.objectContaining({ path: "C:\\reports\\metaclean-audit.json" })));
     const contents = JSON.parse(invokeMock.mock.calls[0][1].contents as string);
-    expect(contents).toMatchObject({ schemaVersion: 1, product: "MetaClean", version: "0.6.0", summary: { files: 1, findings: 2 } });
+    expect(contents).toMatchObject({ schemaVersion: 1, product: "MetaClean", version: "0.6.1", summary: { files: 1, findings: 2 } });
     expect(contents.files[0]).not.toHaveProperty("value");
     expect(onNotify).toHaveBeenCalledWith(expect.stringContaining("审计报告已导出"));
   });
@@ -147,7 +147,7 @@ describe("desktop components", () => {
     expect(screen.getByText("2.0 KB → 1.0 KB (−1.0 KB)")).toBeInTheDocument();
     fireEvent.change(screen.getByRole("combobox", { name: "待处理文件" }), { target: { value: "type" } });
     expect([...container.querySelectorAll(".file-name strong")].map((element) => element.textContent)).toEqual(["alpha.jpg", "zeta.txt", "beta.txt"]);
-    fireEvent.click(screen.getByRole("button", { name: "待处理文件 ↑" }));
+    fireEvent.click(screen.getByRole("button", { name: "改为降序" }));
     expect([...container.querySelectorAll(".file-name strong")].map((element) => element.textContent)).toEqual(["zeta.txt", "beta.txt", "alpha.jpg"]);
     fireEvent.click(screen.getByRole("button", { name: "alpha.cleaned.jpg" }));
     expect(onReveal).toHaveBeenCalledWith("alpha.cleaned.jpg");
@@ -199,11 +199,18 @@ describe("desktop components", () => {
       return Promise.reject(new Error(command));
     });
     const onMode = vi.fn();
-    const { unmount } = wrap(<SettingsPage mode="copy" onModeChange={onMode} preserveTimestamps onPreserveTimestampsChange={vi.fn()} preserveOrientation onPreserveOrientationChange={vi.fn()} preserveColorProfile onPreserveColorProfileChange={vi.fn()} removeExtendedAttributes={false} onRemoveExtendedAttributesChange={vi.fn()} />);
+    const onCloseToTrayChange = vi.fn();
+    const { unmount } = wrap(<SettingsPage mode="copy" onModeChange={onMode} preserveTimestamps onPreserveTimestampsChange={vi.fn()} preserveOrientation onPreserveOrientationChange={vi.fn()} preserveColorProfile onPreserveColorProfileChange={vi.fn()} removeExtendedAttributes={false} onRemoveExtendedAttributesChange={vi.fn()} closeToTray={false} onCloseToTrayChange={onCloseToTrayChange} />);
     fireEvent.click(screen.getByRole("button", { name: "系统与更新" }));
     const enable = await screen.findByRole("button", { name: "启用" });
     fireEvent.click(enable);
     await screen.findByRole("button", { name: "停用" });
+    fireEvent.click(screen.getByRole("checkbox", { name: "关闭按钮退出应用" }));
+    expect(onCloseToTrayChange).toHaveBeenCalledWith(true);
+    fireEvent.click(screen.getByRole("button", { name: "项目主页" }));
+    await waitFor(() => expect(openUrlMock).toHaveBeenCalledWith("https://github.com/Moresyl/metaclean"));
+    fireEvent.click(screen.getByRole("button", { name: "反馈问题" }));
+    await waitFor(() => expect(openUrlMock).toHaveBeenCalledWith("https://github.com/Moresyl/metaclean/issues"));
     fireEvent.click(screen.getByRole("button", { name: "清理偏好" }));
     fireEvent.click(screen.getByText("替换并备份"));
     expect(onMode).toHaveBeenCalledWith("replace");
@@ -233,7 +240,7 @@ describe("desktop components", () => {
         releaseUrl: "https://github.com/Moresyl/metaclean/releases/tag/v0.2.0",
       },
     });
-    wrap(<SettingsPage mode="copy" onModeChange={vi.fn()} preserveTimestamps onPreserveTimestampsChange={vi.fn()} preserveOrientation onPreserveOrientationChange={vi.fn()} preserveColorProfile onPreserveColorProfileChange={vi.fn()} removeExtendedAttributes={false} onRemoveExtendedAttributesChange={vi.fn()} />);
+    wrap(<SettingsPage mode="copy" onModeChange={vi.fn()} preserveTimestamps onPreserveTimestampsChange={vi.fn()} preserveOrientation onPreserveOrientationChange={vi.fn()} preserveColorProfile onPreserveColorProfileChange={vi.fn()} removeExtendedAttributes={false} onRemoveExtendedAttributesChange={vi.fn()} closeToTray={false} onCloseToTrayChange={vi.fn()} />);
     fireEvent.click(screen.getByRole("button", { name: "系统与更新" }));
     fireEvent.click(screen.getByRole("button", { name: "检查更新" }));
     const download = await screen.findByRole("button", { name: "前往 GitHub" });
@@ -244,7 +251,7 @@ describe("desktop components", () => {
 
   it("shows unavailable Windows integration without enabling it", async () => {
     invokeMock.mockResolvedValue({ available: false, enabled: false, detail: "仅 Windows" });
-    wrap(<SettingsPage mode="replace" onModeChange={vi.fn()} preserveTimestamps onPreserveTimestampsChange={vi.fn()} preserveOrientation onPreserveOrientationChange={vi.fn()} preserveColorProfile onPreserveColorProfileChange={vi.fn()} removeExtendedAttributes={false} onRemoveExtendedAttributesChange={vi.fn()} />);
+    wrap(<SettingsPage mode="replace" onModeChange={vi.fn()} preserveTimestamps onPreserveTimestampsChange={vi.fn()} preserveOrientation onPreserveOrientationChange={vi.fn()} preserveColorProfile onPreserveColorProfileChange={vi.fn()} removeExtendedAttributes={false} onRemoveExtendedAttributesChange={vi.fn()} closeToTray={false} onCloseToTrayChange={vi.fn()} />);
     fireEvent.click(screen.getByRole("button", { name: "系统与更新" }));
     expect(await screen.findByRole("button", { name: "启用" })).toBeDisabled();
   });
@@ -271,7 +278,7 @@ describe("desktop components", () => {
 
   it("persists the selected interface theme", async () => {
     invokeMock.mockResolvedValue({ available: false, enabled: false, detail: "仅 Windows" });
-    wrap(<SettingsPage mode="copy" onModeChange={vi.fn()} preserveTimestamps onPreserveTimestampsChange={vi.fn()} preserveOrientation onPreserveOrientationChange={vi.fn()} preserveColorProfile onPreserveColorProfileChange={vi.fn()} removeExtendedAttributes={false} onRemoveExtendedAttributesChange={vi.fn()} />);
+    wrap(<SettingsPage mode="copy" onModeChange={vi.fn()} preserveTimestamps onPreserveTimestampsChange={vi.fn()} preserveOrientation onPreserveOrientationChange={vi.fn()} preserveColorProfile onPreserveColorProfileChange={vi.fn()} removeExtendedAttributes={false} onRemoveExtendedAttributesChange={vi.fn()} closeToTray={false} onCloseToTrayChange={vi.fn()} />);
     fireEvent.click(screen.getByRole("button", { name: "深色" }));
     await waitFor(() => expect(localStorage.getItem("metaclean.theme")).toBe("dark"));
     expect(document.documentElement.dataset.theme).toBe("dark");

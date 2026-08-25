@@ -28,7 +28,7 @@ MetaClean finds all of it and removes it — entirely on your own machine.
 
 ## Why
 
-- **Your files never leave your computer.** No upload API, telemetry, or cloud processing. The optional signed update check requests only MetaClean's official GitHub release manifest and can be disabled.
+- **Your files never leave your computer.** No upload API, telemetry, or cloud processing. The optional signed update check requests only MetaClean's official GitHub-hosted feeds and can be disabled.
 - **Nothing to install first.** One binary. No Python, Perl, ExifTool, or runtime to set up.
 - **Scan first, then decide.** Scanning is read-only. You see a per-file report of what was found and confirm before anything is written.
 - **Safe by default.** Originals are backed up before replacement, writes are atomic, and the default mode produces a `.cleaned` copy instead of overwriting.
@@ -90,14 +90,15 @@ before it.
 - Drag in files or folders, or recursively import a folder from the native picker
 - Four panes: **Clean**, **History**, **Privacy**, and **Settings**
 - Optional Windows File Explorer command across all 91 supported extensions — on Windows 11 it lives under **Show more options**
-- Closing the window keeps MetaClean in the system tray; right-click the tray icon to reopen or exit
+- Closing the window exits MetaClean by default; Settings can instead keep it in the system tray, where the tray menu can reopen or exit it
+- Repository and issue-report links are available in Settings → System & updates
 - Stable queue sorting by name, extension, source/output size or finding count, with per-file size savings and reveal-in-folder actions for completed outputs
 - Versioned local JSON audit-report export with per-file findings and outcomes but no raw metadata values
 - Fixed 1180 × 720 enterprise workspace with compact icon navigation and a persistent local-only status bar
 - Preserves JPEG display orientation, ICC/sRGB color profiles and file timestamps by default, with independent removal controls
 - Preserves every macOS extended attribute by default; an explicit opt-in removes only six known download/provenance attributes and leaves Finder data, resource forks, tags, and custom attributes intact
 - Native application menus, `Ctrl/Cmd+1…4` navigation accelerators, and persisted window size, position, and maximized state
-- Checks, downloads and installs cryptographically signed stable updates in installed builds, with visible progress and restart; portable Windows packages and non-AppImage Linux builds fall back to the official Releases page
+- Checks, downloads and installs cryptographically signed stable updates in installed builds, failing over from the GitHub Release manifest to the official Pages feed; portable Windows packages and non-AppImage Linux builds fall back to the official Releases page
 - Automatic update checks are independently switchable off, restoring fully offline operation
 - 32 complete interface languages spanning Europe, East and Southeast Asia, South Asia, and right-to-left Arabic and Persian; system/light/dark theme, output mode, fidelity options, and local cleanup history persist between sessions
 

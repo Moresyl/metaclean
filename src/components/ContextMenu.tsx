@@ -28,6 +28,11 @@ export interface MenuAnchor {
 /** Distance the flyout keeps from the window edge when it has to be nudged. */
 const MARGIN = 8;
 
+const ITEM = [
+  "flex w-full items-center gap-2.5 rounded-[4px] px-2 py-[5px] text-left text-base",
+  "transition-colors duration-75 disabled:pointer-events-none disabled:opacity-40",
+].join(" ");
+
 function isCommand(entry: MenuEntry): entry is MenuCommand {
   return entry !== "separator";
 }
@@ -94,9 +99,16 @@ export default function ContextMenu({
   };
 
   return (
-    <div className="menu-layer" onPointerDown={onClose} onContextMenu={(event) => { event.preventDefault(); onClose(); }}>
+    <div
+      className="menu-layer fixed inset-0 z-50"
+      onPointerDown={onClose}
+      onContextMenu={(event) => { event.preventDefault(); onClose(); }}
+    >
       <div
-        className="flyout-menu"
+        // No scrim behind it. A right-click menu is a continuation of the thing
+        // that was clicked, not a mode the window enters, and dimming the whole
+        // app for four commands says otherwise.
+        className="animate-pop absolute grid min-w-[190px] gap-px rounded-panel border border-line-strong bg-surface p-1 shadow-lift outline-none"
         role="menu"
         aria-label={label}
         ref={surface}
@@ -113,25 +125,45 @@ export default function ContextMenu({
           }
         }}
       >
-        {entries.map((entry, index) =>
-          entry === "separator" ? (
-            <hr key={`separator-${index}`} />
-          ) : (
+        {entries.map((entry, index) => {
+          if (entry === "separator") return <hr className="my-1 h-px border-0 bg-line" key={`separator-${index}`} />;
+          const selected = commands.indexOf(entry) === active;
+          return (
             <button
               key={entry.id}
               type="button"
               role="menuitem"
               disabled={entry.disabled}
-              className={`${entry.danger ? "danger" : ""} ${commands.indexOf(entry) === active ? "active" : ""}`}
+              // `active` stays a bare token: the pointer and the arrow keys share
+              // one highlight, so it cannot be left to :hover.
+              //
+              // The same mint ground the palette gives its cursor, because these
+              // are the same object in two places — a list of commands with one
+              // of them under the pointer — and a window that highlights the one
+              // in grey and the other in mint is a window assembled from parts.
+              // Destructive entries keep their own red ground: it is the one case
+              // where the highlight has to say something the accent cannot.
+              className={[
+                ITEM,
+                entry.danger ? "text-danger" : "text-text",
+                selected ? `active ${entry.danger ? "bg-danger/14" : "bg-brand/12"}` : "",
+              ].join(" ")}
               onPointerEnter={() => setActive(commands.indexOf(entry))}
               onClick={() => choose(entry)}
             >
-              <span className="menu-icon" aria-hidden="true">{entry.icon}</span>
-              <span className="menu-label">{entry.label}</span>
-              {entry.accelerator ? <span className="menu-accelerator">{entry.accelerator}</span> : null}
+              <span
+                className={`grid size-[15px] shrink-0 place-items-center ${entry.danger ? "text-danger" : selected ? "text-brand" : "text-muted"}`}
+                aria-hidden="true"
+              >
+                {entry.icon}
+              </span>
+              <span className="min-w-0 flex-1 truncate">{entry.label}</span>
+              {entry.accelerator ? (
+                <span className="shrink-0 pl-3 text-xs text-muted tabular-nums">{entry.accelerator}</span>
+              ) : null}
             </button>
-          ),
-        )}
+          );
+        })}
       </div>
     </div>
   );

@@ -1,14 +1,19 @@
 export const RELEASES_PAGE_URL = "https://github.com/Moresyl/metaclean/releases/latest";
 
+const CHECK_TIMEOUT_MS = 15_000;
+const UPDATE_NETWORK_HELP = "无法连接已签名更新源。请检查 GitHub 网络或 HTTPS_PROXY 后重试，也可从正式发布页手动下载安装包。 / Could not reach the signed update feed. Check GitHub access or HTTPS_PROXY, then retry, or download the installer from the Releases page.";
+const UPDATE_CHANGED = "可用版本在确认后发生了变化，请先重新检查并查看新版本说明。 / The available release changed after confirmation. Check again and review the new release before installing.";
+
 interface NativeUpdate {
   version: string;
   currentVersion?: string;
   body?: string;
   date?: string;
+  close?: () => Promise<void>;
 }
 
 type UpdateChecker = (options: { timeout: number }) => Promise<NativeUpdate | null>;
-type InvokeLike = <T>(command: string) => Promise<T>;
+type InvokeLike = <T>(command: string, args?: Record<string, unknown>) => Promise<T>;
 type ListenLike = (
   event: string,
   handler: (event: { payload: UpdateProgress }) => void,
@@ -85,6 +90,11 @@ function releaseUrlForVersion(version: string): string {
   return `https://github.com/Moresyl/metaclean/releases/tag/v${encodeURIComponent(version)}`;
 }
 
+function updaterNetworkError(cause: unknown): Error {
+  const detail = cause instanceof Error ? cause.message.trim() : String(cause).trim();
+  return new Error(detail ? `${UPDATE_NETWORK_HELP}\n${detail}` : UPDATE_NETWORK_HELP, { cause });
+}
+
 export async function getInstalledVersion(): Promise<string> {
   try {
     const { getVersion } = await import("@tauri-apps/api/app");
@@ -99,32 +109,44 @@ async function nativeCheck(options: { timeout: number }): Promise<NativeUpdate |
   return await check(options);
 }
 
+async function checkSignedUpdate(checker: UpdateChecker, timeout: number): Promise<NativeUpdate | null> {
+  try {
+    return await checker({ timeout });
+  } catch (cause) {
+    throw updaterNetworkError(cause);
+  }
+}
+
 export async function checkForUpdate(options: {
   currentVersion?: string;
   checker?: UpdateChecker;
   timeoutMs?: number;
 } = {}): Promise<UpdateCheckResult> {
-  const update = await (options.checker ?? nativeCheck)({ timeout: options.timeoutMs ?? 10_000 });
+  const update = await checkSignedUpdate(options.checker ?? nativeCheck, options.timeoutMs ?? CHECK_TIMEOUT_MS);
   const currentVersion = options.currentVersion ?? update?.currentVersion ?? await getInstalledVersion();
   if (!update) return { status: "current", currentVersion };
 
-  const availableVersion = update.version.replace(/^v/iu, "");
-  const parsed = parseVersion(availableVersion);
-  if (parsed.prerelease.length) throw new Error("Update service returned a prerelease version");
-  if (compareVersions(availableVersion, currentVersion) <= 0) {
-    return { status: "current", currentVersion };
+  try {
+    const availableVersion = update.version.replace(/^v/iu, "");
+    const parsed = parseVersion(availableVersion);
+    if (parsed.prerelease.length) throw new Error("Update service returned a prerelease version");
+    if (compareVersions(availableVersion, currentVersion) <= 0) {
+      return { status: "current", currentVersion };
+    }
+    return {
+      status: "available",
+      info: {
+        currentVersion,
+        availableVersion,
+        name: `MetaClean v${availableVersion}`,
+        notes: typeof update.body === "string" && update.body.trim() ? update.body : undefined,
+        publishedAt: typeof update.date === "string" && update.date.trim() ? update.date : undefined,
+        releaseUrl: releaseUrlForVersion(availableVersion),
+      },
+    };
+  } finally {
+    await update.close?.();
   }
-  return {
-    status: "available",
-    info: {
-      currentVersion,
-      availableVersion,
-      name: `MetaClean v${availableVersion}`,
-      notes: typeof update.body === "string" && update.body.trim() ? update.body : undefined,
-      publishedAt: typeof update.date === "string" && update.date.trim() ? update.date : undefined,
-      releaseUrl: releaseUrlForVersion(availableVersion),
-    },
-  };
 }
 
 export async function getUpdateRuntime(invoker?: InvokeLike): Promise<UpdateRuntime> {
@@ -136,10 +158,11 @@ export async function getUpdateRuntime(invoker?: InvokeLike): Promise<UpdateRunt
 }
 
 export async function installAvailableUpdate(options: {
+  expectedVersion: string;
   onProgress?: (progress: UpdateProgress) => void;
   invoker?: InvokeLike;
   listener?: ListenLike;
-} = {}): Promise<boolean> {
+}): Promise<boolean> {
   const invoke = options.invoker ?? (async <T,>(command: string) => {
     const core = await import("@tauri-apps/api/core");
     return await core.invoke<T>(command);
@@ -150,7 +173,9 @@ export async function installAvailableUpdate(options: {
   });
   const unlisten = await listen("update-progress", (event) => options.onProgress?.(event.payload));
   try {
-    return await invoke<boolean>("install_update_and_restart");
+    const expectedVersion = options.expectedVersion.trim().replace(/^v/iu, "");
+    if (!/^\d+\.\d+\.\d+$/u.test(expectedVersion)) throw new Error(UPDATE_CHANGED);
+    return await invoke<boolean>("install_update_and_restart", { expectedVersion });
   } finally {
     unlisten();
   }

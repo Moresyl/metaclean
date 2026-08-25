@@ -31,8 +31,16 @@ assert.deepEqual(openerPermissions, [
   "opener:allow-reveal-item-in-dir",
   {
     identifier: "opener:allow-open-url",
-    allow: [{ url: "https://github.com/Moresyl/metaclean/releases/*" }],
+    allow: [
+      { url: "https://github.com/Moresyl/metaclean" },
+      { url: "https://github.com/Moresyl/metaclean/issues" },
+      { url: "https://github.com/Moresyl/metaclean/releases/*" },
+    ],
   },
 ]);
+
+for (const permission of ["core:window:allow-close", "core:window:allow-minimize", "core:window:allow-start-dragging"]) {
+  assert.ok(capability.permissions.includes(permission), `desktop capability is missing ${permission}`);
+}
 
 console.log("Verified explicit local-only production CSP and scoped opener permissions.");

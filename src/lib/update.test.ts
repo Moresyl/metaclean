@@ -29,11 +29,13 @@ describe("checkForUpdate", () => {
   beforeEach(() => getVersionMock.mockResolvedValue("0.3.0"));
 
   it("returns signed native updater metadata for a newer stable release", async () => {
+    const close = vi.fn().mockResolvedValue(undefined);
     const checker = vi.fn().mockResolvedValue({
       currentVersion: "0.3.0",
       version: "0.4.0",
       body: "Signed update",
       date: "2026-08-18T00:00:00Z",
+      close,
     });
     await expect(checkForUpdate({ checker, timeoutMs: 2500 })).resolves.toEqual({
       status: "available",
@@ -47,6 +49,7 @@ describe("checkForUpdate", () => {
       },
     });
     expect(checker).toHaveBeenCalledWith({ timeout: 2500 });
+    expect(close).toHaveBeenCalledOnce();
   });
 
   it("reports current versions and uses the installed version when no update exists", async () => {
@@ -60,6 +63,17 @@ describe("checkForUpdate", () => {
     await expect(checkForUpdate({ checker: prerelease })).rejects.toThrow("prerelease");
     const stale = vi.fn().mockResolvedValue({ currentVersion: "0.4.0", version: "0.3.0" });
     await expect(checkForUpdate({ checker: stale })).resolves.toEqual({ status: "current", currentVersion: "0.4.0" });
+  });
+
+  it("closes native update resources on invalid metadata and explains network failures", async () => {
+    const close = vi.fn().mockResolvedValue(undefined);
+    const malformed = vi.fn().mockResolvedValue({ currentVersion: "0.3.0", version: "latest", close });
+    await expect(checkForUpdate({ checker: malformed })).rejects.toThrow("Invalid version");
+    expect(close).toHaveBeenCalledOnce();
+
+    const offline = vi.fn().mockRejectedValue(new Error("error sending request for url"));
+    await expect(checkForUpdate({ checker: offline })).rejects.toThrow(/无法连接已签名更新源.*HTTPS_PROXY.*error sending request for url/su);
+    expect(offline).toHaveBeenCalledWith({ timeout: 15_000 });
   });
 });
 
@@ -85,9 +99,18 @@ describe("native update commands", () => {
       return unlisten;
     });
     const invoker = vi.fn().mockResolvedValue(true);
-    await expect(installAvailableUpdate({ listener, invoker, onProgress: progress })).resolves.toBe(true);
+    await expect(installAvailableUpdate({ expectedVersion: "0.4.0", listener, invoker, onProgress: progress })).resolves.toBe(true);
     expect(progress).toHaveBeenCalledWith({ stage: "downloading", downloaded: 40, total: 100 });
-    expect(invoker).toHaveBeenCalledWith("install_update_and_restart");
+    expect(invoker).toHaveBeenCalledWith("install_update_and_restart", { expectedVersion: "0.4.0" });
     expect(unlisten).toHaveBeenCalled();
+  });
+
+  it("refuses an unreviewed install version before invoking Rust", async () => {
+    const unlisten = vi.fn();
+    const listener = vi.fn().mockResolvedValue(unlisten);
+    const invoker = vi.fn();
+    await expect(installAvailableUpdate({ expectedVersion: "latest", listener, invoker })).rejects.toThrow(/发生了变化/u);
+    expect(invoker).not.toHaveBeenCalled();
+    expect(unlisten).toHaveBeenCalledOnce();
   });
 });

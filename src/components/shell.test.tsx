@@ -11,8 +11,9 @@ import type { FileEntry } from "../types";
 
 const minimizeMock = vi.hoisted(() => vi.fn());
 const closeMock = vi.hoisted(() => vi.fn());
+const startDraggingMock = vi.hoisted(() => vi.fn());
 vi.mock("@tauri-apps/api/window", () => ({
-  getCurrentWindow: () => ({ minimize: minimizeMock, close: closeMock }),
+  getCurrentWindow: () => ({ minimize: minimizeMock, close: closeMock, startDragging: startDraggingMock }),
 }));
 
 const wrap = (node: ReactNode) => render(<I18nProvider>{node}</I18nProvider>);
@@ -28,6 +29,7 @@ function stubRect(target: Element, rect: Partial<DOMRect>) {
 beforeEach(() => {
   minimizeMock.mockReset();
   closeMock.mockReset();
+  startDraggingMock.mockReset();
 });
 
 afterEach(() => {
@@ -38,24 +40,28 @@ afterEach(() => {
 
 describe("title bar", () => {
   it("drives the window commands the system caption used to own", async () => {
-    wrap(<TitleBar onOpenCommands={vi.fn()} />);
+    wrap(<TitleBar closeToTray={false} onOpenCommands={vi.fn()} />);
     fireEvent.click(screen.getByRole("button", { name: "最小化" }));
     await waitFor(() => expect(minimizeMock).toHaveBeenCalled());
     fireEvent.click(screen.getByRole("button", { name: "关闭" }));
     await waitFor(() => expect(closeMock).toHaveBeenCalled());
   });
 
-  it("stays draggable and opens the palette from the command centre", () => {
+  it("stays draggable and opens the palette from the command centre", async () => {
     const onOpenCommands = vi.fn();
-    const { container } = wrap(<TitleBar onOpenCommands={onOpenCommands} />);
+    const { container } = wrap(<TitleBar closeToTray={false} onOpenCommands={onOpenCommands} />);
     // Without this attribute an undecorated window cannot be moved at all.
     expect(container.querySelector(".titlebar")).toHaveAttribute("data-tauri-drag-region");
+    fireEvent.mouseDown(container.querySelector(".titlebar-brand span:nth-child(2)")!, { button: 0 });
+    await waitFor(() => expect(startDraggingMock).toHaveBeenCalledOnce());
+    fireEvent.mouseDown(screen.getByRole("button", { name: "命令" }), { button: 0 });
+    expect(startDraggingMock).toHaveBeenCalledOnce();
     fireEvent.click(screen.getByRole("button", { name: "命令" }));
     expect(onOpenCommands).toHaveBeenCalled();
   });
 
   it("offers the window menu on right-click", async () => {
-    const { container } = wrap(<TitleBar onOpenCommands={vi.fn()} />);
+    const { container } = wrap(<TitleBar closeToTray onOpenCommands={vi.fn()} />);
     fireEvent.contextMenu(container.querySelector(".titlebar")!, { clientX: 40, clientY: 10 });
     const menu = await screen.findByRole("menu", { name: "MetaClean" });
     fireEvent.click(within(menu).getByRole("menuitem", { name: /关闭/ }));

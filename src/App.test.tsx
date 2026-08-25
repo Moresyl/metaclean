@@ -19,11 +19,21 @@ describe("App", () => {
     localStorage.setItem("metaclean.locale", "zh");
     revealMock.mockReset();
     revealMock.mockResolvedValue(undefined);
-    invokeMock.mockImplementation((command?: string) => command === "get_launch_paths" || command === undefined ? Promise.resolve([]) : command === "expand_paths" ? Promise.resolve({ files: [], skippedCount: 0, issues: [], limitReached: false }) : Promise.reject(new Error(`unexpected ${command}`)));
+    invokeMock.mockImplementation((command?: string) => command === "get_launch_paths" || command === undefined ? Promise.resolve([]) : command === "set_close_to_tray" ? Promise.resolve(undefined) : command === "expand_paths" ? Promise.resolve({ files: [], skippedCount: 0, issues: [], limitReached: false }) : Promise.reject(new Error(`unexpected ${command}`)));
   });
   it("starts with scanning disabled", () => {
     renderApp();
     expect(screen.getByRole("button", { name: "扫描隐私痕迹" })).toBeDisabled();
+  });
+
+  it("exits on close by default and persists the optional tray behavior", async () => {
+    renderApp();
+    await waitFor(() => expect(invokeMock).toHaveBeenCalledWith("set_close_to_tray", { enabled: false }));
+    fireEvent.click(screen.getByRole("button", { name: "设置" }));
+    fireEvent.click(screen.getByRole("button", { name: "系统与更新" }));
+    fireEvent.click(screen.getByRole("checkbox", { name: "关闭按钮退出应用" }));
+    expect(localStorage.getItem("metaclean.closeToTray")).toBe("true");
+    await waitFor(() => expect(invokeMock).toHaveBeenCalledWith("set_close_to_tray", { enabled: true }));
   });
 
   it("shows the installed version in the sidebar without waiting for an update check", async () => {

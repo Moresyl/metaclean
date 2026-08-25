@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { invoke } from "@tauri-apps/api/core";
 import { ArrowUpCircle, FileCheck2, FilePlus2, FolderOpen, History, Moon, MonitorCog, ScanSearch, Settings, ShieldCheck, Sun, Trash2 } from "lucide-react";
 import Sidebar from "./components/Sidebar";
 import DropZone from "./components/DropZone";
@@ -34,6 +35,7 @@ export default function App() {
   const [preserveOrientation, setPreserveOrientationState] = useState(() => localStorage.getItem("metaclean.preserveOrientation") !== "false");
   const [preserveColorProfile, setPreserveColorProfileState] = useState(() => localStorage.getItem("metaclean.preserveColorProfile") !== "false");
   const [removeExtendedAttributes, setRemoveExtendedAttributesState] = useState(() => localStorage.getItem("metaclean.removeExtendedAttributes") === "true");
+  const [closeToTray, setCloseToTrayState] = useState(() => localStorage.getItem("metaclean.closeToTray") === "true");
   const [history, setHistory] = useState<HistoryEntry[]>(() => {
     try { return JSON.parse(localStorage.getItem("metaclean.history") ?? "[]") as HistoryEntry[]; } catch { return []; }
   });
@@ -63,6 +65,7 @@ export default function App() {
   const setPreserveOrientation = useCallback((next: boolean) => { setPreserveOrientationState(next); localStorage.setItem("metaclean.preserveOrientation", String(next)); }, []);
   const setPreserveColorProfile = useCallback((next: boolean) => { setPreserveColorProfileState(next); localStorage.setItem("metaclean.preserveColorProfile", String(next)); }, []);
   const setRemoveExtendedAttributes = useCallback((next: boolean) => { setRemoveExtendedAttributesState(next); localStorage.setItem("metaclean.removeExtendedAttributes", String(next)); }, []);
+  const setCloseToTray = useCallback((next: boolean) => { setCloseToTrayState(next); localStorage.setItem("metaclean.closeToTray", String(next)); }, []);
   const saveHistory = useCallback((next: HistoryEntry[]) => { const limited = next.slice(0, 100); setHistory(limited); localStorage.setItem("metaclean.history", JSON.stringify(limited)); }, []);
 
   useEffect(() => {
@@ -80,6 +83,11 @@ export default function App() {
   useEffect(() => {
     return installZoomLock();
   }, []);
+
+  useEffect(() => {
+    void invoke("set_close_to_tray", { enabled: closeToTray })
+      .catch(() => undefined);
+  }, [closeToTray]);
 
   useEffect(() => {
     let dispose: (() => void) | undefined;
@@ -169,37 +177,70 @@ export default function App() {
   const act = text("操作", "Actions");
   const appearance = text("外观", "Appearance");
   const commands: Command[] = [
-    { id: "go-clean", group: go, label: text("文件净化", "Clean files"), icon: <FileCheck2 size={15} />, accelerator: `${modifier}1`, run: () => setPage("clean") },
-    { id: "go-history", group: go, label: text("处理记录", "History"), icon: <History size={15} />, accelerator: `${modifier}2`, run: () => setPage("history") },
-    { id: "go-privacy", group: go, label: text("隐私说明", "Privacy"), icon: <ShieldCheck size={15} />, accelerator: `${modifier}3`, run: () => setPage("privacy") },
-    { id: "go-settings", group: go, label: text("设置", "Settings"), icon: <Settings size={15} />, accelerator: `${modifier}4`, run: () => setPage("settings") },
-    { id: "pick-files", group: act, label: text("选择文件", "Choose files"), icon: <FilePlus2 size={15} />, run: () => void choose(false) },
-    { id: "pick-folder", group: act, label: text("选择文件夹", "Choose folder"), icon: <FolderOpen size={15} />, run: () => void choose(true) },
-    { id: "scan", group: act, label: text("扫描隐私痕迹", "Scan privacy traces"), icon: <ScanSearch size={15} />, disabled: busy || !entries.length || scanned, run: () => { setPage("clean"); void scan(); } },
-    { id: "clean", group: act, label: text("确认并开始清理", "Confirm and clean"), icon: <ShieldCheck size={15} />, disabled: busy || !scanned || !cleanableEntries.length, run: () => { setPage("clean"); void clean(); } },
-    { id: "clear", group: act, label: text("清空队列", "Clear queue"), icon: <Trash2 size={15} />, disabled: !entries.length, run: () => setEntries([]) },
-    { id: "theme-light", group: appearance, label: text("浅色", "Light"), icon: <Sun size={15} />, disabled: theme.mode === "light", run: () => theme.setMode("light") },
-    { id: "theme-dark", group: appearance, label: text("深色", "Dark"), icon: <Moon size={15} />, disabled: theme.mode === "dark", run: () => theme.setMode("dark") },
-    { id: "theme-system", group: appearance, label: text("跟随系统", "System"), icon: <MonitorCog size={15} />, disabled: theme.mode === "system", run: () => theme.setMode("system") },
+    { id: "go-clean", group: go, label: text("文件净化", "Clean files"), icon: <FileCheck2 size={14} />, accelerator: `${modifier}1`, run: () => setPage("clean") },
+    { id: "go-history", group: go, label: text("处理记录", "History"), icon: <History size={14} />, accelerator: `${modifier}2`, run: () => setPage("history") },
+    { id: "go-privacy", group: go, label: text("隐私说明", "Privacy"), icon: <ShieldCheck size={14} />, accelerator: `${modifier}3`, run: () => setPage("privacy") },
+    { id: "go-settings", group: go, label: text("设置", "Settings"), icon: <Settings size={14} />, accelerator: `${modifier}4`, run: () => setPage("settings") },
+    { id: "pick-files", group: act, label: text("选择文件", "Choose files"), icon: <FilePlus2 size={14} />, run: () => void choose(false) },
+    { id: "pick-folder", group: act, label: text("选择文件夹", "Choose folder"), icon: <FolderOpen size={14} />, run: () => void choose(true) },
+    { id: "scan", group: act, label: text("扫描隐私痕迹", "Scan privacy traces"), icon: <ScanSearch size={14} />, disabled: busy || !entries.length || scanned, run: () => { setPage("clean"); void scan(); } },
+    { id: "clean", group: act, label: text("确认并开始清理", "Confirm and clean"), icon: <ShieldCheck size={14} />, disabled: busy || !scanned || !cleanableEntries.length, run: () => { setPage("clean"); void clean(); } },
+    { id: "clear", group: act, label: text("清空队列", "Clear queue"), icon: <Trash2 size={14} />, disabled: !entries.length, run: () => setEntries([]) },
+    { id: "theme-light", group: appearance, label: text("浅色", "Light"), icon: <Sun size={14} />, disabled: theme.mode === "light", run: () => theme.setMode("light") },
+    { id: "theme-dark", group: appearance, label: text("深色", "Dark"), icon: <Moon size={14} />, disabled: theme.mode === "dark", run: () => theme.setMode("dark") },
+    { id: "theme-system", group: appearance, label: text("跟随系统", "System"), icon: <MonitorCog size={14} />, disabled: theme.mode === "system", run: () => theme.setMode("system") },
   ];
+
+  const titles: Record<Page, [string, string]> = {
+    clean: [text("文件净化", "Clean files"), text("清除文件里的隐私痕迹，分享前更安心", "Remove private traces before sharing")],
+    history: [text("处理记录", "History"), text("记录仅保存在此设备的应用数据中，不包含文件内容。", "History stays on this device and never stores file content.")],
+    privacy: [text("隐私说明", "Privacy"), text("MetaClean 的处理边界清晰且可验证。", "MetaClean has clear, verifiable processing boundaries.")],
+    settings: [text("设置", "Settings"), text("MetaClean · 纯本地文件隐私工具", "MetaClean · Local file privacy tool")],
+  };
+  const [title, subtitle] = titles[page];
 
   return (
     <>
-    <div className="window-frame">
-    <TitleBar onOpenCommands={() => setCommandsOpen(true)} />
-    <div className="app-shell">
+    {/* Three fixed bands and one that takes what is left: the title bar and the
+        status strip are chrome, and chrome that resizes with the content is the
+        thing that makes a window feel like a page. */}
+    <div className="app-shell grid h-screen grid-rows-[36px_minmax(0,1fr)_26px] overflow-hidden bg-canvas text-text">
+    <TitleBar closeToTray={closeToTray} onOpenCommands={() => setCommandsOpen(true)} />
+    <div className="grid min-h-0 grid-cols-[72px_minmax(0,1fr)]">
       <Sidebar page={page} onNavigate={setPage} />
-      <main className="workspace">
-        <header className="topbar"><div><h1>{page === "clean" ? text("文件净化", "Clean files") : page === "history" ? text("处理记录", "History") : page === "privacy" ? text("隐私说明", "Privacy") : text("设置", "Settings")}</h1><p>{page === "clean" ? text("清除文件里的隐私痕迹，分享前更安心", "Remove private traces before sharing") : page === "history" ? text("记录仅保存在此设备的应用数据中，不包含文件内容。", "History stays on this device and never stores file content.") : page === "privacy" ? text("MetaClean 的处理边界清晰且可验证。", "MetaClean has clear, verifiable processing boundaries.") : text("MetaClean · 纯本地文件隐私工具", "MetaClean · Local file privacy tool")}</p></div>{update.status === "available" ? <button className="update-badge" type="button" onClick={update.showUpdatePrompt} aria-label={text(`发现新版本 ${update.info?.availableVersion}`, `Version ${update.info?.availableVersion} is available`)}><ArrowUpCircle size={16}/><span>{text(`更新至 v${update.info?.availableVersion}`, `Update to v${update.info?.availableVersion}`)}</span></button> : null}</header>
-        <div className="page-enter" key={page}>
-        {page === "clean" ? <div className="content-grid">
-          <div className="main-column">
-            {message ? <div className="result-message" role="status">{message}</div> : null}
+      <main className="flex min-h-0 flex-col overflow-hidden">
+        <header className="flex shrink-0 items-start gap-4 px-5 pt-4 pb-3.5">
+          <div className="min-w-0 flex-1 grid gap-0.5">
+            <h1 className="font-display truncate text-xl font-semibold">{title}</h1>
+            <p className="truncate text-sm text-muted">{subtitle}</p>
+          </div>
+          {update.status === "available" ? (
+            <button
+              className="mt-0.5 flex h-[26px] shrink-0 items-center gap-1.5 rounded-full border border-brand/45 bg-brand/10 px-2.5 text-sm font-medium text-brand transition-colors duration-100 hover:bg-brand/18"
+              type="button"
+              onClick={update.showUpdatePrompt}
+              aria-label={text(`发现新版本 ${update.info?.availableVersion}`, `Version ${update.info?.availableVersion} is available`)}
+            >
+              <ArrowUpCircle size={14} strokeWidth={2} />
+              <span>{text(`更新至 v${update.info?.availableVersion}`, `Update to v${update.info?.availableVersion}`)}</span>
+            </button>
+          ) : null}
+        </header>
+        {/* Keyed on the page so switching remounts, and the new page rises into
+            place instead of appearing mid-scroll where the last one left off. */}
+        <div className="animate-rise min-h-0 flex-1 px-5 pb-5" key={page}>
+        {page === "clean" ? <div className="grid h-full max-w-[1180px] grid-cols-[minmax(0,1fr)_296px] gap-3">
+          <div className="flex min-h-0 flex-col gap-3">
+            {message ? (
+              <div className="shrink-0 rounded-control border border-line bg-surface px-2.5 py-2 text-sm text-muted shadow-panel" role="status">
+                {message}
+              </div>
+            ) : null}
             <DropZone onAdd={addEntries} onAddNativePaths={addNativePaths} dragActive={dragActive} compact={entries.length > 0} />
             <FileQueue entries={entries} preserveColorProfile={preserveColorProfile} removeExtendedAttributes={removeExtendedAttributes} onClear={() => setEntries([])} onRemove={(id) => setEntries((current) => current.filter((entry) => entry.id !== id))} onReveal={(path) => void reveal(path)} onNotify={setMessage} />
           </div>
           <CleanOptions mode={mode} onModeChange={setMode} preserveTimestamps={preserveTimestamps} onPreserveTimestampsChange={setPreserveTimestamps} preserveOrientation={preserveOrientation} onPreserveOrientationChange={setPreserveOrientation} preserveColorProfile={preserveColorProfile} onPreserveColorProfileChange={setPreserveColorProfile} removeExtendedAttributes={removeExtendedAttributes} onRemoveExtendedAttributesChange={setRemoveExtendedAttributes} disabled={!entries.length} scanned={scanned} hasFindings={cleanableEntries.length > 0} busy={busy} onAction={() => void (scanned ? clean() : scan())} />
-        </div> : page === "history" ? <HistoryPage entries={history} onClear={() => saveHistory([])} /> : page === "privacy" ? <PrivacyPage /> : <SettingsPage mode={mode} onModeChange={setMode} preserveTimestamps={preserveTimestamps} onPreserveTimestampsChange={setPreserveTimestamps} preserveOrientation={preserveOrientation} onPreserveOrientationChange={setPreserveOrientation} preserveColorProfile={preserveColorProfile} onPreserveColorProfileChange={setPreserveColorProfile} removeExtendedAttributes={removeExtendedAttributes} onRemoveExtendedAttributesChange={setRemoveExtendedAttributes} />}
+        </div> : page === "history" ? <HistoryPage entries={history} onClear={() => saveHistory([])} /> : page === "privacy" ? <PrivacyPage /> : <SettingsPage mode={mode} onModeChange={setMode} preserveTimestamps={preserveTimestamps} onPreserveTimestampsChange={setPreserveTimestamps} preserveOrientation={preserveOrientation} onPreserveOrientationChange={setPreserveOrientation} preserveColorProfile={preserveColorProfile} onPreserveColorProfileChange={setPreserveColorProfile} removeExtendedAttributes={removeExtendedAttributes} onRemoveExtendedAttributesChange={setRemoveExtendedAttributes} closeToTray={closeToTray} onCloseToTrayChange={setCloseToTray} />}
         </div>
       </main>
     </div>

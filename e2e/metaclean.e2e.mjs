@@ -26,6 +26,14 @@ async function openCleaningPreferences() {
   await $(".fidelity-options").waitForDisplayed();
 }
 
+async function openSystemPreferences() {
+  const navigation = await $$(".sidebar nav button");
+  await navigation[3].click();
+  const categories = await $$(".settings-nav button");
+  await categories[2].click();
+  await $(".settings-list").waitForDisplayed();
+}
+
 describe("MetaClean desktop application", () => {
   before(async () => {
     const [mainWindow] = await browser.getWindowHandles();
@@ -126,12 +134,41 @@ describe("MetaClean desktop application", () => {
     assert.equal(await refreshedFidelity[2].isSelected(), true);
   });
 
+  it("defaults the close button to exit and persists the optional tray behavior", async () => {
+    await browser.tauri.execute(() => localStorage.removeItem("metaclean.closeToTray"));
+    await browser.refresh();
+    await $(".app-shell").waitForDisplayed();
+    await openSystemPreferences();
+
+    const closeOnExit = await $("input[aria-label='Exit when closing the window']");
+    assert.equal(await closeOnExit.isSelected(), true);
+    assert.equal(await $("button=Repository").isDisplayed(), true);
+    assert.equal(await $("button=Report issue").isDisplayed(), true);
+    await closeOnExit.click();
+    await browser.waitUntil(async () => await browser.tauri.execute(() => localStorage.getItem("metaclean.closeToTray")) === "true");
+
+    await browser.refresh();
+    await $(".app-shell").waitForDisplayed();
+    await openSystemPreferences();
+    const persistedCloseOnExit = await $("input[aria-label='Exit when closing the window']");
+    assert.equal(await persistedCloseOnExit.isSelected(), false);
+    await persistedCloseOnExit.click();
+    await browser.waitUntil(async () => await browser.tauri.execute(() => localStorage.getItem("metaclean.closeToTray")) === "false");
+  });
+
   it("crosses the Tauri IPC boundary without modifying user files", async () => {
     const reports = await browser.tauri.execute(({ core }) => {
       return core.invoke("scan_files", { paths: [] });
     });
 
     assert.deepEqual(reports, []);
+  });
+
+  it("crosses the Tauri IPC boundary for both close behaviors", async () => {
+    await browser.tauri.execute(async ({ core }) => {
+      await core.invoke("set_close_to_tray", { enabled: true });
+      await core.invoke("set_close_to_tray", { enabled: false });
+    });
   });
 
   it("reports whether this desktop package can self-update", async () => {

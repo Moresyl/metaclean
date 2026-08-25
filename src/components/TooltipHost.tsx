@@ -100,7 +100,13 @@ export default function TooltipHost() {
   if (!tip) return null;
   return (
     <div
-      className={`tooltip ${placement.above ? "above" : ""} ${tip.viaKeyboard ? "immediate" : ""}`}
+      className={[
+        "tooltip pointer-events-none fixed z-[60] max-w-[280px] rounded-control",
+        "border border-line-strong bg-surface-2 px-2 py-1 text-sm text-text shadow-lift",
+        // It arrives already in place when the keyboard asked for it: the delay
+        // was the animation in that case, and doubling it reads as lag.
+        tip.viaKeyboard ? "animate-fade" : "animate-pop",
+      ].join(" ")}
       ref={surface}
       role="tooltip"
       style={{ left: `${placement.x}px`, top: `${placement.y}px` }}
