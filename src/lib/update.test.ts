@@ -2,7 +2,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { checkForUpdate, compareVersions, getInstalledVersion, getUpdateRuntime, installAvailableUpdate } from "./update";
 
 const getVersionMock = vi.hoisted(() => vi.fn());
+const invokeMock = vi.hoisted(() => vi.fn());
+const listenMock = vi.hoisted(() => vi.fn());
 vi.mock("@tauri-apps/api/app", () => ({ getVersion: getVersionMock }));
+vi.mock("@tauri-apps/api/core", () => ({ invoke: invokeMock }));
+vi.mock("@tauri-apps/api/event", () => ({ listen: listenMock }));
 
 describe("compareVersions", () => {
   it.each([
@@ -103,6 +107,18 @@ describe("native update commands", () => {
     expect(progress).toHaveBeenCalledWith({ stage: "downloading", downloaded: 40, total: 100 });
     expect(invoker).toHaveBeenCalledWith("install_update_and_restart", { expectedVersion: "0.4.0" });
     expect(unlisten).toHaveBeenCalled();
+  });
+
+  it("forwards the reviewed version through the default Tauri adapter", async () => {
+    const unlisten = vi.fn();
+    invokeMock.mockResolvedValue(true);
+    listenMock.mockResolvedValue(unlisten);
+
+    await expect(installAvailableUpdate({ expectedVersion: "v0.7.1" })).resolves.toBe(true);
+
+    expect(invokeMock).toHaveBeenCalledWith("install_update_and_restart", { expectedVersion: "0.7.1" });
+    expect(listenMock).toHaveBeenCalledWith("update-progress", expect.any(Function));
+    expect(unlisten).toHaveBeenCalledOnce();
   });
 
   it("refuses an unreviewed install version before invoking Rust", async () => {

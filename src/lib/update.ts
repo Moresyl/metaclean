@@ -163,9 +163,9 @@ export async function installAvailableUpdate(options: {
   invoker?: InvokeLike;
   listener?: ListenLike;
 }): Promise<boolean> {
-  const invoke = options.invoker ?? (async <T,>(command: string) => {
+  const invoke = options.invoker ?? (async <T,>(command: string, args?: Record<string, unknown>) => {
     const core = await import("@tauri-apps/api/core");
-    return await core.invoke<T>(command);
+    return await core.invoke<T>(command, args);
   });
   const listen = options.listener ?? (async (event, handler) => {
     const events = await import("@tauri-apps/api/event");
