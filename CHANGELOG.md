@@ -5,6 +5,49 @@ All notable changes to MetaClean are documented here. The project follows
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-08-26
+
+### Added
+
+- Native JPEG XL cleaning retires EXIF, XMP, JUMBF/C2PA, Brotli-wrapped
+  metadata and JPEG reconstruction boxes without moving the codestream; naked
+  codestreams are recognized and preserved byte-for-byte.
+- Native AIFF/AIFC cleaning removes names, authors, copyright, comments, ID3,
+  XMP and C2PA without re-encoding samples.
+- OpenDocument support now spans 11 ODF document and template extensions,
+  including properties, comments, tracked changes, optional settings and
+  encrypted-metadata refusal. The real application allowlist grows to 105
+  extensions across Rust, the frontend and Windows shell integration.
+
+### Changed
+
+- Input reads are capped at 256 MiB, refuse symbolic links and Windows reparse
+  points, and re-check the source before guarded atomic replacement. Copy and
+  backup allocation now use no-clobber creation instead of a check-then-write
+  race.
+- Batch intake and cleaner execution have strict path, traversal, decompression,
+  nesting and recursion budgets. Per-file scanner and cleaner panics are
+  isolated so one malformed input cannot abort the rest of a batch or expose a
+  parser payload.
+- JPEG, PNG, WebP, HEIF/AVIF, TIFF/RAW, BMP, GIF, MP3, FLAC, AVI, ASF, PDF,
+  Office and embedded-image validation now rejects ambiguous, truncated,
+  overlapping or structurally inconsistent metadata instead of attempting a
+  best-effort write.
+
+### Fixed
+
+- Missing, duplicate or foreign native scan/cleanup responses can no longer
+  mark unrelated files complete or hide work that remains retryable.
+- Failed cleanup rows remain actionable, concurrent double-submission is
+  blocked before React can rerender, and a new scan clears stale reports and
+  output results.
+- Corrupt or unavailable browser storage now degrades safely; persisted history
+  is structurally validated and bounded to the newest 100 entries.
+- OpenDML AVI chains, progressive JPEG metadata after scan data, PNG chunk
+  ordering/CRC, WebP extended headers, HEIF item extents, APEv2/ID3 footers,
+  PDF embedded JPEG filters and mixed-case Office part names are handled or
+  refused according to their container contracts.
+
 ## [0.6.1] - 2026-08-25
 
 ### Added
@@ -342,4 +385,5 @@ All notable changes to MetaClean are documented here. The project follows
 [0.5.0]: https://github.com/Moresyl/metaclean/compare/v0.4.2...v0.5.0
 [0.6.0]: https://github.com/Moresyl/metaclean/compare/v0.5.0...v0.6.0
 [0.6.1]: https://github.com/Moresyl/metaclean/compare/v0.6.0...v0.6.1
-[Unreleased]: https://github.com/Moresyl/metaclean/compare/v0.6.1...HEAD
+[0.7.0]: https://github.com/Moresyl/metaclean/compare/v0.6.1...v0.7.0
+[Unreleased]: https://github.com/Moresyl/metaclean/compare/v0.7.0...HEAD
