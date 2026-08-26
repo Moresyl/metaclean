@@ -1,3 +1,4 @@
+mod about;
 mod cleaners;
 mod engine;
 mod error;
@@ -204,8 +205,17 @@ fn install_application_menu(app: &tauri::App) -> tauri::Result<()> {
     let settings_page = MenuItemBuilder::with_id("settings-page", "设置 / Settings")
         .accelerator("CmdOrCtrl+4")
         .build(app)?;
+    let about_page = MenuItemBuilder::with_id("about", "关于 / About")
+        .accelerator("CmdOrCtrl+5")
+        .build(app)?;
     let navigation_menu = SubmenuBuilder::new(app, "导航 / Navigate")
-        .items(&[&clean_page, &history_page, &privacy_page, &settings_page])
+        .items(&[
+            &clean_page,
+            &history_page,
+            &privacy_page,
+            &settings_page,
+            &about_page,
+        ])
         .build()?;
     let window_menu = SubmenuBuilder::new(app, "窗口 / Window")
         .minimize()
@@ -347,7 +357,7 @@ pub fn run() {
         .on_menu_event(|app, event| match event.id().as_ref() {
             "show" => show_main_window(app),
             "settings" | "settings-page" => emit_navigation(app, "settings"),
-            "clean" | "history" | "privacy" => emit_navigation(app, event.id().as_ref()),
+            "clean" | "history" | "privacy" | "about" => emit_navigation(app, event.id().as_ref()),
             "quit" => {
                 ALLOW_EXIT.store(true, Ordering::SeqCst);
                 app.exit(0);
@@ -379,6 +389,7 @@ pub fn run() {
             get_context_menu_status,
             set_context_menu_enabled,
             set_close_to_tray,
+            about::get_about_info,
             get_update_runtime,
             install_update_and_restart
         ])

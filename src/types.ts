@@ -39,7 +39,7 @@ export interface CleanResult {
   error?: string;
 }
 
-export type Page = "clean" | "history" | "privacy" | "settings";
+export type Page = "clean" | "history" | "privacy" | "settings" | "about";
 
 export interface HistoryEntry {
   id: string;

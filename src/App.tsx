@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { ArrowUpCircle, FileCheck2, FilePlus2, FolderOpen, History, Moon, MonitorCog, ScanSearch, Settings, ShieldCheck, Sun, Trash2 } from "lucide-react";
+import { ArrowUpCircle, CircleHelp, FileCheck2, FilePlus2, FolderOpen, History, Moon, MonitorCog, ScanSearch, Settings, ShieldCheck, Sun, Trash2 } from "lucide-react";
 import Sidebar from "./components/Sidebar";
 import DropZone from "./components/DropZone";
 import FileQueue from "./components/FileQueue";
@@ -8,6 +8,7 @@ import CleanOptions from "./components/CleanOptions";
 import HistoryPage from "./components/HistoryPage";
 import PrivacyPage from "./components/PrivacyPage";
 import SettingsPage from "./components/SettingsPage";
+import AboutPage from "./components/AboutPage";
 import UpdateDialog from "./components/UpdateDialog";
 import TitleBar from "./components/TitleBar";
 import StatusBar from "./components/StatusBar";
@@ -94,7 +95,7 @@ export default function App() {
   useEffect(() => {
     let dispose: (() => void) | undefined;
     void import("@tauri-apps/api/event").then(({ listen }) => listen<Page>("menu:navigate", (event) => {
-      if (["clean", "history", "privacy", "settings"].includes(event.payload)) setPage(event.payload);
+      if (["clean", "history", "privacy", "settings", "about"].includes(event.payload)) setPage(event.payload);
     })).then((unlisten) => { dispose = unlisten; }).catch(() => undefined);
     return () => dispose?.();
   }, []);
@@ -107,7 +108,7 @@ export default function App() {
         setCommandsOpen((open) => !open);
         return;
       }
-      const destination = ({ "1": "clean", "2": "history", "3": "privacy", "4": "settings" } as const)[event.key];
+      const destination = ({ "1": "clean", "2": "history", "3": "privacy", "4": "settings", "5": "about" } as const)[event.key];
       if (!destination) return;
       event.preventDefault();
       setPage(destination);
@@ -198,6 +199,7 @@ export default function App() {
     { id: "go-history", group: go, label: text("处理记录", "History"), icon: <History size={14} />, accelerator: `${modifier}2`, run: () => setPage("history") },
     { id: "go-privacy", group: go, label: text("隐私说明", "Privacy"), icon: <ShieldCheck size={14} />, accelerator: `${modifier}3`, run: () => setPage("privacy") },
     { id: "go-settings", group: go, label: text("设置", "Settings"), icon: <Settings size={14} />, accelerator: `${modifier}4`, run: () => setPage("settings") },
+    { id: "go-about", group: go, label: text("关于", "About"), icon: <CircleHelp size={14} />, accelerator: `${modifier}5`, run: () => setPage("about") },
     { id: "pick-files", group: act, label: text("选择文件", "Choose files"), icon: <FilePlus2 size={14} />, run: () => void choose(false) },
     { id: "pick-folder", group: act, label: text("选择文件夹", "Choose folder"), icon: <FolderOpen size={14} />, run: () => void choose(true) },
     { id: "scan", group: act, label: text("扫描隐私痕迹", "Scan privacy traces"), icon: <ScanSearch size={14} />, disabled: busy || !entries.length || scanned, run: () => { setPage("clean"); void scan(); } },
@@ -213,6 +215,7 @@ export default function App() {
     history: [text("处理记录", "History"), text("记录仅保存在此设备的应用数据中，不包含文件内容。", "History stays on this device and never stores file content.")],
     privacy: [text("隐私说明", "Privacy"), text("MetaClean 的处理边界清晰且可验证。", "MetaClean has clear, verifiable processing boundaries.")],
     settings: [text("设置", "Settings"), text("MetaClean · 纯本地文件隐私工具", "MetaClean · Local file privacy tool")],
+    about: [text("关于", "About"), text("版本、运行环境、诊断信息与项目支持", "Version, runtime, diagnostics and project support")],
   };
   const [title, subtitle] = titles[page];
 
@@ -257,7 +260,7 @@ export default function App() {
             <FileQueue entries={entries} preserveColorProfile={preserveColorProfile} removeExtendedAttributes={removeExtendedAttributes} busy={busy} onClear={() => setEntries([])} onRemove={(id) => setEntries((current) => current.filter((entry) => entry.id !== id))} onReveal={(path) => void reveal(path)} onNotify={setMessage} />
           </div>
           <CleanOptions mode={mode} onModeChange={setMode} preserveTimestamps={preserveTimestamps} onPreserveTimestampsChange={setPreserveTimestamps} preserveOrientation={preserveOrientation} onPreserveOrientationChange={setPreserveOrientation} preserveColorProfile={preserveColorProfile} onPreserveColorProfileChange={setPreserveColorProfile} removeExtendedAttributes={removeExtendedAttributes} onRemoveExtendedAttributesChange={setRemoveExtendedAttributes} disabled={!entries.length} scanned={scanned} hasFindings={cleanableEntries.length > 0} busy={busy} onAction={() => void (scanned ? clean() : scan())} />
-        </div> : page === "history" ? <HistoryPage entries={history} onClear={clearHistory} /> : page === "privacy" ? <PrivacyPage /> : <SettingsPage mode={mode} onModeChange={setMode} preserveTimestamps={preserveTimestamps} onPreserveTimestampsChange={setPreserveTimestamps} preserveOrientation={preserveOrientation} onPreserveOrientationChange={setPreserveOrientation} preserveColorProfile={preserveColorProfile} onPreserveColorProfileChange={setPreserveColorProfile} removeExtendedAttributes={removeExtendedAttributes} onRemoveExtendedAttributesChange={setRemoveExtendedAttributes} closeToTray={closeToTray} onCloseToTrayChange={setCloseToTray} />}
+        </div> : page === "history" ? <HistoryPage entries={history} onClear={clearHistory} /> : page === "privacy" ? <PrivacyPage /> : page === "about" ? <AboutPage /> : <SettingsPage mode={mode} onModeChange={setMode} preserveTimestamps={preserveTimestamps} onPreserveTimestampsChange={setPreserveTimestamps} preserveOrientation={preserveOrientation} onPreserveOrientationChange={setPreserveOrientation} preserveColorProfile={preserveColorProfile} onPreserveColorProfileChange={setPreserveColorProfile} removeExtendedAttributes={removeExtendedAttributes} onRemoveExtendedAttributesChange={setRemoveExtendedAttributes} closeToTray={closeToTray} onCloseToTrayChange={setCloseToTray} />}
         </div>
       </main>
     </div>

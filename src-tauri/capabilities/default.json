@@ -9,6 +9,7 @@
     "core:window:allow-minimize",
     "core:window:allow-start-dragging",
     "dialog:allow-open",
+    "dialog:allow-save",
     "updater:allow-check",
     "opener:allow-reveal-item-in-dir",
     {
@@ -16,6 +17,9 @@
       "allow": [
         { "url": "https://github.com/Moresyl/metaclean" },
         { "url": "https://github.com/Moresyl/metaclean/issues" },
+        { "url": "https://github.com/Moresyl/metaclean/issues/*" },
+        { "url": "https://github.com/Moresyl/metaclean/blob/*" },
+        { "url": "https://github.com/Moresyl/metaclean/releases" },
         { "url": "https://github.com/Moresyl/metaclean/releases/*" }
       ]
     }

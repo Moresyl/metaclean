@@ -3,9 +3,7 @@ import {
   Download,
   ExternalLink,
   FileWarning,
-  Github,
   Monitor,
-  MessageCircleQuestion,
   Moon,
   Palette,
   RefreshCw,
@@ -23,7 +21,6 @@ import type { CleanMode, ContextMenuStatus } from "../types";
 import { useUpdate } from "../contexts/UpdateContext";
 import { useTheme } from "../contexts/ThemeContext";
 import { LOCALES, type Locale } from "../lib/locales";
-import { ISSUES_URL, openProjectUrl, REPOSITORY_URL } from "../lib/links";
 
 interface SettingsPageProps {
   mode: CleanMode;
@@ -68,7 +65,6 @@ export default function SettingsPage({
   const [contextMenu, setContextMenu] = useState<ContextMenuStatus>();
   const [contextMenuError, setContextMenuError] = useState<string>();
   const [busy, setBusy] = useState(false);
-  const [linkError, setLinkError] = useState<string>();
   const { locale, setLocale, text } = useI18n();
   const update = useUpdate();
   const theme = useTheme();
@@ -97,15 +93,6 @@ export default function SettingsPage({
       ));
     } finally {
       setBusy(false);
-    }
-  }
-
-  async function openLink(url: typeof REPOSITORY_URL | typeof ISSUES_URL) {
-    setLinkError(undefined);
-    try {
-      await openProjectUrl(url);
-    } catch {
-      setLinkError(text("无法打开 GitHub，请检查系统默认浏览器。", "Could not open GitHub. Check the system default browser."));
     }
   }
 
@@ -343,24 +330,6 @@ export default function SettingsPage({
             <input className="switch" type="checkbox" checked={update.autoCheckEnabled} onChange={(event) => update.setAutoCheckEnabled(event.target.checked)} />
           </label>
 
-          <div className={ITEM}>
-            <div className="flex flex-wrap items-start gap-3">
-              <div className="min-w-0 flex-1 grid gap-0.5">
-                <h3 className="text-base font-semibold">{text("项目与支持", "Project and support")}</h3>
-                <p className={`text-sm leading-relaxed ${linkError ? "text-danger" : "text-muted"}`} role={linkError ? "status" : undefined}>
-                  {linkError ?? text("查看源代码、使用文档或提交问题。", "View the source, read documentation, or report a problem.")}
-                </p>
-              </div>
-              <div className="flex shrink-0 gap-2">
-                <Button size="sm" onClick={() => void openLink(REPOSITORY_URL)}>
-                  <Github size={14} strokeWidth={2} />{text("项目主页", "Repository")}
-                </Button>
-                <Button size="sm" onClick={() => void openLink(ISSUES_URL)}>
-                  <MessageCircleQuestion size={14} strokeWidth={2} />{text("反馈问题", "Report issue")}
-                </Button>
-              </div>
-            </div>
-          </div>
         </> : null}
 
         {section === "safety" ? <>

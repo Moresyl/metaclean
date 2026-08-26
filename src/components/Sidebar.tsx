@@ -1,4 +1,4 @@
-import { FileCheck2, History, Settings, ShieldCheck } from "lucide-react";
+import { CircleHelp, FileCheck2, History, Settings, ShieldCheck } from "lucide-react";
 import type { Page } from "../types";
 import Ambient from "./Ambient";
 import { commandKeyLabel } from "../lib/keys";
@@ -9,6 +9,7 @@ const navigation: Array<{ page: Page; label: string; icon: typeof FileCheck2; ke
   { page: "history", label: "处理记录", icon: History, key: "2" },
   { page: "privacy", label: "隐私说明", icon: ShieldCheck, key: "3" },
   { page: "settings", label: "设置", icon: Settings, key: "4" },
+  { page: "about", label: "关于", icon: CircleHelp, key: "5" },
 ];
 
 /**
@@ -31,6 +32,7 @@ export default function Sidebar({ page, onNavigate }: { page: Page; onNavigate: 
     history: text("处理记录", "History"),
     privacy: text("隐私说明", "Privacy"),
     settings: text("设置", "Settings"),
+    about: text("关于", "About"),
   };
 
   return (

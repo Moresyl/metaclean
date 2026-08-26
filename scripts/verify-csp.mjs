@@ -34,10 +34,18 @@ assert.deepEqual(openerPermissions, [
     allow: [
       { url: "https://github.com/Moresyl/metaclean" },
       { url: "https://github.com/Moresyl/metaclean/issues" },
+      { url: "https://github.com/Moresyl/metaclean/issues/*" },
+      { url: "https://github.com/Moresyl/metaclean/blob/*" },
+      { url: "https://github.com/Moresyl/metaclean/releases" },
       { url: "https://github.com/Moresyl/metaclean/releases/*" },
     ],
   },
 ]);
+
+assert.ok(
+  capability.permissions.includes("dialog:allow-save"),
+  "default capability must allow the about page to save diagnostics",
+);
 
 for (const permission of ["core:window:allow-close", "core:window:allow-minimize", "core:window:allow-start-dragging"]) {
   assert.ok(capability.permissions.includes(permission), `desktop capability is missing ${permission}`);

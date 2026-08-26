@@ -20,7 +20,7 @@ describe("App", () => {
     localStorage.setItem("metaclean.locale", "zh");
     revealMock.mockReset();
     revealMock.mockResolvedValue(undefined);
-    invokeMock.mockImplementation((command?: string) => command === "get_launch_paths" || command === undefined ? Promise.resolve([]) : command === "set_close_to_tray" ? Promise.resolve(undefined) : command === "expand_paths" ? Promise.resolve({ files: [], skippedCount: 0, issues: [], limitReached: false }) : Promise.reject(new Error(`unexpected ${command}`)));
+    invokeMock.mockImplementation((command?: string) => command === "get_launch_paths" || command === undefined ? Promise.resolve([]) : command === "set_close_to_tray" ? Promise.resolve(undefined) : command === "get_about_info" ? Promise.resolve({ version: "0.7.0", platform: "windows", arch: "x86_64" }) : command === "expand_paths" ? Promise.resolve({ files: [], skippedCount: 0, issues: [], limitReached: false }) : Promise.reject(new Error(`unexpected ${command}`)));
   });
   it("starts with scanning disabled", () => {
     renderApp();
@@ -70,6 +70,8 @@ describe("App", () => {
     expect(screen.getByText("文件纯本地处理")).toBeInTheDocument();
     fireEvent.keyDown(window, { key: "1", ctrlKey: true });
     expect(screen.getByRole("button", { name: "扫描隐私痕迹" })).toBeInTheDocument();
+    fireEvent.keyDown(window, { key: "5", ctrlKey: true });
+    expect(screen.getByText("诊断与支持")).toBeInTheDocument();
   });
 
   it("switches all primary navigation labels to Japanese", () => {

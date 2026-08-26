@@ -8,6 +8,8 @@ import PrivacyPage from "./PrivacyPage";
 import SettingsPage from "./SettingsPage";
 import StatusBar from "./StatusBar";
 import UpdateDialog from "./UpdateDialog";
+import AboutPage from "./AboutPage";
+import { buildDiagnosticReport } from "../lib/about";
 import { I18nProvider, useI18n } from "../lib/i18n";
 import type { FileEntry, HistoryEntry } from "../types";
 import { UpdateProvider, useUpdate } from "../contexts/UpdateContext";
@@ -21,10 +23,12 @@ const getInstalledVersionMock = vi.hoisted(() => vi.fn());
 const getUpdateRuntimeMock = vi.hoisted(() => vi.fn());
 const installAvailableUpdateMock = vi.hoisted(() => vi.fn());
 const openUrlMock = vi.hoisted(() => vi.fn());
+const revealItemMock = vi.hoisted(() => vi.fn());
+const clipboardMock = vi.hoisted(() => vi.fn());
 vi.mock("@tauri-apps/plugin-dialog", () => ({ open: openMock, save: saveMock }));
 vi.mock("@tauri-apps/api/core", () => ({ invoke: invokeMock }));
 vi.mock("@tauri-apps/api/app", () => ({ getVersion: vi.fn().mockResolvedValue("0.6.1") }));
-vi.mock("@tauri-apps/plugin-opener", () => ({ openUrl: openUrlMock }));
+vi.mock("@tauri-apps/plugin-opener", () => ({ openUrl: openUrlMock, revealItemInDir: revealItemMock }));
 vi.mock("../lib/update", () => ({
   RELEASES_PAGE_URL: "https://github.com/Moresyl/metaclean/releases/latest",
   checkForUpdate: checkForUpdateMock,
@@ -52,6 +56,11 @@ beforeEach(() => {
   getUpdateRuntimeMock.mockResolvedValue({ selfUpdateSupported: false, portable: true });
   installAvailableUpdateMock.mockReset();
   openUrlMock.mockReset();
+  revealItemMock.mockReset();
+  revealItemMock.mockResolvedValue(undefined);
+  clipboardMock.mockReset();
+  clipboardMock.mockResolvedValue(undefined);
+  Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText: clipboardMock } });
 });
 
 describe("desktop components", () => {
@@ -207,10 +216,6 @@ describe("desktop components", () => {
     await screen.findByRole("button", { name: "停用" });
     fireEvent.click(screen.getByRole("checkbox", { name: "关闭按钮退出应用" }));
     expect(onCloseToTrayChange).toHaveBeenCalledWith(true);
-    fireEvent.click(screen.getByRole("button", { name: "项目主页" }));
-    await waitFor(() => expect(openUrlMock).toHaveBeenCalledWith("https://github.com/Moresyl/metaclean"));
-    fireEvent.click(screen.getByRole("button", { name: "反馈问题" }));
-    await waitFor(() => expect(openUrlMock).toHaveBeenCalledWith("https://github.com/Moresyl/metaclean/issues"));
     fireEvent.click(screen.getByRole("button", { name: "清理偏好" }));
     fireEvent.click(screen.getByText("替换并备份"));
     expect(onMode).toHaveBeenCalledWith("replace");
@@ -218,6 +223,56 @@ describe("desktop components", () => {
     wrap(<PrivacyPage />);
     expect(screen.getByText("文件纯本地处理")).toBeInTheDocument();
     expect(screen.getByText("当前支持范围")).toBeInTheDocument();
+  });
+
+  it("shows runtime facts and copies or saves a bounded diagnostics report", async () => {
+    invokeMock.mockImplementation((command: string, args?: { contents?: string }) => {
+      if (command === "get_about_info") return Promise.resolve({
+        version: "0.7.0",
+        platform: "windows",
+        arch: "x86_64",
+        appDataDir: "C:\\Users\\tester\\AppData\\Roaming\\com.moresl.metaclean",
+        executableDir: "C:\\Program Files\\MetaClean",
+      });
+      if (command === "export_audit_report") return args?.contents ? Promise.resolve(undefined) : Promise.reject(new Error("missing report"));
+      return Promise.reject(new Error(command));
+    });
+    saveMock.mockResolvedValue("C:\\reports\\MetaClean-diagnostics.json");
+    wrap(<AboutPage />);
+
+    expect(await screen.findByText("v0.7.0 · windows-x86_64")).toBeInTheDocument();
+    expect(screen.getByText("C:\\Program Files\\MetaClean")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "复制诊断信息" }));
+    await waitFor(() => expect(clipboardMock).toHaveBeenCalledOnce());
+    const copied = JSON.parse(clipboardMock.mock.calls[0][0]);
+    expect(copied).toMatchObject({ product: "MetaClean", version: "0.7.0", platform: "windows", arch: "x86_64" });
+    expect(JSON.stringify(copied)).not.toContain("processedFiles");
+
+    fireEvent.click(screen.getByRole("button", { name: "保存 JSON" }));
+    await waitFor(() => expect(invokeMock).toHaveBeenCalledWith("export_audit_report", expect.objectContaining({ path: "C:\\reports\\MetaClean-diagnostics.json" })));
+    expect(revealItemMock).toHaveBeenCalledWith("C:\\reports\\MetaClean-diagnostics.json");
+
+    fireEvent.click(screen.getByRole("button", { name: "报告问题" }));
+    await waitFor(() => expect(openUrlMock).toHaveBeenCalledWith("https://github.com/Moresyl/metaclean/issues/new?labels=bug"));
+  });
+
+  it("builds diagnostics from explicit runtime facts without file history", () => {
+    const report = JSON.parse(buildDiagnosticReport({
+      version: "0.7.0",
+      platform: "linux",
+      arch: "x86_64",
+      appDataDir: "/home/test/.local/share/metaclean",
+      executableDir: "/opt/metaclean",
+    }, {
+      locale: "zh",
+      updateStatus: "current",
+      portable: false,
+      selfUpdateSupported: true,
+    }));
+    expect(report.runtime).toEqual({ portable: false, selfUpdateSupported: true });
+    expect(report.paths.executableDirectory).toBe("/opt/metaclean");
+    expect(report).not.toHaveProperty("history");
   });
 
   it("selects a folder for recursive native expansion", async () => {
