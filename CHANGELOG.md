@@ -5,6 +5,36 @@ All notable changes to MetaClean are documented here. The project follows
 
 ## [Unreleased]
 
+## [0.7.1] - 2026-08-27
+
+### Added
+
+- A dedicated About page now exposes the exact running version, platform,
+  architecture, application-data directory and executable directory, with
+  native reveal and path-copy actions.
+- Bounded diagnostics can be copied or saved as JSON for support. Reports
+  include only runtime, update and application-path facts and never include
+  processed files, cleaning history or file contents.
+- Bug reports, feature requests, releases, source code and the MIT license are
+  available from one project-support surface, including sidebar, command
+  palette, keyboard and macOS menu navigation.
+
+### Changed
+
+- Update state and signed-install actions are shared by Settings, the update
+  prompt and About instead of introducing an independent release path.
+- GitHub opener access and native save-dialog access are limited to the exact
+  official repository paths and capability required by the About page.
+
+### Fixed
+
+- One-click update installation now forwards the version the user reviewed as
+  `expectedVersion`, matching the native command contract instead of failing
+  with a missing required key.
+- Project and support actions are no longer duplicated inside Settings; the
+  dedicated About page provides the complete version, diagnostics and support
+  workflow.
+
 ## [0.7.0] - 2026-08-26
 
 ### Added
@@ -386,4 +416,5 @@ All notable changes to MetaClean are documented here. The project follows
 [0.6.0]: https://github.com/Moresyl/metaclean/compare/v0.5.0...v0.6.0
 [0.6.1]: https://github.com/Moresyl/metaclean/compare/v0.6.0...v0.6.1
 [0.7.0]: https://github.com/Moresyl/metaclean/compare/v0.6.1...v0.7.0
-[Unreleased]: https://github.com/Moresyl/metaclean/compare/v0.7.0...HEAD
+[0.7.1]: https://github.com/Moresyl/metaclean/compare/v0.7.0...v0.7.1
+[Unreleased]: https://github.com/Moresyl/metaclean/compare/v0.7.1...HEAD
