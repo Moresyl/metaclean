@@ -34,6 +34,12 @@ async function openSystemPreferences() {
   await $(".settings-list").waitForDisplayed();
 }
 
+async function openAboutPage() {
+  const navigation = await $$(".sidebar nav button");
+  await navigation[4].click();
+  await $("button=Report a bug").waitForDisplayed();
+}
+
 describe("MetaClean desktop application", () => {
   before(async () => {
     const [mainWindow] = await browser.getWindowHandles();
@@ -45,15 +51,25 @@ describe("MetaClean desktop application", () => {
 
   it("launches the installed webview and exposes the complete navigation", async () => {
     assert.equal(await $(".titlebar-brand > span:nth-child(2)").getText(), "MetaClean");
-    assert.equal((await $$(".sidebar nav button")).length, 4);
+    assert.equal((await $$(".sidebar nav button")).length, 5);
     assert.equal(await $(".scan-button").isEnabled(), false);
   });
 
   it("supports keyboard navigation across the desktop shell", async () => {
     await browser.tauri.execute(() => window.dispatchEvent(new KeyboardEvent("keydown", { key: "4", ctrlKey: true })));
     await $(".locale-switch select").waitForDisplayed();
+    await browser.tauri.execute(() => window.dispatchEvent(new KeyboardEvent("keydown", { key: "5", ctrlKey: true })));
+    await $("button=Report a bug").waitForDisplayed();
     await browser.tauri.execute(() => window.dispatchEvent(new KeyboardEvent("keydown", { key: "1", ctrlKey: true })));
     await $(".scan-button").waitForDisplayed();
+  });
+
+  it("exposes runtime details and support links on the About page", async () => {
+    await openAboutPage();
+    assert.equal(await $("button=Report a bug").isDisplayed(), true);
+    assert.equal(await $("button=Request a feature").isDisplayed(), true);
+    assert.equal(await $("button=Releases").isDisplayed(), true);
+    assert.equal(await $("button=Source code").isDisplayed(), true);
   });
 
   it("ships every locale and applies right-to-left layout", async () => {
@@ -142,8 +158,6 @@ describe("MetaClean desktop application", () => {
 
     const closeOnExit = await $("input[aria-label='Exit when closing the window']");
     assert.equal(await closeOnExit.isSelected(), true);
-    assert.equal(await $("button=Repository").isDisplayed(), true);
-    assert.equal(await $("button=Report issue").isDisplayed(), true);
     await closeOnExit.click();
     await browser.waitUntil(async () => await browser.tauri.execute(() => localStorage.getItem("metaclean.closeToTray")) === "true");
 
