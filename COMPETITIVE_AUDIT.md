@@ -18,6 +18,27 @@ release added JPEG XL and AVIF and its subsequent ODF hardening. It is compared
 separately below so a fast-moving Linux privacy tool is not hidden behind an
 older fork or a README-only format count.
 
+## Live source refresh — 2026-09-12
+
+The official repositories ([ExifCleaner](https://github.com/szTheory/exifcleaner)
+and [MAT2](https://github.com/jvoisin/mat2)) were fetched again before this continuation. ExifCleaner
+currently identifies commit `8d47a1c3000bfd2ad2ec97fcc056a8c58a4b8f55` as its
+latest visible commit (2026-08-22); its current README still documents 25
+languages, ExifTool stay-open batch processing, before/after inspection and
+installed-artifact CI. MAT2 currently identifies commit
+`70c17d3d7b2835e02c7177c6cc58f1911848583c` (2026-09-09); its supported-format
+list includes AVIF/JPEG XL and its README retains the explicit warning that
+metadata display is not proof that a complex file is clean. These are current
+upstream claims, not a substitute for running their binaries. The raw captures
+used for this refresh remain ignored under `.firecrawl/`; no third-party assets
+or code were copied into MetaClean.
+
+This refresh keeps the comparison honest: MetaClean's current local source line
+has 32 complete locales, category/count-only privacy inspection, candidate-byte
+reinspection before every output, and a non-publishing Windows package preflight;
+ExifCleaner remains the stronger reference for raw before/after metadata
+inspection and MAT2 remains the broader CLI/file-manager integration reference.
+
 This is an evidence ledger, not a claim that every competitor feature is
 already matched. A row is complete only when the repository contains the named
 implementation and tests.

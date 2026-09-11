@@ -41,7 +41,7 @@ or history record.
 | Source races fail closed | Bytes, modification time, permissions and extended attributes are checked twice | guarded-write tests in `safe_io.rs` |
 | UI never receives raw metadata values | IPC models contain finding categories and counts only | `src-tauri/src/models.rs`, `src/types.ts` |
 | One physical Windows path is one batch item | Native and frontend use the same slash/case/device/UNC identity | `lib.rs::path_key`, `files.ts::pathIdentity` |
-| Long work remains interruptible | Cleanup observes cancellation between files; close is blocked during native work | batch and close-guard tests |
+| Long work remains interruptible | Cleanup observes cancellation between files; recursive intake and scanning hold a shared read-task guard; close is blocked during native work | batch and close-guard tests |
 
 ## Module ownership
 
@@ -74,10 +74,14 @@ or history record.
 
 ## Concurrency and backpressure
 
-Read-only scans use at most two native workers and preserve input order. Cleanup
-is sequential by design: it provides predictable disk pressure, deterministic
-output naming, a file-boundary cancellation point and a simple backup order.
-The opt-in `pnpm test:benchmark` gate measures the current release-mode baseline.
+Recursive intake is bounded and runs behind the same read-task guard as scans,
+so the close decision cannot race directory enumeration. Read-only scans use at
+most two native workers and preserve input order. Cleanup is sequential by
+design: it provides predictable disk pressure, deterministic output naming, a
+file-boundary cancellation point and a simple backup order. The opt-in
+`pnpm test:benchmark` gate measures both a successful mixed-size batch and a
+mixed-failure batch; slow-disk and peak-memory measurements remain separate
+qualification work.
 Any future cleanup parallelism must prove bounded memory, deterministic writes,
 source-race protection and cancellation latency before replacing this design.
 
