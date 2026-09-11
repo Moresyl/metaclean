@@ -36,7 +36,9 @@ export default function StatusBar({ busy, fileCount, progress }: StatusBarProps)
         <span>
           {busy
             ? progress
-              ? `${text("正在清理", "Cleaning")} ${progress.completed}/${progress.total}`
+              ? progress.cancelled
+                ? text("正在停止…", "Stopping…")
+                : `${text("正在清理", "Cleaning")} ${progress.completed}/${progress.total}`
               : text("正在处理", "Working")
             : text("就绪", "Ready")}
         </span>

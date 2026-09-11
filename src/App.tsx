@@ -43,9 +43,12 @@ export default function App() {
   const [history, setHistory] = useState<HistoryEntry[]>(loadHistory);
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState<BatchProgress>();
+  const [cancelRequested, setCancelRequested] = useState(false);
+  const [activeBatchId, setActiveBatchId] = useState<string>();
   const operationRef = useRef(false);
   const operationKindRef = useRef<"scan" | "clean" | undefined>(undefined);
   const batchIdRef = useRef<string | undefined>(undefined);
+  const cancelRequestedRef = useRef(false);
   const [message, setMessage] = useState<string>();
   const [dragActive, setDragActive] = useState(false);
   const addEntries = useCallback((incoming: FileEntry[]) => setEntries((current) => mergeEntries(current, incoming)), []);
@@ -144,6 +147,8 @@ export default function App() {
     operationRef.current = true;
     operationKindRef.current = "scan";
     batchIdRef.current = undefined;
+    cancelRequestedRef.current = false;
+    setCancelRequested(false);
     setBusy(true); setMessage(undefined); setEntries((current) => markEntryPaths(current, paths, "scanning"));
     try {
       const reports = await invoke<ScanReport[]>("scan_files", { paths });
@@ -156,7 +161,7 @@ export default function App() {
       const missing = paths.length - relevant.length;
       setMessage(text(`扫描完成：${count} 项痕迹等待确认。${missing > 0 ? ` ${missing} 个文件未返回结果，可重试扫描。` : ""}`, `Scan complete: ${count} trace(s) await confirmation.${missing > 0 ? ` ${missing} file(s) returned no result and can be retried.` : ""}`));
     } catch (error) { setEntries((current) => markEntryPaths(current, paths, "error")); setMessage(text(`扫描失败：${String(error)}`, `Scan failed: ${String(error)}`)); }
-    finally { operationRef.current = false; operationKindRef.current = undefined; batchIdRef.current = undefined; setBusy(false); }
+    finally { operationRef.current = false; operationKindRef.current = undefined; batchIdRef.current = undefined; setActiveBatchId(undefined); setCancelRequested(false); cancelRequestedRef.current = false; setBusy(false); }
   }
 
   async function clean() {
@@ -167,6 +172,9 @@ export default function App() {
     operationKindRef.current = "clean";
     const batchId = crypto.randomUUID();
     batchIdRef.current = batchId;
+    setActiveBatchId(batchId);
+    cancelRequestedRef.current = false;
+    setCancelRequested(false);
     setBusy(true); setProgress(undefined); setMessage(undefined);
     try {
       const results = await invoke<CleanResult[]>("clean_files", { request: { paths, batchId, mode, preserveTimestamps, preserveOrientation, preserveColorProfile, removeExtendedAttributes } });
@@ -182,10 +190,29 @@ export default function App() {
       const successes = relevant.filter((result) => result.success);
       const failures = relevant.length - successes.length;
       const missing = paths.length - relevant.length;
-      setMessage(text(`${successes.length} 个文件清理完成${failures ? `，${failures} 个失败` : ""}${missing > 0 ? `，${missing} 个未返回结果、可重试` : ""}。${successes[0]?.outputPath ? ` 输出：${successes[0].outputPath}` : ""}`, `${successes.length} file(s) cleaned${failures ? `; ${failures} failed` : ""}${missing > 0 ? `; ${missing} returned no result and can be retried` : ""}.${successes[0]?.outputPath ? ` Output: ${successes[0].outputPath}` : ""}`));
+      setMessage(cancelRequestedRef.current && missing > 0
+        ? text(`已取消清理：${successes.length} 个完成${missing > 0 ? `，${missing} 个未处理、可重试` : ""}。`, `Cleanup cancelled: ${successes.length} completed${missing > 0 ? `; ${missing} not processed and can be retried` : ""}.`)
+        : text(`${successes.length} 个文件清理完成${failures ? `，${failures} 个失败` : ""}${missing > 0 ? `，${missing} 个未返回结果、可重试` : ""}。${successes[0]?.outputPath ? ` 输出：${successes[0].outputPath}` : ""}`, `${successes.length} file(s) cleaned${failures ? `; ${failures} failed` : ""}${missing > 0 ? `; ${missing} returned no result and can be retried` : ""}.${successes[0]?.outputPath ? ` Output: ${successes[0].outputPath}` : ""}`));
       if (relevant.length) addHistory({ id: crypto.randomUUID(), createdAt: new Date().toISOString(), mode, results: relevant });
     } catch (error) { setMessage(text(`清理失败：${String(error)}`, `Cleanup failed: ${String(error)}`)); }
-    finally { operationRef.current = false; operationKindRef.current = undefined; batchIdRef.current = undefined; setBusy(false); setProgress(undefined); }
+    finally { operationRef.current = false; operationKindRef.current = undefined; batchIdRef.current = undefined; setActiveBatchId(undefined); setCancelRequested(false); cancelRequestedRef.current = false; setBusy(false); setProgress(undefined); }
+  }
+
+  function cancelClean() {
+    const batchId = batchIdRef.current;
+    if (!batchId || cancelRequestedRef.current) return;
+    cancelRequestedRef.current = true;
+    setCancelRequested(true);
+    void invoke<boolean>("cancel_clean_batch", { batchId }).then((accepted) => {
+      if (!accepted) {
+        cancelRequestedRef.current = false;
+        setCancelRequested(false);
+      }
+    }).catch((error) => {
+      cancelRequestedRef.current = false;
+      setCancelRequested(false);
+      setMessage(text(`取消清理失败：${String(error)}`, `Could not cancel cleanup: ${String(error)}`));
+    });
   }
 
   async function reveal(path: string) {
@@ -278,7 +305,7 @@ export default function App() {
               <DropZone onAdd={addEntries} onAddNativePaths={addNativePaths} dragActive={dragActive} compact={entries.length > 0} />
               <FileQueue entries={entries} preserveColorProfile={preserveColorProfile} removeExtendedAttributes={removeExtendedAttributes} busy={busy} onClear={() => setEntries([])} onRemove={(id) => setEntries((current) => current.filter((entry) => entry.id !== id))} onReveal={(path) => void reveal(path)} onNotify={setMessage} />
             </div>
-            <CleanOptions mode={mode} onModeChange={setMode} preserveTimestamps={preserveTimestamps} onPreserveTimestampsChange={setPreserveTimestamps} preserveOrientation={preserveOrientation} onPreserveOrientationChange={setPreserveOrientation} preserveColorProfile={preserveColorProfile} onPreserveColorProfileChange={setPreserveColorProfile} removeExtendedAttributes={removeExtendedAttributes} onRemoveExtendedAttributesChange={setRemoveExtendedAttributes} disabled={!entries.length} scanned={scanned} hasFindings={cleanableEntries.length > 0} busy={busy} onAction={() => void (scanned ? clean() : scan())} />
+            <CleanOptions mode={mode} onModeChange={setMode} preserveTimestamps={preserveTimestamps} onPreserveTimestampsChange={setPreserveTimestamps} preserveOrientation={preserveOrientation} onPreserveOrientationChange={setPreserveOrientation} preserveColorProfile={preserveColorProfile} onPreserveColorProfileChange={setPreserveColorProfile} removeExtendedAttributes={removeExtendedAttributes} onRemoveExtendedAttributesChange={setRemoveExtendedAttributes} disabled={!entries.length} scanned={scanned} hasFindings={cleanableEntries.length > 0} busy={busy} cancelable={Boolean(activeBatchId)} cancelRequested={cancelRequested} onCancel={cancelClean} onAction={() => void (scanned ? clean() : scan())} />
           </div> : page === "history" ? <HistoryPage entries={history} onClear={clearHistory} /> : page === "privacy" ? <PrivacyPage /> : page === "about" ? <AboutPage /> : <SettingsPage mode={mode} onModeChange={setMode} preserveTimestamps={preserveTimestamps} onPreserveTimestampsChange={setPreserveTimestamps} preserveOrientation={preserveOrientation} onPreserveOrientationChange={setPreserveOrientation} preserveColorProfile={preserveColorProfile} onPreserveColorProfileChange={setPreserveColorProfile} removeExtendedAttributes={removeExtendedAttributes} onRemoveExtendedAttributesChange={setRemoveExtendedAttributes} closeToTray={closeToTray} onCloseToTrayChange={setCloseToTray} />}
         </Suspense>
         </div>

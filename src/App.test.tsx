@@ -178,11 +178,35 @@ describe("App", () => {
     await screen.findByText(/1 个文件清理完成/);
     const cleanupCall = invokeMock.mock.calls.find(([command]) => command === "clean_files");
     expect(cleanupCall?.[1].request.batchId).toEqual(expect.any(String));
-    const progressListener = listenMock.mock.calls.find(([name]) => name === "batch-progress")?.[1] as ((event: { payload: { operation: "clean"; batchId: string; completed: number; total: number; failed: number } }) => void) | undefined;
+    const progressListener = listenMock.mock.calls.find(([name]) => name === "batch-progress")?.[1] as ((event: { payload: { operation: "clean"; batchId: string; completed: number; total: number; failed: number; cancelled: boolean } }) => void) | undefined;
     expect(progressListener).toBeDefined();
-    progressListener?.({ payload: { operation: "clean", batchId: "stale", completed: 99, total: 100, failed: 0 } });
+    progressListener?.({ payload: { operation: "clean", batchId: "stale", completed: 99, total: 100, failed: 0, cancelled: false } });
     expect(screen.queryByText("正在清理 99/100")).not.toBeInTheDocument();
     expect(screen.getByText("就绪")).toBeInTheDocument();
+  });
+
+  it("cancels an active cleanup batch without cancelling the scan", async () => {
+    let finishClean: ((results: never[]) => void) | undefined;
+    const pendingClean = new Promise<never[]>((resolve) => { finishClean = resolve; });
+    invokeMock.mockImplementation((command: string) => {
+      if (command === "get_launch_paths") return Promise.resolve(["C:\\work\\notes.txt"]);
+      if (command === "expand_paths") return Promise.resolve({ files: ["C:\\work\\notes.txt"], skippedCount: 0, issues: [], limitReached: false });
+      if (command === "scan_files") return Promise.resolve([{ path: "C:\\work\\notes.txt", name: "notes.txt", format: "Text", size: 4, supported: true, findings: [{ category: "unicode", label: "Invisible Unicode", count: 1, severity: "privacy" }] }]);
+      if (command === "clean_files") return pendingClean;
+      if (command === "cancel_clean_batch") return Promise.resolve(true);
+      if (command === "set_close_to_tray") return Promise.resolve(undefined);
+      return Promise.reject(new Error(`unexpected ${command}`));
+    });
+    renderApp();
+    await screen.findByText("notes.txt");
+    fireEvent.click(screen.getByRole("button", { name: "扫描隐私痕迹" }));
+    await screen.findByText("发现 1 项痕迹");
+    fireEvent.click(screen.getByRole("button", { name: "确认并开始清理" }));
+    await waitFor(() => expect(invokeMock).toHaveBeenCalledWith("clean_files", expect.anything()));
+    fireEvent.click(screen.getByRole("button", { name: "取消处理" }));
+    await waitFor(() => expect(invokeMock).toHaveBeenCalledWith("cancel_clean_batch", { batchId: expect.any(String) }));
+    finishClean?.([]);
+    await screen.findByText(/已取消清理/);
   });
 
   it("does not let duplicate or foreign scan reports hide a missing path", async () => {

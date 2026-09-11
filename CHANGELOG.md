@@ -52,6 +52,8 @@ All notable changes to MetaClean are documented here. The project follows
   from an earlier batch cannot overwrite the current status bar.
 - The native cleanup request accepts the token as an optional field, preserving
   compatibility with older desktop clients while the current UI sends it.
+- Large cleanup batches can now be cancelled safely between files; completed
+  results remain recorded and unprocessed entries stay retryable.
 - Source bytes are now guarded together with modification time, readonly
   permissions and extended attributes before a cleaned copy or replacement
   backup is allocated, then checked again immediately before replacement. A

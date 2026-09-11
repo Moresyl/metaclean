@@ -8,8 +8,9 @@ mod safe_io;
 mod shell_integration;
 
 use models::{CleanRequest, CleanResult, ScanReport};
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, Mutex, OnceLock};
 #[cfg(target_os = "macos")]
 use tauri::menu::{MenuBuilder, MenuItemBuilder, SubmenuBuilder};
 use tauri::{menu::MenuItem, tray::TrayIconBuilder, Emitter, Manager};
@@ -18,6 +19,7 @@ use tauri_plugin_window_state::StateFlags;
 
 static ALLOW_EXIT: AtomicBool = AtomicBool::new(false);
 static CLOSE_TO_TRAY: AtomicBool = AtomicBool::new(false);
+static ACTIVE_CLEAN_BATCHES: OnceLock<Mutex<HashMap<String, Arc<AtomicBool>>>> = OnceLock::new();
 const PORTABLE_MARKER: &str = "metaclean-portable.marker";
 const MAX_BATCH_FILES: usize = 10_000;
 const UPDATE_NETWORK_HELP: &str = "无法连接已签名更新源。请检查 GitHub 网络或 HTTPS_PROXY 后重试，也可从正式发布页手动下载安装包。 / Could not reach the signed update feed. Check GitHub access or HTTPS_PROXY, then retry, or download the installer from the Releases page.";
@@ -106,6 +108,11 @@ struct BatchProgress {
     completed: usize,
     total: usize,
     failed: usize,
+    cancelled: bool,
+}
+
+fn active_clean_batches() -> &'static Mutex<HashMap<String, Arc<AtomicBool>>> {
+    ACTIVE_CLEAN_BATCHES.get_or_init(|| Mutex::new(HashMap::new()))
 }
 
 #[tauri::command]
@@ -135,41 +142,91 @@ async fn clean_files(
     let paths = deduplicate_paths(request.paths);
     let total = paths.len();
     let batch_id = request.batch_id;
-    tauri::async_runtime::spawn_blocking(move || {
+    let cancellation = Arc::new(AtomicBool::new(false));
+    if !batch_id.is_empty() {
+        let mut active = active_clean_batches()
+            .lock()
+            .map_err(|_| "清理任务状态不可用，请重试".to_owned())?;
+        if active
+            .insert(batch_id.clone(), cancellation.clone())
+            .is_some()
+        {
+            return Err("清理批次标识已在使用，请重试".into());
+        }
+    }
+    let progress_batch_id = batch_id.clone();
+    let result = tauri::async_runtime::spawn_blocking(move || {
         let mut completed = 0;
         let mut failed = 0;
-        let results = paths
-            .iter()
-            .map(|path| {
-                let result = engine::clean_file_isolated_with_options(
-                    std::path::Path::new(path),
-                    &request.mode,
-                    request.preserve_timestamps,
-                    request.preserve_orientation,
-                    request.preserve_color_profile,
-                    request.remove_extended_attributes,
-                );
-                completed += 1;
-                if !result.success {
-                    failed += 1;
-                }
-                let _ = app.emit(
-                    "batch-progress",
-                    BatchProgress {
-                        operation: "clean",
-                        batch_id: batch_id.clone(),
-                        completed,
-                        total,
-                        failed,
-                    },
-                );
-                result
-            })
-            .collect();
+        let mut results = Vec::with_capacity(total);
+        for path in &paths {
+            if cancellation.load(Ordering::SeqCst) {
+                break;
+            }
+            let result = engine::clean_file_isolated_with_options(
+                std::path::Path::new(path),
+                &request.mode,
+                request.preserve_timestamps,
+                request.preserve_orientation,
+                request.preserve_color_profile,
+                request.remove_extended_attributes,
+            );
+            completed += 1;
+            if !result.success {
+                failed += 1;
+            }
+            results.push(result);
+            let _ = app.emit(
+                "batch-progress",
+                BatchProgress {
+                    operation: "clean",
+                    batch_id: progress_batch_id.clone(),
+                    completed,
+                    total,
+                    failed,
+                    cancelled: false,
+                },
+            );
+        }
+        if cancellation.load(Ordering::SeqCst) {
+            let _ = app.emit(
+                "batch-progress",
+                BatchProgress {
+                    operation: "clean",
+                    batch_id: progress_batch_id,
+                    completed,
+                    total,
+                    failed,
+                    cancelled: true,
+                },
+            );
+        }
         results
     })
     .await
-    .map_err(|error| format!("清理任务异常结束：{error}"))
+    .map_err(|error| format!("清理任务异常结束：{error}"));
+    if !batch_id.is_empty() {
+        if let Ok(mut active) = active_clean_batches().lock() {
+            active.remove(&batch_id);
+        }
+    }
+    result
+}
+
+#[tauri::command]
+fn cancel_clean_batch(batch_id: String) -> Result<bool, String> {
+    if batch_id.is_empty() {
+        return Ok(false);
+    }
+    let active = active_clean_batches()
+        .lock()
+        .map_err(|_| "清理任务状态不可用，请重试".to_owned())?;
+    if let Some(flag) = active.get(&batch_id) {
+        flag.store(true, Ordering::SeqCst);
+        Ok(true)
+    } else {
+        Ok(false)
+    }
 }
 
 #[tauri::command]
@@ -448,6 +505,7 @@ pub fn run() {
             scan_files,
             expand_paths,
             clean_files,
+            cancel_clean_batch,
             export_audit_report,
             get_launch_paths,
             get_context_menu_status,
@@ -503,11 +561,14 @@ pub fn run_cli_action() -> Option<i32> {
 #[cfg(test)]
 mod update_tests {
     use super::{
-        close_action, deduplicate_paths, export_audit_report_to, portable_marker_exists,
-        reviewed_update_matches, self_update_supported_for, updater_network_error,
-        validate_batch_size, CloseAction, MAX_BATCH_FILES, PORTABLE_MARKER,
+        active_clean_batches, cancel_clean_batch, close_action, deduplicate_paths,
+        export_audit_report_to, portable_marker_exists, reviewed_update_matches,
+        self_update_supported_for, updater_network_error, validate_batch_size, CloseAction,
+        MAX_BATCH_FILES, PORTABLE_MARKER,
     };
     use crate::models::CleanRequest;
+    use std::sync::atomic::AtomicBool;
+    use std::sync::Arc;
 
     #[test]
     fn close_behavior_defaults_to_exit_and_can_hide_to_tray() {
@@ -531,6 +592,24 @@ mod update_tests {
         }))
         .expect("legacy cleanup request should still deserialize");
         assert!(request.batch_id.is_empty());
+    }
+
+    #[test]
+    fn cancellation_marks_only_the_requested_active_batch() {
+        let batch_id = "cancel-test".to_owned();
+        let flag = Arc::new(AtomicBool::new(false));
+        active_clean_batches()
+            .lock()
+            .expect("lock active batches")
+            .insert(batch_id.clone(), flag.clone());
+        assert!(cancel_clean_batch(batch_id).expect("cancel active batch"));
+        assert!(flag.load(std::sync::atomic::Ordering::SeqCst));
+        assert!(!cancel_clean_batch("missing".into()).expect("missing batch is harmless"));
+        assert!(!cancel_clean_batch(String::new()).expect("empty batch is harmless"));
+        active_clean_batches()
+            .lock()
+            .expect("lock active batches")
+            .remove("cancel-test");
     }
 
     #[test]

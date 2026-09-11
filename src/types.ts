@@ -72,4 +72,5 @@ export interface BatchProgress {
   completed: number;
   total: number;
   failed: number;
+  cancelled: boolean;
 }

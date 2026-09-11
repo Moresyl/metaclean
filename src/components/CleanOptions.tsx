@@ -4,7 +4,7 @@ import Button from "./Button";
 import type { CleanMode } from "../types";
 import { useI18n } from "../lib/i18n";
 
-interface CleanOptionsProps { mode: CleanMode; onModeChange: (mode: CleanMode) => void; preserveTimestamps: boolean; onPreserveTimestampsChange: (value: boolean) => void; preserveOrientation: boolean; onPreserveOrientationChange: (value: boolean) => void; preserveColorProfile: boolean; onPreserveColorProfileChange: (value: boolean) => void; removeExtendedAttributes: boolean; onRemoveExtendedAttributesChange: (value: boolean) => void; disabled: boolean; scanned: boolean; hasFindings: boolean; busy: boolean; onAction: () => void }
+interface CleanOptionsProps { mode: CleanMode; onModeChange: (mode: CleanMode) => void; preserveTimestamps: boolean; onPreserveTimestampsChange: (value: boolean) => void; preserveOrientation: boolean; onPreserveOrientationChange: (value: boolean) => void; preserveColorProfile: boolean; onPreserveColorProfileChange: (value: boolean) => void; removeExtendedAttributes: boolean; onRemoveExtendedAttributesChange: (value: boolean) => void; disabled: boolean; scanned: boolean; hasFindings: boolean; busy: boolean; cancelable: boolean; cancelRequested: boolean; onCancel: () => void; onAction: () => void }
 
 /**
  * The rail that says what is about to happen, and the one button that starts it.
@@ -14,7 +14,7 @@ interface CleanOptionsProps { mode: CleanMode; onModeChange: (mode: CleanMode) =
  * line under the button is the last thing read before the click, which is
  * exactly where it belongs.
  */
-export default function CleanOptions({ mode, onModeChange, preserveTimestamps, onPreserveTimestampsChange, preserveOrientation, onPreserveOrientationChange, preserveColorProfile, onPreserveColorProfileChange, removeExtendedAttributes, onRemoveExtendedAttributesChange, disabled, scanned, hasFindings, busy, onAction }: CleanOptionsProps) {
+export default function CleanOptions({ mode, onModeChange, preserveTimestamps, onPreserveTimestampsChange, preserveOrientation, onPreserveOrientationChange, preserveColorProfile, onPreserveColorProfileChange, removeExtendedAttributes, onRemoveExtendedAttributesChange, disabled, scanned, hasFindings, busy, cancelable, cancelRequested, onCancel, onAction }: CleanOptionsProps) {
   const { text } = useI18n();
   const scans = [
     "EXIF / GPS",
@@ -105,6 +105,11 @@ export default function CleanOptions({ mode, onModeChange, preserveTimestamps, o
                 : text("没有需要清理的痕迹", "No traces to clean")
               : text("扫描隐私痕迹", "Scan privacy traces")}
         </Button>
+        {cancelable ? (
+          <Button variant="ghost" disabled={cancelRequested} onClick={onCancel}>
+            {cancelRequested ? text("正在取消…", "Cancelling…") : text("取消处理", "Cancel cleanup")}
+          </Button>
+        ) : null}
         {/* The last sentence read before the click, so it is set in ink somebody
             will actually read. `faint` on 12px CJK, centred under a filled mint
             button, is a line the eye skips — and it is the line that says the

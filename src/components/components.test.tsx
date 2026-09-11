@@ -73,9 +73,14 @@ describe("desktop components", () => {
   });
 
   it("shows bounded batch progress without exposing a file path", async () => {
-    wrap(<StatusBar busy fileCount={3} progress={{ operation: "clean", batchId: "batch-1", completed: 2, total: 3, failed: 1 }} />);
+    wrap(<StatusBar busy fileCount={3} progress={{ operation: "clean", batchId: "batch-1", completed: 2, total: 3, failed: 1, cancelled: false }} />);
     expect(screen.getByText("正在清理 2/3")).toBeInTheDocument();
     expect(screen.queryByText(/C:\\/)).not.toBeInTheDocument();
+  });
+
+  it("shows a stopping state after cancellation is accepted", () => {
+    wrap(<StatusBar busy fileCount={3} progress={{ operation: "clean", batchId: "batch-1", completed: 2, total: 3, failed: 1, cancelled: true }} />);
+    expect(screen.getByText("正在停止…")).toBeInTheDocument();
   });
 
   it("adds native dialog selections and dropped browser files", async () => {
@@ -175,19 +180,23 @@ describe("desktop components", () => {
     const onAction = vi.fn();
     const onRemoveExtendedAttributesChange = vi.fn();
     const fidelity = { preserveTimestamps: true, onPreserveTimestampsChange: vi.fn(), preserveOrientation: true, onPreserveOrientationChange: vi.fn(), preserveColorProfile: true, onPreserveColorProfileChange: vi.fn(), removeExtendedAttributes: false, onRemoveExtendedAttributesChange };
-    const { rerender } = wrap(<CleanOptions {...fidelity} mode="copy" onModeChange={onMode} disabled={false} scanned={false} hasFindings={false} busy={false} onAction={onAction} />);
+    const { rerender } = wrap(<CleanOptions {...fidelity} mode="copy" onModeChange={onMode} disabled={false} scanned={false} hasFindings={false} busy={false} cancelable={false} cancelRequested={false} onCancel={vi.fn()} onAction={onAction} />);
     fireEvent.click(screen.getByText("替换原文件"));
     expect(onMode).toHaveBeenCalledWith("replace");
     fireEvent.click(screen.getByRole("button", { name: "扫描隐私痕迹" }));
     expect(onAction).toHaveBeenCalled();
     fireEvent.click(screen.getByRole("checkbox", { name: /macOS · xattr/ }));
     expect(onRemoveExtendedAttributesChange).toHaveBeenCalledWith(true);
-    rerender(<I18nProvider><CleanOptions {...fidelity} mode="replace" onModeChange={onMode} disabled={false} scanned hasFindings busy={false} onAction={onAction} /></I18nProvider>);
+    rerender(<I18nProvider><CleanOptions {...fidelity} mode="replace" onModeChange={onMode} disabled={false} scanned hasFindings busy={false} cancelable={false} cancelRequested={false} onCancel={vi.fn()} onAction={onAction} /></I18nProvider>);
     expect(screen.getByRole("button", { name: "确认并开始清理" })).toBeEnabled();
     fireEvent.click(screen.getByText("保存为安全副本"));
     expect(onMode).toHaveBeenCalledWith("copy");
-    rerender(<I18nProvider><CleanOptions {...fidelity} mode="replace" onModeChange={onMode} disabled={false} scanned hasFindings={false} busy={false} onAction={onAction} /></I18nProvider>);
+    rerender(<I18nProvider><CleanOptions {...fidelity} mode="replace" onModeChange={onMode} disabled={false} scanned hasFindings={false} busy={false} cancelable={false} cancelRequested={false} onCancel={vi.fn()} onAction={onAction} /></I18nProvider>);
     expect(screen.getByRole("button", { name: "没有需要清理的痕迹" })).toBeDisabled();
+    const onCancel = vi.fn();
+    rerender(<I18nProvider><CleanOptions {...fidelity} mode="replace" onModeChange={onMode} disabled={false} scanned hasFindings busy cancelable cancelRequested={false} onCancel={onCancel} onAction={onAction} /></I18nProvider>);
+    fireEvent.click(screen.getByRole("button", { name: "取消处理" }));
+    expect(onCancel).toHaveBeenCalledOnce();
   });
 
   it("renders history success and failure details and clears it", () => {
