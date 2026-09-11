@@ -20,6 +20,7 @@ use tauri_plugin_window_state::StateFlags;
 static ALLOW_EXIT: AtomicBool = AtomicBool::new(false);
 static CLOSE_TO_TRAY: AtomicBool = AtomicBool::new(false);
 static ACTIVE_READ_TASKS: AtomicUsize = AtomicUsize::new(0);
+static ACTIVE_CLEAN_TASKS: AtomicUsize = AtomicUsize::new(0);
 static ACTIVE_SCAN_BATCHES: OnceLock<Mutex<HashMap<String, Arc<AtomicBool>>>> = OnceLock::new();
 static ACTIVE_CLEAN_BATCHES: OnceLock<Mutex<HashMap<String, Arc<AtomicBool>>>> = OnceLock::new();
 const PORTABLE_MARKER: &str = "metaclean-portable.marker";
@@ -166,6 +167,11 @@ impl Drop for ActiveScanBatchGuard {
 }
 
 fn clean_batch_active() -> bool {
+    if ACTIVE_CLEAN_TASKS.load(Ordering::SeqCst) > 0 {
+        return true;
+    }
+    // A poisoned registry is treated as active: closing while cancellation
+    // state is unavailable is less safe than keeping the application open.
     active_clean_batches()
         .lock()
         .map(|active| !active.is_empty())
@@ -202,6 +208,7 @@ struct ActiveCleanBatchGuard {
 impl ActiveCleanBatchGuard {
     fn register(batch_id: &str, cancellation: Arc<AtomicBool>) -> Result<Self, String> {
         if batch_id.is_empty() {
+            ACTIVE_CLEAN_TASKS.fetch_add(1, Ordering::SeqCst);
             return Ok(Self { batch_id: None });
         }
         let mut active = active_clean_batches()
@@ -211,6 +218,7 @@ impl ActiveCleanBatchGuard {
             return Err("清理批次标识已在使用，请重试".into());
         }
         active.insert(batch_id.to_owned(), cancellation);
+        ACTIVE_CLEAN_TASKS.fetch_add(1, Ordering::SeqCst);
         Ok(Self {
             batch_id: Some(batch_id.to_owned()),
         })
@@ -224,6 +232,7 @@ impl Drop for ActiveCleanBatchGuard {
                 active.remove(batch_id);
             }
         }
+        ACTIVE_CLEAN_TASKS.fetch_sub(1, Ordering::SeqCst);
     }
 }
 
@@ -755,6 +764,8 @@ mod update_tests {
     use std::sync::atomic::AtomicBool;
     use std::sync::Arc;
 
+    static CLEAN_BATCH_TEST_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
     #[test]
     fn close_behavior_defaults_to_exit_and_can_hide_to_tray() {
         assert_eq!(close_action(false), CloseAction::Exit);
@@ -771,16 +782,29 @@ mod update_tests {
 
     #[test]
     fn keeps_clean_ipc_backward_compatible_without_a_batch_token() {
+        let _serial = CLEAN_BATCH_TEST_LOCK
+            .lock()
+            .expect("lock clean batch tests");
         let request: CleanRequest = serde_json::from_value(serde_json::json!({
             "paths": ["note.txt"],
             "mode": "copy"
         }))
         .expect("legacy cleanup request should still deserialize");
         assert!(request.batch_id.is_empty());
+
+        let guard =
+            ActiveCleanBatchGuard::register(&request.batch_id, Arc::new(AtomicBool::new(false)))
+                .expect("register legacy clean batch");
+        assert!(clean_batch_active());
+        drop(guard);
+        assert!(!clean_batch_active());
     }
 
     #[test]
     fn cancellation_marks_only_the_requested_active_batch() {
+        let _serial = CLEAN_BATCH_TEST_LOCK
+            .lock()
+            .expect("lock clean batch tests");
         let batch_id = "cancel-test".to_owned();
         let flag = Arc::new(AtomicBool::new(false));
         let guard = ActiveCleanBatchGuard::register(&batch_id, flag.clone())

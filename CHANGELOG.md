@@ -46,6 +46,10 @@ All notable changes to MetaClean are documented here. The project follows
 
 ### Fixed
 
+- Cleanup calls from legacy clients that omit `batchId` now participate in the
+  same RAII activity guard as cancellable batches, so closing the window cannot
+  terminate an in-progress write merely because the compatibility token is
+  empty.
 - The native updater now validates the reviewed version as a stable three-part
   release before comparing it, so malformed, prerelease or directly-invoked
   IPC arguments cannot bypass the install contract. Windows read-only source
