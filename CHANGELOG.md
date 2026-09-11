@@ -65,6 +65,10 @@ All notable changes to MetaClean are documented here. The project follows
   `script`, `style`, `textarea` or `title` are preserved while targeted
   metadata attributes are removed.
 
+- All localized supported-scope descriptions now state the current 113
+  extensions and 24 text formats directly; the runtime no longer performs a
+  broad numeric replacement that could alter unrelated translated copy.
+
 - Recursive directory intake now applies the same Windows case, separator,
   device-prefix and UNC alias identity rules as direct IPC batches, preventing
   duplicate queue entries when overlapping paths are expanded; aliases are
