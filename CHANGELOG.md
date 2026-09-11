@@ -60,6 +60,10 @@ All notable changes to MetaClean are documented here. The project follows
   sync; the sync is now best effort after the commit while all other metadata
   remains prepared on the temporary file.
 
+- Direct scan, clean and directory-intake IPC now de-duplicate path aliases
+  before enforcing the 10,000-item batch limit, so repeated drag/drop or shell
+  aliases do not consume the user-visible budget.
+
 - Markdown front matter now recognizes both YAML `---` and TOML `+++` fences,
   while only removing targeted author and generator fields inside the opening
   metadata block.

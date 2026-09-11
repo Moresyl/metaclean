@@ -89,6 +89,12 @@ fn deduplicate_paths(paths: Vec<String>) -> Vec<String> {
         .collect()
 }
 
+fn prepare_batch_paths(paths: Vec<String>) -> Result<Vec<String>, String> {
+    let paths = deduplicate_paths(paths);
+    validate_batch_size(paths.len())?;
+    Ok(paths)
+}
+
 #[derive(Clone, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 struct UpdateRuntime {
@@ -231,8 +237,7 @@ async fn scan_files(
     paths: Vec<String>,
     batch_id: Option<String>,
 ) -> Result<Vec<ScanReport>, String> {
-    validate_batch_size(paths.len())?;
-    let paths = deduplicate_paths(paths);
+    let paths = prepare_batch_paths(paths)?;
     let cancellation = Arc::new(AtomicBool::new(false));
     let active_batch = ActiveScanBatchGuard::register(batch_id.as_deref(), cancellation.clone())?;
     let active_read = ActiveReadGuard::start();
@@ -288,8 +293,7 @@ async fn scan_files(
 
 #[tauri::command]
 async fn expand_paths(paths: Vec<String>) -> Result<intake::IntakeResult, String> {
-    validate_batch_size(paths.len())?;
-    let paths = deduplicate_paths(paths);
+    let paths = prepare_batch_paths(paths)?;
     let active_read = ActiveReadGuard::start();
     tauri::async_runtime::spawn_blocking(move || {
         let _active_read = active_read;
@@ -304,8 +308,7 @@ async fn clean_files(
     app: tauri::AppHandle,
     request: CleanRequest,
 ) -> Result<Vec<CleanResult>, String> {
-    validate_batch_size(request.paths.len())?;
-    let paths = deduplicate_paths(request.paths);
+    let paths = prepare_batch_paths(request.paths)?;
     let total = paths.len();
     let batch_id = request.batch_id;
     let cancellation = Arc::new(AtomicBool::new(false));
@@ -744,10 +747,10 @@ pub fn run_cli_action() -> Option<i32> {
 mod update_tests {
     use super::{
         cancel_clean_batch, cancel_scan_batch, clean_batch_active, close_action, deduplicate_paths,
-        export_audit_report_to, portable_marker_exists, read_task_active, reviewed_update_matches,
-        self_update_supported_for, updater_network_error, validate_batch_size,
-        ActiveCleanBatchGuard, ActiveReadGuard, ActiveScanBatchGuard, CloseAction, MAX_BATCH_FILES,
-        PORTABLE_MARKER,
+        export_audit_report_to, portable_marker_exists, prepare_batch_paths, read_task_active,
+        reviewed_update_matches, self_update_supported_for, updater_network_error,
+        validate_batch_size, ActiveCleanBatchGuard, ActiveReadGuard, ActiveScanBatchGuard,
+        CloseAction, MAX_BATCH_FILES, PORTABLE_MARKER,
     };
     use crate::models::CleanRequest;
     use std::sync::atomic::AtomicBool;
@@ -843,6 +846,19 @@ mod update_tests {
             ]),
             vec!["C:\\one.txt", "C:\\two.txt"],
         );
+    }
+
+    #[test]
+    fn deduplicates_before_enforcing_the_batch_limit() {
+        let repeated = vec!["C:\\same.txt".to_owned(); MAX_BATCH_FILES + 1];
+        assert_eq!(prepare_batch_paths(repeated).unwrap(), vec!["C:\\same.txt"]);
+
+        let distinct = (0..=MAX_BATCH_FILES)
+            .map(|index| format!("C:\\file-{index}.txt"))
+            .collect();
+        let error = prepare_batch_paths(distinct).unwrap_err();
+        assert!(error.contains("10000"));
+        assert!(error.contains("10001"));
     }
 
     #[cfg(windows)]
