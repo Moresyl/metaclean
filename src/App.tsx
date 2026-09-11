@@ -108,12 +108,14 @@ export default function App() {
       const unlistenProgress = await listen<BatchProgress>("batch-progress", (event) => {
         if (operationKindRef.current === event.payload.operation && batchIdRef.current === event.payload.batchId) setProgress(event.payload);
       });
+      const unlistenClose = await listen<string>("close-blocked", (event) => setMessage(event.payload));
       if (!active) {
         unlistenMenu();
         unlistenProgress();
+        unlistenClose();
         return;
       }
-      dispose = () => { unlistenMenu(); unlistenProgress(); };
+      dispose = () => { unlistenMenu(); unlistenProgress(); unlistenClose(); };
     }).catch(() => undefined);
     return () => { active = false; dispose?.(); };
   }, []);

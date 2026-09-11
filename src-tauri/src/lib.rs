@@ -24,6 +24,7 @@ const PORTABLE_MARKER: &str = "metaclean-portable.marker";
 const MAX_BATCH_FILES: usize = 10_000;
 const UPDATE_NETWORK_HELP: &str = "无法连接已签名更新源。请检查 GitHub 网络或 HTTPS_PROXY 后重试，也可从正式发布页手动下载安装包。 / Could not reach the signed update feed. Check GitHub access or HTTPS_PROXY, then retry, or download the installer from the Releases page.";
 const UPDATE_CHANGED: &str = "可用版本在确认后发生了变化，请先重新检查并查看新版本说明。 / The available release changed after confirmation. Check again and review the new release before installing.";
+const CLEANUP_CLOSE_BLOCKED: &str = "清理任务正在进行，请先取消或等待完成。 / Cleanup is still running; cancel it or wait for it to finish.";
 
 #[derive(Debug, PartialEq, Eq)]
 enum CloseAction {
@@ -113,6 +114,13 @@ struct BatchProgress {
 
 fn active_clean_batches() -> &'static Mutex<HashMap<String, Arc<AtomicBool>>> {
     ACTIVE_CLEAN_BATCHES.get_or_init(|| Mutex::new(HashMap::new()))
+}
+
+fn clean_batch_active() -> bool {
+    active_clean_batches()
+        .lock()
+        .map(|active| !active.is_empty())
+        .unwrap_or(true)
 }
 
 #[tauri::command]
@@ -463,6 +471,10 @@ pub fn run() {
                 .on_menu_event(|app, event| match event.id.as_ref() {
                     "open" => show_main_window(app),
                     "quit" => {
+                        if clean_batch_active() {
+                            let _ = app.emit("close-blocked", CLEANUP_CLOSE_BLOCKED);
+                            return;
+                        }
                         ALLOW_EXIT.store(true, Ordering::SeqCst);
                         app.exit(0);
                     }
@@ -480,6 +492,10 @@ pub fn run() {
             "settings" | "settings-page" => emit_navigation(app, "settings"),
             "clean" | "history" | "privacy" | "about" => emit_navigation(app, event.id().as_ref()),
             "quit" => {
+                if clean_batch_active() {
+                    let _ = app.emit("close-blocked", CLEANUP_CLOSE_BLOCKED);
+                    return;
+                }
                 ALLOW_EXIT.store(true, Ordering::SeqCst);
                 app.exit(0);
             }
@@ -487,6 +503,11 @@ pub fn run() {
         })
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                if clean_batch_active() {
+                    api.prevent_close();
+                    let _ = window.emit("close-blocked", CLEANUP_CLOSE_BLOCKED);
+                    return;
+                }
                 api.prevent_close();
                 match close_action(CLOSE_TO_TRAY.load(Ordering::SeqCst)) {
                     CloseAction::HideToTray => {
@@ -561,8 +582,8 @@ pub fn run_cli_action() -> Option<i32> {
 #[cfg(test)]
 mod update_tests {
     use super::{
-        active_clean_batches, cancel_clean_batch, close_action, deduplicate_paths,
-        export_audit_report_to, portable_marker_exists, reviewed_update_matches,
+        active_clean_batches, cancel_clean_batch, clean_batch_active, close_action,
+        deduplicate_paths, export_audit_report_to, portable_marker_exists, reviewed_update_matches,
         self_update_supported_for, updater_network_error, validate_batch_size, CloseAction,
         MAX_BATCH_FILES, PORTABLE_MARKER,
     };
@@ -604,12 +625,14 @@ mod update_tests {
             .insert(batch_id.clone(), flag.clone());
         assert!(cancel_clean_batch(batch_id).expect("cancel active batch"));
         assert!(flag.load(std::sync::atomic::Ordering::SeqCst));
+        assert!(clean_batch_active());
         assert!(!cancel_clean_batch("missing".into()).expect("missing batch is harmless"));
         assert!(!cancel_clean_batch(String::new()).expect("empty batch is harmless"));
         active_clean_batches()
             .lock()
             .expect("lock active batches")
             .remove("cancel-test");
+        assert!(!clean_batch_active());
     }
 
     #[test]
