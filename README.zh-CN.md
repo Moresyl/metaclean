@@ -144,6 +144,12 @@ pnpm test:e2e:build && pnpm test:e2e             # 真实桌面程序 E2E
 pnpm tauri build                                # 各平台安装包
 ```
 
+在 Windows 上，可以用下面的非发布 preflight 一次构建 debug NSIS/MSI、生成便携 ZIP，并执行三种安装/启动/卸载烟测：
+
+```powershell
+pwsh -NoLogo -NoProfile -File .\scripts\preflight-windows.ps1
+```
+
 每次分支构建还会在 Windows、macOS 和 Linux 启动 E2E 专用桌面二进制；内嵌 WebDriver 与测试命令受 Cargo feature 隔离，不会进入生产包。推送版本标签后，GitHub Actions 会构建完整发布矩阵：Windows x64 的 NSIS/MSI/便携 ZIP 与 x86 的 NSIS/便携 ZIP、macOS 的 Apple Silicon 与 Intel 双 DMG、Linux 的 DEB/RPM/AppImage。Release 还会生成五个平台目标的签名更新包与静态 `latest.json`，全部安装包冒烟通过并生成完整 SHA-256 清单后才公开发布。更新签名不等于操作系统代码签名；macOS 签名与公证仍需 Apple 凭据，未配置时 DMG 仍是未签名状态。
 
 测试覆盖率与发布验收证据记录在 [VALIDATION.md](VALIDATION.md)。

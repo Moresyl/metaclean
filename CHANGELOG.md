@@ -16,6 +16,9 @@ All notable changes to MetaClean are documented here. The project follows
 - Added an MSI install/launch/uninstall smoke gate alongside the existing NSIS
   and portable checks; the release workflow now qualifies both Windows package
   families before collecting assets.
+- Added `scripts/preflight-windows.ps1`, a non-publishing Windows candidate gate
+  that builds the debug NSIS/MSI pair, packages the portable ZIP and runs all
+  three install/launch/uninstall smoke checks in one repeatable command.
 
 ### Changed
 

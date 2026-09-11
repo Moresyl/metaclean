@@ -153,6 +153,14 @@ pnpm test:e2e:build && pnpm test:e2e             # real desktop app E2E
 pnpm tauri build                                # platform installers
 ```
 
+On Windows, the non-publishing candidate preflight builds the debug NSIS/MSI
+packages, creates the portable ZIP and runs all three install/launch/uninstall
+smoke checks in one pass:
+
+```powershell
+pwsh -NoLogo -NoProfile -File .\scripts\preflight-windows.ps1
+```
+
 Every branch build also launches an E2E-only desktop binary on Windows, macOS and Linux. Its embedded WebDriver and test commands are gated behind a Cargo feature and are absent from production bundles. Pushing a version tag builds the whole release matrix through GitHub Actions: x64 NSIS/MSI plus x86 NSIS and x64/x86 portable ZIPs for Windows, DMG for Apple Silicon and Intel macOS, and DEB/RPM/AppImage for Linux. Release builds additionally produce signed updater bundles for five platform targets and a static `latest.json`; publication waits for every package smoke test and a complete SHA-256 manifest. Updater signatures are independent of operating-system code signing. macOS signing and notarization still require Apple credentials; without them the macOS job produces unsigned DMGs.
 
 Test coverage and release evidence are tracked in [VALIDATION.md](VALIDATION.md).
