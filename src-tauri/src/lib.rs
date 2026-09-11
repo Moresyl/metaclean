@@ -19,7 +19,7 @@ use tauri_plugin_window_state::StateFlags;
 
 static ALLOW_EXIT: AtomicBool = AtomicBool::new(false);
 static CLOSE_TO_TRAY: AtomicBool = AtomicBool::new(false);
-static ACTIVE_SCAN_TASKS: AtomicUsize = AtomicUsize::new(0);
+static ACTIVE_READ_TASKS: AtomicUsize = AtomicUsize::new(0);
 static ACTIVE_CLEAN_BATCHES: OnceLock<Mutex<HashMap<String, Arc<AtomicBool>>>> = OnceLock::new();
 const PORTABLE_MARKER: &str = "metaclean-portable.marker";
 const MAX_BATCH_FILES: usize = 10_000;
@@ -124,26 +124,26 @@ fn clean_batch_active() -> bool {
         .unwrap_or(true)
 }
 
-fn scan_task_active() -> bool {
-    ACTIVE_SCAN_TASKS.load(Ordering::SeqCst) > 0
+fn read_task_active() -> bool {
+    ACTIVE_READ_TASKS.load(Ordering::SeqCst) > 0
 }
 
 fn work_active() -> bool {
-    scan_task_active() || clean_batch_active()
+    read_task_active() || clean_batch_active()
 }
 
-struct ActiveScanGuard;
+struct ActiveReadGuard;
 
-impl ActiveScanGuard {
+impl ActiveReadGuard {
     fn start() -> Self {
-        ACTIVE_SCAN_TASKS.fetch_add(1, Ordering::SeqCst);
+        ACTIVE_READ_TASKS.fetch_add(1, Ordering::SeqCst);
         Self
     }
 }
 
-impl Drop for ActiveScanGuard {
+impl Drop for ActiveReadGuard {
     fn drop(&mut self) {
-        ACTIVE_SCAN_TASKS.fetch_sub(1, Ordering::SeqCst);
+        ACTIVE_READ_TASKS.fetch_sub(1, Ordering::SeqCst);
     }
 }
 
@@ -151,7 +151,7 @@ impl Drop for ActiveScanGuard {
 async fn scan_files(paths: Vec<String>) -> Result<Vec<ScanReport>, String> {
     validate_batch_size(paths.len())?;
     let paths = deduplicate_paths(paths);
-    let _active_scan = ActiveScanGuard::start();
+    let _active_read = ActiveReadGuard::start();
     tauri::async_runtime::spawn_blocking(move || engine::scan_paths(&paths))
         .await
         .map_err(|error| format!("扫描任务异常结束：{error}"))
@@ -161,6 +161,7 @@ async fn scan_files(paths: Vec<String>) -> Result<Vec<ScanReport>, String> {
 async fn expand_paths(paths: Vec<String>) -> Result<intake::IntakeResult, String> {
     validate_batch_size(paths.len())?;
     let paths = deduplicate_paths(paths);
+    let _active_read = ActiveReadGuard::start();
     tauri::async_runtime::spawn_blocking(move || intake::expand_paths(&paths))
         .await
         .map_err(|error| format!("目录导入任务异常结束：{error}"))
@@ -608,9 +609,9 @@ pub fn run_cli_action() -> Option<i32> {
 mod update_tests {
     use super::{
         active_clean_batches, cancel_clean_batch, clean_batch_active, close_action,
-        deduplicate_paths, export_audit_report_to, portable_marker_exists, reviewed_update_matches,
-        scan_task_active, self_update_supported_for, updater_network_error, validate_batch_size,
-        ActiveScanGuard, CloseAction, MAX_BATCH_FILES, PORTABLE_MARKER,
+        deduplicate_paths, export_audit_report_to, portable_marker_exists, read_task_active,
+        reviewed_update_matches, self_update_supported_for, updater_network_error,
+        validate_batch_size, ActiveReadGuard, CloseAction, MAX_BATCH_FILES, PORTABLE_MARKER,
     };
     use crate::models::CleanRequest;
     use std::sync::atomic::AtomicBool;
@@ -661,12 +662,12 @@ mod update_tests {
     }
 
     #[test]
-    fn active_scan_tasks_also_block_window_exit() {
-        assert!(!scan_task_active());
-        let guard = ActiveScanGuard::start();
-        assert!(scan_task_active());
+    fn active_read_tasks_also_block_window_exit() {
+        assert!(!read_task_active());
+        let guard = ActiveReadGuard::start();
+        assert!(read_task_active());
         drop(guard);
-        assert!(!scan_task_active());
+        assert!(!read_task_active());
     }
 
     #[test]

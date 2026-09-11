@@ -45,6 +45,9 @@ All notable changes to MetaClean are documented here. The project follows
 - Native benchmark reporting now records the first processed result before
   sorting latencies for p95, instead of incorrectly labelling the minimum
   latency as the first-result measurement.
+- Directory expansion now participates in the same native read-task guard as
+  scanning, so closing from the window, tray or application menu cannot race
+  an unfinished recursive intake.
 - Upgraded Vitest to 4.1.11 and pinned the WebdriverIO/Mocha `js-yaml` chain
   to 4.3.2, closing the current official npm audit findings without changing
   the production runtime dependency surface.
