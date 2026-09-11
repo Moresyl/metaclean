@@ -54,6 +54,7 @@ export function UpdateProvider({ children }: { children: ReactNode }) {
   const [promptOpen, setPromptOpen] = useState(false);
   const [autoCheckEnabled, setAutoCheckState] = useState(() => readStorage(AUTO_CHECK_KEY) !== "false");
   const checking = useRef(false);
+  const installing = useRef(false);
 
   const setAutoCheckEnabled = useCallback((enabled: boolean) => {
     writeStorage(AUTO_CHECK_KEY, String(enabled));
@@ -61,7 +62,7 @@ export function UpdateProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const checkUpdate = useCallback(async () => {
-    if (checking.current) return;
+    if (checking.current || installing.current) return;
     checking.current = true;
     setStatus("checking");
     setError(undefined);
@@ -105,16 +106,24 @@ export function UpdateProvider({ children }: { children: ReactNode }) {
   }, [info?.availableVersion]);
 
   const installUpdate = useCallback(async () => {
+    if (installing.current || checking.current) return;
     if (!runtime.selfUpdateSupported) {
       await openRelease();
       return;
     }
+    const expectedVersion = info?.availableVersion;
+    if (!expectedVersion) {
+      setError("没有经过确认的更新版本，请重新检查更新。 / No reviewed update is available. Check for updates again.");
+      setProgress(undefined);
+      setStatus("error");
+      return;
+    }
+    installing.current = true;
     setStatus("updating");
     setError(undefined);
     setProgress({ stage: "downloading", downloaded: 0 });
     try {
-      if (!info?.availableVersion) throw new Error("没有经过确认的更新版本，请重新检查更新。 / No reviewed update is available. Check for updates again.");
-      const installed = await installAvailableUpdate({ expectedVersion: info.availableVersion, onProgress: setProgress });
+      const installed = await installAvailableUpdate({ expectedVersion, onProgress: setProgress });
       if (!installed) {
         setInfo(undefined);
         setProgress(undefined);
@@ -124,6 +133,8 @@ export function UpdateProvider({ children }: { children: ReactNode }) {
       setError(reason instanceof Error ? reason.message : String(reason));
       setProgress(undefined);
       setStatus("error");
+    } finally {
+      installing.current = false;
     }
   }, [info?.availableVersion, openRelease, runtime.selfUpdateSupported]);
 

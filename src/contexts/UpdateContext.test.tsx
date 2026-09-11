@@ -104,6 +104,37 @@ describe("UpdateProvider", () => {
     expect(installAvailableUpdateMock).toHaveBeenCalledWith(expect.objectContaining({ expectedVersion: "0.4.0" }));
   });
 
+  it("deduplicates installs and update checks while an install is active", async () => {
+    let finishInstall: ((installed: boolean) => void) | undefined;
+    checkForUpdateMock.mockResolvedValue({
+      status: "available",
+      info: { currentVersion: "0.3.0", availableVersion: "0.4.0", name: "MetaClean v0.4.0", releaseUrl: "https://github.com/Moresyl/metaclean/releases/tag/v0.4.0" },
+    });
+    installAvailableUpdateMock.mockReturnValue(new Promise((resolve) => { finishInstall = resolve; }));
+    render(<UpdateProvider><Probe /></UpdateProvider>);
+    fireEvent.click(screen.getByRole("button", { name: "check" }));
+    await screen.findByText("available");
+
+    fireEvent.click(screen.getByRole("button", { name: "install" }));
+    fireEvent.click(screen.getByRole("button", { name: "install" }));
+    fireEvent.click(screen.getByRole("button", { name: "check" }));
+
+    expect(installAvailableUpdateMock).toHaveBeenCalledTimes(1);
+    expect(checkForUpdateMock).toHaveBeenCalledTimes(1);
+    finishInstall?.(false);
+    await screen.findByText("current");
+  });
+
+  it("refuses installation when no reviewed version is available", async () => {
+    localStorage.setItem("metaclean.update.autoCheck", "false");
+    render(<UpdateProvider><Probe /></UpdateProvider>);
+    await screen.findByTestId("self-update-supported");
+    fireEvent.click(screen.getByRole("button", { name: "install" }));
+    await screen.findByText("error");
+    expect(screen.getByText(/No reviewed update is available/u)).toBeInTheDocument();
+    expect(installAvailableUpdateMock).not.toHaveBeenCalled();
+  });
+
   it("opens the release page instead of self-updating a portable runtime", async () => {
     getUpdateRuntimeMock.mockResolvedValue({ selfUpdateSupported: false, portable: true });
     checkForUpdateMock.mockResolvedValue({
