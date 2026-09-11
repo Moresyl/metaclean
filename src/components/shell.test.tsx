@@ -188,6 +188,15 @@ describe("command palette", () => {
     // Dismissing the palette must never strand focus on the document body.
     expect(opener).toHaveFocus();
   });
+
+  it("loops Tab from the last command back to the search field", () => {
+    wrap(<CommandPalette commands={commands} onClose={vi.fn()} />);
+    const field = screen.getByRole("combobox");
+    const last = screen.getByRole("option", { name: "选择文件" });
+    last.focus();
+    fireEvent.keyDown(last, { key: "Tab" });
+    expect(field).toHaveFocus();
+  });
 });
 
 describe("tooltip host", () => {
@@ -277,6 +286,16 @@ describe("queue row details", () => {
     fireEvent.click(within(menu).getByRole("menuitem", { name: "复制路径" }));
     await waitFor(() => expect(writeText).toHaveBeenCalledWith("C:\\work\\photo.jpg"));
     await waitFor(() => expect(onNotify).toHaveBeenCalledWith("已复制到剪贴板"));
+  });
+
+  it("exposes path copying directly on the row", async () => {
+    const onNotify = vi.fn();
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText } });
+    queue([entry], { onNotify });
+    fireEvent.click(screen.getByRole("button", { name: "复制路径" }));
+    await waitFor(() => expect(writeText).toHaveBeenCalledWith("C:\\work\\photo.jpg"));
+    expect(onNotify).toHaveBeenCalledWith("已复制到剪贴板");
   });
 
   it("removes a row from that same menu", async () => {

@@ -8,6 +8,7 @@ mod safe_io;
 mod shell_integration;
 
 use models::{CleanRequest, CleanResult, ScanReport};
+use std::collections::HashSet;
 use std::sync::atomic::{AtomicBool, Ordering};
 #[cfg(target_os = "macos")]
 use tauri::menu::{MenuBuilder, MenuItemBuilder, SubmenuBuilder};
@@ -54,6 +55,29 @@ fn validate_batch_size(count: usize) -> Result<(), String> {
     Ok(())
 }
 
+fn deduplicate_paths(paths: Vec<String>) -> Vec<String> {
+    let mut seen = HashSet::with_capacity(paths.len());
+    paths
+        .into_iter()
+        .filter(|path| seen.insert(path_key(path)))
+        .collect()
+}
+
+#[cfg(windows)]
+fn path_key(path: &str) -> String {
+    let normalized = path.replace('/', "\\").to_ascii_lowercase();
+    if normalized.len() > 3 {
+        normalized.trim_end_matches('\\').to_owned()
+    } else {
+        normalized
+    }
+}
+
+#[cfg(not(windows))]
+fn path_key(path: &str) -> String {
+    path.to_owned()
+}
+
 #[derive(Clone, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 struct UpdateRuntime {
@@ -69,9 +93,19 @@ struct UpdateDownloadProgress {
     total: Option<u64>,
 }
 
+#[derive(Clone, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+struct BatchProgress {
+    operation: &'static str,
+    completed: usize,
+    total: usize,
+    failed: usize,
+}
+
 #[tauri::command]
 async fn scan_files(paths: Vec<String>) -> Result<Vec<ScanReport>, String> {
     validate_batch_size(paths.len())?;
+    let paths = deduplicate_paths(paths);
     tauri::async_runtime::spawn_blocking(move || engine::scan_paths(&paths))
         .await
         .map_err(|error| format!("扫描任务异常结束：{error}"))
@@ -80,29 +114,51 @@ async fn scan_files(paths: Vec<String>) -> Result<Vec<ScanReport>, String> {
 #[tauri::command]
 async fn expand_paths(paths: Vec<String>) -> Result<intake::IntakeResult, String> {
     validate_batch_size(paths.len())?;
+    let paths = deduplicate_paths(paths);
     tauri::async_runtime::spawn_blocking(move || intake::expand_paths(&paths))
         .await
         .map_err(|error| format!("目录导入任务异常结束：{error}"))
 }
 
 #[tauri::command]
-async fn clean_files(request: CleanRequest) -> Result<Vec<CleanResult>, String> {
+async fn clean_files(
+    app: tauri::AppHandle,
+    request: CleanRequest,
+) -> Result<Vec<CleanResult>, String> {
     validate_batch_size(request.paths.len())?;
+    let paths = deduplicate_paths(request.paths);
+    let total = paths.len();
     tauri::async_runtime::spawn_blocking(move || {
-        request
-            .paths
+        let mut completed = 0;
+        let mut failed = 0;
+        let results = paths
             .iter()
             .map(|path| {
-                engine::clean_file_isolated_with_options(
+                let result = engine::clean_file_isolated_with_options(
                     std::path::Path::new(path),
                     &request.mode,
                     request.preserve_timestamps,
                     request.preserve_orientation,
                     request.preserve_color_profile,
                     request.remove_extended_attributes,
-                )
+                );
+                completed += 1;
+                if !result.success {
+                    failed += 1;
+                }
+                let _ = app.emit(
+                    "batch-progress",
+                    BatchProgress {
+                        operation: "clean",
+                        completed,
+                        total,
+                        failed,
+                    },
+                );
+                result
             })
-            .collect()
+            .collect();
+        results
     })
     .await
     .map_err(|error| format!("清理任务异常结束：{error}"))
@@ -439,9 +495,9 @@ pub fn run_cli_action() -> Option<i32> {
 #[cfg(test)]
 mod update_tests {
     use super::{
-        close_action, export_audit_report_to, portable_marker_exists, reviewed_update_matches,
-        self_update_supported_for, updater_network_error, validate_batch_size, CloseAction,
-        MAX_BATCH_FILES, PORTABLE_MARKER,
+        close_action, deduplicate_paths, export_audit_report_to, portable_marker_exists,
+        reviewed_update_matches, self_update_supported_for, updater_network_error,
+        validate_batch_size, CloseAction, MAX_BATCH_FILES, PORTABLE_MARKER,
     };
 
     #[test]
@@ -456,6 +512,27 @@ mod update_tests {
         let error = validate_batch_size(MAX_BATCH_FILES + 1).unwrap_err();
         assert!(error.contains("10000"));
         assert!(error.contains("10001"));
+    }
+
+    #[test]
+    fn deduplicates_repeated_ipc_paths_while_preserving_first_order() {
+        assert_eq!(
+            deduplicate_paths(vec![
+                "C:\\one.txt".into(),
+                "C:\\two.txt".into(),
+                "C:\\one.txt".into(),
+            ]),
+            vec!["C:\\one.txt", "C:\\two.txt"],
+        );
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn deduplicates_windows_paths_without_case_or_separator_drift() {
+        assert_eq!(
+            deduplicate_paths(vec!["C:\\One.txt".into(), "c:/one.txt".into()]),
+            vec!["C:\\One.txt"],
+        );
     }
 
     #[test]

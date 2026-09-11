@@ -43,6 +43,8 @@ principles rather than visual copying:
 - Empty and status states use a reserved region and `aria-live` announcements;
   long queues use `content-visibility: auto` to avoid painting rows outside the
   scrollport.
+- Long cleanup batches report count-only progress in the local status strip;
+  progress never exposes a file path or content value.
 - Page-level chunks are loaded on demand. The first paint keeps the cleaning
   workflow small while History, Privacy, Settings and About remain independently
   cacheable.

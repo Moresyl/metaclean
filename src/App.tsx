@@ -16,7 +16,7 @@ import { commandKeyLabel } from "./lib/keys";
 import { pickPaths } from "./lib/pick";
 import { loadHistory, persistHistory } from "./lib/history";
 import { readStorage, writeStorage } from "./lib/storage";
-import type { CleanMode, FileEntry, HistoryEntry, IntakeResult, Page } from "./types";
+import type { BatchProgress, CleanMode, FileEntry, HistoryEntry, IntakeResult, Page } from "./types";
 import type { CleanResult, ScanReport } from "./types";
 import { useI18n } from "./lib/i18n";
 import { useTheme } from "./contexts/ThemeContext";
@@ -42,6 +42,7 @@ export default function App() {
   const [closeToTray, setCloseToTrayState] = useState(() => readStorage("metaclean.closeToTray") === "true");
   const [history, setHistory] = useState<HistoryEntry[]>(loadHistory);
   const [busy, setBusy] = useState(false);
+  const [progress, setProgress] = useState<BatchProgress>();
   const operationRef = useRef(false);
   const [message, setMessage] = useState<string>();
   const [dragActive, setDragActive] = useState(false);
@@ -93,11 +94,21 @@ export default function App() {
   }, [closeToTray]);
 
   useEffect(() => {
+    let active = true;
     let dispose: (() => void) | undefined;
-    void import("@tauri-apps/api/event").then(({ listen }) => listen<Page>("menu:navigate", (event) => {
-      if (["clean", "history", "privacy", "settings", "about"].includes(event.payload)) setPage(event.payload);
-    })).then((unlisten) => { dispose = unlisten; }).catch(() => undefined);
-    return () => dispose?.();
+    void import("@tauri-apps/api/event").then(async ({ listen }) => {
+      const unlistenMenu = await listen<Page>("menu:navigate", (event) => {
+        if (["clean", "history", "privacy", "settings", "about"].includes(event.payload)) setPage(event.payload);
+      });
+      const unlistenProgress = await listen<BatchProgress>("batch-progress", (event) => setProgress(event.payload));
+      if (!active) {
+        unlistenMenu();
+        unlistenProgress();
+        return;
+      }
+      dispose = () => { unlistenMenu(); unlistenProgress(); };
+    }).catch(() => undefined);
+    return () => { active = false; dispose?.(); };
   }, []);
 
   useEffect(() => {
@@ -147,7 +158,7 @@ export default function App() {
     const paths = cleanableEntries.flatMap((entry) => entry.path ? [entry.path] : []);
     if (!paths.length) return;
     operationRef.current = true;
-    setBusy(true); setMessage(undefined);
+    setBusy(true); setProgress(undefined); setMessage(undefined);
     try {
       const results = await invoke<CleanResult[]>("clean_files", { request: { paths, mode, preserveTimestamps, preserveOrientation, preserveColorProfile, removeExtendedAttributes } });
       const requested = new Set(paths);
@@ -165,7 +176,7 @@ export default function App() {
       setMessage(text(`${successes.length} 个文件清理完成${failures ? `，${failures} 个失败` : ""}${missing > 0 ? `，${missing} 个未返回结果、可重试` : ""}。${successes[0]?.outputPath ? ` 输出：${successes[0].outputPath}` : ""}`, `${successes.length} file(s) cleaned${failures ? `; ${failures} failed` : ""}${missing > 0 ? `; ${missing} returned no result and can be retried` : ""}.${successes[0]?.outputPath ? ` Output: ${successes[0].outputPath}` : ""}`));
       if (relevant.length) addHistory({ id: crypto.randomUUID(), createdAt: new Date().toISOString(), mode, results: relevant });
     } catch (error) { setMessage(text(`清理失败：${String(error)}`, `Cleanup failed: ${String(error)}`)); }
-    finally { operationRef.current = false; setBusy(false); }
+    finally { operationRef.current = false; setBusy(false); setProgress(undefined); }
   }
 
   async function reveal(path: string) {
@@ -264,7 +275,7 @@ export default function App() {
         </div>
       </main>
     </div>
-    <StatusBar busy={busy} fileCount={entries.length} />
+    <StatusBar busy={busy} fileCount={entries.length} progress={progress} />
     </div>
     <UpdateDialog />
     <TooltipHost />

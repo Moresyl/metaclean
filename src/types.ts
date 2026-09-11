@@ -65,3 +65,10 @@ export interface IntakeResult {
   issues: IntakeIssue[];
   limitReached: boolean;
 }
+
+export interface BatchProgress {
+  operation: "clean";
+  completed: number;
+  total: number;
+  failed: number;
+}

@@ -112,6 +112,8 @@ for the evidence-backed comparison with other local cleaners.
 - Optional Windows File Explorer command across all 105 supported extensions — on Windows 11 it lives under **Show more options**
 - Closing the window exits MetaClean by default; Settings can instead keep it in the system tray, where the tray menu can reopen or exit it
 - About provides version/runtime facts, copyable diagnostics, JSON export, issue/feature/release links and the source/license entry points
+- Queue rows expose direct path copying as well as the full context menu, and update/command dialogs keep keyboard focus contained until dismissed
+- Large cleanup batches show count-only progress in the local status bar; no file path or content is sent through the progress event
 - Stable queue sorting by name, extension, source/output size or finding count, with per-file size savings and reveal-in-folder actions for completed outputs
 - Versioned local JSON audit-report export with per-file findings and outcomes but no raw metadata values
 - Fixed 1180 × 720 enterprise workspace with compact icon navigation and a persistent local-only status bar

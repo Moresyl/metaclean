@@ -72,6 +72,12 @@ describe("desktop components", () => {
     expect(await screen.findByText("MetaClean v0.4.1")).toBeInTheDocument();
   });
 
+  it("shows bounded batch progress without exposing a file path", async () => {
+    wrap(<StatusBar busy fileCount={3} progress={{ operation: "clean", completed: 2, total: 3, failed: 1 }} />);
+    expect(screen.getByText("正在清理 2/3")).toBeInTheDocument();
+    expect(screen.queryByText(/C:\\/)).not.toBeInTheDocument();
+  });
+
   it("adds native dialog selections and dropped browser files", async () => {
     const onAdd = vi.fn();
     openMock.mockResolvedValue(["C:\\work\\photo.jpg", "C:\\work\\paper.pdf"]);
@@ -341,6 +347,25 @@ describe("desktop components", () => {
     fireEvent.click(screen.getByRole("button", { name: /前往 GitHub 查看并下载/ }));
     await waitFor(() => expect(openUrlMock).toHaveBeenCalledWith("https://github.com/Moresyl/metaclean/releases/tag/v0.5.0"));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("keeps keyboard focus inside the update prompt and restores it on close", async () => {
+    checkForUpdateMock.mockResolvedValue({
+      status: "available",
+      info: { currentVersion: "0.4.1", availableVersion: "0.5.0", name: "MetaClean v0.5.0", releaseUrl: "https://github.com/Moresyl/metaclean/releases/tag/v0.5.0" },
+    });
+    wrap(<UpdateDialogHarness />);
+    const trigger = screen.getByRole("button", { name: "trigger update" });
+    trigger.focus();
+    fireEvent.click(trigger);
+    await screen.findByRole("dialog", { name: "v0.5.0" });
+    expect(screen.getByRole("button", { name: /前往 GitHub 查看并下载/ })).toHaveFocus();
+    fireEvent.keyDown(window, { key: "Tab" });
+    expect(screen.getByRole("button", { name: "稍后提醒" })).toHaveFocus();
+    fireEvent.keyDown(window, { key: "Tab", shiftKey: true });
+    expect(screen.getByRole("button", { name: /前往 GitHub 查看并下载/ })).toHaveFocus();
+    fireEvent.click(screen.getByRole("button", { name: "稍后提醒" }));
+    expect(trigger).toHaveFocus();
   });
 
   it("persists the selected interface theme", async () => {

@@ -1,23 +1,38 @@
 import { ArrowRight, ExternalLink, Sparkles, X } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import Button, { IconButton } from "./Button";
 import { useUpdate } from "../contexts/UpdateContext";
 import { useI18n } from "../lib/i18n";
+import { loopFocus } from "../lib/focus";
 
 export default function UpdateDialog() {
   const update = useUpdate();
   const { text } = useI18n();
   const [opening, setOpening] = useState(false);
   const [openError, setOpenError] = useState<string>();
+  const dialog = useRef<HTMLElement>(null);
+  const primaryAction = useRef<HTMLButtonElement>(null);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!update.promptOpen) return;
-    const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") update.dismissUpdatePrompt();
+    const previous = document.activeElement;
+    primaryAction.current?.focus();
+    const keepFocusInside = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        update.dismissUpdatePrompt();
+        return;
+      }
+      const current = dialog.current;
+      if (!current) return;
+      loopFocus(event, current);
     };
-    window.addEventListener("keydown", closeOnEscape);
-    return () => window.removeEventListener("keydown", closeOnEscape);
-  }, [update]);
+    window.addEventListener("keydown", keepFocusInside);
+    return () => {
+      window.removeEventListener("keydown", keepFocusInside);
+      if (previous instanceof HTMLElement && document.contains(previous)) previous.focus();
+    };
+  }, [update.dismissUpdatePrompt, update.promptOpen]);
 
   if (!update.promptOpen || !update.info) return null;
 
@@ -48,6 +63,8 @@ export default function UpdateDialog() {
         role="dialog"
         aria-modal="true"
         aria-labelledby="update-dialog-title"
+        aria-describedby="update-dialog-notes"
+        ref={dialog}
       >
         {/* Top-right rather than in the footer: the dialog is an offer, and the
             way out of an offer should not be one of the two decisions. */}
@@ -80,6 +97,7 @@ export default function UpdateDialog() {
         <div
           className="selectable grid max-h-[34vh] gap-1.5 overflow-y-auto rounded-control border border-line bg-canvas-deep p-3"
           aria-label={text("更新内容", "What's new")}
+          id="update-dialog-notes"
         >
           <strong className="caption">{text("本次更新内容", "What's new")}</strong>
           <p className="text-base leading-relaxed whitespace-pre-line text-muted">
@@ -97,7 +115,7 @@ export default function UpdateDialog() {
           <Button variant="ghost" onClick={update.dismissUpdatePrompt}>
             {text("稍后", "Later")}
           </Button>
-          <Button variant="primary" disabled={opening} onClick={() => void openGitHub()}>
+          <Button ref={primaryAction} variant="primary" disabled={opening} onClick={() => void openGitHub()}>
             <ExternalLink size={14} strokeWidth={2} />
             {opening ? text("正在打开…", "Opening…") : text("前往 GitHub 查看并下载", "View and download on GitHub")}
             <ArrowRight size={14} strokeWidth={2} />

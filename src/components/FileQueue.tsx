@@ -304,6 +304,16 @@ export default function FileQueue({ entries, preserveColorProfile, removeExtende
                       focused, so a queue of forty files is forty names rather
                       than a hundred and twenty buttons. */}
                   <div className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity duration-100 group-hover:opacity-100 group-focus-within:opacity-100">
+                    {(outputPath || entry.path) ? (
+                      <IconButton
+                        size="sm"
+                        aria-label={text("复制路径", "Copy path")}
+                        data-tip={text("复制路径", "Copy path")}
+                        onClick={() => void copy(outputPath ?? entry.path!)}
+                      >
+                        <Copy size={14} strokeWidth={2} />
+                      </IconButton>
+                    ) : null}
                     {outputPath ? (
                       <IconButton size="sm" aria-label={outputPath} data-tip={outputPath} onClick={() => onReveal(outputPath)}>
                         <FileSearch size={14} strokeWidth={2} />

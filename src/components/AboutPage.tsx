@@ -29,6 +29,7 @@ import {
   type ProjectUrl,
 } from "../lib/links";
 import { buildDiagnosticReport, type AboutInfo } from "../lib/about";
+import { copyText } from "../lib/window";
 
 type CopyTarget = "report" | "appData" | "executable";
 
@@ -76,7 +77,7 @@ export default function AboutPage() {
   const copy = useCallback(async (value: string, target: CopyTarget) => {
     setError(undefined);
     try {
-      await navigator.clipboard.writeText(value);
+      if (!await copyText(value)) throw new Error(text("剪贴板不可用", "Clipboard unavailable"));
       setCopied(target);
       window.setTimeout(() => setCopied((current) => current === target ? undefined : current), 1_400);
     } catch (reason) {

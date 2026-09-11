@@ -1,4 +1,4 @@
-import type { ButtonHTMLAttributes, ReactNode } from "react";
+import { forwardRef, type ButtonHTMLAttributes, type ReactNode } from "react";
 
 /**
  * The one button in the window.
@@ -63,20 +63,22 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   children?: ReactNode;
 }
 
-export default function Button({
+const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button({
   variant = "secondary",
   size = "md",
   className = "",
   type = "button",
   children,
   ...rest
-}: ButtonProps) {
+}, ref) {
   return (
-    <button type={type} className={`${BASE} ${SIZES[size]} ${VARIANTS[variant]} ${OFF[variant]} ${className}`} {...rest}>
+    <button ref={ref} type={type} className={`${BASE} ${SIZES[size]} ${VARIANTS[variant]} ${OFF[variant]} ${className}`} {...rest}>
       {children}
     </button>
   );
-}
+});
+
+export default Button;
 
 /** A square button carrying nothing but an icon. Always labelled by the caller. */
 export function IconButton({

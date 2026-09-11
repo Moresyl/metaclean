@@ -21,6 +21,19 @@ All notable changes to MetaClean are documented here. The project follows
 
 ### Fixed
 
+- Update prompts now trap keyboard focus, expose their release notes to assistive
+  technology and restore focus to the invoking control when dismissed. Repeated
+  paths received through native IPC are de-duplicated before scan, expansion or
+  cleanup so one file cannot be processed more than once in a batch.
+- Command palette focus is now contained in the palette as well, including when
+  its filtered result list has no enabled command.
+- Queue rows now expose a direct copy-path action instead of requiring a context
+  menu; the existing context menu remains available for keyboard and pointer
+  workflows.
+- About-page diagnostics and path copying now share the same clipboard fallback,
+  so locked-down WebViews can still use the selection-based copy path.
+- Long cleanup batches now emit privacy-safe count-only progress events and show
+  `completed/total` in the local status bar without exposing paths or content.
 - Source bytes are now guarded together with modification time, readonly
   permissions and extended attributes before a cleaned copy or replacement
   backup is allocated, then checked again immediately before replacement. A

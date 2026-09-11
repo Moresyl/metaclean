@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Search } from "lucide-react";
 import { useI18n } from "../lib/i18n";
+import { loopFocus } from "../lib/focus";
 
 /**
  * Every command the window can run, one keystroke away.
@@ -55,6 +56,7 @@ export default function CommandPalette({ commands, onClose }: { commands: Comman
   const [active, setActive] = useState(0);
   const list = useRef<HTMLDivElement>(null);
   const field = useRef<HTMLInputElement>(null);
+  const dialog = useRef<HTMLDivElement>(null);
   const restoreFocus = useRef<Element | null>(null);
 
   const matches = useMemo(() => {
@@ -79,7 +81,12 @@ export default function CommandPalette({ commands, onClose }: { commands: Comman
   useLayoutEffect(() => {
     restoreFocus.current = document.activeElement;
     field.current?.focus();
+    const keepFocusInside = (event: KeyboardEvent) => {
+      if (event.key === "Tab" && dialog.current) loopFocus(event, dialog.current);
+    };
+    window.addEventListener("keydown", keepFocusInside);
     return () => {
+      window.removeEventListener("keydown", keepFocusInside);
       const previous = restoreFocus.current;
       if (previous instanceof HTMLElement && document.contains(previous)) previous.focus();
     };
@@ -112,6 +119,7 @@ export default function CommandPalette({ commands, onClose }: { commands: Comman
         role="dialog"
         aria-modal="true"
         aria-label={text("命令", "Commands")}
+        ref={dialog}
         onPointerDown={(event) => event.stopPropagation()}
       >
         <div className="flex shrink-0 items-center gap-2.5 border-b border-line px-3">
