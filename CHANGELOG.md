@@ -25,6 +25,9 @@ All notable changes to MetaClean are documented here. The project follows
 
 ### Changed
 
+- Parallel scanning now draws work from a bounded dynamic queue instead of two
+  static path chunks, keeping both workers useful when file sizes or storage
+  latency are uneven while returning reports in the original input order.
 - Secondary pages now load on demand, and Rollup keeps React, icons and each
   page family in stable cacheable chunks; the production entry chunk is now
   about 234 KiB instead of a single 525 KiB application chunk.

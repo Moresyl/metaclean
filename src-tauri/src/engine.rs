@@ -1,5 +1,6 @@
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
+use std::sync::Mutex;
 
 #[cfg(test)]
 use std::fs;
@@ -844,12 +845,22 @@ fn scan_paths_with_cancellation(
         .map_or(1, usize::from)
         .min(MAX_SCAN_WORKERS)
         .min(paths.len());
+    scan_paths_with_workers(paths, cancellation, progress, workers, &scan_path_isolated)
+}
+
+fn scan_paths_with_workers(
+    paths: &[String],
+    cancellation: Option<&AtomicBool>,
+    progress: Option<&(dyn Fn(&ScanReport) + Send + Sync)>,
+    workers: usize,
+    scan: &(dyn Fn(&str) -> ScanReport + Sync),
+) -> Vec<ScanReport> {
     if workers <= 1 {
         return paths
             .iter()
             .take_while(|_| !cancellation.is_some_and(|token| token.load(Ordering::SeqCst)))
             .map(|path| {
-                let report = scan_path_isolated(path);
+                let report = scan(path);
                 if let Some(progress) = progress {
                     progress(&report);
                 }
@@ -857,42 +868,38 @@ fn scan_paths_with_cancellation(
             })
             .collect();
     }
-    let chunk_size = paths.len().div_ceil(workers);
+    // Keep a small dynamic work queue so one slow input cannot leave another
+    // scanner idle. Reports are stored by input index to preserve the queue's
+    // stable order for the frontend and history layer.
+    let next_index = AtomicUsize::new(0);
+    let reports = Mutex::new((0..paths.len()).map(|_| None).collect::<Vec<_>>());
     std::thread::scope(|scope| {
-        paths
-            .chunks(chunk_size)
-            .map(|chunk| {
-                (
-                    chunk,
-                    scope.spawn(move || {
-                        chunk
-                            .iter()
-                            .take_while(|_| {
-                                !cancellation.is_some_and(|token| token.load(Ordering::SeqCst))
-                            })
-                            .map(|path| {
-                                let report = scan_path_isolated(path);
-                                if let Some(progress) = progress {
-                                    progress(&report);
-                                }
-                                report
-                            })
-                            .collect::<Vec<_>>()
-                    }),
-                )
-            })
-            .collect::<Vec<_>>()
-            .into_iter()
-            .flat_map(|(chunk, worker)| {
-                worker.join().unwrap_or_else(|_| {
-                    chunk
-                        .iter()
-                        .map(|path| scanner_failure_report(path))
-                        .collect()
-                })
-            })
-            .collect()
-    })
+        for _ in 0..workers {
+            scope.spawn(|| loop {
+                if cancellation.is_some_and(|token| token.load(Ordering::SeqCst)) {
+                    break;
+                }
+                let index = next_index.fetch_add(1, Ordering::Relaxed);
+                let Some(path) = paths.get(index) else {
+                    break;
+                };
+                let report = scan(path);
+                if let Some(progress) = progress {
+                    progress(&report);
+                }
+                let Ok(mut reports) = reports.lock() else {
+                    break;
+                };
+                reports[index] = Some(report);
+            });
+        }
+    });
+    reports
+        .into_inner()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .into_iter()
+        .flatten()
+        .collect()
 }
 
 #[cfg(test)]
@@ -1392,6 +1399,51 @@ mod tests {
         let progress = progress.into_inner().unwrap();
         assert_eq!(progress.len(), paths.len());
         assert_eq!(progress.iter().filter(|failed| **failed).count(), 1);
+    }
+
+    #[test]
+    fn dynamic_scan_workers_balance_slow_inputs_and_keep_result_order() {
+        let paths = vec![
+            "slow-input".to_owned(),
+            "fast-input".to_owned(),
+            "last-input".to_owned(),
+        ];
+        let barrier = std::sync::Barrier::new(2);
+        let completion_order = std::sync::Mutex::new(Vec::new());
+        let scan = |path: &str| {
+            if path == "slow-input" {
+                barrier.wait();
+                std::thread::sleep(std::time::Duration::from_millis(20));
+            } else if path == "fast-input" {
+                barrier.wait();
+            }
+            ScanReport {
+                path: path.to_owned(),
+                name: path.to_owned(),
+                format: "test".into(),
+                size: 0,
+                supported: true,
+                findings: Vec::new(),
+                error: None,
+            }
+        };
+        let progress = |report: &ScanReport| {
+            completion_order.lock().unwrap().push(report.path.clone());
+        };
+
+        let reports = scan_paths_with_workers(&paths, None, Some(&progress), 2, &scan);
+
+        assert_eq!(
+            completion_order.into_inner().unwrap(),
+            ["fast-input", "last-input", "slow-input"]
+        );
+        assert_eq!(
+            reports
+                .iter()
+                .map(|report| report.path.as_str())
+                .collect::<Vec<_>>(),
+            paths.iter().map(String::as_str).collect::<Vec<_>>()
+        );
     }
 
     #[test]
