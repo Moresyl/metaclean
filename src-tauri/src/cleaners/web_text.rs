@@ -18,12 +18,13 @@ fn metadata_finding(count: usize) -> Finding {
     }
 }
 
-fn html_patterns() -> &'static [Regex; 2] {
-    static PATTERNS: OnceLock<[Regex; 2]> = OnceLock::new();
+fn html_patterns() -> &'static [Regex; 3] {
+    static PATTERNS: OnceLock<[Regex; 3]> = OnceLock::new();
     PATTERNS.get_or_init(|| {
         [
             Regex::new(r#"(?is)<meta\b[^>]*(?:name|property)\s*=\s*["'](?:generator|author|ai[_-]?(?:generated|model)|c2pa)["'][^>]*>"#).unwrap(),
-            Regex::new(r#"(?is)\sdata-(?:ai|llm|model|c2pa)[\w-]*\s*=\s*(?:"[^"]*"|'[^']*')"#).unwrap(),
+            Regex::new(r#"(?is)<meta\b[^>]*(?:name|property)\s*=\s*(?:generator|author|ai[_-]?(?:generated|model)|c2pa)(?:\s+[^>]*|/?>)"#).unwrap(),
+            Regex::new(r#"(?is)\sdata-(?:ai|llm|model|c2pa)[\w-]*\s*=\s*(?:"[^"]*"|'[^']*'|[^\s"'=<>`]+)"#).unwrap(),
         ]
     })
 }
@@ -445,6 +446,17 @@ mod tests {
         assert!(!cleaned.contains("data-ai"));
         assert_eq!(findings[0].count, 2);
         assert!(!clean(source, "xhtml").0.contains("ChatGPT"));
+    }
+
+    #[test]
+    fn removes_unquoted_html_metadata_attributes() {
+        let source =
+            "<meta name=generator content=Tool><body data-ai-model=gpt data-c2pa=proof>ok</body>";
+        let (cleaned, findings) = clean(source, "html");
+        assert_eq!(findings[0].count, 3);
+        assert!(!cleaned.contains("generator"));
+        assert!(!cleaned.contains("data-ai"));
+        assert!(!cleaned.contains("data-c2pa"));
     }
 
     #[test]

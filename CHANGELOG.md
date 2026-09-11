@@ -52,6 +52,9 @@ All notable changes to MetaClean are documented here. The project follows
 
 ### Fixed
 
+- HTML metadata cleaning now handles the legal unquoted form of generator,
+  author, AI and C2PA attributes used by compact templates, with a regression
+  proving only the targeted metadata nodes are removed.
 - Malformed, oversized or unrecognized `data:image` payloads are now reported
   as residual embedded-image risk instead of being silently counted as clean;
   cleanup leaves those bytes untouched and the engine refuses a false-safe
