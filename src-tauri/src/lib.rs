@@ -507,6 +507,7 @@ mod update_tests {
         reviewed_update_matches, self_update_supported_for, updater_network_error,
         validate_batch_size, CloseAction, MAX_BATCH_FILES, PORTABLE_MARKER,
     };
+    use crate::models::CleanRequest;
 
     #[test]
     fn close_behavior_defaults_to_exit_and_can_hide_to_tray() {
@@ -520,6 +521,16 @@ mod update_tests {
         let error = validate_batch_size(MAX_BATCH_FILES + 1).unwrap_err();
         assert!(error.contains("10000"));
         assert!(error.contains("10001"));
+    }
+
+    #[test]
+    fn keeps_clean_ipc_backward_compatible_without_a_batch_token() {
+        let request: CleanRequest = serde_json::from_value(serde_json::json!({
+            "paths": ["note.txt"],
+            "mode": "copy"
+        }))
+        .expect("legacy cleanup request should still deserialize");
+        assert!(request.batch_id.is_empty());
     }
 
     #[test]

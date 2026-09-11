@@ -48,6 +48,8 @@ All notable changes to MetaClean are documented here. The project follows
   `completed/total` in the local status bar without exposing paths or content.
 - Cleanup progress is now tagged with a per-run batch token, so delayed events
   from an earlier batch cannot overwrite the current status bar.
+- The native cleanup request accepts the token as an optional field, preserving
+  compatibility with older desktop clients while the current UI sends it.
 - Source bytes are now guarded together with modification time, readonly
   permissions and extended attributes before a cleaned copy or replacement
   backup is allocated, then checked again immediately before replacement. A

@@ -176,6 +176,8 @@ describe("App", () => {
     await screen.findByText("发现 1 项痕迹");
     fireEvent.click(screen.getByRole("button", { name: "确认并开始清理" }));
     await screen.findByText(/1 个文件清理完成/);
+    const cleanupCall = invokeMock.mock.calls.find(([command]) => command === "clean_files");
+    expect(cleanupCall?.[1].request.batchId).toEqual(expect.any(String));
     const progressListener = listenMock.mock.calls.find(([name]) => name === "batch-progress")?.[1] as ((event: { payload: { operation: "clean"; batchId: string; completed: number; total: number; failed: number } }) => void) | undefined;
     expect(progressListener).toBeDefined();
     progressListener?.({ payload: { operation: "clean", batchId: "stale", completed: 99, total: 100, failed: 0 } });
