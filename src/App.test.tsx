@@ -217,6 +217,28 @@ describe("App", () => {
     expect(localStorage.getItem(ACTIVE_BATCH_STORAGE_KEY)).toBeNull();
   });
 
+  it("cancels an active scan at a file boundary and leaves missing files retryable", async () => {
+    let finishScan: ((reports: ScanReport[]) => void) | undefined;
+    const pendingScan = new Promise<ScanReport[]>((resolve) => { finishScan = resolve; });
+    invokeMock.mockImplementation((command: string) => {
+      if (command === "get_launch_paths") return Promise.resolve(["C:\\work\\notes.txt"]);
+      if (command === "expand_paths") return Promise.resolve({ files: ["C:\\work\\notes.txt"], skippedCount: 0, issues: [], limitReached: false });
+      if (command === "scan_files") return pendingScan;
+      if (command === "cancel_scan_batch") return Promise.resolve(true);
+      if (command === "set_close_to_tray") return Promise.resolve(undefined);
+      return Promise.reject(new Error(`unexpected ${command}`));
+    });
+    renderApp();
+    await screen.findByText("notes.txt");
+    fireEvent.click(screen.getByRole("button", { name: "扫描隐私痕迹" }));
+    await waitFor(() => expect(invokeMock).toHaveBeenCalledWith("scan_files", { paths: ["C:\\work\\notes.txt"], batchId: expect.any(String) }));
+    fireEvent.click(screen.getByRole("button", { name: "取消扫描" }));
+    await waitFor(() => expect(invokeMock).toHaveBeenCalledWith("cancel_scan_batch", { batchId: expect.any(String) }));
+    finishScan?.([]);
+    await screen.findByText(/已取消扫描/);
+    expect(screen.getByRole("button", { name: "扫描隐私痕迹" })).toBeEnabled();
+  });
+
   it("warns once when the previous cleanup may have been interrupted", async () => {
     localStorage.setItem(ACTIVE_BATCH_STORAGE_KEY, JSON.stringify({ batchId: "old-batch", total: 4, completed: 2, mode: "copy", startedAt: "2026-09-12T10:00:00.000Z" }));
     renderApp();
@@ -238,6 +260,31 @@ describe("App", () => {
     fireEvent.click(screen.getByRole("button", { name: "扫描隐私痕迹" }));
     await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("1 个文件未返回结果"));
     expect(screen.getByRole("button", { name: "扫描隐私痕迹" })).toBeEnabled();
+    fireEvent.click(screen.getByRole("button", { name: "扫描隐私痕迹" }));
+    await waitFor(() => expect(invokeMock.mock.calls.filter(([name]) => name === "scan_files")).toHaveLength(2));
+    const retryCall = invokeMock.mock.calls.filter(([name]) => name === "scan_files")[1];
+    expect(retryCall[1].paths).toEqual(["C:\\work\\second.txt"]);
+  });
+
+  it("keeps a file-level scan error retryable instead of treating it as complete", async () => {
+    const failed = { path: "C:\\work\\broken.pdf", name: "broken.pdf", format: "PDF", size: 4, supported: false, findings: [], error: "文件格式无效" };
+    const recovered = { ...failed, supported: true, error: undefined, findings: [] };
+    invokeMock.mockImplementation((command: string) => {
+      if (command === "get_launch_paths") return Promise.resolve(["C:\\work\\broken.pdf"]);
+      if (command === "expand_paths") return Promise.resolve({ files: ["C:\\work\\broken.pdf"], skippedCount: 0, issues: [], limitReached: false });
+      if (command === "scan_files") return Promise.resolve(invokeMock.mock.calls.filter(([name]) => name === "scan_files").length === 1 ? [failed] : [recovered]);
+      if (command === "set_close_to_tray") return Promise.resolve(undefined);
+      return Promise.reject(new Error(`unexpected ${command}`));
+    });
+    renderApp();
+    await screen.findByText("broken.pdf");
+    fireEvent.click(screen.getByRole("button", { name: "扫描隐私痕迹" }));
+    await screen.findByText("文件格式无效");
+    const retry = screen.getByRole("button", { name: "扫描隐私痕迹" });
+    expect(retry).toBeEnabled();
+    fireEvent.click(retry);
+    await waitFor(() => expect(invokeMock.mock.calls.filter(([name]) => name === "scan_files")).toHaveLength(2));
+    await screen.findByText("未发现隐私痕迹");
   });
 
   it("keeps an explicitly failed cleanup retryable", async () => {

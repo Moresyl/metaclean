@@ -1,4 +1,5 @@
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicBool, Ordering};
 
 #[cfg(test)]
 use std::fs;
@@ -703,14 +704,30 @@ pub fn clean_file_with_options(
     }
 }
 
+#[cfg(test)]
 pub fn scan_paths(paths: &[String]) -> Vec<ScanReport> {
+    scan_paths_with_cancellation(paths, None)
+}
+
+pub fn scan_paths_cancellable(paths: &[String], cancellation: &AtomicBool) -> Vec<ScanReport> {
+    scan_paths_with_cancellation(paths, Some(cancellation))
+}
+
+fn scan_paths_with_cancellation(
+    paths: &[String],
+    cancellation: Option<&AtomicBool>,
+) -> Vec<ScanReport> {
     const MAX_SCAN_WORKERS: usize = 2;
     let workers = std::thread::available_parallelism()
         .map_or(1, usize::from)
         .min(MAX_SCAN_WORKERS)
         .min(paths.len());
     if workers <= 1 {
-        return paths.iter().map(|path| scan_path_isolated(path)).collect();
+        return paths
+            .iter()
+            .take_while(|_| !cancellation.is_some_and(|token| token.load(Ordering::SeqCst)))
+            .map(|path| scan_path_isolated(path))
+            .collect();
     }
     let chunk_size = paths.len().div_ceil(workers);
     std::thread::scope(|scope| {
@@ -722,6 +739,9 @@ pub fn scan_paths(paths: &[String]) -> Vec<ScanReport> {
                     scope.spawn(move || {
                         chunk
                             .iter()
+                            .take_while(|_| {
+                                !cancellation.is_some_and(|token| token.load(Ordering::SeqCst))
+                            })
                             .map(|path| scan_path_isolated(path))
                             .collect::<Vec<_>>()
                     }),
@@ -1211,6 +1231,13 @@ mod tests {
         assert_eq!(reports.len(), 2);
         assert!(reports[0].supported);
         assert!(!reports[1].supported);
+    }
+
+    #[test]
+    fn cancellable_scan_stops_before_reading_when_requested() {
+        let cancellation = AtomicBool::new(true);
+        let reports = scan_paths_cancellable(&["missing.txt".into()], &cancellation);
+        assert!(reports.is_empty());
     }
 
     #[test]

@@ -65,6 +65,13 @@ or history record.
   severity and count. They do not contain the underlying metadata value.
 - Progress events contain only operation, batch token, counts and cancellation
   state. A stale or foreign batch token is ignored by the UI.
+- Scan requests carry an optional batch token too. The desktop UI can cancel a
+  long scan at file boundaries through `cancel_scan_batch`; cancelled scans
+  return only completed reports and leave unreturned files retryable. Callers
+  that omit the token remain compatible.
+- A retry only sends entries that are still `ready` or have a scan error without
+  a cleanup result. Existing reports and cleaned outputs stay in the queue,
+  preventing one broken input from forcing a full-batch rescan.
 - Cleanup recovery stores batch token, total/completed counts, mode and start
   time. It never stores paths. Normal completion, cancellation and visible
   errors remove the marker; only an abnormal exit leaves a one-time notice.

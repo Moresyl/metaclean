@@ -4,7 +4,7 @@ import Button from "./Button";
 import type { CleanMode } from "../types";
 import { useI18n } from "../lib/i18n";
 
-interface CleanOptionsProps { mode: CleanMode; onModeChange: (mode: CleanMode) => void; preserveTimestamps: boolean; onPreserveTimestampsChange: (value: boolean) => void; preserveOrientation: boolean; onPreserveOrientationChange: (value: boolean) => void; preserveColorProfile: boolean; onPreserveColorProfileChange: (value: boolean) => void; removeExtendedAttributes: boolean; onRemoveExtendedAttributesChange: (value: boolean) => void; disabled: boolean; scanned: boolean; hasFindings: boolean; busy: boolean; cancelable: boolean; cancelRequested: boolean; onCancel: () => void; onAction: () => void }
+interface CleanOptionsProps { mode: CleanMode; onModeChange: (mode: CleanMode) => void; preserveTimestamps: boolean; onPreserveTimestampsChange: (value: boolean) => void; preserveOrientation: boolean; onPreserveOrientationChange: (value: boolean) => void; preserveColorProfile: boolean; onPreserveColorProfileChange: (value: boolean) => void; removeExtendedAttributes: boolean; onRemoveExtendedAttributesChange: (value: boolean) => void; disabled: boolean; scanned: boolean; hasFindings: boolean; busy: boolean; operation?: "scan" | "clean"; cancelable: boolean; cancelRequested: boolean; onCancel: () => void; onAction: () => void }
 
 /**
  * The rail that says what is about to happen, and the one button that starts it.
@@ -14,7 +14,7 @@ interface CleanOptionsProps { mode: CleanMode; onModeChange: (mode: CleanMode) =
  * line under the button is the last thing read before the click, which is
  * exactly where it belongs.
  */
-export default function CleanOptions({ mode, onModeChange, preserveTimestamps, onPreserveTimestampsChange, preserveOrientation, onPreserveOrientationChange, preserveColorProfile, onPreserveColorProfileChange, removeExtendedAttributes, onRemoveExtendedAttributesChange, disabled, scanned, hasFindings, busy, cancelable, cancelRequested, onCancel, onAction }: CleanOptionsProps) {
+export default function CleanOptions({ mode, onModeChange, preserveTimestamps, onPreserveTimestampsChange, preserveOrientation, onPreserveOrientationChange, preserveColorProfile, onPreserveColorProfileChange, removeExtendedAttributes, onRemoveExtendedAttributesChange, disabled, scanned, hasFindings, busy, operation, cancelable, cancelRequested, onCancel, onAction }: CleanOptionsProps) {
   const { text } = useI18n();
   const scans = [
     "EXIF / GPS",
@@ -107,7 +107,7 @@ export default function CleanOptions({ mode, onModeChange, preserveTimestamps, o
         </Button>
         {cancelable ? (
           <Button variant="ghost" disabled={cancelRequested} onClick={onCancel}>
-            {cancelRequested ? text("正在取消…", "Cancelling…") : text("取消处理", "Cancel cleanup")}
+            {cancelRequested ? text("正在取消…", "Cancelling…") : operation === "scan" ? text("取消扫描", "Cancel scan") : text("取消处理", "Cancel cleanup")}
           </Button>
         ) : null}
         {/* The last sentence read before the click, so it is set in ink somebody

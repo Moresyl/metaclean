@@ -115,7 +115,7 @@ for the evidence-backed comparison with other local cleaners.
 - About provides version/runtime facts, copyable diagnostics, JSON export, issue/feature/release links and the source/license entry points
 - Queue rows expose direct path copying as well as the full context menu, and update/command dialogs keep keyboard focus contained until dismissed
 - Large cleanup batches show count-only progress in the local status bar; no file path or content is sent through the progress event
-- Large cleanup batches can be cancelled safely between files; completed results remain available and unprocessed files stay retryable
+- Large scans and cleanup batches can be cancelled safely between files; scans return only completed reports, cleanup results remain available, and unprocessed files stay retryable
 - An abnormal exit leaves only path-free batch counts; the next launch clearly asks for a re-import and scan instead of guessing how to resume writes
 - Stable queue sorting by name, extension, source/output size or finding count, with per-file size savings and reveal-in-folder actions for completed outputs
 - Versioned local JSON audit-report export with per-file findings and outcomes but no raw metadata values

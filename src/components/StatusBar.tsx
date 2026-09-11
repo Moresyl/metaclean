@@ -6,6 +6,7 @@ import type { BatchProgress } from "../types";
 
 interface StatusBarProps {
   busy: boolean;
+  operation?: "scan" | "clean";
   fileCount: number;
   progress?: BatchProgress;
 }
@@ -17,7 +18,7 @@ interface StatusBarProps {
  * whether the engine is working, that it never leaves this machine, how much is
  * queued, and which build is running.
  */
-export default function StatusBar({ busy, fileCount, progress }: StatusBarProps) {
+export default function StatusBar({ busy, operation, fileCount, progress }: StatusBarProps) {
   const { text } = useI18n();
   const update = useUpdate();
 
@@ -39,7 +40,7 @@ export default function StatusBar({ busy, fileCount, progress }: StatusBarProps)
               ? progress.cancelled
                 ? text("正在停止…", "Stopping…")
                 : `${text("正在清理", "Cleaning")} ${progress.completed}/${progress.total}`
-              : text("正在处理", "Working")
+              : operation === "scan" ? text("正在扫描", "Scanning") : text("正在处理", "Working")
             : text("就绪", "Ready")}
         </span>
       </Segment>

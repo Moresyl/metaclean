@@ -46,6 +46,7 @@ export default function App() {
   const [progress, setProgress] = useState<BatchProgress>();
   const [cancelRequested, setCancelRequested] = useState(false);
   const [activeBatchId, setActiveBatchId] = useState<string>();
+  const [activeOperation, setActiveOperation] = useState<"scan" | "clean">();
   const operationRef = useRef(false);
   const operationKindRef = useRef<"scan" | "clean" | undefined>(undefined);
   const batchIdRef = useRef<string | undefined>(undefined);
@@ -162,23 +163,28 @@ export default function App() {
     return () => window.removeEventListener("keydown", runShortcut);
   }, []);
 
-  const scanned = entries.length > 0 && entries.every((entry) => entry.status === "scanned" || entry.status === "clean" || entry.status === "error");
+  const scanned = entries.length > 0 && entries.every((entry) => entry.status === "scanned" || entry.status === "clean" || (entry.status === "error" && Boolean(entry.result)));
   const cleanableEntries = entries.filter((entry) => (
     entry.status === "scanned" || (entry.status === "error" && entry.result?.success === false)
   ) && actionableFindingCount(entry.report, preserveColorProfile, removeExtendedAttributes) > 0);
 
   async function scan() {
     if (operationRef.current) return;
-    const paths = entries.flatMap((entry) => entry.path ? [entry.path] : []);
-    if (paths.length !== entries.length) { setMessage(text("浏览器模式无法取得完整路径，请在桌面应用中选择文件。", "Browser mode cannot access full paths. Choose files in the desktop app.")); return; }
+    const pendingEntries = entries.filter((entry) => entry.status === "ready" || (entry.status === "error" && !entry.result));
+    if (!pendingEntries.length) return;
+    const paths = pendingEntries.flatMap((entry) => entry.path ? [entry.path] : []);
+    if (paths.length !== pendingEntries.length) { setMessage(text("浏览器模式无法取得完整路径，请在桌面应用中选择文件。", "Browser mode cannot access full paths. Choose files in the desktop app.")); return; }
     operationRef.current = true;
     operationKindRef.current = "scan";
-    batchIdRef.current = undefined;
+    setActiveOperation("scan");
+    const batchId = crypto.randomUUID();
+    batchIdRef.current = batchId;
+    setActiveBatchId(batchId);
     cancelRequestedRef.current = false;
     setCancelRequested(false);
     setBusy(true); setMessage(undefined); setEntries((current) => markEntryPaths(current, paths, "scanning"));
     try {
-      const reports = await invoke<ScanReport[]>("scan_files", { paths });
+      const reports = await invoke<ScanReport[]>("scan_files", { paths, batchId });
       const requested = new Set(paths.map(pathIdentity));
       const relevant = [...new Map(reports
         .filter((report) => requested.has(pathIdentity(report.path)))
@@ -186,9 +192,11 @@ export default function App() {
       setEntries((current) => applyScanReports(current, paths, relevant));
       const count = relevant.reduce((total, report) => total + report.findings.reduce((sum, finding) => sum + finding.count, 0), 0);
       const missing = paths.length - relevant.length;
-      setMessage(text(`扫描完成：${count} 项痕迹等待确认。${missing > 0 ? ` ${missing} 个文件未返回结果，可重试扫描。` : ""}`, `Scan complete: ${count} trace(s) await confirmation.${missing > 0 ? ` ${missing} file(s) returned no result and can be retried.` : ""}`));
+      setMessage(cancelRequestedRef.current
+        ? text(`已取消扫描：${relevant.length} 个文件已返回结果，${missing} 个可重试。`, `Scan cancelled: ${relevant.length} file(s) returned results; ${missing} can be retried.`)
+        : text(`扫描完成：${count} 项痕迹等待确认。${missing > 0 ? ` ${missing} 个文件未返回结果，可重试扫描。` : ""}`, `Scan complete: ${count} trace(s) await confirmation.${missing > 0 ? ` ${missing} file(s) returned no result and can be retried.` : ""}`));
     } catch (error) { setEntries((current) => markEntryPaths(current, paths, "ready")); setMessage(text(`扫描失败：${String(error)}`, `Scan failed: ${String(error)}`)); }
-    finally { operationRef.current = false; operationKindRef.current = undefined; batchIdRef.current = undefined; setActiveBatchId(undefined); setCancelRequested(false); cancelRequestedRef.current = false; setBusy(false); }
+    finally { operationRef.current = false; operationKindRef.current = undefined; batchIdRef.current = undefined; setActiveBatchId(undefined); setActiveOperation(undefined); setCancelRequested(false); cancelRequestedRef.current = false; setBusy(false); }
   }
 
   async function clean() {
@@ -197,6 +205,7 @@ export default function App() {
     if (!paths.length) return;
     operationRef.current = true;
     operationKindRef.current = "clean";
+    setActiveOperation("clean");
     const batchId = crypto.randomUUID();
     batchIdRef.current = batchId;
     setActiveBatchId(batchId);
@@ -224,15 +233,16 @@ export default function App() {
         : text(`${successes.length} 个文件清理完成${failures ? `，${failures} 个失败` : ""}${missing > 0 ? `，${missing} 个未返回结果、可重试` : ""}。${successes[0]?.outputPath ? ` 输出：${successes[0].outputPath}` : ""}`, `${successes.length} file(s) cleaned${failures ? `; ${failures} failed` : ""}${missing > 0 ? `; ${missing} returned no result and can be retried` : ""}.${successes[0]?.outputPath ? ` Output: ${successes[0].outputPath}` : ""}`));
       if (relevant.length) addHistory({ id: crypto.randomUUID(), createdAt: new Date().toISOString(), mode, results: relevant });
     } catch (error) { setMessage(text(`清理失败：${String(error)}`, `Cleanup failed: ${String(error)}`)); }
-    finally { clearActiveBatch(batchId); recoveryProgressRef.current = { completed: 0, persistedAt: 0 }; operationRef.current = false; operationKindRef.current = undefined; batchIdRef.current = undefined; setActiveBatchId(undefined); setCancelRequested(false); cancelRequestedRef.current = false; setBusy(false); setProgress(undefined); }
+    finally { clearActiveBatch(batchId); recoveryProgressRef.current = { completed: 0, persistedAt: 0 }; operationRef.current = false; operationKindRef.current = undefined; batchIdRef.current = undefined; setActiveBatchId(undefined); setActiveOperation(undefined); setCancelRequested(false); cancelRequestedRef.current = false; setBusy(false); setProgress(undefined); }
   }
 
-  function cancelClean() {
+  function cancelOperation() {
     const batchId = batchIdRef.current;
     if (!batchId || cancelRequestedRef.current) return;
     cancelRequestedRef.current = true;
     setCancelRequested(true);
-    void invoke<boolean>("cancel_clean_batch", { batchId }).then((accepted) => {
+    const command = operationKindRef.current === "scan" ? "cancel_scan_batch" : "cancel_clean_batch";
+    void invoke<boolean>(command, { batchId }).then((accepted) => {
       if (!accepted) {
         cancelRequestedRef.current = false;
         setCancelRequested(false);
@@ -240,7 +250,7 @@ export default function App() {
     }).catch((error) => {
       cancelRequestedRef.current = false;
       setCancelRequested(false);
-      setMessage(text(`取消清理失败：${String(error)}`, `Could not cancel cleanup: ${String(error)}`));
+      setMessage(text(`取消处理失败：${String(error)}`, `Could not cancel operation: ${String(error)}`));
     });
   }
 
@@ -334,13 +344,13 @@ export default function App() {
               <DropZone onAdd={addEntries} onAddNativePaths={addNativePaths} dragActive={dragActive} compact={entries.length > 0} />
               <FileQueue entries={entries} preserveColorProfile={preserveColorProfile} removeExtendedAttributes={removeExtendedAttributes} busy={busy} onClear={() => setEntries([])} onRemove={(id) => setEntries((current) => current.filter((entry) => entry.id !== id))} onReveal={(path) => void reveal(path)} onNotify={setMessage} />
             </div>
-            <CleanOptions mode={mode} onModeChange={setMode} preserveTimestamps={preserveTimestamps} onPreserveTimestampsChange={setPreserveTimestamps} preserveOrientation={preserveOrientation} onPreserveOrientationChange={setPreserveOrientation} preserveColorProfile={preserveColorProfile} onPreserveColorProfileChange={setPreserveColorProfile} removeExtendedAttributes={removeExtendedAttributes} onRemoveExtendedAttributesChange={setRemoveExtendedAttributes} disabled={!entries.length} scanned={scanned} hasFindings={cleanableEntries.length > 0} busy={busy} cancelable={Boolean(activeBatchId)} cancelRequested={cancelRequested} onCancel={cancelClean} onAction={() => void (scanned ? clean() : scan())} />
+              <CleanOptions mode={mode} onModeChange={setMode} preserveTimestamps={preserveTimestamps} onPreserveTimestampsChange={setPreserveTimestamps} preserveOrientation={preserveOrientation} onPreserveOrientationChange={setPreserveOrientation} preserveColorProfile={preserveColorProfile} onPreserveColorProfileChange={setPreserveColorProfile} removeExtendedAttributes={removeExtendedAttributes} onRemoveExtendedAttributesChange={setRemoveExtendedAttributes} disabled={!entries.length} scanned={scanned} hasFindings={cleanableEntries.length > 0} busy={busy} operation={activeOperation} cancelable={Boolean(activeBatchId)} cancelRequested={cancelRequested} onCancel={cancelOperation} onAction={() => void (scanned ? clean() : scan())} />
           </div> : page === "history" ? <HistoryPage entries={history} onClear={clearHistory} /> : page === "privacy" ? <PrivacyPage /> : page === "about" ? <AboutPage /> : <SettingsPage mode={mode} onModeChange={setMode} preserveTimestamps={preserveTimestamps} onPreserveTimestampsChange={setPreserveTimestamps} preserveOrientation={preserveOrientation} onPreserveOrientationChange={setPreserveOrientation} preserveColorProfile={preserveColorProfile} onPreserveColorProfileChange={setPreserveColorProfile} removeExtendedAttributes={removeExtendedAttributes} onRemoveExtendedAttributesChange={setRemoveExtendedAttributes} closeToTray={closeToTray} onCloseToTrayChange={setCloseToTray} />}
         </Suspense>
         </div>
       </main>
     </div>
-    <StatusBar busy={busy} fileCount={entries.length} progress={progress} />
+    <StatusBar busy={busy} operation={activeOperation} fileCount={entries.length} progress={progress} />
     </div>
     <UpdateDialog />
     <TooltipHost />
