@@ -66,7 +66,9 @@ All notable changes to MetaClean are documented here. The project follows
 
 - Local history loading now rejects oversized payloads and entries outside the
   native result, path and label bounds before they reach the history page,
-  preventing malformed storage from causing an unbounded render or quota loop.
+  preventing malformed storage from causing an unbounded render or quota loop;
+  corrupt top-level history is removed so the same failure is not retried on
+  every launch.
 
 - Markdown front matter now recognizes both YAML `---` and TOML `+++` fences,
   while only removing targeted author and generator fields inside the opening

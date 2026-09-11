@@ -34,11 +34,13 @@ describe("history persistence", () => {
   it.each(["not json", "{}", "null"])("rejects corrupt history: %s", (value) => {
     localStorage.setItem(HISTORY_STORAGE_KEY, value);
     expect(loadHistory()).toEqual([]);
+    expect(localStorage.getItem(HISTORY_STORAGE_KEY)).toBeNull();
   });
 
   it("rejects oversized local history before parsing or rendering it", () => {
     localStorage.setItem(HISTORY_STORAGE_KEY, "{".repeat(2_000_001));
     expect(loadHistory()).toEqual([]);
+    expect(localStorage.getItem(HISTORY_STORAGE_KEY)).toBeNull();
   });
 
   it("rejects a history entry beyond the native batch result limit", () => {

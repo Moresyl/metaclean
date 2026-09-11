@@ -1,5 +1,5 @@
 import type { CleanResult, Finding, HistoryEntry } from "../types";
-import { readStorage, writeStorage } from "./storage";
+import { readStorage, removeStorage, writeStorage } from "./storage";
 
 export const HISTORY_STORAGE_KEY = "metaclean.history";
 const MAX_HISTORY_ENTRIES = 100;
@@ -63,11 +63,19 @@ export function limitHistory(entries: HistoryEntry[]): HistoryEntry[] {
 export function loadHistory(): HistoryEntry[] {
   const stored = readStorage(HISTORY_STORAGE_KEY);
   if (!stored) return [];
-  if (stored.length > MAX_HISTORY_STORAGE_CHARS) return [];
+  if (stored.length > MAX_HISTORY_STORAGE_CHARS) {
+    removeStorage(HISTORY_STORAGE_KEY);
+    return [];
+  }
   try {
     const value: unknown = JSON.parse(stored);
-    return Array.isArray(value) ? limitHistory(value.filter(isHistoryEntry)) : [];
+    if (!Array.isArray(value)) {
+      removeStorage(HISTORY_STORAGE_KEY);
+      return [];
+    }
+    return limitHistory(value.filter(isHistoryEntry));
   } catch {
+    removeStorage(HISTORY_STORAGE_KEY);
     return [];
   }
 }
