@@ -74,6 +74,7 @@ impl WalkBudget {
 pub fn expand_paths(paths: &[String]) -> IntakeResult {
     let mut result = IntakeResult::default();
     let mut budget = WalkBudget::new();
+    let mut seen_files = HashSet::new();
     for path in paths {
         if result.limit_reached {
             break;
@@ -83,16 +84,17 @@ pub fn expand_paths(paths: &[String]) -> IntakeResult {
             result.skip(Path::new(path), "已达到单次目录遍历 50000 个条目的安全上限");
             break;
         }
-        visit(Path::new(path), false, 0, &mut budget, &mut result);
+        visit(
+            Path::new(path),
+            false,
+            0,
+            &mut budget,
+            &mut seen_files,
+            &mut result,
+        );
     }
     result.files.sort();
-    deduplicate_files(&mut result.files);
     result
-}
-
-fn deduplicate_files(files: &mut Vec<String>) {
-    let mut seen = HashSet::with_capacity(files.len());
-    files.retain(|path| seen.insert(file_identity(path)));
 }
 
 #[cfg(windows)]
@@ -119,13 +121,9 @@ fn visit(
     from_directory: bool,
     depth: usize,
     budget: &mut WalkBudget,
+    seen_files: &mut HashSet<String>,
     result: &mut IntakeResult,
 ) {
-    if result.files.len() >= MAX_DISCOVERED_FILES {
-        result.limit_reached = true;
-        result.skip(path, "已达到单次导入 10000 个文件的安全上限");
-        return;
-    }
     if depth > MAX_RECURSION_DEPTH {
         result.skip(path, "目录层级超过 64 层安全上限");
         return;
@@ -143,7 +141,16 @@ fn visit(
     }
     if metadata.is_file() {
         if !from_directory || engine::has_supported_extension(path) {
-            result.files.push(path.to_string_lossy().into_owned());
+            let value = path.to_string_lossy().into_owned();
+            if !seen_files.insert(file_identity(&value)) {
+                return;
+            }
+            if result.files.len() >= MAX_DISCOVERED_FILES {
+                result.limit_reached = true;
+                result.skip(path, "已达到单次导入 10000 个文件的安全上限");
+                return;
+            }
+            result.files.push(value);
         } else {
             result.skip(path, "暂不支持此扩展名");
         }
@@ -177,7 +184,7 @@ fn visit(
         if result.limit_reached {
             break;
         }
-        visit(&child, true, depth + 1, budget, result);
+        visit(&child, true, depth + 1, budget, seen_files, result);
     }
     if walk_limit_reached && !result.limit_reached {
         result.limit_reached = true;
