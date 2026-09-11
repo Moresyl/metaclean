@@ -46,7 +46,7 @@ MetaClean 把这些统统找出来并清除——全过程只在你自己的电�
 
 ## 清理范围
 
-113 种扩展名，全部由原生 Rust 代码处理——不依赖 ExifTool，也不会重新编码。
+113 种扩展名，全部由原生 Rust 代码处理，不依赖 ExifTool。图片和媒体清理不重新编码内容载荷；PDF、Office 与文本按各自结构安全重写并在写入前复检。
 
 | 格式 | 扩展名 | 清理内容 |
 | --- | --- | --- |
@@ -69,7 +69,7 @@ MetaClean 把这些统统找出来并清除——全过程只在你自己的电�
 | PDF | `.pdf` | 移除 Info 字典、XMP 与内嵌 JPEG 图片中的元数据，再完整重序列化，丢弃残留在增量更新历史里的元数据 |
 | 文本与标记 | `.txt` `.md` `.markdown` `.html` `.htm` `.xhtml` `.svg` `.xml` `.json` `.csv` `.tsv` `.yaml` `.yml` `.log` `.srt` `.vtt` `.css` `.scss` `.less` `.ini` `.conf` `.cfg` `.toml` `.properties` | 不可见 Unicode、Markdown Front Matter、HTML/XHTML/SVG 的作者与生成器信息，以及内嵌 Data URI 图片中的元数据 |
 
-上面每一种容器的字节偏移量都不会改变。凡是靠位置索引自身的文件，我们从不做删除——元数据要么被原地压缩，要么被清零，要么被该格式本身就定义好的填充元素覆盖。所以清理之后，一张 RAW 底片、一份 Matroska 索引表或一个 AVI 索引，和清理之前一样有效。
+对于依赖绝对位置的 TIFF/RAW、HEIF/AVIF、JPEG XL、AVI、Matroska/WebM 和 ASF/WMV，MetaClean 不移动媒体载荷：元数据会被原地压缩、清零或改写成格式定义的填充元素。JPEG/PNG/WebP/GIF/WAV/FLAC/AIFF/ISO 媒体则通过结构化重建保留内容载荷，PDF、Office 和文本按其文档模型重写；所有路径都会在写入前重新识别并复检候选结果。
 
 **明确不做的事：** 统计型文本水印、像素域水印、旧版二进制 Office 文件（`.doc` / `.xls` / `.ppt`）以及未知二进制格式。遇到这些，MetaClean 会直接拒绝，而不是冒险改坏你的文件。
 
@@ -111,6 +111,7 @@ MetaClean 使用一条刻意收窄的处理链：导入阶段拒绝符号链接�
 - 队列行直接提供复制路径，同时保留完整右键菜单；更新弹窗和命令面板会锁定键盘焦点，关闭后回到触发它们的控件
 - 大批量清理会在本地状态栏显示“已完成/总数”进度；进度事件只包含计数，不传文件路径或内容
 - 大批量清理可在文件之间安全取消；已经完成的结果会保留，尚未处理的文件可直接重试
+- 异常退出只留下不含文件路径的批次计数；下次启动会明确提示重新导入和扫描，不会猜测性地恢复写入
 - 默认保留 JPEG 显示方向、ICC/sRGB 色彩配置与文件时间戳，三项均可独立关闭
 - 安装版可在应用内检查、下载并安装通过签名验证的稳定版，GitHub Release 清单不可达时自动回退到官方 Pages 更新源；Windows 便携版与 Linux 非 AppImage 包会回退到官方 Releases 页面
 - 启动更新检查可以单独关闭，恢复完全离线运行
@@ -134,7 +135,10 @@ pnpm test:formats                               # 扩展名清单一致性检查
 pnpm test:security                              # 生产 WebView CSP 安全策略
 pnpm test:release                               # 发行说明与校验和自动化
 pnpm test:supply-chain                          # 已修补依赖的安全回归测试
+pnpm test:docs                                   # 产品与文档描述一致性
+pnpm test:benchmark                             # 可选的 release-mode 原生批处理基准
 pnpm build                                      # 类型检查 + 生产构建
+cargo fmt --manifest-path src-tauri/Cargo.toml -- --check
 cargo test --manifest-path src-tauri/Cargo.toml # Rust 内核测试
 pnpm test:e2e:build && pnpm test:e2e             # 真实桌面程序 E2E
 pnpm tauri build                                # 各平台安装包

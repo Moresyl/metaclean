@@ -2,7 +2,7 @@
 
 ## Source
 
-- Inspiration list: `C:\Users\18468\Desktop\wcb.txt`
+- Inspiration list: the local `wcb.txt` supplied during the design review; its absolute workstation path is intentionally not published.
 - Captures: [Navbar Gallery](https://navbar.gallery) and [CTA.gallery](https://cta.gallery), captured 2026-09-12 with Firecrawl.
 - Local capture artifacts are kept in the ignored `.firecrawl/` directory for review; third-party logos, images and copy are not shipped with MetaClean.
 

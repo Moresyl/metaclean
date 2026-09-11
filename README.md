@@ -40,13 +40,13 @@ Grab the latest package from [GitHub Releases](https://github.com/Moresyl/metacl
 
 | Platform | Packages |
 | --- | --- |
-| Windows | `.exe` (NSIS) · `.msi` |
+| Windows | x64 `.exe` (NSIS) / `.msi` / portable ZIP · x86 `.exe` (NSIS) / portable ZIP |
 | macOS | `.dmg` — Apple Silicon and Intel |
 | Linux | `.deb` · `.rpm` · `.AppImage` |
 
 ## What it removes
 
-113 extensions, cleaned by native Rust code — no ExifTool, no re-encoding.
+113 extensions, handled by native Rust code with no ExifTool. Image and media cleaners preserve encoded payloads; PDF, Office and text use format-aware rewrites whose candidates are re-inspected before writing.
 
 | Format | Extensions | Cleaned |
 | --- | --- | --- |
@@ -69,11 +69,12 @@ Grab the latest package from [GitHub Releases](https://github.com/Moresyl/metacl
 | PDF | `.pdf` | Info dictionary, XMP and metadata inside embedded JPEG images, then a full reserialization that discards metadata stranded in incremental-update history |
 | Text & markup | `.txt` `.md` `.markdown` `.html` `.htm` `.xhtml` `.svg` `.xml` `.json` `.csv` `.tsv` `.yaml` `.yml` `.log` `.srt` `.vtt` `.css` `.scss` `.less` `.ini` `.conf` `.cfg` `.toml` `.properties` | Invisible Unicode, generator/author metadata in Markdown front matter, HTML/XHTML and SVG, plus metadata inside embedded image data URIs |
 
-Every container above keeps its byte offsets. Nothing is deleted from a file
-that indexes itself by position — the metadata is compacted, blanked or
-overwritten with the padding element the format already defines — so a raw
-negative, a Matroska cue table or an AVI index is as valid after cleaning as
-before it.
+For TIFF/RAW, HEIF/AVIF, JPEG XL, AVI, Matroska/WebM and ASF/WMV containers that
+depend on absolute positions, MetaClean does not move the media payload:
+metadata is compacted in place, zeroed or replaced by a format-defined padding
+element. JPEG/PNG/WebP/GIF/WAV/FLAC/AIFF/ISO media use structural reconstruction
+that preserves their content payload, while PDF, Office and text follow their
+document models. Every candidate is re-detected and re-inspected before writing.
 
 **Deliberately out of scope:** statistical text watermarks, pixel-domain watermarks, legacy binary Office files (`.doc` / `.xls` / `.ppt`), and unknown binary formats. MetaClean refuses these rather than modifying them unsafely.
 
@@ -115,6 +116,7 @@ for the evidence-backed comparison with other local cleaners.
 - Queue rows expose direct path copying as well as the full context menu, and update/command dialogs keep keyboard focus contained until dismissed
 - Large cleanup batches show count-only progress in the local status bar; no file path or content is sent through the progress event
 - Large cleanup batches can be cancelled safely between files; completed results remain available and unprocessed files stay retryable
+- An abnormal exit leaves only path-free batch counts; the next launch clearly asks for a re-import and scan instead of guessing how to resume writes
 - Stable queue sorting by name, extension, source/output size or finding count, with per-file size savings and reveal-in-folder actions for completed outputs
 - Versioned local JSON audit-report export with per-file findings and outcomes but no raw metadata values
 - Fixed 1180 × 720 enterprise workspace with compact icon navigation and a persistent local-only status bar
@@ -142,7 +144,10 @@ pnpm test:formats                               # extension-manifest consistency
 pnpm test:security                              # production WebView CSP policy
 pnpm test:release                               # release-note and checksum automation
 pnpm test:supply-chain                          # patched dependency regression
+pnpm test:docs                                   # product/documentation claim consistency
+pnpm test:benchmark                             # optional release-mode native batch benchmark
 pnpm build                                      # typecheck + production bundle
+cargo fmt --manifest-path src-tauri/Cargo.toml -- --check
 cargo test --manifest-path src-tauri/Cargo.toml # Rust core tests
 pnpm test:e2e:build && pnpm test:e2e             # real desktop app E2E
 pnpm tauri build                                # platform installers

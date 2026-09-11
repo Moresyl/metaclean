@@ -10,7 +10,7 @@ import TitleBar from "./components/TitleBar";
 import StatusBar from "./components/StatusBar";
 import TooltipHost from "./components/TooltipHost";
 import CommandPalette, { type Command } from "./components/CommandPalette";
-import { actionableFindingCount, applyScanReports, entryFromPath, markEntryPaths, mergeEntries } from "./lib/files";
+import { actionableFindingCount, applyScanReports, entryFromPath, markEntryPaths, mergeEntries, pathIdentity } from "./lib/files";
 import { installZoomLock } from "./lib/window";
 import { commandKeyLabel } from "./lib/keys";
 import { pickPaths } from "./lib/pick";
@@ -179,10 +179,10 @@ export default function App() {
     setBusy(true); setMessage(undefined); setEntries((current) => markEntryPaths(current, paths, "scanning"));
     try {
       const reports = await invoke<ScanReport[]>("scan_files", { paths });
-      const requested = new Set(paths);
+      const requested = new Set(paths.map(pathIdentity));
       const relevant = [...new Map(reports
-        .filter((report) => requested.has(report.path))
-        .map((report) => [report.path, report])).values()];
+        .filter((report) => requested.has(pathIdentity(report.path)))
+        .map((report) => [pathIdentity(report.path), report])).values()];
       setEntries((current) => applyScanReports(current, paths, relevant));
       const count = relevant.reduce((total, report) => total + report.findings.reduce((sum, finding) => sum + finding.count, 0), 0);
       const missing = paths.length - relevant.length;
@@ -207,13 +207,13 @@ export default function App() {
     recoveryProgressRef.current = { batchId, completed: 0, persistedAt: Date.now() };
     try {
       const results = await invoke<CleanResult[]>("clean_files", { request: { paths, batchId, mode, preserveTimestamps, preserveOrientation, preserveColorProfile, removeExtendedAttributes } });
-      const requested = new Set(paths);
+      const requested = new Set(paths.map(pathIdentity));
       const relevant = [...new Map(results
-        .filter((result) => requested.has(result.sourcePath))
-        .map((result) => [result.sourcePath, result])).values()];
-      const byPath = new Map(relevant.map((result) => [result.sourcePath, result]));
+        .filter((result) => requested.has(pathIdentity(result.sourcePath)))
+        .map((result) => [pathIdentity(result.sourcePath), result])).values()];
+      const byPath = new Map(relevant.map((result) => [pathIdentity(result.sourcePath), result]));
       setEntries((current) => current.map((entry) => {
-        const result = entry.path ? byPath.get(entry.path) : undefined;
+        const result = entry.path ? byPath.get(pathIdentity(entry.path)) : undefined;
         return result ? { ...entry, status: result.success ? "clean" : "error", result } : entry;
       }));
       const successes = relevant.filter((result) => result.success);

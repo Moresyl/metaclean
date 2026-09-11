@@ -89,7 +89,7 @@ MetaClean 是“分享前的文件隐私护栏”，不是取证查看器，也�
 ### P0：发布前必须闭环
 
 1. 在可用环境中补 Word 与 WPS 的真实打开、保存、再次读取验证，并将结果写入 VALIDATION.md。
-2. 对当前本地代码线生成不发布的候选安装包，完成 Windows 安装/卸载、便携包、右键菜单和签名 updater 的实机回归。
+2. 对当前本地代码线生成不发布的候选安装包，完成 Windows 安装/卸载、便携包、右键菜单和签名 updater 的实机回归。当前 Windows `0.7.1` debug 候选已完成 NSIS、MSI、x64 便携包安装/启动/卸载烟测；右键菜单和签名 updater 仍需对应权限/密钥环境。
 3. 在 CI 中保持官方 npm audit 与 cargo audit；Cargo 上游警告必须分为“可升级”“需上游修复”“允许但跟踪”，不能笼统写成无风险。
 
 ### P1：能力和性能
@@ -107,7 +107,7 @@ MetaClean 是“分享前的文件隐私护栏”，不是取证查看器，也�
 
 ### P2：文档与生态
 
-1. 以 docs/README.md 作为文档导航入口；每份文档标明适用版本、证据、未验证边界和责任人。
+1. 以 docs/README.md 作为文档导航入口；每份文档标明适用版本、证据、未验证边界和责任人。Windows 队列路径身份已与 Rust 端统一，大小写、斜杠、设备前缀和 UNC 别名不会再制造重复队列或“未返回结果”。
 2. 按“用户指南 / 安全模型 / 格式策略 / 贡献与发布 / 设计系统”分层，避免把早期市场调研和当前运行事实混在一起。
 3. 竞品对比只保留可复查的源码、测试、公开 issue 或构建证据；不使用过时 star 数和未验证的“碾压”表述。
 
@@ -118,6 +118,7 @@ MetaClean 是“分享前的文件隐私护栏”，不是取证查看器，也�
 - pnpm test
 - pnpm test:coverage
 - pnpm test:formats
+- pnpm test:docs
 - pnpm test:security
 - pnpm test:supply-chain
 - pnpm test:release

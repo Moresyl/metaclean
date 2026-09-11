@@ -69,7 +69,7 @@ fn deduplicate_paths(paths: Vec<String>) -> Vec<String> {
 
 #[cfg(windows)]
 fn path_key(path: &str) -> String {
-    let normalized = path.replace('/', "\\").to_ascii_lowercase();
+    let normalized = path.replace('/', "\\").to_lowercase();
     let without_device_prefix = normalized.strip_prefix("\\\\?\\").unwrap_or(&normalized);
     let canonical = without_device_prefix.strip_prefix("unc\\").map_or_else(
         || without_device_prefix.to_owned(),
@@ -685,8 +685,8 @@ mod update_tests {
     #[test]
     fn deduplicates_windows_paths_without_case_or_separator_drift() {
         assert_eq!(
-            deduplicate_paths(vec!["C:\\One.txt".into(), "c:/one.txt".into()]),
-            vec!["C:\\One.txt"],
+            deduplicate_paths(vec!["C:\\One-Ä.txt".into(), "c:/one-ä.txt".into()]),
+            vec!["C:\\One-Ä.txt"],
         );
     }
 

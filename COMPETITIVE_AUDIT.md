@@ -95,7 +95,7 @@ delivery as much as capability.
 
 | Capability | watermarks-remover baseline | MetaClean current | Status |
 |---|---|---|---|
-| Delivery | Python service the user starts, driven by an agent skill over HTTP on `127.0.0.1:8765`; no desktop application | Signed installers for Windows, macOS and Linux with no Python, Perl or runtime to set up, and no local port to open | Exceeds; this is the reason MetaClean exists |
+| Delivery | Python service the user starts, driven by an agent skill over HTTP on `127.0.0.1:8765`; no desktop application | Installers for Windows, macOS and Linux with no Python, Perl or runtime to set up, and no local port to open; updater artifacts are cryptographically signed, while macOS OS signing/notarization remains an external gate | Exceeds on integrated delivery; Apple trust qualification remains incomplete |
 | Layer A — invisible Unicode | Invisible Unicode, exotic spaces, bidi controls, tag characters, noncharacters and reserved ranges, via deterministic scripts | The same classes plus all private-use planes in `cleaners/text.rs`; all 66 noncharacters and reserved default-ignorable ranges are covered | Exceeds; adds private-use planes |
 | Joiner correctness | Context rules preserve selected emoji and complex-script use while stripping floating controls | Context preservation also covers expanded emoji symbols, complete tag flags, CJK variants, Egyptian/Duployan/music layout controls and paired directional embeddings/isolates | Exceeds on the verified preservation set |
 | Layer B — statistical watermarks | Agent rewrite plus an optional `rewrite_text.py` hook | Deliberately out of scope, documented as such in both READMEs and `SUPPORT_POLICY.md` | Divergence by design; see below |

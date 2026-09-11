@@ -166,8 +166,8 @@ describe("App", () => {
     invokeMock.mockImplementation((command: string) => {
       if (command === "get_launch_paths") return Promise.resolve(["C:\\work\\notes.txt"]);
       if (command === "expand_paths") return Promise.resolve({ files: ["C:\\work\\notes.txt"], skippedCount: 0, issues: [], limitReached: false });
-      if (command === "scan_files") return Promise.resolve([{ path: "C:\\work\\notes.txt", name: "notes.txt", format: "Text", size: 4, supported: true, findings: [{ category: "unicode", label: "Invisible Unicode", count: 1, severity: "privacy" }] }]);
-      if (command === "clean_files") return Promise.resolve([{ sourcePath: "C:\\work\\notes.txt", outputPath: "C:\\work\\notes.cleaned.txt", sourceSize: 4, outputSize: 3, removed: [], success: true }]);
+      if (command === "scan_files") return Promise.resolve([{ path: "c:/WORK/NOTES.TXT", name: "NOTES.TXT", format: "Text", size: 4, supported: true, findings: [{ category: "unicode", label: "Invisible Unicode", count: 1, severity: "privacy" }] }]);
+      if (command === "clean_files") return Promise.resolve([{ sourcePath: "\\\\?\\C:\\WORK\\NOTES.TXT", outputPath: "C:\\work\\notes.cleaned.txt", sourceSize: 4, outputSize: 3, removed: [], success: true }]);
       if (command === "set_close_to_tray") return Promise.resolve(undefined);
       return Promise.reject(new Error(`unexpected ${command}`));
     });

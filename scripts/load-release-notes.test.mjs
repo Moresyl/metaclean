@@ -39,6 +39,7 @@ test("release workflow consumes validated notes and finalizes checksums", async 
   assert.match(workflow, /verify-appimage-update\.mjs/u);
   assert.match(workflow, /verify-windows-gui-subsystem\.mjs/u);
   assert.match(workflow, /smoke-windows-installer\.ps1/u);
+  assert.match(workflow, /smoke-windows-msi\.ps1/u);
   assert.match(workflow, /package-windows-portable\.ps1/u);
   assert.match(workflow, /smoke-windows-portable\.ps1/u);
   assert.match(workflow, /i686-pc-windows-msvc/u);

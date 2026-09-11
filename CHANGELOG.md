@@ -8,8 +8,14 @@ All notable changes to MetaClean are documented here. The project follows
 ### Added
 
 - Added `DESIGN.md`, a project-owned interaction and visual reference derived
-  from the navigation, CTA, footer and information-grouping inspirations in
-  `C:\Users\18468\Desktop\wcb.txt`.
+  from the navigation, CTA, footer and information-grouping inspiration list
+  supplied during design review, without publishing workstation paths.
+- Added `docs/ARCHITECTURE.md` and an automated `pnpm test:docs` gate so the
+  processing pipeline, IPC privacy boundary, ownership map and documentation
+  claims have one reviewable source of truth.
+- Added an MSI install/launch/uninstall smoke gate alongside the existing NSIS
+  and portable checks; the release workflow now qualifies both Windows package
+  families before collecting assets.
 
 ### Changed
 
@@ -48,8 +54,18 @@ All notable changes to MetaClean are documented here. The project follows
   so locked-down WebViews can still use the selection-based copy path.
 - Long cleanup batches now emit privacy-safe count-only progress events and show
   `completed/total` in the local status bar without exposing paths or content.
+- Interrupted cleanup batches now leave only a path-free progress marker; the
+  next launch explains what happened and asks for a safe re-import instead of
+  guessing how to resume file operations. Progress persistence is throttled so
+  recovery bookkeeping stays off the per-file hot path.
+- A release-only native benchmark now exercises 128 nested mixed-size fixtures
+  and reports scan/clean throughput plus first-result and p95 cleanup latency.
 - Cleanup progress is now tagged with a per-run batch token, so delayed events
   from an earlier batch cannot overwrite the current status bar.
+- Windows queue/result reconciliation now uses the same case-, slash-, device-
+  prefix- and UNC-normalized path identity as the native batch boundary, so
+  Explorer aliases cannot produce duplicate rows or false missing-result errors;
+  Unicode case folding is shared as well for international filenames.
 - The native cleanup request accepts the token as an optional field, preserving
   compatibility with older desktop clients while the current UI sends it.
 - Large cleanup batches can now be cancelled safely between files; completed

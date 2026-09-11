@@ -19,9 +19,15 @@ Add tests for every new public behavior *and* its malformed-input path, then run
 
 ```bash
 pnpm test:coverage    # frontend tests, 80% floor across all dimensions
+pnpm test:formats     # Rust/frontend/shell/document format parity
+pnpm test:security    # production WebView network and opener boundaries
+pnpm test:supply-chain
+pnpm test:release
+pnpm test:docs
 pnpm build            # typecheck + production bundle
-cargo fmt --check
+cargo fmt --manifest-path src-tauri/Cargo.toml -- --check
 cargo test --manifest-path src-tauri/Cargo.toml
+cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings
 cargo audit -f src-tauri/Cargo.lock --no-fetch
 ```
 

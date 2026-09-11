@@ -108,6 +108,10 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
         run: ./scripts/smoke-windows-installer.ps1 -BundleDirectory "${{ matrix.bundlePath }}"
+      - name: Smoke-test the MSI Windows package
+        if: runner.os == 'Windows' && matrix.architecture == 'x64'
+        shell: pwsh
+        run: ./scripts/smoke-windows-msi.ps1 -BundleDirectory "${{ matrix.bundlePath }}"
       - name: Smoke-test the portable Windows package
         if: runner.os == 'Windows'
         shell: pwsh

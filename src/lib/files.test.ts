@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ScanReport } from "../types";
-import { actionableFindingCount, applyScanReports, classifyFile, entryFromFile, entryFromPath, markEntryPaths, mergeEntries } from "./files";
+import { actionableFindingCount, applyScanReports, classifyFile, entryFromFile, entryFromPath, markEntryPaths, mergeEntries, pathIdentity } from "./files";
 
 describe("classifyFile", () => {
   const groups = {
@@ -48,6 +48,14 @@ describe("entryFromPath", () => {
   it("falls back to the supplied value when no path segment exists", () => {
     expect(entryFromPath("")).toMatchObject({ name: "", path: "", kind: "unknown" });
   });
+
+  it("uses the native Windows identity for slash, case and device aliases", () => {
+    expect(pathIdentity("C:/Work/Photo.PNG")).toBe("c:\\work\\photo.png");
+    expect(pathIdentity("C:/Work/Ä.PNG")).toBe("c:\\work\\ä.png");
+    expect(pathIdentity("\\\\?\\C:\\Work\\Photo.PNG")).toBe("c:\\work\\photo.png");
+    expect(pathIdentity("\\\\?\\UNC\\Server\\Share\\Photo.PNG")).toBe("\\\\server\\share\\photo.png");
+    expect(pathIdentity("/Users/Alice/Photo.PNG")).toBe("/Users/Alice/Photo.PNG");
+  });
 });
 
 describe("entryFromFile", () => {
@@ -73,6 +81,12 @@ describe("mergeEntries", () => {
     const first = entryFromPath("first.jpg");
     const second = entryFromPath("second.mp4");
     expect(mergeEntries([first], [first, second])).toEqual([first, second]);
+  });
+
+  it("does not queue the same Windows file twice through path aliases", () => {
+    const first = entryFromPath("C:\\Work\\Photo.PNG");
+    const alias = entryFromPath("c:/work/photo.png");
+    expect(mergeEntries([], [first, alias])).toHaveLength(1);
   });
 });
 
@@ -101,6 +115,15 @@ describe("scan result reconciliation", () => {
     const scanning = markEntryPaths([entry], [entry.path!], "scanning");
     expect(scanning[0]).toMatchObject({ status: "scanning", report: undefined, result: undefined });
     expect(applyScanReports(scanning, [entry.path!], [])[0]).toMatchObject({ status: "ready", report: undefined, result: undefined });
+  });
+
+  it("reconciles a native report whose Windows spelling differs from the queue", () => {
+    const entry = entryFromPath("C:\\Work\\photo.jpg");
+    const report: ScanReport = {
+      path: "c:/work/PHOTO.JPG", name: "PHOTO.JPG", format: "JPEG", size: 10,
+      supported: true, findings: [],
+    };
+    expect(applyScanReports(markEntryPaths([entry], [entry.path!], "scanning"), [entry.path!], [report])[0]).toMatchObject({ status: "scanned", report });
   });
 });
 

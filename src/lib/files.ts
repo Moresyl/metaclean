@@ -24,6 +24,23 @@ const TEXT_EXTENSIONS = new Set([
   "yaml", "yml", "log", "srt", "vtt", "css", "scss", "less", "ini", "conf", "cfg", "toml", "properties",
 ]);
 
+/**
+ * Match the native Windows path identity used by the Rust IPC boundary while
+ * keeping POSIX paths case-sensitive. The displayed path remains untouched;
+ * this key is only for queue de-duplication and result reconciliation.
+ */
+export function pathIdentity(path: string): string {
+  const normalized = path.replaceAll("/", "\\");
+  const lower = normalized.toLocaleLowerCase("en-US");
+  const windowsPath = /^[a-z]:\\/u.test(lower) || lower.startsWith("\\\\") || lower.startsWith("\\\\?\\");
+  if (!windowsPath) return path;
+  const withoutDevicePrefix = lower.startsWith("\\\\?\\") ? lower.slice(4) : lower;
+  const canonical = withoutDevicePrefix.startsWith("unc\\")
+    ? `\\\\${withoutDevicePrefix.slice(4)}`
+    : withoutDevicePrefix;
+  return canonical.length > 3 ? canonical.replace(/[\\]+$/u, "") : canonical;
+}
+
 export function classifyFile(name: string): FileEntry["kind"] {
   const extension = name.split(".").pop()?.toLowerCase() ?? "";
   if (IMAGE_EXTENSIONS.has(extension)) return "image";
@@ -52,7 +69,7 @@ export function actionableFindingCount(
 export function entryFromPath(path: string): FileEntry {
   const name = path.split(/[\\/]/).pop() || path;
   return {
-    id: path,
+    id: pathIdentity(path),
     name,
     path,
     kind: classifyFile(name),
@@ -71,14 +88,19 @@ export function entryFromFile(file: File): FileEntry {
 }
 
 export function mergeEntries(current: FileEntry[], incoming: FileEntry[]): FileEntry[] {
-  const known = new Set(current.map((entry) => entry.id));
-  return [...current, ...incoming.filter((entry) => !known.has(entry.id))];
+  const known = new Set(current.map((entry) => entry.path ? pathIdentity(entry.path) : entry.id));
+  return [...current, ...incoming.filter((entry) => {
+    const identity = entry.path ? pathIdentity(entry.path) : entry.id;
+    if (known.has(identity)) return false;
+    known.add(identity);
+    return true;
+  })];
 }
 
 export function markEntryPaths(current: FileEntry[], paths: string[], status: FileEntry["status"]): FileEntry[] {
-  const requested = new Set(paths);
+  const requested = new Set(paths.map(pathIdentity));
   return current.map((entry) => {
-    if (!entry.path || !requested.has(entry.path)) return entry;
+    if (!entry.path || !requested.has(pathIdentity(entry.path))) return entry;
     return status === "scanning"
       ? { ...entry, status, report: undefined, result: undefined }
       : { ...entry, status };
@@ -86,11 +108,11 @@ export function markEntryPaths(current: FileEntry[], paths: string[], status: Fi
 }
 
 export function applyScanReports(current: FileEntry[], paths: string[], reports: ScanReport[]): FileEntry[] {
-  const requested = new Set(paths);
-  const byPath = new Map(reports.map((report) => [report.path, report]));
+  const requested = new Set(paths.map(pathIdentity));
+  const byPath = new Map(reports.map((report) => [pathIdentity(report.path), report]));
   return current.map((entry) => {
-    if (!entry.path || !requested.has(entry.path)) return entry;
-    const report = byPath.get(entry.path);
+    if (!entry.path || !requested.has(pathIdentity(entry.path))) return entry;
+    const report = byPath.get(pathIdentity(entry.path));
     if (!report) return { ...entry, report: undefined, result: undefined, status: "ready" };
     return { ...entry, report, result: undefined, status: report.error ? "error" : "scanned" };
   });
