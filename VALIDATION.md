@@ -19,7 +19,7 @@ This file records evidence, not intent. A row is complete only when the named ar
 ## Automated quality gates
 
 - Frontend: 223 tests. Statements 88.94%, branches 81.04%, functions 90.57%, lines 91.61%. The queue suite covers audit export as well as sorting, size deltas, errors and reveal actions; status-bar state/version, updater flows, lazy page boundaries and support links are also exercised.
-- Rust: 160 tests total: 159 pass and one external Office compatibility test is ignored unless `METACLEAN_OFFICE_SAMPLE_DIR` supplies real fixtures. Strict Clippy passes with warnings denied.
+- Rust: 161 tests total: 160 pass and one external Office compatibility test is ignored unless `METACLEAN_OFFICE_SAMPLE_DIR` supplies real fixtures. Strict Clippy passes with warnings denied.
 - Installed desktop E2E: all 12 WebdriverIO scenarios pass locally against the rebuilt Windows webview. They cover startup, keyboard navigation, all 32 locale options and RTL, named controls/landmarks, About support links, theme and fidelity persistence, the Rust IPC boundary, updater capability and fail-closed missing-input paths.
 - Cleanup candidates are re-detected and re-inspected before output-path allocation, backup creation or writes. JPEG/PNG/WebP tests cover both ICC preservation and explicit removal, while an engine regression rejects residual traces and format changes.
 - On macOS, every extended attribute is copied by default. Opt-in removal filters only six known provenance/download keys; CI runs a real filesystem round trip proving a private key is removed while a custom key survives.

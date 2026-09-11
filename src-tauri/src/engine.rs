@@ -1,7 +1,7 @@
-use std::{
-    fs,
-    path::{Path, PathBuf},
-};
+use std::path::{Path, PathBuf};
+
+#[cfg(test)]
+use std::fs;
 
 use crate::{
     cleaners::{asf, avi, bmp, heif, image, jxl, media, mkv, office, pdf, tiff, video, web_text},
@@ -10,7 +10,7 @@ use crate::{
     safe_io::{
         atomic_create_unique_with_metadata, atomic_replace_if_unchanged, backup_path, cleaned_path,
         ensure_source_unchanged, privacy_extended_attribute_count, read_validated_input,
-        FileMetadataSnapshot,
+        remove_created_output, FileMetadataSnapshot,
     },
 };
 
@@ -520,7 +520,7 @@ pub fn clean_file_with_options(
                 Err(error) => return fail(error.to_string()),
             };
             if let Err(error) = ensure_source_unchanged(source, &data, &metadata_snapshot) {
-                let _ = fs::remove_file(&output);
+                remove_created_output(&output);
                 return fail(error.to_string());
             }
             (output, None)

@@ -330,6 +330,19 @@ pub fn atomic_create_unique_with_metadata(
     )))
 }
 
+pub(crate) fn remove_created_output(path: &Path) {
+    #[cfg(windows)]
+    if let Ok(metadata) = fs::metadata(path) {
+        let mut permissions = metadata.permissions();
+        if permissions.readonly() {
+            #[allow(clippy::permissions_set_readonly_false)]
+            permissions.set_readonly(false);
+            let _ = fs::set_permissions(path, permissions);
+        }
+    }
+    let _ = fs::remove_file(path);
+}
+
 fn numbered_path(preferred: &Path, index: usize) -> PathBuf {
     if index == 1 {
         return preferred.to_owned();
@@ -447,6 +460,20 @@ mod tests {
         let result = ensure_source_unchanged(&path, &original, &snapshot);
         assert!(matches!(result, Err(CleanError::SourceChanged(_))));
         assert_eq!(fs::read(&path).unwrap(), b"stable");
+    }
+
+    #[test]
+    fn removes_readonly_created_output() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("created.txt");
+        fs::write(&path, b"created").unwrap();
+        let mut permissions = fs::metadata(&path).unwrap().permissions();
+        permissions.set_readonly(true);
+        fs::set_permissions(&path, permissions).unwrap();
+
+        remove_created_output(&path);
+
+        assert!(!path.exists());
     }
 
     #[cfg(windows)]
