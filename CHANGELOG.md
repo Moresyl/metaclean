@@ -70,6 +70,10 @@ All notable changes to MetaClean are documented here. The project follows
   corrupt top-level history is removed so the same failure is not retried on
   every launch.
 
+- Refreshed the Windows release benchmark ledger with the latest 128-file
+  clean/scan throughput and tail-latency evidence after the write and intake
+  consistency fixes.
+
 - Markdown front matter now recognizes both YAML `---` and TOML `+++` fences,
   while only removing targeted author and generator fields inside the opening
   metadata block.
