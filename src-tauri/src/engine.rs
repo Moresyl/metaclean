@@ -1410,6 +1410,19 @@ mod tests {
         let failed = clean_file_with_options(&invalid, &OutputMode::Copy, true, true, true, false);
         assert!(!failed.success);
         assert!(failed.output_path.is_none());
+
+        for (name, bytes) in [
+            ("odd-utf16.txt", vec![0xff, 0xfe, 0x61]),
+            ("invalid-utf8.txt", vec![0xc3, 0x28]),
+        ] {
+            let path = dir.path().join(name);
+            fs::write(&path, bytes).unwrap();
+            let report = scan_file(&path);
+            assert!(!report.supported, "{name} must fail closed");
+            let result = clean_file_with_options(&path, &OutputMode::Copy, true, true, true, false);
+            assert!(!result.success, "{name} must not produce output");
+            assert!(result.output_path.is_none());
+        }
     }
 
     #[test]
