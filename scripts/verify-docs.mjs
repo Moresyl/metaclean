@@ -35,6 +35,8 @@ assert.match(docsConfig, /search: \{ provider: "local" \}/u);
 assert.match(docsConfig, /srcExclude/u);
 assert.doesNotMatch(docsConfig, /ignoreDeadLinks/u, "site links must be checked by VitePress");
 assert.match(docsHome, /按任务进入/u);
+assert.match(docsHome, /site-footer/u, "documentation home must expose a factual footer navigation");
+assert.match(docsHome, /proof-metrics/u, "documentation home must expose current capability evidence");
 assert.equal(packageJson.scripts["docs:dev"], "vitepress dev docs");
 assert.equal(packageJson.scripts["docs:build"], "vitepress build docs");
 assert.equal(packageJson.scripts["docs:preview"], "vitepress preview docs");

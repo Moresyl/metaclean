@@ -11,10 +11,11 @@ export default defineConfig({
     logo: "/logo.svg",
     siteTitle: "MetaClean",
     nav: [
-      { text: "文档", link: "/" },
+      { text: "开始", link: "/" },
       { text: "用户指南", link: "/user-guide" },
+      { text: "安全模型", link: "/safety" },
       { text: "架构", link: "/ARCHITECTURE" },
-      { text: "路线与证据", link: "/PLAN" },
+      { text: "验证账本", link: "/validation" },
       { text: "GitHub", link: "https://github.com/Moresyl/metaclean" },
     ],
     sidebar: {
