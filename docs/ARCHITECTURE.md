@@ -1,9 +1,9 @@
 # MetaClean architecture
 
-> Status: current for the `0.7.x` source line  
-> Audience: maintainers, security reviewers and release engineers  
-> Owners: MetaClean maintainers  
-> Evidence: the linked source modules, automated gates and `VALIDATION.md`  
+> Status: current for the `0.7.x` source line
+> Audience: maintainers, security reviewers and release engineers
+> Owners: MetaClean maintainers
+> Evidence: the linked source modules, automated gates and `VALIDATION.md`
 > External limits: Word/WPS interoperability and Apple signing remain separately qualified
 
 MetaClean is a local-first desktop privacy cleaner. Its architecture is built
