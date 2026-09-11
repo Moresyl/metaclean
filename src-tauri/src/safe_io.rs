@@ -242,8 +242,13 @@ pub fn atomic_write_with_metadata(
     }
     temp.persist(path)
         .map_err(|error| CleanError::Io(error.error))?;
+    // Windows does not reliably carry the read-only bit across a rename.
+    // Synchronise that bit after commit, but deliberately keep this best
+    // effort: the replacement is already committed and returning an error
+    // here would report failure while leaving the new output on disk.
+    #[cfg(windows)]
     if let Some(metadata) = source_metadata {
-        fs::set_permissions(path, metadata.permissions.clone())?;
+        let _ = fs::set_permissions(path, metadata.permissions.clone());
     }
     Ok(())
 }
@@ -313,8 +318,12 @@ pub fn atomic_create_unique_with_metadata(
         let candidate = numbered_path(preferred, index);
         match temp.persist_noclobber(&candidate) {
             Ok(_) => {
+                // Windows may need a best-effort post-rename permission sync;
+                // never turn that already-committed output into a reported
+                // failure.
+                #[cfg(windows)]
                 if let Some(metadata) = source_metadata {
-                    fs::set_permissions(&candidate, metadata.permissions.clone())?;
+                    let _ = fs::set_permissions(&candidate, metadata.permissions.clone());
                 }
                 return Ok(candidate);
             }
@@ -530,6 +539,34 @@ mod tests {
         assert_eq!(
             filetime::FileTime::from_last_modification_time(&output_metadata),
             expected
+        );
+    }
+
+    #[test]
+    fn unique_metadata_aware_copy_preserves_readonly_sources() {
+        let dir = tempfile::tempdir().unwrap();
+        let source = dir.path().join("source.txt");
+        let preferred = dir.path().join("source.cleaned.txt");
+        fs::write(&source, b"source").unwrap();
+        let mut permissions = fs::metadata(&source).unwrap().permissions();
+        permissions.set_readonly(true);
+        fs::set_permissions(&source, permissions).unwrap();
+        let metadata = fs::metadata(&source).unwrap();
+        let snapshot = FileMetadataSnapshot::capture(&source, &metadata).unwrap();
+
+        let output = atomic_create_unique_with_metadata(
+            &preferred,
+            b"clean",
+            Some(&snapshot),
+            true,
+            false,
+        )
+        .unwrap();
+
+        assert_eq!(fs::read(&output).unwrap(), b"clean");
+        assert_eq!(
+            fs::metadata(output).unwrap().permissions().readonly(),
+            metadata.permissions().readonly()
         );
     }
 
