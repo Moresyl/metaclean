@@ -55,6 +55,9 @@ All notable changes to MetaClean are documented here. The project follows
 - A batch-level scan IPC failure now returns affected rows to the ready state,
   preserving the visible error while keeping the scan action available for a
   retry instead of trapping the queue in a false completed state.
+- Native read and cleanup guards now move into their blocking workers and clean
+  up through RAII; duplicate cleanup batch IDs are rejected without replacing
+  the existing cancellation handle.
 - Upgraded Vitest to 4.1.11 and pinned the WebdriverIO/Mocha `js-yaml` chain
   to 4.3.2, closing the current official npm audit findings without changing
   the production runtime dependency surface.

@@ -147,24 +147,62 @@ impl Drop for ActiveReadGuard {
     }
 }
 
+struct ActiveCleanBatchGuard {
+    batch_id: Option<String>,
+}
+
+impl ActiveCleanBatchGuard {
+    fn register(batch_id: &str, cancellation: Arc<AtomicBool>) -> Result<Self, String> {
+        if batch_id.is_empty() {
+            return Ok(Self { batch_id: None });
+        }
+        let mut active = active_clean_batches()
+            .lock()
+            .map_err(|_| "清理任务状态不可用，请重试".to_owned())?;
+        if active.contains_key(batch_id) {
+            return Err("清理批次标识已在使用，请重试".into());
+        }
+        active.insert(batch_id.to_owned(), cancellation);
+        Ok(Self {
+            batch_id: Some(batch_id.to_owned()),
+        })
+    }
+}
+
+impl Drop for ActiveCleanBatchGuard {
+    fn drop(&mut self) {
+        if let Some(batch_id) = self.batch_id.as_deref() {
+            if let Ok(mut active) = active_clean_batches().lock() {
+                active.remove(batch_id);
+            }
+        }
+    }
+}
+
 #[tauri::command]
 async fn scan_files(paths: Vec<String>) -> Result<Vec<ScanReport>, String> {
     validate_batch_size(paths.len())?;
     let paths = deduplicate_paths(paths);
-    let _active_read = ActiveReadGuard::start();
-    tauri::async_runtime::spawn_blocking(move || engine::scan_paths(&paths))
-        .await
-        .map_err(|error| format!("扫描任务异常结束：{error}"))
+    let active_read = ActiveReadGuard::start();
+    tauri::async_runtime::spawn_blocking(move || {
+        let _active_read = active_read;
+        engine::scan_paths(&paths)
+    })
+    .await
+    .map_err(|error| format!("扫描任务异常结束：{error}"))
 }
 
 #[tauri::command]
 async fn expand_paths(paths: Vec<String>) -> Result<intake::IntakeResult, String> {
     validate_batch_size(paths.len())?;
     let paths = deduplicate_paths(paths);
-    let _active_read = ActiveReadGuard::start();
-    tauri::async_runtime::spawn_blocking(move || intake::expand_paths(&paths))
-        .await
-        .map_err(|error| format!("目录导入任务异常结束：{error}"))
+    let active_read = ActiveReadGuard::start();
+    tauri::async_runtime::spawn_blocking(move || {
+        let _active_read = active_read;
+        intake::expand_paths(&paths)
+    })
+    .await
+    .map_err(|error| format!("目录导入任务异常结束：{error}"))
 }
 
 #[tauri::command]
@@ -177,19 +215,10 @@ async fn clean_files(
     let total = paths.len();
     let batch_id = request.batch_id;
     let cancellation = Arc::new(AtomicBool::new(false));
-    if !batch_id.is_empty() {
-        let mut active = active_clean_batches()
-            .lock()
-            .map_err(|_| "清理任务状态不可用，请重试".to_owned())?;
-        if active
-            .insert(batch_id.clone(), cancellation.clone())
-            .is_some()
-        {
-            return Err("清理批次标识已在使用，请重试".into());
-        }
-    }
+    let active_batch = ActiveCleanBatchGuard::register(&batch_id, cancellation.clone())?;
     let progress_batch_id = batch_id.clone();
     let result = tauri::async_runtime::spawn_blocking(move || {
+        let _active_batch = active_batch;
         let mut completed = 0;
         let mut failed = 0;
         let mut results = Vec::with_capacity(total);
@@ -239,11 +268,6 @@ async fn clean_files(
     })
     .await
     .map_err(|error| format!("清理任务异常结束：{error}"));
-    if !batch_id.is_empty() {
-        if let Ok(mut active) = active_clean_batches().lock() {
-            active.remove(&batch_id);
-        }
-    }
     result
 }
 
@@ -608,10 +632,10 @@ pub fn run_cli_action() -> Option<i32> {
 #[cfg(test)]
 mod update_tests {
     use super::{
-        active_clean_batches, cancel_clean_batch, clean_batch_active, close_action,
-        deduplicate_paths, export_audit_report_to, portable_marker_exists, read_task_active,
-        reviewed_update_matches, self_update_supported_for, updater_network_error,
-        validate_batch_size, ActiveReadGuard, CloseAction, MAX_BATCH_FILES, PORTABLE_MARKER,
+        cancel_clean_batch, clean_batch_active, close_action, deduplicate_paths,
+        export_audit_report_to, portable_marker_exists, read_task_active, reviewed_update_matches,
+        self_update_supported_for, updater_network_error, validate_batch_size,
+        ActiveCleanBatchGuard, ActiveReadGuard, CloseAction, MAX_BATCH_FILES, PORTABLE_MARKER,
     };
     use crate::models::CleanRequest;
     use std::sync::atomic::AtomicBool;
@@ -645,20 +669,17 @@ mod update_tests {
     fn cancellation_marks_only_the_requested_active_batch() {
         let batch_id = "cancel-test".to_owned();
         let flag = Arc::new(AtomicBool::new(false));
-        active_clean_batches()
-            .lock()
-            .expect("lock active batches")
-            .insert(batch_id.clone(), flag.clone());
+        let guard = ActiveCleanBatchGuard::register(&batch_id, flag.clone())
+            .expect("register active batch");
+        assert!(ActiveCleanBatchGuard::register(&batch_id, flag.clone()).is_err());
         assert!(cancel_clean_batch(batch_id).expect("cancel active batch"));
         assert!(flag.load(std::sync::atomic::Ordering::SeqCst));
         assert!(clean_batch_active());
         assert!(!cancel_clean_batch("missing".into()).expect("missing batch is harmless"));
         assert!(!cancel_clean_batch(String::new()).expect("empty batch is harmless"));
-        active_clean_batches()
-            .lock()
-            .expect("lock active batches")
-            .remove("cancel-test");
+        drop(guard);
         assert!(!clean_batch_active());
+        assert!(ActiveCleanBatchGuard::register("", flag).is_ok());
     }
 
     #[test]
