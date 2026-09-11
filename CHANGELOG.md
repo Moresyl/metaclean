@@ -40,6 +40,9 @@ All notable changes to MetaClean are documented here. The project follows
 - Replaced the stale “未开工” project plan with a current-state roadmap and
   added a document index; repository descriptions now distinguish verified
   capability, external validation limits and the next evidence gates.
+- Upgraded the desktop E2E service to 1.4.0 so embedded WebDriver runs no
+  longer report a missing external `tauri-driver`; the configured Edge/WebView
+  path remains the real Windows execution path.
 
 ### Fixed
 
