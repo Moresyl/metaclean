@@ -17,7 +17,7 @@
     "test:formats": "node scripts/verify-format-manifests.mjs",
     "test:docs": "node scripts/verify-docs.mjs",
     "test:security": "node scripts/verify-csp.mjs",
-    "test:release": "node --test scripts/collect-release-assets.test.mjs scripts/collect-updater-assets.test.mjs scripts/generate-checksums.test.mjs scripts/generate-updater-manifest.test.mjs scripts/load-release-notes.test.mjs scripts/prepare-appimage-zsync.test.mjs scripts/stage-updater-feed.test.mjs scripts/verify-appimage-update.test.mjs scripts/verify-windows-gui-subsystem.test.mjs scripts/version-consistency.test.mjs",
+    "test:release": "node --test scripts/collect-release-assets.test.mjs scripts/collect-updater-assets.test.mjs scripts/generate-checksums.test.mjs scripts/generate-updater-manifest.test.mjs scripts/load-release-notes.test.mjs scripts/preflight-windows.test.mjs scripts/prepare-appimage-zsync.test.mjs scripts/stage-updater-feed.test.mjs scripts/verify-appimage-update.test.mjs scripts/verify-windows-gui-subsystem.test.mjs scripts/version-consistency.test.mjs",
     "test:supply-chain": "node scripts/verify-extract-zip-patch.mjs",
     "test:benchmark": "node scripts/benchmark-native.mjs",
     "test:e2e:build": "tauri build --debug --no-bundle --features e2e --config src-tauri/tauri.e2e.conf.json",
