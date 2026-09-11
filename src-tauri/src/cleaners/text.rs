@@ -1,4 +1,5 @@
 use crate::models::{Finding, FindingSeverity};
+use std::borrow::Cow;
 
 fn is_private_use(code: u32) -> bool {
     matches!(code, 0xE000..=0xF8FF | 0xF0000..=0xFFFFD | 0x100000..=0x10FFFD)
@@ -151,14 +152,12 @@ fn preserve_invisible(chars: &[char], index: usize, paired: &[bool]) -> bool {
         || cjk_variation(chars, index)
 }
 
-pub fn inspect(value: &str) -> Vec<Finding> {
-    let chars: Vec<char> = value.chars().collect();
-    let paired = paired_control_indices(&chars);
+fn findings_for(chars: &[char], paired: &[bool]) -> Vec<Finding> {
     let mut invisible = 0;
     let mut spaces = 0;
     for (index, character) in chars.iter().enumerate() {
         let code = *character as u32;
-        if is_invisible(code) && !preserve_invisible(&chars, index, &paired) {
+        if is_invisible(code) && !preserve_invisible(chars, index, paired) {
             invisible += 1;
         } else if space_replacement(code) {
             spaces += 1;
@@ -184,10 +183,16 @@ pub fn inspect(value: &str) -> Vec<Finding> {
     findings
 }
 
-pub fn clean(value: &str) -> (String, Vec<Finding>) {
-    let findings = inspect(value);
+pub fn clean_cow(value: &str) -> (Cow<'_, str>, Vec<Finding>) {
+    if value.is_ascii() {
+        return (Cow::Borrowed(value), Vec::new());
+    }
     let chars: Vec<char> = value.chars().collect();
     let paired = paired_control_indices(&chars);
+    let findings = findings_for(&chars, &paired);
+    if findings.is_empty() {
+        return (Cow::Borrowed(value), findings);
+    }
     let output = chars
         .iter()
         .enumerate()
@@ -202,7 +207,13 @@ pub fn clean(value: &str) -> (String, Vec<Finding>) {
             }
         })
         .collect();
-    (output, findings)
+    (Cow::Owned(output), findings)
+}
+
+#[cfg(test)]
+pub fn clean(value: &str) -> (String, Vec<Finding>) {
+    let (output, findings) = clean_cow(value);
+    (output.into_owned(), findings)
 }
 
 #[cfg(test)]
@@ -214,6 +225,16 @@ mod tests {
         let (cleaned, findings) = clean("a\u{200b}b\u{00a0}c");
         assert_eq!(cleaned, "ab c");
         assert_eq!(findings.iter().map(|item| item.count).sum::<usize>(), 2);
+    }
+
+    #[test]
+    fn cleans_a_long_single_line_without_truncation() {
+        let mut source = "a".repeat(1024 * 1024);
+        source.insert(source.len() / 2, '\u{200b}');
+        let (cleaned, findings) = clean(&source);
+        assert_eq!(cleaned.len(), 1024 * 1024);
+        assert!(cleaned.bytes().all(|byte| byte == b'a'));
+        assert_eq!(findings.iter().map(|item| item.count).sum::<usize>(), 1);
     }
 
     #[test]

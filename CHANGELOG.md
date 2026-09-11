@@ -28,6 +28,10 @@ All notable changes to MetaClean are documented here. The project follows
 - Secondary pages now load on demand, and Rollup keeps React, icons and each
   page family in stable cacheable chunks; the production entry chunk is now
   about 234 KiB instead of a single 525 KiB application chunk.
+- Text and markup inspection now reuses the normalized Unicode pass and avoids
+  allocating a second output when an ASCII file or embedded image needs no
+  change; the native release benchmark records the new 128-file baseline in
+  `VALIDATION.md`.
 - README, README.zh-CN and VALIDATION now describe the five-page application,
   About support surface, 113-extension boundary and current automated evidence.
 - Text intake now covers CSS, SCSS, Less and common INI/CONF/CFG/TOML/Properties
@@ -39,6 +43,11 @@ All notable changes to MetaClean are documented here. The project follows
 
 ### Fixed
 
+- HTML/SVG metadata could be missed when a zero-width Unicode character split
+  a sensitive attribute name, because structural matching ran before Unicode
+  normalization. The scanner now normalizes first, the public UTF-16 engine
+  path is covered, and nested SVG at the depth budget fails closed as residual
+  instead of being reported clean.
 - MSI smoke testing now refuses to overwrite an existing MetaClean installation
   and preserves diagnostic logs on failure instead of deleting evidence or a
   user's installed copy as part of candidate validation.

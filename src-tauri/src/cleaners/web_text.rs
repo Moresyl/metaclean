@@ -1,5 +1,6 @@
 use base64::{engine::general_purpose::STANDARD as BASE64, Engine as _};
 use regex::Regex;
+use std::borrow::Cow;
 use std::sync::OnceLock;
 
 use super::{bmp, heif, image, jxl, media, text};
@@ -169,15 +170,17 @@ fn inspect_embedded_bytes(data: &[u8], mime: &str, depth: usize) -> usize {
         bmp::inspect(data).map_or(1, |items| privacy_count(&items))
     } else if heif::is_heif(data) {
         heif::inspect(data).map_or(1, |items| privacy_count(&items))
-    } else if depth < MAX_EMBEDDED_DEPTH
-        && (mime.contains("svg") || first_non_whitespace(data) == Some(b'<'))
-    {
-        std::str::from_utf8(data).map_or(1, |value| {
-            inspect_with_depth(value, "svg", depth + 1)
-                .iter()
-                .map(|finding| finding.count)
-                .sum()
-        })
+    } else if mime.contains("svg") || first_non_whitespace(data) == Some(b'<') {
+        if depth >= MAX_EMBEDDED_DEPTH {
+            1
+        } else {
+            std::str::from_utf8(data).map_or(1, |value| {
+                inspect_with_depth(value, "svg", depth + 1)
+                    .iter()
+                    .map(|finding| finding.count)
+                    .sum()
+            })
+        }
     } else {
         0
     }
@@ -225,13 +228,12 @@ fn inspect_embedded(value: &str, depth: usize) -> usize {
         .sum()
 }
 
-fn clean_embedded(value: &str, depth: usize) -> String {
+fn clean_embedded<'a>(value: &'a str, depth: usize) -> Cow<'a, str> {
     let pattern = data_image_pattern();
-    let mut output = String::with_capacity(value.len());
+    let mut output: Option<String> = None;
     let mut cursor = 0;
     for capture in pattern.captures_iter(value) {
         let whole = capture.get(0).unwrap();
-        output.push_str(&value[cursor..whole.start()]);
         let params = capture.name("params").map_or("", |item| item.as_str());
         let encoded = capture.name("payload").unwrap().as_str();
         let base64 = params.to_ascii_lowercase().contains("base64");
@@ -246,19 +248,37 @@ fn clean_embedded(value: &str, depth: usize) -> String {
                     encode_data_uri(&cleaned, base64)
                 )
             });
-        output.push_str(replacement.as_deref().unwrap_or(whole.as_str()));
+        if let Some(replacement) = replacement {
+            let had_previous_replacement = output.is_some();
+            let target = output.get_or_insert_with(|| {
+                let mut initial = String::with_capacity(value.len());
+                initial.push_str(&value[..whole.start()]);
+                initial
+            });
+            if had_previous_replacement {
+                target.push_str(&value[cursor..whole.start()]);
+            }
+            target.push_str(&replacement);
+        } else if let Some(target) = output.as_mut() {
+            target.push_str(&value[cursor..whole.end()]);
+        }
         cursor = whole.end();
     }
-    output.push_str(&value[cursor..]);
-    output
+    match output {
+        Some(mut output) => {
+            output.push_str(&value[cursor..]);
+            Cow::Owned(output)
+        }
+        None => Cow::Borrowed(value),
+    }
 }
 
 pub fn inspect(value: &str, extension: &str) -> Vec<Finding> {
     inspect_with_depth(value, extension, 0)
 }
 
-fn inspect_with_depth(value: &str, extension: &str, depth: usize) -> Vec<Finding> {
-    let mut findings = text::inspect(value);
+fn inspect_structured(value: &str, extension: &str, depth: usize) -> Vec<Finding> {
+    let mut findings = Vec::new();
     let metadata = match extension {
         "html" | "htm" | "xhtml" => html_patterns()
             .iter()
@@ -285,13 +305,23 @@ fn inspect_with_depth(value: &str, extension: &str, depth: usize) -> Vec<Finding
     findings
 }
 
+fn inspect_with_depth(value: &str, extension: &str, depth: usize) -> Vec<Finding> {
+    let (normalized, mut findings) = text::clean_cow(value);
+    findings.extend(inspect_structured(&normalized, extension, depth));
+    findings
+}
+
 pub fn clean(value: &str, extension: &str) -> (String, Vec<Finding>) {
     clean_with_depth(value, extension, 0)
 }
 
 fn clean_with_depth(value: &str, extension: &str, depth: usize) -> (String, Vec<Finding>) {
-    let findings = inspect_with_depth(value, extension, depth);
-    let mut output = value.to_owned();
+    let (normalized, mut findings) = text::clean_cow(value);
+    let mut output = normalized.into_owned();
+    findings.extend(inspect_structured(&output, extension, depth));
+    if findings.is_empty() {
+        return (output, findings);
+    }
     match extension {
         "html" | "htm" | "xhtml" => {
             for pattern in html_patterns() {
@@ -309,8 +339,9 @@ fn clean_with_depth(value: &str, extension: &str, depth: usize) -> (String, Vec<
         }
         _ => {}
     }
-    output = clean_embedded(&output, depth);
-    let (output, _) = text::clean(&output);
+    if let Cow::Owned(cleaned) = clean_embedded(&output, depth) {
+        output = cleaned;
+    }
     (output, findings)
 }
 
@@ -344,6 +375,19 @@ mod tests {
         assert!(!cleaned.contains("data-ai"));
         assert_eq!(findings[0].count, 2);
         assert!(!clean(source, "xhtml").0.contains("ChatGPT"));
+    }
+
+    #[test]
+    fn normalizes_unicode_before_matching_structured_metadata() {
+        let source = "<meta name=\"aut\u{200b}hor\" content=\"private\"><p>safe</p>";
+        let findings = inspect(source, "html");
+        assert!(findings.iter().any(|finding| finding.category == "unicode"));
+        assert!(findings
+            .iter()
+            .any(|finding| finding.category == "document_metadata"));
+        let cleaned = clean(source, "html").0;
+        assert_eq!(cleaned, "<p>safe</p>");
+        assert!(inspect(&cleaned, "html").is_empty());
     }
     #[test]
     fn removes_svg_metadata_but_preserves_drawing() {
@@ -450,6 +494,27 @@ mod tests {
 
         let oversized_plain = "a".repeat(MAX_EMBEDDED_BYTES + 1);
         assert!(decode_data_uri(&oversized_plain, false).is_none());
+    }
+
+    #[test]
+    fn treats_svg_nesting_beyond_the_depth_budget_as_residual() {
+        let mut nested = "<svg><metadata>private</metadata></svg>".to_owned();
+        for _ in 0..=MAX_EMBEDDED_DEPTH {
+            nested = format!(
+                "<svg><image href=\"data:image/svg+xml;base64,{}\"/></svg>",
+                BASE64.encode(nested)
+            );
+        }
+        let source = format!(
+            "<img src=\"data:image/svg+xml;base64,{}\">",
+            BASE64.encode(nested)
+        );
+        assert!(inspect(&source, "html")
+            .iter()
+            .any(|finding| finding.category == "embedded_image_metadata"));
+        let cleaned = clean(&source, "html").0;
+        assert_eq!(cleaned, source);
+        assert!(!inspect(&cleaned, "html").is_empty());
     }
 
     #[test]

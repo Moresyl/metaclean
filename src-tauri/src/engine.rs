@@ -1443,11 +1443,17 @@ mod tests {
         fs::write(
             &source,
             encode_text(
-                "<meta name=\"author\" content=\"private\">\r\n<p>safe</p>",
+                "<meta name=\"aut\u{200b}hor\" content=\"private\">\r\n<p>safe</p>",
                 TextEncoding::Utf16Le,
             ),
         )
         .unwrap();
+        let report = scan_file(&source);
+        assert!(report.supported, "{:?}", report.error);
+        assert!(report
+            .findings
+            .iter()
+            .any(|finding| finding.category == "document_metadata"));
         let result = clean_file_with_options(&source, &OutputMode::Copy, true, true, true, false);
         assert!(result.success, "{:?}", result.error);
         let output = fs::read(result.output_path.unwrap()).unwrap();
