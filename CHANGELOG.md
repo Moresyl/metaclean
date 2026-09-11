@@ -21,6 +21,11 @@ All notable changes to MetaClean are documented here. The project follows
 
 ### Fixed
 
+- Source bytes are now guarded together with modification time, readonly
+  permissions and extended attributes before a cleaned copy or replacement
+  backup is allocated, then checked again immediately before replacement. A
+  source metadata race therefore fails closed instead of producing output from
+  a stale candidate.
 - About-page project actions use link semantics, the app icon has explicit
   dimensions, status/error announcements are live regions, and long file
   queues skip painting rows outside the scrollport.

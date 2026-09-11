@@ -83,6 +83,7 @@ before it.
 - Produces a `.cleaned` safe copy by default
 - Writes to a temporary file, then atomically replaces the destination
 - Re-inspects the exact cleaned candidate bytes before creating a backup or writing any output
+- Re-checks source bytes, modification time, readonly permissions and extended attributes before allocating output or backup, and again before replacement
 - Refuses symlinks as both input and destination
 - Caps input at 256 MiB, and expanded Office archives at 512 MiB
 - Malformed or unsupported files fail without touching the source

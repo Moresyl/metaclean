@@ -16,7 +16,7 @@ pub struct FileMetadataSnapshot {
     extended_attributes: Vec<ExtendedAttribute>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 struct ExtendedAttribute {
     name: OsString,
     value: Vec<u8>,
@@ -39,6 +39,16 @@ impl FileMetadataSnapshot {
             .count()
     }
 
+    fn matches(&self, other: &Self) -> bool {
+        // Access time is intentionally excluded: merely opening a file can
+        // update it on some filesystems, so treating it as a source mutation
+        // would reject an otherwise unchanged candidate. Modification time,
+        // permissions and xattrs are the metadata that can affect the output.
+        self.modified == other.modified
+            && permissions_match(&self.permissions, &other.permissions)
+            && same_extended_attributes(&self.extended_attributes, &other.extended_attributes)
+    }
+
     fn apply_extended_attributes(&self, path: &Path, remove_private: bool) -> Result<()> {
         #[cfg(target_os = "macos")]
         for attribute in &self.extended_attributes {
@@ -52,6 +62,30 @@ impl FileMetadataSnapshot {
         }
         Ok(())
     }
+}
+
+fn permissions_match(left: &fs::Permissions, right: &fs::Permissions) -> bool {
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+
+        left.mode() == right.mode()
+    }
+    #[cfg(not(unix))]
+    {
+        left.readonly() == right.readonly()
+    }
+}
+
+fn same_extended_attributes(left: &[ExtendedAttribute], right: &[ExtendedAttribute]) -> bool {
+    if left.len() != right.len() {
+        return false;
+    }
+    let mut left = left.to_vec();
+    let mut right = right.to_vec();
+    left.sort_by(|left, right| left.name.cmp(&right.name));
+    right.sort_by(|left, right| left.name.cmp(&right.name));
+    left == right
 }
 
 fn is_private_macos_attribute(name: &OsStr) -> bool {
@@ -222,10 +256,7 @@ pub fn atomic_replace_if_unchanged(
     preserve_timestamps: bool,
     remove_private_xattrs: bool,
 ) -> Result<()> {
-    let (_, current) = read_validated_input(path)?;
-    if current != expected {
-        return Err(CleanError::SourceChanged(display_path(path)));
-    }
+    ensure_source_unchanged(path, expected, source_metadata)?;
     atomic_write_with_metadata(
         path,
         bytes,
@@ -233,6 +264,27 @@ pub fn atomic_replace_if_unchanged(
         preserve_timestamps,
         remove_private_xattrs,
     )
+}
+
+/// Re-check both the exact source bytes and the metadata snapshot taken before
+/// cleaning. A byte-only check is insufficient: a changed macOS quarantine
+/// attribute or permission bit could otherwise be silently copied from stale
+/// state into a new output. This guard is intentionally reusable before output
+/// allocation and immediately before replacement.
+pub fn ensure_source_unchanged(
+    path: &Path,
+    expected: &[u8],
+    expected_metadata: &FileMetadataSnapshot,
+) -> Result<()> {
+    let (metadata, current) = read_validated_input(path)?;
+    if current != expected {
+        return Err(CleanError::SourceChanged(display_path(path)));
+    }
+    let current_snapshot = FileMetadataSnapshot::capture(path, &metadata)?;
+    if !expected_metadata.matches(&current_snapshot) {
+        return Err(CleanError::SourceChanged(display_path(path)));
+    }
+    Ok(())
 }
 
 pub fn atomic_create_unique_with_metadata(
@@ -364,6 +416,37 @@ mod tests {
             atomic_replace_if_unchanged(&path, &original, b"cleaned", &snapshot, true, false);
         assert!(matches!(result, Err(CleanError::SourceChanged(_))));
         assert_eq!(fs::read(&path).unwrap(), b"edited elsewhere");
+    }
+
+    #[test]
+    fn guarded_replace_refuses_metadata_changes_even_when_bytes_match() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("file.txt");
+        fs::write(&path, b"stable").unwrap();
+        let (metadata, original) = read_validated_input(&path).unwrap();
+        let snapshot = FileMetadataSnapshot::capture(&path, &metadata).unwrap();
+        let changed = filetime::FileTime::from_unix_time(1_500_000_000, 0);
+        filetime::set_file_mtime(&path, changed).unwrap();
+
+        let result = ensure_source_unchanged(&path, &original, &snapshot);
+        assert!(matches!(result, Err(CleanError::SourceChanged(_))));
+        assert_eq!(fs::read(&path).unwrap(), b"stable");
+    }
+
+    #[test]
+    fn guarded_replace_refuses_permission_changes_even_when_bytes_match() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("file.txt");
+        fs::write(&path, b"stable").unwrap();
+        let (metadata, original) = read_validated_input(&path).unwrap();
+        let snapshot = FileMetadataSnapshot::capture(&path, &metadata).unwrap();
+        let mut permissions = fs::metadata(&path).unwrap().permissions();
+        permissions.set_readonly(!permissions.readonly());
+        fs::set_permissions(&path, permissions).unwrap();
+
+        let result = ensure_source_unchanged(&path, &original, &snapshot);
+        assert!(matches!(result, Err(CleanError::SourceChanged(_))));
+        assert_eq!(fs::read(&path).unwrap(), b"stable");
     }
 
     #[cfg(windows)]

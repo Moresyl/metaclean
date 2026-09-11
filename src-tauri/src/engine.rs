@@ -1,7 +1,7 @@
-use std::path::{Path, PathBuf};
-
-#[cfg(test)]
-use std::fs;
+use std::{
+    fs,
+    path::{Path, PathBuf},
+};
 
 use crate::{
     cleaners::{asf, avi, bmp, heif, image, jxl, media, mkv, office, pdf, tiff, video, web_text},
@@ -9,7 +9,8 @@ use crate::{
     models::{CleanResult, Finding, FindingSeverity, OutputMode, ScanReport},
     safe_io::{
         atomic_create_unique_with_metadata, atomic_replace_if_unchanged, backup_path, cleaned_path,
-        privacy_extended_attribute_count, read_validated_input, FileMetadataSnapshot,
+        ensure_source_unchanged, privacy_extended_attribute_count, read_validated_input,
+        FileMetadataSnapshot,
     },
 };
 
@@ -505,6 +506,9 @@ pub fn clean_file_with_options(
     }
     let (output, backup): (PathBuf, Option<PathBuf>) = match mode {
         OutputMode::Copy => {
+            if let Err(error) = ensure_source_unchanged(source, &data, &metadata_snapshot) {
+                return fail(error.to_string());
+            }
             let output = match atomic_create_unique_with_metadata(
                 &cleaned_path(source),
                 &cleaned,
@@ -515,9 +519,16 @@ pub fn clean_file_with_options(
                 Ok(path) => path,
                 Err(error) => return fail(error.to_string()),
             };
+            if let Err(error) = ensure_source_unchanged(source, &data, &metadata_snapshot) {
+                let _ = fs::remove_file(&output);
+                return fail(error.to_string());
+            }
             (output, None)
         }
         OutputMode::Replace => {
+            if let Err(error) = ensure_source_unchanged(source, &data, &metadata_snapshot) {
+                return fail(error.to_string());
+            }
             let backup = match atomic_create_unique_with_metadata(
                 &backup_path(source),
                 &data,

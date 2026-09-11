@@ -3,7 +3,9 @@
 MetaClean is a privacy cleaner, not a forensic metadata viewer. It only accepts
 a format when it can identify the container, remove the supported privacy
 traces without re-encoding the payload, and inspect the candidate bytes again
-before any output path, backup or write is created.
+before any output path, backup or write is created. The source bytes and
+write-affecting metadata are also rechecked before output allocation and again
+immediately before replacement, so a concurrent source change fails closed.
 
 ## Why metadata values are not displayed
 
