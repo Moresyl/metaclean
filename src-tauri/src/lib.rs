@@ -26,6 +26,7 @@ static ACTIVE_SCAN_BATCHES: OnceLock<Mutex<HashMap<String, Arc<AtomicBool>>>> = 
 static ACTIVE_CLEAN_BATCHES: OnceLock<Mutex<HashMap<String, Arc<AtomicBool>>>> = OnceLock::new();
 const PORTABLE_MARKER: &str = "metaclean-portable.marker";
 const MAX_BATCH_FILES: usize = 10_000;
+const MAX_BATCH_ID_BYTES: usize = 128;
 const UPDATE_NETWORK_HELP: &str = "无法连接已签名更新源。请检查 GitHub 网络或 HTTPS_PROXY 后重试，也可从正式发布页手动下载安装包。 / Could not reach the signed update feed. Check GitHub access or HTTPS_PROXY, then retry, or download the installer from the Releases page.";
 const UPDATE_CHANGED: &str = "可用版本在确认后发生了变化，请先重新检查并查看新版本说明。 / The available release changed after confirmation. Check again and review the new release before installing.";
 const UPDATE_REQUEST_TIMEOUT: Duration = Duration::from_secs(300);
@@ -79,6 +80,13 @@ fn validate_batch_size(count: usize) -> Result<(), String> {
         return Err(format!(
             "单次任务最多处理 {MAX_BATCH_FILES} 个输入，当前收到 {count} 个"
         ));
+    }
+    Ok(())
+}
+
+fn validate_batch_id(batch_id: &str) -> Result<(), String> {
+    if batch_id.len() > MAX_BATCH_ID_BYTES {
+        return Err(format!("批次标识最多 {MAX_BATCH_ID_BYTES} 字节"));
     }
     Ok(())
 }
@@ -239,6 +247,9 @@ async fn scan_files(
     paths: Vec<String>,
     batch_id: Option<String>,
 ) -> Result<Vec<ScanReport>, String> {
+    if let Some(batch_id) = batch_id.as_deref() {
+        validate_batch_id(batch_id)?;
+    }
     let paths = prepare_batch_paths(paths)?;
     let cancellation = Arc::new(AtomicBool::new(false));
     let active_batch = ActiveScanBatchGuard::register(batch_id.as_deref(), cancellation.clone())?;
@@ -310,6 +321,7 @@ async fn clean_files(
     app: tauri::AppHandle,
     request: CleanRequest,
 ) -> Result<Vec<CleanResult>, String> {
+    validate_batch_id(&request.batch_id)?;
     let paths = prepare_batch_paths(request.paths)?;
     let total = paths.len();
     let batch_id = request.batch_id;
@@ -372,6 +384,7 @@ async fn clean_files(
 
 #[tauri::command]
 fn cancel_clean_batch(batch_id: String) -> Result<bool, String> {
+    validate_batch_id(&batch_id)?;
     if batch_id.is_empty() {
         return Ok(false);
     }
@@ -388,6 +401,7 @@ fn cancel_clean_batch(batch_id: String) -> Result<bool, String> {
 
 #[tauri::command]
 fn cancel_scan_batch(batch_id: String) -> Result<bool, String> {
+    validate_batch_id(&batch_id)?;
     if batch_id.is_empty() {
         return Ok(false);
     }
@@ -752,8 +766,9 @@ mod update_tests {
         cancel_clean_batch, cancel_scan_batch, clean_batch_active, close_action, deduplicate_paths,
         export_audit_report_to, portable_marker_exists, prepare_batch_paths, read_task_active,
         reviewed_update_matches, self_update_supported_for, updater_network_error,
-        validate_batch_size, ActiveCleanBatchGuard, ActiveReadGuard, ActiveScanBatchGuard,
-        CloseAction, MAX_BATCH_FILES, PORTABLE_MARKER, UPDATE_REQUEST_TIMEOUT,
+        validate_batch_id, validate_batch_size, ActiveCleanBatchGuard, ActiveReadGuard,
+        ActiveScanBatchGuard, CloseAction, MAX_BATCH_FILES, MAX_BATCH_ID_BYTES, PORTABLE_MARKER,
+        UPDATE_REQUEST_TIMEOUT,
     };
     use crate::models::CleanRequest;
     use std::sync::atomic::AtomicBool;
@@ -779,6 +794,14 @@ mod update_tests {
     #[test]
     fn updater_network_operations_have_a_bounded_deadline() {
         assert_eq!(UPDATE_REQUEST_TIMEOUT, Duration::from_secs(300));
+    }
+
+    #[test]
+    fn batch_identifiers_are_bounded_without_breaking_legacy_empty_tokens() {
+        assert!(validate_batch_id("").is_ok());
+        assert!(validate_batch_id(&"x".repeat(MAX_BATCH_ID_BYTES)).is_ok());
+        let error = validate_batch_id(&"x".repeat(MAX_BATCH_ID_BYTES + 1)).unwrap_err();
+        assert!(error.contains("128"));
     }
 
     #[test]

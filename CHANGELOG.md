@@ -78,6 +78,9 @@ All notable changes to MetaClean are documented here. The project follows
   deadline, so a stalled network cannot leave one-click update busy forever
   while still allowing normal installer-sized downloads to complete.
 
+- Scan, clean and cancellation IPC now reject batch identifiers over 128 bytes
+  before registering them, while tokenless legacy cleanup remains supported.
+
 - Markdown front matter now recognizes both YAML `---` and TOML `+++` fences,
   while only removing targeted author and generator fields inside the opening
   metadata block.
