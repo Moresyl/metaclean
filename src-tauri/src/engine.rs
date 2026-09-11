@@ -199,6 +199,110 @@ const TEXT_EXTENSIONS: &[&str] = &[
     "properties",
 ];
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum TextEncoding {
+    Utf8 { bom: bool },
+    Utf16Le,
+    Utf16Be,
+}
+
+fn text_encoding(data: &[u8]) -> Result<TextEncoding> {
+    if data.starts_with(&[0xff, 0xfe]) {
+        if !(data.len() - 2).is_multiple_of(2) {
+            return Err(CleanError::InvalidFormat("UTF-16 LE 文本长度无效".into()));
+        }
+        let valid = char::decode_utf16(
+            data[2..]
+                .chunks_exact(2)
+                .map(|pair| u16::from_le_bytes([pair[0], pair[1]])),
+        )
+        .all(|character| character.is_ok());
+        return valid
+            .then_some(TextEncoding::Utf16Le)
+            .ok_or_else(|| CleanError::InvalidFormat("UTF-16 LE 文本包含无效字符".into()));
+    }
+    if data.starts_with(&[0xfe, 0xff]) {
+        if !(data.len() - 2).is_multiple_of(2) {
+            return Err(CleanError::InvalidFormat("UTF-16 BE 文本长度无效".into()));
+        }
+        let valid = char::decode_utf16(
+            data[2..]
+                .chunks_exact(2)
+                .map(|pair| u16::from_be_bytes([pair[0], pair[1]])),
+        )
+        .all(|character| character.is_ok());
+        return valid
+            .then_some(TextEncoding::Utf16Be)
+            .ok_or_else(|| CleanError::InvalidFormat("UTF-16 BE 文本包含无效字符".into()));
+    }
+    let (body, bom) = data
+        .strip_prefix(&[0xef, 0xbb, 0xbf])
+        .map_or((data, false), |value| (value, true));
+    std::str::from_utf8(body)
+        .map(|_| TextEncoding::Utf8 { bom })
+        .map_err(|_| {
+            CleanError::InvalidFormat("文本不是有效的 UTF-8 或带 BOM 的 UTF-16 编码".into())
+        })
+}
+
+fn decode_text(data: &[u8]) -> Result<(String, TextEncoding)> {
+    let encoding = text_encoding(data)?;
+    let value = match encoding {
+        TextEncoding::Utf8 { bom: true } => std::str::from_utf8(&data[3..])
+            .map(str::to_owned)
+            .map_err(|_| {
+                CleanError::InvalidFormat("文本不是有效的 UTF-8 或带 BOM 的 UTF-16 编码".into())
+            })?,
+        TextEncoding::Utf8 { bom: false } => {
+            std::str::from_utf8(data).map(str::to_owned).map_err(|_| {
+                CleanError::InvalidFormat("文本不是有效的 UTF-8 或带 BOM 的 UTF-16 编码".into())
+            })?
+        }
+        TextEncoding::Utf16Le => String::from_utf16(
+            &data[2..]
+                .chunks_exact(2)
+                .map(|pair| u16::from_le_bytes([pair[0], pair[1]]))
+                .collect::<Vec<_>>(),
+        )
+        .map_err(|_| CleanError::InvalidFormat("UTF-16 LE 文本包含无效字符".into()))?,
+        TextEncoding::Utf16Be => String::from_utf16(
+            &data[2..]
+                .chunks_exact(2)
+                .map(|pair| u16::from_be_bytes([pair[0], pair[1]]))
+                .collect::<Vec<_>>(),
+        )
+        .map_err(|_| CleanError::InvalidFormat("UTF-16 BE 文本包含无效字符".into()))?,
+    };
+    Ok((value, encoding))
+}
+
+fn encode_text(value: &str, encoding: TextEncoding) -> Vec<u8> {
+    match encoding {
+        TextEncoding::Utf8 { bom: true } => {
+            let mut output = vec![0xef, 0xbb, 0xbf];
+            output.extend_from_slice(value.as_bytes());
+            output
+        }
+        TextEncoding::Utf8 { bom: false } => value.as_bytes().to_vec(),
+        TextEncoding::Utf16Le | TextEncoding::Utf16Be => {
+            let mut output = if encoding == TextEncoding::Utf16Le {
+                vec![0xff, 0xfe]
+            } else {
+                vec![0xfe, 0xff]
+            };
+            for unit in value.encode_utf16() {
+                let bytes = if encoding == TextEncoding::Utf16Le {
+                    unit.to_le_bytes()
+                } else {
+                    unit.to_be_bytes()
+                };
+                output.extend_from_slice(&bytes);
+            }
+            output
+        }
+    }
+}
+
 fn extension(path: &Path) -> String {
     path.extension()
         .and_then(|value| value.to_str())
@@ -280,7 +384,7 @@ fn detect(path: &Path, data: &[u8]) -> Format {
     if office::is_supported_container(data, &ext) {
         return Format::Office;
     }
-    if TEXT_EXTENSIONS.contains(&ext.as_str()) && std::str::from_utf8(data).is_ok() {
+    if TEXT_EXTENSIONS.contains(&ext.as_str()) && text_encoding(data).is_ok() {
         return Format::Text;
     }
     Format::Unsupported
@@ -345,11 +449,10 @@ fn inspect_data(path: &Path, format: Format, data: &[u8]) -> Result<Vec<Finding>
         Format::Matroska => mkv::inspect(data),
         Format::Office => office::inspect(data, &extension(path)),
         Format::Pdf => pdf::inspect(data),
-        Format::Text => Ok(web_text::inspect(
-            std::str::from_utf8(data)
-                .map_err(|_| CleanError::InvalidFormat("文本不是 UTF-8 编码".into()))?,
-            &extension(path),
-        )),
+        Format::Text => {
+            let (value, _) = decode_text(data)?;
+            Ok(web_text::inspect(&value, &extension(path)))
+        }
         Format::Unsupported => Err(CleanError::Unsupported("未知格式".into())),
     }
 }
@@ -391,12 +494,9 @@ fn clean_data(
         Format::Office => office::clean(data, &extension(path)),
         Format::Pdf => pdf::clean(data),
         Format::Text => {
-            let (cleaned, findings) = web_text::clean(
-                std::str::from_utf8(data)
-                    .map_err(|_| CleanError::InvalidFormat("文本不是 UTF-8 编码".into()))?,
-                &extension(path),
-            );
-            Ok((cleaned.into_bytes(), findings))
+            let (value, encoding) = decode_text(data)?;
+            let (cleaned, findings) = web_text::clean(&value, &extension(path));
+            Ok((encode_text(&cleaned, encoding), findings))
         }
         Format::Unsupported => Err(CleanError::Unsupported("未知格式".into())),
     }
@@ -1256,6 +1356,60 @@ mod tests {
             "ab"
         );
         assert_eq!(fs::read_to_string(source).unwrap(), "a\u{200b}b");
+    }
+
+    #[test]
+    fn preserves_utf_bom_endianness_and_line_endings_while_cleaning_text() {
+        let dir = tempfile::tempdir().unwrap();
+        for (index, encoding) in [
+            TextEncoding::Utf8 { bom: true },
+            TextEncoding::Utf16Le,
+            TextEncoding::Utf16Be,
+        ]
+        .into_iter()
+        .enumerate()
+        {
+            let source = dir.path().join(format!("encoded-{index}.txt"));
+            fs::write(&source, encode_text("a\u{200b}b\r\n", encoding)).unwrap();
+            let report = scan_file(&source);
+            assert!(report.supported, "{:?}", report.error);
+            assert_eq!(report.findings[0].category, "unicode");
+
+            let result =
+                clean_file_with_options(&source, &OutputMode::Copy, true, true, true, false);
+            assert!(result.success, "{:?}", result.error);
+            let output = fs::read(result.output_path.unwrap()).unwrap();
+            let (cleaned, output_encoding) = decode_text(&output).unwrap();
+            assert_eq!(output_encoding, encoding);
+            assert_eq!(cleaned, "ab\r\n");
+        }
+    }
+
+    #[test]
+    fn cleans_structured_metadata_in_utf16_and_rejects_invalid_surrogates() {
+        let dir = tempfile::tempdir().unwrap();
+        let source = dir.path().join("page.html");
+        fs::write(
+            &source,
+            encode_text(
+                "<meta name=\"author\" content=\"private\">\r\n<p>safe</p>",
+                TextEncoding::Utf16Le,
+            ),
+        )
+        .unwrap();
+        let result = clean_file_with_options(&source, &OutputMode::Copy, true, true, true, false);
+        assert!(result.success, "{:?}", result.error);
+        let output = fs::read(result.output_path.unwrap()).unwrap();
+        assert_eq!(decode_text(&output).unwrap().0, "\r\n<p>safe</p>");
+
+        let invalid = dir.path().join("invalid.txt");
+        fs::write(&invalid, [0xff, 0xfe, 0x00, 0xd8]).unwrap();
+        let report = scan_file(&invalid);
+        assert!(!report.supported);
+        assert!(report.error.is_some());
+        let failed = clean_file_with_options(&invalid, &OutputMode::Copy, true, true, true, false);
+        assert!(!failed.success);
+        assert!(failed.output_path.is_none());
     }
 
     #[test]

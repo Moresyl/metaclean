@@ -46,7 +46,7 @@ Grab the latest package from [GitHub Releases](https://github.com/Moresyl/metacl
 
 ## What it removes
 
-113 extensions, handled by native Rust code with no ExifTool. Image and media cleaners preserve encoded payloads; PDF, Office and text use format-aware rewrites whose candidates are re-inspected before writing.
+113 extensions, handled by native Rust code with no ExifTool. Image and media cleaners preserve encoded payloads; PDF, Office and UTF-8/BOM-marked UTF-16 text use format-aware rewrites whose candidates are re-inspected before writing.
 
 | Format | Extensions | Cleaned |
 | --- | --- | --- |
