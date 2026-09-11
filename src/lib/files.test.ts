@@ -54,6 +54,8 @@ describe("entryFromPath", () => {
     expect(pathIdentity("C:/Work/Ä.PNG")).toBe("c:\\work\\ä.png");
     expect(pathIdentity("\\\\?\\C:\\Work\\Photo.PNG")).toBe("c:\\work\\photo.png");
     expect(pathIdentity("\\\\?\\UNC\\Server\\Share\\Photo.PNG")).toBe("\\\\server\\share\\photo.png");
+    expect(pathIdentity("C:\\Work\\sub\\.\\..\\Photo.PNG")).toBe("c:\\work\\photo.png");
+    expect(pathIdentity("..\\Photo.PNG")).toBe("..\\photo.png");
     expect(pathIdentity("/Users/Alice/Photo.PNG")).toBe("/Users/Alice/Photo.PNG");
   });
 });

@@ -32,13 +32,31 @@ const TEXT_EXTENSIONS = new Set([
 export function pathIdentity(path: string): string {
   const normalized = path.replaceAll("/", "\\");
   const lower = normalized.toLocaleLowerCase("en-US");
-  const windowsPath = /^[a-z]:\\/u.test(lower) || lower.startsWith("\\\\") || lower.startsWith("\\\\?\\");
+  const windowsPath = (path.includes("\\") && !path.startsWith("/"))
+    || /^[a-z]:[\\/]/iu.test(path)
+    || path.startsWith("\\\\");
   if (!windowsPath) return path;
   const withoutDevicePrefix = lower.startsWith("\\\\?\\") ? lower.slice(4) : lower;
   const canonical = withoutDevicePrefix.startsWith("unc\\")
     ? `\\\\${withoutDevicePrefix.slice(4)}`
     : withoutDevicePrefix;
-  return canonical.length > 3 ? canonical.replace(/[\\]+$/u, "") : canonical;
+  const absolute = canonical.startsWith("\\\\") || /^[a-z]:\\/u.test(canonical);
+  const minimum = canonical.startsWith("\\\\") ? 2 : absolute ? 1 : 0;
+  const parts: string[] = [];
+  for (const part of canonical.replace(/^[\\]+/u, "").split("\\")) {
+    if (!part || part === ".") continue;
+    if (part === ".." && parts.length > minimum) {
+      parts.pop();
+    } else if (part === ".." && !absolute) {
+      parts.push(part);
+    } else if (part !== "..") {
+      parts.push(part);
+    }
+  }
+  let result = parts.join("\\");
+  if (canonical.startsWith("\\\\")) result = `\\\\${result}`;
+  if (absolute && /^[a-z]:$/u.test(result)) result += "\\";
+  return result;
 }
 
 export function classifyFile(name: string): FileEntry["kind"] {

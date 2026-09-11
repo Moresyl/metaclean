@@ -105,11 +105,37 @@ pub(crate) fn path_identity(path: &str) -> String {
         || without_device_prefix.to_owned(),
         |unc| format!("\\\\{unc}"),
     );
-    if canonical.len() > 3 {
-        canonical.trim_end_matches('\\').to_owned()
+    let absolute = canonical.starts_with("\\\\")
+        || (canonical.len() >= 3
+            && canonical.as_bytes()[1] == b':'
+            && canonical.as_bytes()[2] == b'\\');
+    let minimum = if canonical.starts_with("\\\\") {
+        2
+    } else if absolute {
+        1
     } else {
-        canonical
+        0
+    };
+    let mut parts = Vec::new();
+    for part in canonical.trim_start_matches('\\').split('\\') {
+        match part {
+            "" | "." => {}
+            ".." if parts.len() > minimum => {
+                parts.pop();
+            }
+            ".." if !absolute => parts.push(part),
+            ".." => {}
+            value => parts.push(value),
+        }
     }
+    let mut result = parts.join("\\");
+    if canonical.starts_with("\\\\") {
+        result.insert_str(0, "\\\\");
+    }
+    if absolute && canonical.as_bytes().get(1) == Some(&b':') && result.len() == 2 {
+        result.push('\\');
+    }
+    result
 }
 
 #[cfg(not(windows))]
@@ -233,6 +259,16 @@ mod tests {
         let alias = canonical.replace('\\', "/").to_lowercase();
         let result = expand_paths(&[canonical, alias]);
         assert_eq!(result.files.len(), 1);
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn folds_windows_dot_segments_without_collapsing_relative_parents() {
+        assert_eq!(
+            path_identity(r"C:\Work\sub\.\..\Photo.PNG"),
+            r"c:\work\photo.png"
+        );
+        assert_eq!(path_identity(r"..\Photo.PNG"), r"..\photo.png");
     }
 
     #[test]

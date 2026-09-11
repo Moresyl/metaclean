@@ -68,7 +68,8 @@ All notable changes to MetaClean are documented here. The project follows
 - Recursive directory intake now applies the same Windows case, separator,
   device-prefix and UNC alias identity rules as direct IPC batches, preventing
   duplicate queue entries when overlapping paths are expanded; aliases are
-  discarded before they can consume the 10,000-file result budget.
+  discarded before they can consume the 10,000-file result budget. Dot segments
+  are folded lexically as well, while relative leading parents remain intact.
 
 - HTML metadata cleaning now handles the legal unquoted form of generator,
   author, AI and C2PA attributes used by compact templates, with a regression
