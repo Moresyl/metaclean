@@ -9,7 +9,7 @@ mod shell_integration;
 
 use models::{CleanRequest, CleanResult, ScanReport};
 use std::collections::{HashMap, HashSet};
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex, OnceLock};
 #[cfg(target_os = "macos")]
 use tauri::menu::{MenuBuilder, MenuItemBuilder, SubmenuBuilder};
@@ -19,12 +19,13 @@ use tauri_plugin_window_state::StateFlags;
 
 static ALLOW_EXIT: AtomicBool = AtomicBool::new(false);
 static CLOSE_TO_TRAY: AtomicBool = AtomicBool::new(false);
+static ACTIVE_SCAN_TASKS: AtomicUsize = AtomicUsize::new(0);
 static ACTIVE_CLEAN_BATCHES: OnceLock<Mutex<HashMap<String, Arc<AtomicBool>>>> = OnceLock::new();
 const PORTABLE_MARKER: &str = "metaclean-portable.marker";
 const MAX_BATCH_FILES: usize = 10_000;
 const UPDATE_NETWORK_HELP: &str = "无法连接已签名更新源。请检查 GitHub 网络或 HTTPS_PROXY 后重试，也可从正式发布页手动下载安装包。 / Could not reach the signed update feed. Check GitHub access or HTTPS_PROXY, then retry, or download the installer from the Releases page.";
 const UPDATE_CHANGED: &str = "可用版本在确认后发生了变化，请先重新检查并查看新版本说明。 / The available release changed after confirmation. Check again and review the new release before installing.";
-const CLEANUP_CLOSE_BLOCKED: &str = "清理任务正在进行，请先取消或等待完成。 / Cleanup is still running; cancel it or wait for it to finish.";
+const CLEANUP_CLOSE_BLOCKED: &str = "任务正在进行，请等待完成；清理任务可以先取消。 / Work is still in progress; wait for it to finish, or cancel the cleanup first.";
 
 #[derive(Debug, PartialEq, Eq)]
 enum CloseAction {
@@ -123,10 +124,34 @@ fn clean_batch_active() -> bool {
         .unwrap_or(true)
 }
 
+fn scan_task_active() -> bool {
+    ACTIVE_SCAN_TASKS.load(Ordering::SeqCst) > 0
+}
+
+fn work_active() -> bool {
+    scan_task_active() || clean_batch_active()
+}
+
+struct ActiveScanGuard;
+
+impl ActiveScanGuard {
+    fn start() -> Self {
+        ACTIVE_SCAN_TASKS.fetch_add(1, Ordering::SeqCst);
+        Self
+    }
+}
+
+impl Drop for ActiveScanGuard {
+    fn drop(&mut self) {
+        ACTIVE_SCAN_TASKS.fetch_sub(1, Ordering::SeqCst);
+    }
+}
+
 #[tauri::command]
 async fn scan_files(paths: Vec<String>) -> Result<Vec<ScanReport>, String> {
     validate_batch_size(paths.len())?;
     let paths = deduplicate_paths(paths);
+    let _active_scan = ActiveScanGuard::start();
     tauri::async_runtime::spawn_blocking(move || engine::scan_paths(&paths))
         .await
         .map_err(|error| format!("扫描任务异常结束：{error}"))
@@ -471,7 +496,7 @@ pub fn run() {
                 .on_menu_event(|app, event| match event.id.as_ref() {
                     "open" => show_main_window(app),
                     "quit" => {
-                        if clean_batch_active() {
+                        if work_active() {
                             let _ = app.emit("close-blocked", CLEANUP_CLOSE_BLOCKED);
                             return;
                         }
@@ -492,7 +517,7 @@ pub fn run() {
             "settings" | "settings-page" => emit_navigation(app, "settings"),
             "clean" | "history" | "privacy" | "about" => emit_navigation(app, event.id().as_ref()),
             "quit" => {
-                if clean_batch_active() {
+                if work_active() {
                     let _ = app.emit("close-blocked", CLEANUP_CLOSE_BLOCKED);
                     return;
                 }
@@ -503,7 +528,7 @@ pub fn run() {
         })
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
-                if clean_batch_active() {
+                if work_active() {
                     api.prevent_close();
                     let _ = window.emit("close-blocked", CLEANUP_CLOSE_BLOCKED);
                     return;
@@ -584,8 +609,8 @@ mod update_tests {
     use super::{
         active_clean_batches, cancel_clean_batch, clean_batch_active, close_action,
         deduplicate_paths, export_audit_report_to, portable_marker_exists, reviewed_update_matches,
-        self_update_supported_for, updater_network_error, validate_batch_size, CloseAction,
-        MAX_BATCH_FILES, PORTABLE_MARKER,
+        scan_task_active, self_update_supported_for, updater_network_error, validate_batch_size,
+        ActiveScanGuard, CloseAction, MAX_BATCH_FILES, PORTABLE_MARKER,
     };
     use crate::models::CleanRequest;
     use std::sync::atomic::AtomicBool;
@@ -633,6 +658,15 @@ mod update_tests {
             .expect("lock active batches")
             .remove("cancel-test");
         assert!(!clean_batch_active());
+    }
+
+    #[test]
+    fn active_scan_tasks_also_block_window_exit() {
+        assert!(!scan_task_active());
+        let guard = ActiveScanGuard::start();
+        assert!(scan_task_active());
+        drop(guard);
+        assert!(!scan_task_active());
     }
 
     #[test]

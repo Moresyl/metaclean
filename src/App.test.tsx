@@ -184,8 +184,8 @@ describe("App", () => {
     expect(screen.queryByText("正在清理 99/100")).not.toBeInTheDocument();
     expect(screen.getByText("就绪")).toBeInTheDocument();
     const closeListener = listenMock.mock.calls.find(([name]) => name === "close-blocked")?.[1] as ((event: { payload: string }) => void) | undefined;
-    closeListener?.({ payload: "清理任务正在进行，请先取消或等待完成。" });
-    await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("清理任务正在进行"));
+    closeListener?.({ payload: "任务正在进行，请等待完成；清理任务可以先取消。" });
+    await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("任务正在进行"));
   });
 
   it("cancels an active cleanup batch without cancelling the scan", async () => {

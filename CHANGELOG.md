@@ -54,8 +54,9 @@ All notable changes to MetaClean are documented here. The project follows
   compatibility with older desktop clients while the current UI sends it.
 - Large cleanup batches can now be cancelled safely between files; completed
   results remain recorded and unprocessed entries stay retryable.
-- Window close requests are blocked while a native cleanup batch is active and
-  explain that the user can cancel or wait, preventing silent partial work.
+- Window close requests are blocked while a native scan or cleanup task is
+  active and explain that the user can wait or cancel cleanup, preventing
+  silent partial work.
 - Source bytes are now guarded together with modification time, readonly
   permissions and extended attributes before a cleaned copy or replacement
   backup is allocated, then checked again immediately before replacement. A
