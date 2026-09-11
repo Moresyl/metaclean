@@ -63,7 +63,8 @@ All notable changes to MetaClean are documented here. The project follows
 - HTML metadata cleanup now parses quote-aware start tags, so `>` inside an
   attribute value, lookalike text in another attribute, and raw-text content in
   `script`, `style`, `textarea` or `title` are preserved while targeted
-  metadata attributes are removed.
+  metadata attributes are removed. Similar-but-unrelated names such as
+  `data-airport` are preserved.
 
 - All localized supported-scope descriptions now state the current 113
   extensions and 24 text formats directly; the runtime no longer performs a

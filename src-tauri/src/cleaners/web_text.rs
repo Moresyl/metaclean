@@ -79,7 +79,12 @@ fn is_private_data_attribute(name: &str) -> bool {
     let lower = name.to_ascii_lowercase();
     ["data-ai", "data-llm", "data-model", "data-c2pa"]
         .iter()
-        .any(|prefix| lower.starts_with(prefix))
+        .any(|prefix| {
+            lower == *prefix
+                || lower
+                    .strip_prefix(prefix)
+                    .is_some_and(|suffix| suffix.starts_with('-') || suffix.starts_with('_'))
+        })
 }
 
 fn html_tag_metadata(tag: &str) -> HtmlTagMetadata {
@@ -681,6 +686,18 @@ mod tests {
         assert_eq!(
             cleaned,
             r#"<script>const template = '<div data-ai-model="keep"><meta name="author">';</script><style>.x::after { content: '<i data-c2pa="keep">'; }</style><div>safe</div>"#
+        );
+    }
+
+    #[test]
+    fn preserves_unrelated_data_attribute_names() {
+        let source =
+            r#"<div data-airport="keep" data-llmfoo="keep" data-ai-model="remove">safe</div>"#;
+        let (cleaned, findings) = clean(source, "html");
+        assert_eq!(findings[0].count, 1);
+        assert_eq!(
+            cleaned,
+            r#"<div data-airport="keep" data-llmfoo="keep">safe</div>"#
         );
     }
 
