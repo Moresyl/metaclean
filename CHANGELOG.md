@@ -19,6 +19,9 @@ All notable changes to MetaClean are documented here. The project follows
 - Added `scripts/preflight-windows.ps1`, a non-publishing Windows candidate gate
   that builds the debug NSIS/MSI pair, packages the portable ZIP and runs all
   three install/launch/uninstall smoke checks in one repeatable command.
+- Added a mixed-failure release benchmark covering 96 valid files, 16 unsupported
+  files and 16 missing paths; it proves failed items do not abort valid cleanup
+  or allocate an output file.
 
 ### Changed
 
@@ -39,6 +42,9 @@ All notable changes to MetaClean are documented here. The project follows
 - MSI smoke testing now refuses to overwrite an existing MetaClean installation
   and preserves diagnostic logs on failure instead of deleting evidence or a
   user's installed copy as part of candidate validation.
+- Native benchmark reporting now records the first processed result before
+  sorting latencies for p95, instead of incorrectly labelling the minimum
+  latency as the first-result measurement.
 - Upgraded Vitest to 4.1.11 and pinned the WebdriverIO/Mocha `js-yaml` chain
   to 4.3.2, closing the current official npm audit findings without changing
   the production runtime dependency surface.

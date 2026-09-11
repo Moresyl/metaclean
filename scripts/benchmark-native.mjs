@@ -4,7 +4,7 @@ import process from "node:process";
 
 const result = spawnSync(
   process.platform === "win32" ? "cargo.exe" : "cargo",
-  ["test", "--manifest-path", "src-tauri/Cargo.toml", "--release", "--lib", "engine::tests::benchmark_real_batch_engine_paths", "--", "--ignored", "--nocapture"],
+  ["test", "--manifest-path", "src-tauri/Cargo.toml", "--release", "--lib", "engine::tests::benchmark", "--", "--ignored", "--nocapture"],
   { cwd: fileURLToPath(new URL("..", import.meta.url)), encoding: "utf8", stdio: "inherit" },
 );
 

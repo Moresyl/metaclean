@@ -1283,9 +1283,9 @@ mod tests {
             clean_latencies.push(started.elapsed());
         }
         let clean_elapsed = clean_started.elapsed();
+        let first_ms = clean_latencies[0].as_secs_f64() * 1000.0;
         clean_latencies.sort_unstable();
         let p95_index = (FILES * 95).div_ceil(100).saturating_sub(1);
-        let first_ms = clean_latencies[0].as_secs_f64() * 1000.0;
         let p95_ms = clean_latencies[p95_index].as_secs_f64() * 1000.0;
         eprintln!(
             "METACLEAN_BENCH {{\"files\":{FILES},\"payload_bytes\":{payload_bytes},\"scan_ms\":{:.2},\"scan_files_per_sec\":{:.2},\"clean_ms\":{:.2},\"clean_files_per_sec\":{:.2},\"clean_first_file_ms\":{first_ms:.2},\"clean_p95_file_ms\":{p95_ms:.2}}}",
@@ -1293,6 +1293,105 @@ mod tests {
             FILES as f64 / scan_elapsed.as_secs_f64(),
             clean_elapsed.as_secs_f64() * 1000.0,
             FILES as f64 / clean_elapsed.as_secs_f64(),
+        );
+    }
+
+    #[test]
+    #[ignore = "explicit local performance benchmark"]
+    fn benchmark_mixed_failure_batch_engine_paths() {
+        const VALID_FILES: usize = 96;
+        const INVALID_FILES: usize = 16;
+        const MISSING_FILES: usize = 16;
+        const TOTAL_FILES: usize = VALID_FILES + INVALID_FILES + MISSING_FILES;
+        let directory = tempfile::tempdir().expect("create mixed benchmark directory");
+        let mut paths = Vec::with_capacity(TOTAL_FILES);
+        let mut payload_bytes = 0usize;
+        for index in 0..VALID_FILES {
+            let nested = directory
+                .path()
+                .join(format!("valid-level-{}", index % 4))
+                .join(format!("valid-bucket-{}", index % 8));
+            fs::create_dir_all(&nested).expect("write mixed benchmark nesting");
+            let size = match index % 3 {
+                0 => 4 * 1024,
+                1 => 64 * 1024,
+                _ => 512 * 1024,
+            };
+            let mut content = vec![b'a'; size];
+            content[size / 2..size / 2 + "\u{200b}".len()].copy_from_slice("\u{200b}".as_bytes());
+            let path = nested.join(format!("valid-{index}.txt"));
+            fs::write(&path, &content).expect("write valid mixed fixture");
+            payload_bytes += size;
+            paths.push(path.to_string_lossy().into_owned());
+        }
+        for index in 0..INVALID_FILES {
+            let path = directory.path().join(format!("unsupported-{index}.bin"));
+            fs::write(&path, [0, 159, 146, 150]).expect("write unsupported mixed fixture");
+            paths.push(path.to_string_lossy().into_owned());
+        }
+        for index in 0..MISSING_FILES {
+            paths.push(
+                directory
+                    .path()
+                    .join(format!("missing-{index}.txt"))
+                    .to_string_lossy()
+                    .into_owned(),
+            );
+        }
+
+        let scan_started = Instant::now();
+        let reports = scan_paths(&paths);
+        let scan_elapsed = scan_started.elapsed();
+        assert_eq!(reports.len(), TOTAL_FILES);
+        assert_eq!(
+            reports.iter().filter(|report| report.supported).count(),
+            VALID_FILES
+        );
+        assert_eq!(
+            reports
+                .iter()
+                .filter(|report| report.error.is_some())
+                .count(),
+            INVALID_FILES + MISSING_FILES
+        );
+
+        let mut clean_latencies = Vec::with_capacity(TOTAL_FILES);
+        let mut successes = 0usize;
+        let mut failures = 0usize;
+        let clean_started = Instant::now();
+        for path in &paths {
+            let started = Instant::now();
+            let result = clean_file_isolated_with_options(
+                Path::new(path),
+                &OutputMode::Copy,
+                true,
+                true,
+                true,
+                false,
+            );
+            clean_latencies.push(started.elapsed());
+            if result.success {
+                successes += 1;
+                assert!(result.output_path.is_some());
+            } else {
+                failures += 1;
+                assert!(result.output_path.is_none());
+            }
+        }
+        let clean_elapsed = clean_started.elapsed();
+        assert_eq!(successes, VALID_FILES);
+        assert_eq!(failures, INVALID_FILES + MISSING_FILES);
+        let first_ms = clean_latencies[0].as_secs_f64() * 1000.0;
+        clean_latencies.sort_unstable();
+        let p95_index = (TOTAL_FILES * 95).div_ceil(100).saturating_sub(1);
+        let p95_ms = clean_latencies[p95_index].as_secs_f64() * 1000.0;
+        eprintln!(
+            "METACLEAN_BENCH_MIXED {{\"files\":{TOTAL_FILES},\"valid_files\":{VALID_FILES},\"failed_files\":{},\"payload_bytes\":{payload_bytes},\"scan_ms\":{:.2},\"scan_files_per_sec\":{:.2},\"clean_ms\":{:.2},\"clean_files_per_sec\":{:.2},\"clean_first_result_ms\":{first_ms:.2},\"clean_p95_result_ms\":{p95_ms:.2}}}",
+            INVALID_FILES + MISSING_FILES,
+            scan_elapsed.as_secs_f64() * 1000.0,
+            TOTAL_FILES as f64 / scan_elapsed.as_secs_f64(),
+            clean_elapsed.as_secs_f64() * 1000.0,
+            TOTAL_FILES as f64 / clean_elapsed.as_secs_f64(),
         );
     }
 
