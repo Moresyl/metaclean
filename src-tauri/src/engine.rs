@@ -258,22 +258,31 @@ fn decode_text(data: &[u8]) -> Result<(String, TextEncoding)> {
                 CleanError::InvalidFormat("文本不是有效的 UTF-8 或带 BOM 的 UTF-16 编码".into())
             })?
         }
-        TextEncoding::Utf16Le => String::from_utf16(
-            &data[2..]
-                .chunks_exact(2)
-                .map(|pair| u16::from_le_bytes([pair[0], pair[1]]))
-                .collect::<Vec<_>>(),
-        )
-        .map_err(|_| CleanError::InvalidFormat("UTF-16 LE 文本包含无效字符".into()))?,
-        TextEncoding::Utf16Be => String::from_utf16(
-            &data[2..]
-                .chunks_exact(2)
-                .map(|pair| u16::from_be_bytes([pair[0], pair[1]]))
-                .collect::<Vec<_>>(),
-        )
-        .map_err(|_| CleanError::InvalidFormat("UTF-16 BE 文本包含无效字符".into()))?,
+        TextEncoding::Utf16Le => decode_utf16(data, true)?,
+        TextEncoding::Utf16Be => decode_utf16(data, false)?,
     };
     Ok((value, encoding))
+}
+
+fn decode_utf16(data: &[u8], little_endian: bool) -> Result<String> {
+    let decoded = char::decode_utf16(data[2..].chunks_exact(2).map(|pair| {
+        if little_endian {
+            u16::from_le_bytes([pair[0], pair[1]])
+        } else {
+            u16::from_be_bytes([pair[0], pair[1]])
+        }
+    }))
+    .collect::<std::result::Result<String, _>>();
+    decoded.map_err(|_| {
+        CleanError::InvalidFormat(
+            if little_endian {
+                "UTF-16 LE 文本包含无效字符"
+            } else {
+                "UTF-16 BE 文本包含无效字符"
+            }
+            .into(),
+        )
+    })
 }
 
 fn encode_text(value: &str, encoding: TextEncoding) -> Vec<u8> {
