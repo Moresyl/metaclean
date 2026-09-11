@@ -21,6 +21,7 @@ async function openSettingsPage() {
 async function openCleaningPreferences() {
   const navigation = await $$(".sidebar nav button");
   await navigation[3].click();
+  await $(".settings-nav button:nth-child(2)").waitForDisplayed();
   const categories = await $$(".settings-nav button");
   await categories[1].click();
   await $(".fidelity-options").waitForDisplayed();
@@ -29,6 +30,7 @@ async function openCleaningPreferences() {
 async function openSystemPreferences() {
   const navigation = await $$(".sidebar nav button");
   await navigation[3].click();
+  await $(".settings-nav button:nth-child(3)").waitForDisplayed();
   const categories = await $$(".settings-nav button");
   await categories[2].click();
   await $(".settings-list").waitForDisplayed();
@@ -37,7 +39,7 @@ async function openSystemPreferences() {
 async function openAboutPage() {
   const navigation = await $$(".sidebar nav button");
   await navigation[4].click();
-  await $("button=Report a bug").waitForDisplayed();
+  await $("a=Report a bug").waitForDisplayed();
 }
 
 describe("MetaClean desktop application", () => {
@@ -59,17 +61,17 @@ describe("MetaClean desktop application", () => {
     await browser.tauri.execute(() => window.dispatchEvent(new KeyboardEvent("keydown", { key: "4", ctrlKey: true })));
     await $(".locale-switch select").waitForDisplayed();
     await browser.tauri.execute(() => window.dispatchEvent(new KeyboardEvent("keydown", { key: "5", ctrlKey: true })));
-    await $("button=Report a bug").waitForDisplayed();
+    await $("a=Report a bug").waitForDisplayed();
     await browser.tauri.execute(() => window.dispatchEvent(new KeyboardEvent("keydown", { key: "1", ctrlKey: true })));
     await $(".scan-button").waitForDisplayed();
   });
 
   it("exposes runtime details and support links on the About page", async () => {
     await openAboutPage();
-    assert.equal(await $("button=Report a bug").isDisplayed(), true);
-    assert.equal(await $("button=Request a feature").isDisplayed(), true);
-    assert.equal(await $("button=Releases").isDisplayed(), true);
-    assert.equal(await $("button=Source code").isDisplayed(), true);
+    assert.equal(await $("a=Report a bug").isDisplayed(), true);
+    assert.equal(await $("a=Request a feature").isDisplayed(), true);
+    assert.equal(await $("a=Releases").isDisplayed(), true);
+    assert.equal(await $("a=Source code").isDisplayed(), true);
   });
 
   it("ships every locale and applies right-to-left layout", async () => {
