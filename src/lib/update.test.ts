@@ -62,9 +62,15 @@ describe("checkForUpdate", () => {
     expect(getVersionMock).toHaveBeenCalled();
   });
 
-  it("refuses prereleases and stale updater payloads", async () => {
+  it("refuses prereleases, malformed stable versions, and stale updater payloads", async () => {
     const prerelease = vi.fn().mockResolvedValue({ currentVersion: "0.3.0", version: "0.4.0-beta.1" });
     await expect(checkForUpdate({ checker: prerelease })).rejects.toThrow("prerelease");
+    const malformed = vi.fn().mockResolvedValue({ currentVersion: "0.3.0", version: "0.4" });
+    await expect(checkForUpdate({ checker: malformed })).rejects.toThrow("invalid stable version");
+    const oversized = vi.fn().mockResolvedValue({ currentVersion: "0.3.0", version: "999999999999999999.0.1" });
+    await expect(checkForUpdate({ checker: oversized })).rejects.toThrow("invalid stable version");
+    const padded = vi.fn().mockResolvedValue({ currentVersion: "0.3.0", version: "01.2.3" });
+    await expect(checkForUpdate({ checker: padded })).rejects.toThrow("invalid stable version");
     const stale = vi.fn().mockResolvedValue({ currentVersion: "0.4.0", version: "0.3.0" });
     await expect(checkForUpdate({ checker: stale })).resolves.toEqual({ status: "current", currentVersion: "0.4.0" });
   });
@@ -126,6 +132,15 @@ describe("native update commands", () => {
     const listener = vi.fn().mockResolvedValue(unlisten);
     const invoker = vi.fn();
     await expect(installAvailableUpdate({ expectedVersion: "latest", listener, invoker })).rejects.toThrow(/发生了变化/u);
+    expect(invoker).not.toHaveBeenCalled();
+    expect(unlisten).toHaveBeenCalledOnce();
+  });
+
+  it.each(["01.2.3", "999999999999999999.0.1"])("refuses non-canonical install version %s", async (expectedVersion) => {
+    const unlisten = vi.fn();
+    const listener = vi.fn().mockResolvedValue(unlisten);
+    const invoker = vi.fn();
+    await expect(installAvailableUpdate({ expectedVersion, listener, invoker })).rejects.toThrow(/发生了变化/u);
     expect(invoker).not.toHaveBeenCalled();
     expect(unlisten).toHaveBeenCalledOnce();
   });

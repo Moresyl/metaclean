@@ -60,6 +60,12 @@ function parseVersion(value: string): ParsedVersion {
   };
 }
 
+function isStableReleaseVersion(value: string): boolean {
+  const parts = value.split(".");
+  return parts.length === 3
+    && parts.every((part) => /^(?:0|[1-9]\d*)$/u.test(part) && Number.isSafeInteger(Number(part)));
+}
+
 export function compareVersions(left: string, right: string): number {
   const a = parseVersion(left);
   const b = parseVersion(right);
@@ -129,9 +135,12 @@ export async function checkForUpdate(options: {
   if (!update) return { status: "current", currentVersion };
 
   try {
-    const availableVersion = update.version.replace(/^v/iu, "");
+    const availableVersion = update.version.trim().replace(/^v/iu, "");
     const parsed = parseVersion(availableVersion);
     if (parsed.prerelease.length) throw new Error("Update service returned a prerelease version");
+    if (!isStableReleaseVersion(availableVersion)) {
+      throw new Error("Update service returned an invalid stable version");
+    }
     if (compareVersions(availableVersion, currentVersion) <= 0) {
       return { status: "current", currentVersion };
     }
@@ -170,9 +179,9 @@ export async function installAvailableUpdate(options: {
   const unlisten = await listen("update-progress", (event) => options.onProgress?.(event.payload));
   try {
     const expectedVersion = options.expectedVersion.trim().replace(/^v/iu, "");
-    if (!/^\d+\.\d+\.\d+$/u.test(expectedVersion)) throw new Error(UPDATE_CHANGED);
+    if (!isStableReleaseVersion(expectedVersion)) throw new Error(UPDATE_CHANGED);
     return await invoke<boolean>("install_update_and_restart", { expectedVersion });
   } finally {
-    unlisten();
+    await unlisten();
   }
 }
