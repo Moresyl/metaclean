@@ -36,6 +36,9 @@ All notable changes to MetaClean are documented here. The project follows
 
 ### Fixed
 
+- MSI smoke testing now refuses to overwrite an existing MetaClean installation
+  and preserves diagnostic logs on failure instead of deleting evidence or a
+  user's installed copy as part of candidate validation.
 - Upgraded Vitest to 4.1.11 and pinned the WebdriverIO/Mocha `js-yaml` chain
   to 4.3.2, closing the current official npm audit findings without changing
   the production runtime dependency surface.
