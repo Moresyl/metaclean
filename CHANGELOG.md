@@ -52,6 +52,10 @@ All notable changes to MetaClean are documented here. The project follows
 
 ### Fixed
 
+- Markdown front matter now recognizes both YAML `---` and TOML `+++` fences,
+  while only removing targeted author and generator fields inside the opening
+  metadata block.
+
 - HTML metadata cleaning now handles the legal unquoted form of generator,
   author, AI and C2PA attributes used by compact templates, with a regression
   proving only the targeted metadata nodes are removed.

@@ -30,11 +30,15 @@ fn html_patterns() -> &'static [Regex; 3] {
 }
 
 fn frontmatter(value: &str) -> Option<(usize, usize)> {
-    if !value.starts_with("---\n") && !value.starts_with("---\r\n") {
+    let end_pattern = if value.starts_with("---\n") || value.starts_with("---\r\n") {
+        frontmatter_end_pattern()
+    } else if value.starts_with("+++\n") || value.starts_with("+++\r\n") {
+        toml_frontmatter_end_pattern()
+    } else {
         return None;
-    }
+    };
     let start = value.find('\n')? + 1;
-    let end = frontmatter_end_pattern().find(&value[start..])?.start() + start;
+    let end = end_pattern.find(&value[start..])?.start() + start;
     Some((start, end))
 }
 
@@ -45,10 +49,17 @@ fn frontmatter_end_pattern() -> &'static Regex {
     })
 }
 
+fn toml_frontmatter_end_pattern() -> &'static Regex {
+    static PATTERN: OnceLock<Regex> = OnceLock::new();
+    PATTERN.get_or_init(|| {
+        Regex::new(r"(?m)^\+\+\+[\t ]*\r?$").expect("TOML frontmatter fence regex must compile")
+    })
+}
+
 fn markdown_pattern() -> &'static Regex {
     static PATTERN: OnceLock<Regex> = OnceLock::new();
     PATTERN.get_or_init(|| {
-        Regex::new(r"(?im)^\s*(?:generator|author|creator|last_modified_by|ai[_-]?(?:generated|model)|model|c2pa)\s*:.*(?:\r?\n|$)").unwrap()
+        Regex::new(r"(?im)^\s*(?:generator|author|creator|last_modified_by|ai[_-]?(?:generated|model)|model|c2pa)\s*(?::|=).*(?:\r?\n|$)").unwrap()
     })
 }
 
@@ -492,6 +503,15 @@ mod tests {
         assert!(cleaned.contains("---not-a-fence"));
         assert!(!cleaned.contains("Claude"));
         assert!(cleaned.ends_with("Body"));
+    }
+
+    #[test]
+    fn removes_sensitive_toml_frontmatter_only() {
+        let source = "+++\ntitle = \"Hello\"\nauthor = \"Alice\"\n+++\nBody +++ stays";
+        let cleaned = clean(source, "md").0;
+        assert!(cleaned.contains("title = \"Hello\""));
+        assert!(!cleaned.contains("author = \"Alice\""));
+        assert!(cleaned.ends_with("Body +++ stays"));
     }
 
     #[test]
