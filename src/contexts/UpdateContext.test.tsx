@@ -21,6 +21,7 @@ function Probe() {
   return <div>
     <span>{update.status}</span>
     <span>{update.currentVersion}</span>
+    <span data-testid="available-version">{update.info?.availableVersion}</span>
     <span>{update.error}</span>
     <span data-testid="self-update-supported">{String(update.runtime.selfUpdateSupported)}</span>
     <span>{update.progress?.downloaded}</span>
@@ -65,6 +66,23 @@ describe("UpdateProvider", () => {
     expect(screen.getByText("offline")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "open" }));
     await waitFor(() => expect(openUrlMock).toHaveBeenCalledWith("https://github.com/Moresyl/metaclean/releases/latest"));
+  });
+
+  it("clears a stale reviewed version after a failed re-check", async () => {
+    localStorage.setItem("metaclean.update.autoCheck", "false");
+    checkForUpdateMock.mockResolvedValueOnce({
+      status: "available",
+      info: { currentVersion: "0.3.0", availableVersion: "0.4.0", name: "MetaClean v0.4.0", releaseUrl: "https://github.com/Moresyl/metaclean/releases/tag/v0.4.0" },
+    }).mockRejectedValueOnce(new Error("offline"));
+    render(<UpdateProvider><Probe /></UpdateProvider>);
+    fireEvent.click(screen.getByRole("button", { name: "check" }));
+    await screen.findByText("available");
+    expect(screen.getByTestId("available-version")).toHaveTextContent("0.4.0");
+    fireEvent.click(screen.getByRole("button", { name: "check" }));
+    await screen.findByText("error");
+    expect(screen.getByTestId("available-version")).toBeEmptyDOMElement();
+    fireEvent.click(screen.getByRole("button", { name: "install" }));
+    expect(installAvailableUpdateMock).not.toHaveBeenCalled();
   });
 
   it("falls back safely when the native runtime response is malformed", async () => {

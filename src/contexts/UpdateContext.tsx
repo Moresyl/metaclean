@@ -80,6 +80,8 @@ export function UpdateProvider({ children }: { children: ReactNode }) {
         setPromptOpen(false);
       }
     } catch (reason) {
+      setInfo(undefined);
+      setPromptOpen(false);
       setError(reason instanceof Error ? reason.message : String(reason));
       setStatus("error");
     } finally {
