@@ -130,6 +130,7 @@ export function UpdateProvider({ children }: { children: ReactNode }) {
       const installed = await installAvailableUpdate({ expectedVersion, onProgress: setProgress });
       if (!installed) {
         setInfo(undefined);
+        setPromptOpen(false);
         setProgress(undefined);
         setStatus("current");
       }

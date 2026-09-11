@@ -142,6 +142,7 @@ describe("UpdateProvider", () => {
     expect(checkForUpdateMock).toHaveBeenCalledTimes(1);
     finishInstall?.(false);
     await screen.findByText("current");
+    expect(screen.getByTestId("prompt-open")).toHaveTextContent("false");
   });
 
   it("refuses installation when no reviewed version is available", async () => {
