@@ -63,5 +63,10 @@ Invoke-RepositoryCommand "pwsh.exe" @(
   "-BundleDirectory", $bundleDirectory,
   "-Architecture", $Architecture
 )
+Write-Output "Running the per-user Explorer context-menu smoke test..."
+Invoke-RepositoryCommand "pwsh.exe" @(
+  "-NoLogo", "-NoProfile", "-File", (Join-Path $repositoryRoot "scripts\smoke-windows-context-menu.ps1"),
+  "-BinaryPath", $binaryPath
+)
 
 Write-Output "Windows $($packageMetadata.version) $configuration preflight passed without publishing or pushing."

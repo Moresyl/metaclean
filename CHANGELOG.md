@@ -48,6 +48,10 @@ All notable changes to MetaClean are documented here. The project follows
 - Directory expansion now participates in the same native read-task guard as
   scanning, so closing from the window, tray or application menu cannot race
   an unfinished recursive intake.
+- Windows shell integration now has a recorded local round-trip smoke result:
+  all 113 supported extension commands install and remove cleanly from HKCU.
+- The Windows candidate preflight now runs that per-user shell integration check
+  automatically and refuses to overwrite pre-existing command keys.
 - Upgraded Vitest to 4.1.11 and pinned the WebdriverIO/Mocha `js-yaml` chain
   to 4.3.2, closing the current official npm audit findings without changing
   the production runtime dependency surface.
