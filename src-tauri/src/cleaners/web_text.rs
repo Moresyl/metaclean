@@ -1,7 +1,7 @@
 use base64::{engine::general_purpose::STANDARD as BASE64, Engine as _};
 use regex::Regex;
-use std::borrow::Cow;
 use std::sync::OnceLock;
+use std::{borrow::Cow, ops::Range};
 
 use super::{bmp, heif, image, jxl, media, text};
 use crate::models::{Finding, FindingSeverity};
@@ -18,15 +18,193 @@ fn metadata_finding(count: usize) -> Finding {
     }
 }
 
-fn html_patterns() -> &'static [Regex; 3] {
-    static PATTERNS: OnceLock<[Regex; 3]> = OnceLock::new();
-    PATTERNS.get_or_init(|| {
-        [
-            Regex::new(r#"(?is)<meta\b[^>]*(?:name|property)\s*=\s*["'](?:generator|author|ai[_-]?(?:generated|model)|c2pa)["'][^>]*>"#).unwrap(),
-            Regex::new(r#"(?is)<meta\b[^>]*(?:name|property)\s*=\s*(?:generator|author|ai[_-]?(?:generated|model)|c2pa)(?:\s+[^>]*|/?>)"#).unwrap(),
-            Regex::new(r#"(?is)\sdata-(?:ai|llm|model|c2pa)[\w-]*\s*=\s*(?:"[^"]*"|'[^']*'|[^\s"'=<>`]+)"#).unwrap(),
-        ]
+fn html_start_tag_pattern() -> &'static Regex {
+    static PATTERN: OnceLock<Regex> = OnceLock::new();
+    PATTERN.get_or_init(|| {
+        Regex::new(r#"(?is)<[a-z][a-z0-9:._-]*(?:"[^"]*"|'[^']*'|[^'">])*>"#)
+            .expect("HTML start tag regex must compile")
     })
+}
+
+fn raw_text_element_patterns() -> &'static [Regex; 4] {
+    static PATTERNS: OnceLock<[Regex; 4]> = OnceLock::new();
+    PATTERNS.get_or_init(|| {
+        ["script", "style", "textarea", "title"].map(|name| {
+            Regex::new(&format!(
+                r#"(?is)<{name}\b(?:"[^"]*"|'[^']*'|[^'">])*?>(?P<body>.*?)</{name}[\t\n\r ]*>"#
+            ))
+            .expect("HTML raw-text element regex must compile")
+        })
+    })
+}
+
+fn raw_text_content_ranges(value: &str) -> Vec<Range<usize>> {
+    let mut ranges = raw_text_element_patterns()
+        .iter()
+        .flat_map(|pattern| pattern.captures_iter(value))
+        .filter_map(|capture| capture.name("body").map(|body| body.start()..body.end()))
+        .collect::<Vec<_>>();
+    ranges.sort_by_key(|range| range.start);
+    ranges
+}
+
+fn inside_ranges(index: usize, ranges: &[Range<usize>]) -> bool {
+    ranges
+        .iter()
+        .take_while(|range| range.start <= index)
+        .any(|range| range.contains(&index))
+}
+
+#[derive(Default)]
+struct HtmlTagMetadata {
+    private_meta: bool,
+    private_data_attributes: Vec<Range<usize>>,
+}
+
+fn is_html_space(byte: u8) -> bool {
+    matches!(byte, b' ' | b'\t' | b'\n' | b'\r' | 0x0c)
+}
+
+fn is_private_meta_value(value: &str) -> bool {
+    value.eq_ignore_ascii_case("generator")
+        || value.eq_ignore_ascii_case("author")
+        || value.eq_ignore_ascii_case("model")
+        || value.eq_ignore_ascii_case("c2pa")
+        || ["ai-generated", "ai_generated", "ai-model", "ai_model"]
+            .iter()
+            .any(|candidate| value.eq_ignore_ascii_case(candidate))
+}
+
+fn is_private_data_attribute(name: &str) -> bool {
+    let lower = name.to_ascii_lowercase();
+    ["data-ai", "data-llm", "data-model", "data-c2pa"]
+        .iter()
+        .any(|prefix| lower.starts_with(prefix))
+}
+
+fn html_tag_metadata(tag: &str) -> HtmlTagMetadata {
+    let bytes = tag.as_bytes();
+    let mut index = 1;
+    let name_start = index;
+    while index < bytes.len()
+        && !is_html_space(bytes[index])
+        && !matches!(bytes[index], b'/' | b'>')
+    {
+        index += 1;
+    }
+    let is_meta = tag[name_start..index].eq_ignore_ascii_case("meta");
+    let mut metadata = HtmlTagMetadata::default();
+
+    while index < bytes.len() {
+        let whitespace_start = index;
+        while index < bytes.len() && is_html_space(bytes[index]) {
+            index += 1;
+        }
+        if index >= bytes.len()
+            || bytes[index] == b'>'
+            || (bytes[index] == b'/' && bytes.get(index + 1) == Some(&b'>'))
+        {
+            break;
+        }
+
+        let attribute_start = index;
+        while index < bytes.len()
+            && !is_html_space(bytes[index])
+            && !matches!(bytes[index], b'=' | b'/' | b'>')
+        {
+            index += 1;
+        }
+        if index == attribute_start {
+            index += 1;
+            continue;
+        }
+        let attribute_name = &tag[attribute_start..index];
+        while index < bytes.len() && is_html_space(bytes[index]) {
+            index += 1;
+        }
+
+        let mut attribute_value = None;
+        if bytes.get(index) == Some(&b'=') {
+            index += 1;
+            while index < bytes.len() && is_html_space(bytes[index]) {
+                index += 1;
+            }
+            if matches!(bytes.get(index), Some(b'\'' | b'"')) {
+                let quote = bytes[index];
+                index += 1;
+                let value_start = index;
+                while index < bytes.len() && bytes[index] != quote {
+                    index += 1;
+                }
+                attribute_value = Some(&tag[value_start..index]);
+                index += usize::from(index < bytes.len());
+            } else {
+                let value_start = index;
+                while index < bytes.len() && !is_html_space(bytes[index]) && bytes[index] != b'>' {
+                    index += 1;
+                }
+                attribute_value = Some(&tag[value_start..index]);
+            }
+        }
+
+        if is_private_data_attribute(attribute_name) {
+            metadata
+                .private_data_attributes
+                .push(whitespace_start..index);
+        }
+        if is_meta
+            && (attribute_name.eq_ignore_ascii_case("name")
+                || attribute_name.eq_ignore_ascii_case("property"))
+            && attribute_value.is_some_and(is_private_meta_value)
+        {
+            metadata.private_meta = true;
+        }
+    }
+    metadata
+}
+
+fn clean_html_tag(tag: &str, metadata: &HtmlTagMetadata) -> String {
+    let mut output = String::with_capacity(tag.len());
+    let mut cursor = 0;
+    for range in &metadata.private_data_attributes {
+        output.push_str(&tag[cursor..range.start]);
+        cursor = range.end;
+    }
+    output.push_str(&tag[cursor..]);
+    output
+}
+
+fn html_metadata_count(value: &str) -> usize {
+    let raw_text = raw_text_content_ranges(value);
+    html_start_tag_pattern()
+        .find_iter(value)
+        .filter(|tag| !inside_ranges(tag.start(), &raw_text))
+        .map(|tag| {
+            let metadata = html_tag_metadata(tag.as_str());
+            usize::from(metadata.private_meta) + metadata.private_data_attributes.len()
+        })
+        .sum()
+}
+
+fn clean_html_metadata(value: &str) -> String {
+    let raw_text = raw_text_content_ranges(value);
+    html_start_tag_pattern()
+        .replace_all(value, |captures: &regex::Captures<'_>| {
+            let Some(found) = captures.get(0) else {
+                return String::new();
+            };
+            let tag = found.as_str();
+            if inside_ranges(found.start(), &raw_text) {
+                return tag.to_owned();
+            }
+            let metadata = html_tag_metadata(tag);
+            if metadata.private_meta {
+                String::new()
+            } else {
+                clean_html_tag(tag, &metadata)
+            }
+        })
+        .into_owned()
 }
 
 fn frontmatter(value: &str) -> Option<(usize, usize)> {
@@ -343,10 +521,7 @@ pub fn inspect(value: &str, extension: &str) -> Vec<Finding> {
 fn inspect_structured_metadata(value: &str, extension: &str) -> Vec<Finding> {
     let mut findings = Vec::new();
     let metadata = match extension {
-        "html" | "htm" | "xhtml" => html_patterns()
-            .iter()
-            .map(|pattern| pattern.find_iter(value).count())
-            .sum(),
+        "html" | "htm" | "xhtml" => html_metadata_count(value),
         "svg" => svg_metadata_pattern().find_iter(value).count(),
         "md" | "markdown" => frontmatter(value)
             .map(|(start, end)| markdown_pattern().find_iter(&value[start..end]).count())
@@ -389,9 +564,7 @@ fn clean_with_depth(value: &str, extension: &str, depth: usize) -> (String, Vec<
     findings.extend(inspect_structured_metadata(&output, extension));
     match extension {
         "html" | "htm" | "xhtml" => {
-            for pattern in html_patterns() {
-                output = pattern.replace_all(&output, "").into_owned();
-            }
+            output = clean_html_metadata(&output);
         }
         "svg" => output = svg_metadata_pattern().replace_all(&output, "").into_owned(),
         "md" | "markdown" => {
@@ -468,6 +641,47 @@ mod tests {
         assert!(!cleaned.contains("generator"));
         assert!(!cleaned.contains("data-ai"));
         assert!(!cleaned.contains("data-c2pa"));
+    }
+
+    #[test]
+    fn handles_greater_than_characters_inside_html_meta_values() {
+        let source = r#"<meta name="author" content="Alice > Bob"><meta name="description" content="1 > 0"><p>safe</p>"#;
+        let (cleaned, findings) = clean(source, "html");
+        assert_eq!(findings[0].count, 1);
+        assert_eq!(
+            cleaned,
+            r#"<meta name="description" content="1 > 0"><p>safe</p>"#
+        );
+    }
+
+    #[test]
+    fn removes_private_data_attributes_only_from_html_tags() {
+        let source =
+            r#"<p>Example: data-ai-model="keep"</p><div data-ai-model="remove">safe</div>"#;
+        let (cleaned, findings) = clean(source, "html");
+        assert_eq!(findings[0].count, 1);
+        assert_eq!(
+            cleaned,
+            r#"<p>Example: data-ai-model="keep"</p><div>safe</div>"#
+        );
+    }
+
+    #[test]
+    fn ignores_metadata_lookalikes_inside_other_html_attributes() {
+        let source = r#"<meta name="description" content="name=author"><div title='<meta name="author"> data-ai-model="keep"'>safe</div>"#;
+        assert!(inspect(source, "html").is_empty());
+        assert_eq!(clean(source, "html").0, source);
+    }
+
+    #[test]
+    fn preserves_html_lookalikes_inside_raw_text_elements() {
+        let source = r#"<script>const template = '<div data-ai-model="keep"><meta name="author">';</script><style>.x::after { content: '<i data-c2pa="keep">'; }</style><div data-ai-model="remove">safe</div>"#;
+        let (cleaned, findings) = clean(source, "html");
+        assert_eq!(findings[0].count, 1);
+        assert_eq!(
+            cleaned,
+            r#"<script>const template = '<div data-ai-model="keep"><meta name="author">';</script><style>.x::after { content: '<i data-c2pa="keep">'; }</style><div>safe</div>"#
+        );
     }
 
     #[test]

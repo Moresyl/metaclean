@@ -60,6 +60,11 @@ All notable changes to MetaClean are documented here. The project follows
   front-matter field; indentation matching is now restricted to spaces and
   tabs on the field's own line.
 
+- HTML metadata cleanup now parses quote-aware start tags, so `>` inside an
+  attribute value, lookalike text in another attribute, and raw-text content in
+  `script`, `style`, `textarea` or `title` are preserved while targeted
+  metadata attributes are removed.
+
 - Recursive directory intake now applies the same Windows case, separator,
   device-prefix and UNC alias identity rules as direct IPC batches, preventing
   duplicate queue entries when overlapping paths are expanded; aliases are
