@@ -44,6 +44,8 @@ export default function App() {
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState<BatchProgress>();
   const operationRef = useRef(false);
+  const operationKindRef = useRef<"scan" | "clean" | undefined>(undefined);
+  const batchIdRef = useRef<string | undefined>(undefined);
   const [message, setMessage] = useState<string>();
   const [dragActive, setDragActive] = useState(false);
   const addEntries = useCallback((incoming: FileEntry[]) => setEntries((current) => mergeEntries(current, incoming)), []);
@@ -100,7 +102,9 @@ export default function App() {
       const unlistenMenu = await listen<Page>("menu:navigate", (event) => {
         if (["clean", "history", "privacy", "settings", "about"].includes(event.payload)) setPage(event.payload);
       });
-      const unlistenProgress = await listen<BatchProgress>("batch-progress", (event) => setProgress(event.payload));
+      const unlistenProgress = await listen<BatchProgress>("batch-progress", (event) => {
+        if (operationKindRef.current === event.payload.operation && batchIdRef.current === event.payload.batchId) setProgress(event.payload);
+      });
       if (!active) {
         unlistenMenu();
         unlistenProgress();
@@ -138,6 +142,8 @@ export default function App() {
     const paths = entries.flatMap((entry) => entry.path ? [entry.path] : []);
     if (paths.length !== entries.length) { setMessage(text("浏览器模式无法取得完整路径，请在桌面应用中选择文件。", "Browser mode cannot access full paths. Choose files in the desktop app.")); return; }
     operationRef.current = true;
+    operationKindRef.current = "scan";
+    batchIdRef.current = undefined;
     setBusy(true); setMessage(undefined); setEntries((current) => markEntryPaths(current, paths, "scanning"));
     try {
       const reports = await invoke<ScanReport[]>("scan_files", { paths });
@@ -150,7 +156,7 @@ export default function App() {
       const missing = paths.length - relevant.length;
       setMessage(text(`扫描完成：${count} 项痕迹等待确认。${missing > 0 ? ` ${missing} 个文件未返回结果，可重试扫描。` : ""}`, `Scan complete: ${count} trace(s) await confirmation.${missing > 0 ? ` ${missing} file(s) returned no result and can be retried.` : ""}`));
     } catch (error) { setEntries((current) => markEntryPaths(current, paths, "error")); setMessage(text(`扫描失败：${String(error)}`, `Scan failed: ${String(error)}`)); }
-    finally { operationRef.current = false; setBusy(false); }
+    finally { operationRef.current = false; operationKindRef.current = undefined; batchIdRef.current = undefined; setBusy(false); }
   }
 
   async function clean() {
@@ -158,9 +164,12 @@ export default function App() {
     const paths = cleanableEntries.flatMap((entry) => entry.path ? [entry.path] : []);
     if (!paths.length) return;
     operationRef.current = true;
+    operationKindRef.current = "clean";
+    const batchId = crypto.randomUUID();
+    batchIdRef.current = batchId;
     setBusy(true); setProgress(undefined); setMessage(undefined);
     try {
-      const results = await invoke<CleanResult[]>("clean_files", { request: { paths, mode, preserveTimestamps, preserveOrientation, preserveColorProfile, removeExtendedAttributes } });
+      const results = await invoke<CleanResult[]>("clean_files", { request: { paths, batchId, mode, preserveTimestamps, preserveOrientation, preserveColorProfile, removeExtendedAttributes } });
       const requested = new Set(paths);
       const relevant = [...new Map(results
         .filter((result) => requested.has(result.sourcePath))
@@ -176,7 +185,7 @@ export default function App() {
       setMessage(text(`${successes.length} 个文件清理完成${failures ? `，${failures} 个失败` : ""}${missing > 0 ? `，${missing} 个未返回结果、可重试` : ""}。${successes[0]?.outputPath ? ` 输出：${successes[0].outputPath}` : ""}`, `${successes.length} file(s) cleaned${failures ? `; ${failures} failed` : ""}${missing > 0 ? `; ${missing} returned no result and can be retried` : ""}.${successes[0]?.outputPath ? ` Output: ${successes[0].outputPath}` : ""}`));
       if (relevant.length) addHistory({ id: crypto.randomUUID(), createdAt: new Date().toISOString(), mode, results: relevant });
     } catch (error) { setMessage(text(`清理失败：${String(error)}`, `Cleanup failed: ${String(error)}`)); }
-    finally { operationRef.current = false; setBusy(false); setProgress(undefined); }
+    finally { operationRef.current = false; operationKindRef.current = undefined; batchIdRef.current = undefined; setBusy(false); setProgress(undefined); }
   }
 
   async function reveal(path: string) {

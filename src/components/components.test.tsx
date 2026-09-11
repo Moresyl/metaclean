@@ -73,7 +73,7 @@ describe("desktop components", () => {
   });
 
   it("shows bounded batch progress without exposing a file path", async () => {
-    wrap(<StatusBar busy fileCount={3} progress={{ operation: "clean", completed: 2, total: 3, failed: 1 }} />);
+    wrap(<StatusBar busy fileCount={3} progress={{ operation: "clean", batchId: "batch-1", completed: 2, total: 3, failed: 1 }} />);
     expect(screen.getByText("正在清理 2/3")).toBeInTheDocument();
     expect(screen.queryByText(/C:\\/)).not.toBeInTheDocument();
   });

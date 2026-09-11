@@ -102,6 +102,7 @@ struct UpdateDownloadProgress {
 #[serde(rename_all = "camelCase")]
 struct BatchProgress {
     operation: &'static str,
+    batch_id: String,
     completed: usize,
     total: usize,
     failed: usize,
@@ -133,6 +134,7 @@ async fn clean_files(
     validate_batch_size(request.paths.len())?;
     let paths = deduplicate_paths(request.paths);
     let total = paths.len();
+    let batch_id = request.batch_id;
     tauri::async_runtime::spawn_blocking(move || {
         let mut completed = 0;
         let mut failed = 0;
@@ -155,6 +157,7 @@ async fn clean_files(
                     "batch-progress",
                     BatchProgress {
                         operation: "clean",
+                        batch_id: batch_id.clone(),
                         completed,
                         total,
                         failed,

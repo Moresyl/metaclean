@@ -40,6 +40,8 @@ pub enum OutputMode {
 #[serde(rename_all = "camelCase")]
 pub struct CleanRequest {
     pub paths: Vec<String>,
+    #[serde(default)]
+    pub batch_id: String,
     pub mode: OutputMode,
     #[serde(default = "default_true")]
     pub preserve_timestamps: bool,

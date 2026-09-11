@@ -9,7 +9,9 @@ import type { ScanReport } from "./types";
 vi.mock("@tauri-apps/api/webview", () => ({ getCurrentWebview: () => ({ onDragDropEvent: () => Promise.resolve(() => undefined) }) }));
 const invokeMock = vi.hoisted(() => vi.fn());
 const revealMock = vi.hoisted(() => vi.fn());
+const listenMock = vi.hoisted(() => vi.fn());
 vi.mock("@tauri-apps/api/core", () => ({ invoke: invokeMock }));
+vi.mock("@tauri-apps/api/event", () => ({ listen: listenMock }));
 vi.mock("@tauri-apps/api/app", () => ({ getVersion: () => Promise.resolve("0.4.1") }));
 vi.mock("@tauri-apps/plugin-opener", () => ({ revealItemInDir: revealMock }));
 
@@ -21,6 +23,8 @@ describe("App", () => {
     localStorage.setItem("metaclean.locale", "zh");
     revealMock.mockReset();
     revealMock.mockResolvedValue(undefined);
+    listenMock.mockReset();
+    listenMock.mockResolvedValue(() => undefined);
     invokeMock.mockImplementation((command?: string) => command === "get_launch_paths" || command === undefined ? Promise.resolve([]) : command === "set_close_to_tray" ? Promise.resolve(undefined) : command === "get_about_info" ? Promise.resolve({ version: "0.7.0", platform: "windows", arch: "x86_64" }) : command === "expand_paths" ? Promise.resolve({ files: [], skippedCount: 0, issues: [], limitReached: false }) : Promise.reject(new Error(`unexpected ${command}`)));
   });
   it("starts with scanning disabled", () => {
@@ -155,6 +159,28 @@ describe("App", () => {
     await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("1 个未返回结果、可重试"));
     expect(screen.getByRole("button", { name: "确认并开始清理" })).toBeEnabled();
     expect(localStorage.getItem("metaclean.history")).toBeNull();
+  });
+
+  it("ignores late or stale batch progress events after cleanup finishes", async () => {
+    invokeMock.mockImplementation((command: string) => {
+      if (command === "get_launch_paths") return Promise.resolve(["C:\\work\\notes.txt"]);
+      if (command === "expand_paths") return Promise.resolve({ files: ["C:\\work\\notes.txt"], skippedCount: 0, issues: [], limitReached: false });
+      if (command === "scan_files") return Promise.resolve([{ path: "C:\\work\\notes.txt", name: "notes.txt", format: "Text", size: 4, supported: true, findings: [{ category: "unicode", label: "Invisible Unicode", count: 1, severity: "privacy" }] }]);
+      if (command === "clean_files") return Promise.resolve([{ sourcePath: "C:\\work\\notes.txt", outputPath: "C:\\work\\notes.cleaned.txt", sourceSize: 4, outputSize: 3, removed: [], success: true }]);
+      if (command === "set_close_to_tray") return Promise.resolve(undefined);
+      return Promise.reject(new Error(`unexpected ${command}`));
+    });
+    renderApp();
+    await screen.findByText("notes.txt");
+    fireEvent.click(screen.getByRole("button", { name: "扫描隐私痕迹" }));
+    await screen.findByText("发现 1 项痕迹");
+    fireEvent.click(screen.getByRole("button", { name: "确认并开始清理" }));
+    await screen.findByText(/1 个文件清理完成/);
+    const progressListener = listenMock.mock.calls.find(([name]) => name === "batch-progress")?.[1] as ((event: { payload: { operation: "clean"; batchId: string; completed: number; total: number; failed: number } }) => void) | undefined;
+    expect(progressListener).toBeDefined();
+    progressListener?.({ payload: { operation: "clean", batchId: "stale", completed: 99, total: 100, failed: 0 } });
+    expect(screen.queryByText("正在清理 99/100")).not.toBeInTheDocument();
+    expect(screen.getByText("就绪")).toBeInTheDocument();
   });
 
   it("does not let duplicate or foreign scan reports hide a missing path", async () => {
