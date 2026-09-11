@@ -64,6 +64,10 @@ All notable changes to MetaClean are documented here. The project follows
   before enforcing the 10,000-item batch limit, so repeated drag/drop or shell
   aliases do not consume the user-visible budget.
 
+- Local history loading now rejects oversized payloads and entries outside the
+  native result, path and label bounds before they reach the history page,
+  preventing malformed storage from causing an unbounded render or quota loop.
+
 - Markdown front matter now recognizes both YAML `---` and TOML `+++` fences,
   while only removing targeted author and generator fields inside the opening
   metadata block.

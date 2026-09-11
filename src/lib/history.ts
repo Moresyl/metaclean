@@ -3,9 +3,13 @@ import { readStorage, writeStorage } from "./storage";
 
 export const HISTORY_STORAGE_KEY = "metaclean.history";
 const MAX_HISTORY_ENTRIES = 100;
+const MAX_HISTORY_RESULTS_PER_ENTRY = 10_000;
+const MAX_HISTORY_STORAGE_CHARS = 2_000_000;
+const MAX_HISTORY_PATH_CHARS = 32_768;
+const MAX_HISTORY_LABEL_CHARS = 256;
 
-function isOptionalString(value: unknown): value is string | undefined {
-  return value === undefined || typeof value === "string";
+function isOptionalString(value: unknown, maxLength = MAX_HISTORY_PATH_CHARS): value is string | undefined {
+  return value === undefined || (typeof value === "string" && value.length <= maxLength);
 }
 
 function isOptionalSize(value: unknown): value is number | undefined {
@@ -16,7 +20,9 @@ function isFinding(value: unknown): value is Finding {
   if (!value || typeof value !== "object") return false;
   const finding = value as Partial<Finding>;
   return typeof finding.category === "string"
+    && finding.category.length <= MAX_HISTORY_LABEL_CHARS
     && typeof finding.label === "string"
+    && finding.label.length <= MAX_HISTORY_LABEL_CHARS
     && typeof finding.count === "number"
     && Number.isSafeInteger(finding.count)
     && finding.count >= 0
@@ -27,6 +33,7 @@ function isCleanResult(value: unknown): value is CleanResult {
   if (!value || typeof value !== "object") return false;
   const result = value as Partial<CleanResult>;
   return typeof result.sourcePath === "string"
+    && result.sourcePath.length <= MAX_HISTORY_PATH_CHARS
     && typeof result.success === "boolean"
     && isOptionalString(result.outputPath)
     && isOptionalString(result.backupPath)
@@ -40,10 +47,11 @@ function isCleanResult(value: unknown): value is CleanResult {
 function isHistoryEntry(value: unknown): value is HistoryEntry {
   if (!value || typeof value !== "object") return false;
   const entry = value as Partial<HistoryEntry>;
-  return typeof entry.id === "string" && entry.id.length > 0
-    && typeof entry.createdAt === "string" && Number.isFinite(Date.parse(entry.createdAt))
+  return typeof entry.id === "string" && entry.id.length > 0 && entry.id.length <= 128
+    && typeof entry.createdAt === "string" && entry.createdAt.length <= 64 && Number.isFinite(Date.parse(entry.createdAt))
     && (entry.mode === "copy" || entry.mode === "replace")
     && Array.isArray(entry.results)
+    && entry.results.length <= MAX_HISTORY_RESULTS_PER_ENTRY
     && entry.results.length > 0
     && entry.results.every(isCleanResult);
 }
@@ -55,6 +63,7 @@ export function limitHistory(entries: HistoryEntry[]): HistoryEntry[] {
 export function loadHistory(): HistoryEntry[] {
   const stored = readStorage(HISTORY_STORAGE_KEY);
   if (!stored) return [];
+  if (stored.length > MAX_HISTORY_STORAGE_CHARS) return [];
   try {
     const value: unknown = JSON.parse(stored);
     return Array.isArray(value) ? limitHistory(value.filter(isHistoryEntry)) : [];

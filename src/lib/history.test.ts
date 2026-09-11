@@ -36,6 +36,19 @@ describe("history persistence", () => {
     expect(loadHistory()).toEqual([]);
   });
 
+  it("rejects oversized local history before parsing or rendering it", () => {
+    localStorage.setItem(HISTORY_STORAGE_KEY, "{".repeat(2_000_001));
+    expect(loadHistory()).toEqual([]);
+  });
+
+  it("rejects a history entry beyond the native batch result limit", () => {
+    localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify([{
+      ...entry("too-many-results"),
+      results: Array.from({ length: 10_001 }, () => entry("one").results[0]),
+    }]));
+    expect(loadHistory()).toEqual([]);
+  });
+
   it("keeps the newest one hundred entries", () => {
     const entries = Array.from({ length: 105 }, (_, index) => entry(String(index)));
     expect(limitHistory(entries)).toHaveLength(100);
