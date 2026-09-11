@@ -16,6 +16,7 @@ import { commandKeyLabel } from "./lib/keys";
 import { pickPaths } from "./lib/pick";
 import { loadHistory, persistHistory } from "./lib/history";
 import { readStorage, writeStorage } from "./lib/storage";
+import { clearActiveBatch, readActiveBatch, updateActiveBatchProgress, writeActiveBatch } from "./lib/recovery";
 import type { BatchProgress, CleanMode, FileEntry, HistoryEntry, IntakeResult, Page } from "./types";
 import type { CleanResult, ScanReport } from "./types";
 import { useI18n } from "./lib/i18n";
@@ -49,6 +50,7 @@ export default function App() {
   const operationKindRef = useRef<"scan" | "clean" | undefined>(undefined);
   const batchIdRef = useRef<string | undefined>(undefined);
   const cancelRequestedRef = useRef(false);
+  const [recoveryNotice] = useState(() => readActiveBatch());
   const [message, setMessage] = useState<string>();
   const [dragActive, setDragActive] = useState(false);
   const addEntries = useCallback((incoming: FileEntry[]) => setEntries((current) => mergeEntries(current, incoming)), []);
@@ -76,6 +78,15 @@ export default function App() {
   const setCloseToTray = useCallback((next: boolean) => { setCloseToTrayState(next); writeStorage("metaclean.closeToTray", String(next)); }, []);
   const addHistory = useCallback((entry: HistoryEntry) => setHistory((current) => persistHistory([entry, ...current])), []);
   const clearHistory = useCallback(() => setHistory(persistHistory([])), []);
+
+  useEffect(() => {
+    if (!recoveryNotice) return;
+    setMessage(text(
+      `上次清理可能在 ${recoveryNotice.completed}/${recoveryNotice.total} 个文件后被中断；为安全起见不会自动恢复文件操作，请重新导入并扫描。`,
+      `The previous cleanup may have stopped after ${recoveryNotice.completed}/${recoveryNotice.total} file(s); file operations are not resumed automatically. Re-import and scan to continue safely.`,
+    ));
+    clearActiveBatch(recoveryNotice.batchId);
+  }, [recoveryNotice, text]);
 
   useEffect(() => {
     let dispose: (() => void) | undefined;
@@ -106,7 +117,10 @@ export default function App() {
         if (["clean", "history", "privacy", "settings", "about"].includes(event.payload)) setPage(event.payload);
       });
       const unlistenProgress = await listen<BatchProgress>("batch-progress", (event) => {
-        if (operationKindRef.current === event.payload.operation && batchIdRef.current === event.payload.batchId) setProgress(event.payload);
+        if (operationKindRef.current === event.payload.operation && batchIdRef.current === event.payload.batchId) {
+          setProgress(event.payload);
+          updateActiveBatchProgress(event.payload.batchId, event.payload.completed);
+        }
       });
       const unlistenClose = await listen<string>("close-blocked", (event) => setMessage(event.payload));
       if (!active) {
@@ -178,6 +192,7 @@ export default function App() {
     cancelRequestedRef.current = false;
     setCancelRequested(false);
     setBusy(true); setProgress(undefined); setMessage(undefined);
+    writeActiveBatch({ batchId, total: paths.length, completed: 0, mode, startedAt: new Date().toISOString() });
     try {
       const results = await invoke<CleanResult[]>("clean_files", { request: { paths, batchId, mode, preserveTimestamps, preserveOrientation, preserveColorProfile, removeExtendedAttributes } });
       const requested = new Set(paths);
@@ -197,7 +212,7 @@ export default function App() {
         : text(`${successes.length} 个文件清理完成${failures ? `，${failures} 个失败` : ""}${missing > 0 ? `，${missing} 个未返回结果、可重试` : ""}。${successes[0]?.outputPath ? ` 输出：${successes[0].outputPath}` : ""}`, `${successes.length} file(s) cleaned${failures ? `; ${failures} failed` : ""}${missing > 0 ? `; ${missing} returned no result and can be retried` : ""}.${successes[0]?.outputPath ? ` Output: ${successes[0].outputPath}` : ""}`));
       if (relevant.length) addHistory({ id: crypto.randomUUID(), createdAt: new Date().toISOString(), mode, results: relevant });
     } catch (error) { setMessage(text(`清理失败：${String(error)}`, `Cleanup failed: ${String(error)}`)); }
-    finally { operationRef.current = false; operationKindRef.current = undefined; batchIdRef.current = undefined; setActiveBatchId(undefined); setCancelRequested(false); cancelRequestedRef.current = false; setBusy(false); setProgress(undefined); }
+    finally { clearActiveBatch(batchId); operationRef.current = false; operationKindRef.current = undefined; batchIdRef.current = undefined; setActiveBatchId(undefined); setCancelRequested(false); cancelRequestedRef.current = false; setBusy(false); setProgress(undefined); }
   }
 
   function cancelClean() {

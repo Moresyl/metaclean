@@ -5,6 +5,7 @@ import { I18nProvider } from "./lib/i18n";
 import { UpdateProvider } from "./contexts/UpdateContext";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import type { ScanReport } from "./types";
+import { ACTIVE_BATCH_STORAGE_KEY } from "./lib/recovery";
 
 vi.mock("@tauri-apps/api/webview", () => ({ getCurrentWebview: () => ({ onDragDropEvent: () => Promise.resolve(() => undefined) }) }));
 const invokeMock = vi.hoisted(() => vi.fn());
@@ -206,10 +207,21 @@ describe("App", () => {
     await screen.findByText("发现 1 项痕迹");
     fireEvent.click(screen.getByRole("button", { name: "确认并开始清理" }));
     await waitFor(() => expect(invokeMock).toHaveBeenCalledWith("clean_files", expect.anything()));
+    const marker = JSON.parse(localStorage.getItem(ACTIVE_BATCH_STORAGE_KEY) ?? "null") as { batchId?: string; total?: number };
+    expect(marker).toMatchObject({ batchId: expect.any(String), total: 1 });
+    expect(localStorage.getItem(ACTIVE_BATCH_STORAGE_KEY)).not.toContain("C:\\\\");
     fireEvent.click(screen.getByRole("button", { name: "取消处理" }));
     await waitFor(() => expect(invokeMock).toHaveBeenCalledWith("cancel_clean_batch", { batchId: expect.any(String) }));
     finishClean?.([]);
     await screen.findByText(/已取消清理/);
+    expect(localStorage.getItem(ACTIVE_BATCH_STORAGE_KEY)).toBeNull();
+  });
+
+  it("warns once when the previous cleanup may have been interrupted", async () => {
+    localStorage.setItem(ACTIVE_BATCH_STORAGE_KEY, JSON.stringify({ batchId: "old-batch", total: 4, completed: 2, mode: "copy", startedAt: "2026-09-12T10:00:00.000Z" }));
+    renderApp();
+    expect(await screen.findByRole("status")).toHaveTextContent("上次清理可能在 2/4 个文件后被中断");
+    await waitFor(() => expect(localStorage.getItem(ACTIVE_BATCH_STORAGE_KEY)).toBeNull());
   });
 
   it("does not let duplicate or foreign scan reports hide a missing path", async () => {

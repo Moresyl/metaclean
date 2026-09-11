@@ -744,7 +744,7 @@ pub fn scan_paths(paths: &[String]) -> Vec<ScanReport> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::io::Write;
+    use std::{io::Write, time::Instant};
     use zip::{write::SimpleFileOptions, ZipWriter};
 
     #[test]
@@ -1229,6 +1229,71 @@ mod tests {
             "ab"
         );
         assert_eq!(fs::read_to_string(source).unwrap(), "a\u{200b}b");
+    }
+
+    #[test]
+    #[ignore = "explicit local performance benchmark"]
+    fn benchmark_real_batch_engine_paths() {
+        const FILES: usize = 128;
+        let directory = tempfile::tempdir().expect("create benchmark directory");
+        let mut paths = Vec::with_capacity(FILES);
+        let mut payload_bytes = 0usize;
+        for index in 0..FILES {
+            let nested = directory
+                .path()
+                .join(format!("level-{}", index % 4))
+                .join(format!("bucket-{}", index % 8));
+            fs::create_dir_all(&nested).expect("create benchmark nesting");
+            let size = match index % 3 {
+                0 => 4 * 1024,
+                1 => 64 * 1024,
+                _ => 512 * 1024,
+            };
+            let mut content = vec![b'a'; size];
+            content[size / 2..size / 2 + "\u{200b}".len()].copy_from_slice("\u{200b}".as_bytes());
+            let path = nested.join(format!("fixture-{index}.txt"));
+            fs::write(&path, &content).expect("write benchmark fixture");
+            payload_bytes += size;
+            paths.push(path.to_string_lossy().into_owned());
+        }
+
+        let scan_started = Instant::now();
+        let reports = scan_paths(&paths);
+        let scan_elapsed = scan_started.elapsed();
+        assert_eq!(reports.len(), FILES);
+        assert!(reports.iter().all(|report| report.supported));
+
+        let mut clean_latencies = Vec::with_capacity(FILES);
+        let clean_started = Instant::now();
+        for path in &paths {
+            let started = Instant::now();
+            let result = clean_file_with_options(
+                Path::new(path),
+                &OutputMode::Copy,
+                true,
+                true,
+                true,
+                false,
+            );
+            assert!(
+                result.success,
+                "benchmark cleanup failed: {:?}",
+                result.error
+            );
+            clean_latencies.push(started.elapsed());
+        }
+        let clean_elapsed = clean_started.elapsed();
+        clean_latencies.sort_unstable();
+        let p95_index = (FILES * 95).div_ceil(100).saturating_sub(1);
+        let first_ms = clean_latencies[0].as_secs_f64() * 1000.0;
+        let p95_ms = clean_latencies[p95_index].as_secs_f64() * 1000.0;
+        eprintln!(
+            "METACLEAN_BENCH {{\"files\":{FILES},\"payload_bytes\":{payload_bytes},\"scan_ms\":{:.2},\"scan_files_per_sec\":{:.2},\"clean_ms\":{:.2},\"clean_files_per_sec\":{:.2},\"clean_first_file_ms\":{first_ms:.2},\"clean_p95_file_ms\":{p95_ms:.2}}}",
+            scan_elapsed.as_secs_f64() * 1000.0,
+            FILES as f64 / scan_elapsed.as_secs_f64(),
+            clean_elapsed.as_secs_f64() * 1000.0,
+            FILES as f64 / clean_elapsed.as_secs_f64(),
+        );
     }
 
     #[test]
