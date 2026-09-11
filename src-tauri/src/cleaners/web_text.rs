@@ -50,17 +50,45 @@ fn raw_text_content_ranges(value: &str) -> Vec<Range<usize>> {
 
 fn html_comment_ranges(value: &str) -> Vec<Range<usize>> {
     let mut ranges = Vec::new();
-    let mut cursor = 0;
-    while let Some(relative_start) = value[cursor..].find("<!--") {
-        let start = cursor + relative_start;
-        let content_start = start + 4;
-        let Some(relative_end) = value[content_start..].find("-->") else {
-            ranges.push(start..value.len());
-            break;
-        };
-        let end = content_start + relative_end + 3;
-        ranges.push(start..end);
-        cursor = end;
+    let bytes = value.as_bytes();
+    let mut index = 0;
+    let mut in_tag = false;
+    let mut quote = None;
+    while index < bytes.len() {
+        if in_tag {
+            if let Some(delimiter) = quote {
+                if bytes[index] == delimiter {
+                    quote = None;
+                }
+            } else if matches!(bytes[index], b'\'' | b'"') {
+                quote = Some(bytes[index]);
+            } else if bytes[index] == b'>' {
+                in_tag = false;
+            }
+            index += 1;
+            continue;
+        }
+
+        if bytes[index] == b'<' && bytes.get(index + 1..index + 4) == Some(b"!--") {
+            let content_start = index + 4;
+            let Some(relative_end) = value[content_start..].find("-->") else {
+                ranges.push(index..value.len());
+                break;
+            };
+            let end = content_start + relative_end + 3;
+            ranges.push(index..end);
+            index = end;
+            continue;
+        }
+
+        if bytes[index] == b'<'
+            && bytes.get(index + 1).is_some_and(|byte| {
+                byte.is_ascii_alphabetic() || matches!(byte, b'/' | b'!' | b'?')
+            })
+        {
+            in_tag = true;
+        }
+        index += 1;
     }
     ranges
 }
@@ -725,6 +753,26 @@ mod tests {
         let unclosed = r#"<body><!-- <meta name="generator" content="demo"><meta name="author" content="also-demo">"#;
         assert_eq!(html_metadata_count(unclosed), 0);
         assert_eq!(clean_html_metadata(unclosed), unclosed);
+    }
+
+    #[test]
+    fn does_not_treat_comment_markers_inside_attributes_as_comments() {
+        let source = r#"<div title="<!-- not a comment --><meta name='author'>"><meta name="author" content="real">"#;
+        assert_eq!(html_metadata_count(source), 1);
+        assert_eq!(
+            clean_html_metadata(source),
+            r#"<div title="<!-- not a comment --><meta name='author'>">"#
+        );
+    }
+
+    #[test]
+    fn ignores_less_than_text_before_real_comments_and_tags() {
+        let source = r#"<p>2 < 3 <!-- <meta name="generator"> --></p><meta name="author">"#;
+        assert_eq!(html_metadata_count(source), 1);
+        assert_eq!(
+            clean_html_metadata(source),
+            r#"<p>2 < 3 <!-- <meta name="generator"> --></p>"#
+        );
     }
 
     #[test]

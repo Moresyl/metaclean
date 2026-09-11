@@ -64,8 +64,9 @@ All notable changes to MetaClean are documented here. The project follows
   attribute value, lookalike text in another attribute, and raw-text content in
   `script`, `style`, `textarea` or `title` are preserved while targeted
   metadata attributes are removed. HTML comments, including an unterminated
-  comment at end of file, are also preserved. Similar-but-unrelated names such
-  as `data-airport` are preserved.
+  comment at end of file, are also preserved; comment-like text inside
+  attributes and ordinary less-than text is not treated as a comment.
+  Similar-but-unrelated names such as `data-airport` are preserved.
 
 - All localized supported-scope descriptions now state the current 113
   extensions and 24 text formats directly; the runtime no longer performs a
