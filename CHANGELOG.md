@@ -24,6 +24,9 @@ All notable changes to MetaClean are documented here. The project follows
 
 ### Fixed
 
+- Upgraded Vitest to 4.1.11 and pinned the WebdriverIO/Mocha `js-yaml` chain
+  to 4.3.2, closing the current official npm audit findings without changing
+  the production runtime dependency surface.
 - Update prompts now trap keyboard focus, expose their release notes to assistive
   technology and restore focus to the invoking control when dismissed. Repeated
   paths received through native IPC are de-duplicated before scan, expansion or
