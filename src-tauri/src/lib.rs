@@ -11,6 +11,7 @@ use models::{CleanRequest, CleanResult, ScanReport};
 use std::collections::{HashMap, HashSet};
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex, OnceLock};
+use std::time::Duration;
 #[cfg(target_os = "macos")]
 use tauri::menu::{MenuBuilder, MenuItemBuilder, SubmenuBuilder};
 use tauri::{menu::MenuItem, tray::TrayIconBuilder, Emitter, Manager};
@@ -27,6 +28,7 @@ const PORTABLE_MARKER: &str = "metaclean-portable.marker";
 const MAX_BATCH_FILES: usize = 10_000;
 const UPDATE_NETWORK_HELP: &str = "无法连接已签名更新源。请检查 GitHub 网络或 HTTPS_PROXY 后重试，也可从正式发布页手动下载安装包。 / Could not reach the signed update feed. Check GitHub access or HTTPS_PROXY, then retry, or download the installer from the Releases page.";
 const UPDATE_CHANGED: &str = "可用版本在确认后发生了变化，请先重新检查并查看新版本说明。 / The available release changed after confirmation. Check again and review the new release before installing.";
+const UPDATE_REQUEST_TIMEOUT: Duration = Duration::from_secs(300);
 const CLEANUP_CLOSE_BLOCKED: &str = "任务正在进行，请等待完成；清理任务可以先取消。 / Work is still in progress; wait for it to finish, or cancel the cleanup first.";
 
 #[derive(Debug, PartialEq, Eq)]
@@ -535,6 +537,7 @@ async fn install_update_and_restart(
 
     let updater = app
         .updater_builder()
+        .timeout(UPDATE_REQUEST_TIMEOUT)
         .build()
         .map_err(|error| format!("初始化更新器失败：{error}"))?;
     let Some(update) = updater
@@ -750,11 +753,12 @@ mod update_tests {
         export_audit_report_to, portable_marker_exists, prepare_batch_paths, read_task_active,
         reviewed_update_matches, self_update_supported_for, updater_network_error,
         validate_batch_size, ActiveCleanBatchGuard, ActiveReadGuard, ActiveScanBatchGuard,
-        CloseAction, MAX_BATCH_FILES, PORTABLE_MARKER,
+        CloseAction, MAX_BATCH_FILES, PORTABLE_MARKER, UPDATE_REQUEST_TIMEOUT,
     };
     use crate::models::CleanRequest;
     use std::sync::atomic::AtomicBool;
     use std::sync::Arc;
+    use std::time::Duration;
 
     static CLEAN_BATCH_TEST_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
 
@@ -770,6 +774,11 @@ mod update_tests {
         let error = validate_batch_size(MAX_BATCH_FILES + 1).unwrap_err();
         assert!(error.contains("10000"));
         assert!(error.contains("10001"));
+    }
+
+    #[test]
+    fn updater_network_operations_have_a_bounded_deadline() {
+        assert_eq!(UPDATE_REQUEST_TIMEOUT, Duration::from_secs(300));
     }
 
     #[test]

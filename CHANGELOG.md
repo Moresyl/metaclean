@@ -74,6 +74,10 @@ All notable changes to MetaClean are documented here. The project follows
   clean/scan throughput and tail-latency evidence after the write and intake
   consistency fixes.
 
+- Native update checks and package downloads now have a five-minute request
+  deadline, so a stalled network cannot leave one-click update busy forever
+  while still allowing normal installer-sized downloads to complete.
+
 - Markdown front matter now recognizes both YAML `---` and TOML `+++` fences,
   while only removing targeted author and generator fields inside the opening
   metadata block.
