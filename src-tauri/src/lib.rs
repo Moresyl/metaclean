@@ -76,28 +76,8 @@ fn deduplicate_paths(paths: Vec<String>) -> Vec<String> {
     let mut seen = HashSet::with_capacity(paths.len());
     paths
         .into_iter()
-        .filter(|path| seen.insert(path_key(path)))
+        .filter(|path| seen.insert(intake::path_identity(path)))
         .collect()
-}
-
-#[cfg(windows)]
-fn path_key(path: &str) -> String {
-    let normalized = path.replace('/', "\\").to_lowercase();
-    let without_device_prefix = normalized.strip_prefix("\\\\?\\").unwrap_or(&normalized);
-    let canonical = without_device_prefix.strip_prefix("unc\\").map_or_else(
-        || without_device_prefix.to_owned(),
-        |unc| format!("\\\\{unc}"),
-    );
-    if canonical.len() > 3 {
-        canonical.trim_end_matches('\\').to_owned()
-    } else {
-        canonical
-    }
-}
-
-#[cfg(not(windows))]
-fn path_key(path: &str) -> String {
-    path.to_owned()
 }
 
 #[derive(Clone, serde::Serialize)]

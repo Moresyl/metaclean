@@ -98,21 +98,22 @@ pub fn expand_paths(paths: &[String]) -> IntakeResult {
 }
 
 #[cfg(windows)]
-fn file_identity(path: &str) -> String {
+pub(crate) fn path_identity(path: &str) -> String {
     let normalized = path.replace('/', "\\").to_lowercase();
     let without_device_prefix = normalized.strip_prefix("\\\\?\\").unwrap_or(&normalized);
-    without_device_prefix
-        .strip_prefix("unc\\")
-        .map_or_else(
-            || without_device_prefix.to_owned(),
-            |unc| format!("\\\\{unc}"),
-        )
-        .trim_end_matches('\\')
-        .to_owned()
+    let canonical = without_device_prefix.strip_prefix("unc\\").map_or_else(
+        || without_device_prefix.to_owned(),
+        |unc| format!("\\\\{unc}"),
+    );
+    if canonical.len() > 3 {
+        canonical.trim_end_matches('\\').to_owned()
+    } else {
+        canonical
+    }
 }
 
 #[cfg(not(windows))]
-fn file_identity(path: &str) -> String {
+pub(crate) fn path_identity(path: &str) -> String {
     path.to_owned()
 }
 
@@ -142,7 +143,7 @@ fn visit(
     if metadata.is_file() {
         if !from_directory || engine::has_supported_extension(path) {
             let value = path.to_string_lossy().into_owned();
-            if !seen_files.insert(file_identity(&value)) {
+            if !seen_files.insert(path_identity(&value)) {
                 return;
             }
             if result.files.len() >= MAX_DISCOVERED_FILES {
