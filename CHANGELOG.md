@@ -21,6 +21,9 @@ All notable changes to MetaClean are documented here. The project follows
 - Text intake now covers CSS, SCSS, Less and common INI/CONF/CFG/TOML/Properties
   configuration files, with frontend classification and Windows uninstall
   manifests kept in lockstep with the native Rust allowlist.
+- Replaced the stale “未开工” project plan with a current-state roadmap and
+  added a document index; repository descriptions now distinguish verified
+  capability, external validation limits and the next evidence gates.
 
 ### Fixed
 

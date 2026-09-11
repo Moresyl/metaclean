@@ -22,7 +22,7 @@ pnpm test:coverage    # frontend tests, 80% floor across all dimensions
 pnpm build            # typecheck + production bundle
 cargo fmt --check
 cargo test --manifest-path src-tauri/Cargo.toml
-cargo audit
+cargo audit -f src-tauri/Cargo.lock --no-fetch
 ```
 
 CI runs the same checks and enforces the coverage floor, so a green local run should mean a green pull request.

@@ -154,6 +154,7 @@ Release changes are recorded in [CHANGELOG.md](CHANGELOG.md).
 The deliberate no-value metadata policy, the per-format cleaning strategies and
 what stays out of scope are documented in [SUPPORT_POLICY.md](SUPPORT_POLICY.md).
 The implementation-facing visual and interaction rules are recorded in [DESIGN.md](DESIGN.md).
+The current engineering status, roadmap and evidence boundaries are recorded in [docs/PLAN.md](docs/PLAN.md), with a concise document index in [docs/README.md](docs/README.md).
 
 ## Contributing
 

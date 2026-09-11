@@ -4,7 +4,9 @@
 /coverage
 /src-tauri/target
 .firecrawl/
-/docs/
+/docs/*
+!/docs/PLAN.md
+!/docs/README.md
 *.log
 *.msi
 .tmp-*
