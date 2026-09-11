@@ -1,4 +1,5 @@
 :root {
+  color-scheme: light;
   --vp-c-brand-1: #31c995;
   --vp-c-brand-2: #259d75;
   --vp-c-brand-3: #1e8161;
@@ -11,6 +12,7 @@
 }
 
 .dark {
+  color-scheme: dark;
   --vp-c-bg: #0b1115;
   --vp-c-bg-alt: #10191f;
   --vp-c-bg-soft: #131f25;

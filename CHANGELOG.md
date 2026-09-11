@@ -40,6 +40,9 @@ All notable changes to MetaClean are documented here. The project follows
   `VALIDATION.md`.
 - README, README.zh-CN and VALIDATION now describe the five-page application,
   About support surface, 113-extension boundary and current automated evidence.
+- The VitePress documentation chrome now uses Chinese labels for search, outline,
+  edit, update and theme controls, and its homepage coverage metric is checked
+  against the current validation ledger so visible facts cannot drift silently.
 - Text intake now covers CSS, SCSS, Less and common INI/CONF/CFG/TOML/Properties
   configuration files, with frontend classification and Windows uninstall
   manifests kept in lockstep with the native Rust allowlist.

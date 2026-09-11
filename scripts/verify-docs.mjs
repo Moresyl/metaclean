@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 
 const root = fileURLToPath(new URL("..", import.meta.url));
 const read = (file) => readFile(path.join(root, file), "utf8");
-const [packageJson, tauriJson, readme, readmeZh, docsIndex, architecture, design, plan, docsConfig, docsHome] = await Promise.all([
+const [packageJson, tauriJson, readme, readmeZh, docsIndex, architecture, design, plan, validation, docsConfig, docsHome] = await Promise.all([
   read("package.json").then(JSON.parse),
   read("src-tauri/tauri.conf.json").then(JSON.parse),
   read("README.md"),
@@ -14,6 +14,7 @@ const [packageJson, tauriJson, readme, readmeZh, docsIndex, architecture, design
   read("docs/ARCHITECTURE.md"),
   read("DESIGN.md"),
   read("docs/PLAN.md"),
+  read("VALIDATION.md"),
   read("docs/.vitepress/config.mts"),
   read("docs/index.md"),
 ]);
@@ -31,12 +32,17 @@ assert.match(architecture, /pathIdentity/u);
 assert.match(design, /wcb\.txt/u);
 assert.match(plan, /Word 与 WPS/u);
 assert.match(docsConfig, /defineConfig/u);
-assert.match(docsConfig, /search: \{ provider: "local" \}/u);
+assert.match(docsConfig, /search:\s*\{[\s\S]*provider: "local"[\s\S]*translations:/u);
+assert.match(docsConfig, /outline: \{ level: \[2, 3\], label: "本页导航" \}/u);
+assert.match(docsConfig, /lastUpdated: \{ text: "最后更新" \}/u);
+assert.match(docsConfig, /editLink: \{[\s\S]*text: "编辑此页" \}/u);
 assert.match(docsConfig, /srcExclude/u);
 assert.doesNotMatch(docsConfig, /ignoreDeadLinks/u, "site links must be checked by VitePress");
 assert.match(docsHome, /按任务进入/u);
 assert.match(docsHome, /site-footer/u, "documentation home must expose a factual footer navigation");
 assert.match(docsHome, /proof-metrics/u, "documentation home must expose current capability evidence");
+assert.match(docsHome, /<b>84\.01%<\/b>/u, "documentation home coverage must match the current validation evidence");
+assert.match(validation, /84\.01% Rust line coverage/u, "documentation validation must expose the current coverage evidence");
 assert.equal(packageJson.scripts["docs:dev"], "vitepress dev docs");
 assert.equal(packageJson.scripts["docs:build"], "vitepress build docs");
 assert.equal(packageJson.scripts["docs:preview"], "vitepress preview docs");
