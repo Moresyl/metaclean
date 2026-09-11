@@ -59,7 +59,7 @@ fn toml_frontmatter_end_pattern() -> &'static Regex {
 fn markdown_pattern() -> &'static Regex {
     static PATTERN: OnceLock<Regex> = OnceLock::new();
     PATTERN.get_or_init(|| {
-        Regex::new(r"(?im)^\s*(?:generator|author|creator|last_modified_by|ai[_-]?(?:generated|model)|model|c2pa)\s*(?::|=).*(?:\r?\n|$)").unwrap()
+        Regex::new(r"(?im)^[\t ]*(?:generator|author|creator|last_modified_by|ai[_-]?(?:generated|model)|model|c2pa)[\t ]*(?::|=).*(?:\r?\n|$)").unwrap()
     })
 }
 
@@ -512,6 +512,13 @@ mod tests {
         assert!(cleaned.contains("title = \"Hello\""));
         assert!(!cleaned.contains("author = \"Alice\""));
         assert!(cleaned.ends_with("Body +++ stays"));
+    }
+
+    #[test]
+    fn keeps_frontmatter_blank_lines_when_removing_metadata() {
+        let source = "---\ntitle: Hello\n\n author: Alice\nsummary: Keep\n---\nBody";
+        let cleaned = clean(source, "md").0;
+        assert_eq!(cleaned, "---\ntitle: Hello\n\nsummary: Keep\n---\nBody");
     }
 
     #[test]

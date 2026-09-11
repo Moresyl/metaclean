@@ -56,6 +56,10 @@ All notable changes to MetaClean are documented here. The project follows
   while only removing targeted author and generator fields inside the opening
   metadata block.
 
+- Markdown cleanup no longer consumes unrelated blank lines before a targeted
+  front-matter field; indentation matching is now restricted to spaces and
+  tabs on the field's own line.
+
 - Recursive directory intake now applies the same Windows case, separator,
   device-prefix and UNC alias identity rules as direct IPC batches, preventing
   duplicate queue entries when overlapping paths are expanded; aliases are
