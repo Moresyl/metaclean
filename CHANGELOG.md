@@ -24,6 +24,9 @@ All notable changes to MetaClean are documented here. The project follows
 - About-page project actions use link semantics, the app icon has explicit
   dimensions, status/error announcements are live regions, and long file
   queues skip painting rows outside the scrollport.
+- Desktop E2E navigation now waits for lazy-loaded Settings sections and uses
+  link selectors for the About support surface, keeping the real-app gate
+  aligned with the production DOM.
 
 ## [0.7.1] - 2026-08-27
 
