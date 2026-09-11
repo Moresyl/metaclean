@@ -554,14 +554,9 @@ mod tests {
         let metadata = fs::metadata(&source).unwrap();
         let snapshot = FileMetadataSnapshot::capture(&source, &metadata).unwrap();
 
-        let output = atomic_create_unique_with_metadata(
-            &preferred,
-            b"clean",
-            Some(&snapshot),
-            true,
-            false,
-        )
-        .unwrap();
+        let output =
+            atomic_create_unique_with_metadata(&preferred, b"clean", Some(&snapshot), true, false)
+                .unwrap();
 
         assert_eq!(fs::read(&output).unwrap(), b"clean");
         assert_eq!(
