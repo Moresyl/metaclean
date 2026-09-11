@@ -1,4 +1,4 @@
-use std::{fs, path::Path};
+use std::{collections::HashSet, fs, path::Path};
 
 use serde::Serialize;
 
@@ -86,8 +86,32 @@ pub fn expand_paths(paths: &[String]) -> IntakeResult {
         visit(Path::new(path), false, 0, &mut budget, &mut result);
     }
     result.files.sort();
-    result.files.dedup();
+    deduplicate_files(&mut result.files);
     result
+}
+
+fn deduplicate_files(files: &mut Vec<String>) {
+    let mut seen = HashSet::with_capacity(files.len());
+    files.retain(|path| seen.insert(file_identity(path)));
+}
+
+#[cfg(windows)]
+fn file_identity(path: &str) -> String {
+    let normalized = path.replace('/', "\\").to_lowercase();
+    let without_device_prefix = normalized.strip_prefix("\\\\?\\").unwrap_or(&normalized);
+    without_device_prefix
+        .strip_prefix("unc\\")
+        .map_or_else(
+            || without_device_prefix.to_owned(),
+            |unc| format!("\\\\{unc}"),
+        )
+        .trim_end_matches('\\')
+        .to_owned()
+}
+
+#[cfg(not(windows))]
+fn file_identity(path: &str) -> String {
+    path.to_owned()
 }
 
 fn visit(
@@ -189,6 +213,18 @@ mod tests {
         let result = expand_paths(&[unknown.to_string_lossy().into_owned()]);
         assert_eq!(result.files, vec![unknown.to_string_lossy().into_owned()]);
         assert_eq!(result.skipped_count, 0);
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn deduplicates_windows_file_aliases_after_directory_expansion() {
+        let root = tempfile::tempdir().unwrap();
+        let file = root.path().join("Notes.txt");
+        fs::write(&file, b"text").unwrap();
+        let canonical = file.to_string_lossy().into_owned();
+        let alias = canonical.replace('\\', "/").to_lowercase();
+        let result = expand_paths(&[canonical, alias]);
+        assert_eq!(result.files.len(), 1);
     }
 
     #[test]

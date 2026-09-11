@@ -56,6 +56,10 @@ All notable changes to MetaClean are documented here. The project follows
   while only removing targeted author and generator fields inside the opening
   metadata block.
 
+- Recursive directory intake now applies the same Windows case, separator,
+  device-prefix and UNC alias identity rules as direct IPC batches, preventing
+  duplicate queue entries when overlapping paths are expanded.
+
 - HTML metadata cleaning now handles the legal unquoted form of generator,
   author, AI and C2PA attributes used by compact templates, with a regression
   proving only the targeted metadata nodes are removed.
