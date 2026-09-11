@@ -17,6 +17,7 @@ describe("App", () => {
   const renderApp = () => render(<ThemeProvider initialMode="light"><I18nProvider><UpdateProvider><App /></UpdateProvider></I18nProvider></ThemeProvider>);
   beforeEach(() => {
     localStorage.clear();
+    invokeMock.mockClear();
     localStorage.setItem("metaclean.locale", "zh");
     revealMock.mockReset();
     revealMock.mockResolvedValue(undefined);
@@ -31,7 +32,7 @@ describe("App", () => {
     renderApp();
     await waitFor(() => expect(invokeMock).toHaveBeenCalledWith("set_close_to_tray", { enabled: false }));
     fireEvent.click(screen.getByRole("button", { name: "设置" }));
-    fireEvent.click(screen.getByRole("button", { name: "系统与更新" }));
+    fireEvent.click(await screen.findByRole("button", { name: "系统与更新" }));
     fireEvent.click(screen.getByRole("checkbox", { name: "关闭按钮退出应用" }));
     expect(localStorage.getItem("metaclean.closeToTray")).toBe("true");
     await waitFor(() => expect(invokeMock).toHaveBeenCalledWith("set_close_to_tray", { enabled: true }));
@@ -60,18 +61,18 @@ describe("App", () => {
     expect(localStorage.getItem("metaclean.locale")).toBe("en");
   });
 
-  it("navigates every primary page with desktop accelerators", () => {
+  it("navigates every primary page with desktop accelerators", async () => {
     renderApp();
     fireEvent.keyDown(window, { key: "4", ctrlKey: true });
-    expect(screen.getByRole("button", { name: "外观与语言" })).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "外观与语言" })).toBeInTheDocument();
     fireEvent.keyDown(window, { key: "2", metaKey: true });
-    expect(screen.getByText("还没有处理记录")).toBeInTheDocument();
+    expect(await screen.findByText("还没有处理记录")).toBeInTheDocument();
     fireEvent.keyDown(window, { key: "3", ctrlKey: true });
-    expect(screen.getByText("文件纯本地处理")).toBeInTheDocument();
+    expect(await screen.findByText("文件纯本地处理")).toBeInTheDocument();
     fireEvent.keyDown(window, { key: "1", ctrlKey: true });
     expect(screen.getByRole("button", { name: "扫描隐私痕迹" })).toBeInTheDocument();
     fireEvent.keyDown(window, { key: "5", ctrlKey: true });
-    expect(screen.getByText("诊断与支持")).toBeInTheDocument();
+    expect(await screen.findByText("诊断与支持")).toBeInTheDocument();
   });
 
   it("switches all primary navigation labels to Japanese", () => {

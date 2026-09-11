@@ -253,7 +253,7 @@ describe("desktop components", () => {
     await waitFor(() => expect(invokeMock).toHaveBeenCalledWith("export_audit_report", expect.objectContaining({ path: "C:\\reports\\MetaClean-diagnostics.json" })));
     expect(revealItemMock).toHaveBeenCalledWith("C:\\reports\\MetaClean-diagnostics.json");
 
-    fireEvent.click(screen.getByRole("button", { name: "报告问题" }));
+    fireEvent.click(screen.getByRole("link", { name: "报告问题" }));
     await waitFor(() => expect(openUrlMock).toHaveBeenCalledWith("https://github.com/Moresyl/metaclean/issues/new?labels=bug"));
   });
 

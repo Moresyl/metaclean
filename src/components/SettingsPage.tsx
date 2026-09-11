@@ -13,6 +13,7 @@ import {
   Sun,
   Wrench,
 } from "lucide-react";
+import { invoke } from "@tauri-apps/api/core";
 import { useEffect, useState, type ReactNode } from "react";
 import Button from "./Button";
 import Select from "./Select";
@@ -70,8 +71,7 @@ export default function SettingsPage({
   const theme = useTheme();
 
   useEffect(() => {
-    void import("@tauri-apps/api/core")
-      .then(({ invoke }) => invoke<ContextMenuStatus>("get_context_menu_status"))
+    void invoke<ContextMenuStatus>("get_context_menu_status")
       .then(setContextMenu)
       .catch((error) => setContextMenuError(text(
         `无法读取右键菜单状态：${String(error)}`,
@@ -84,7 +84,6 @@ export default function SettingsPage({
     setBusy(true);
     setContextMenuError(undefined);
     try {
-      const { invoke } = await import("@tauri-apps/api/core");
       setContextMenu(await invoke<ContextMenuStatus>("set_context_menu_enabled", { enabled: !contextMenu.enabled }));
     } catch (error) {
       setContextMenuError(text(

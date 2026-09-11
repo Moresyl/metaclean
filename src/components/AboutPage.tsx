@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { invoke } from "@tauri-apps/api/core";
 import {
   Bug,
   Check,
@@ -51,8 +52,7 @@ export default function AboutPage() {
 
   useEffect(() => {
     let active = true;
-    void import("@tauri-apps/api/core")
-      .then(({ invoke }) => invoke<AboutInfo>("get_about_info"))
+    void invoke<AboutInfo>("get_about_info")
       .then((value) => { if (active) setAbout(value); })
       .catch((reason) => {
         if (!active) return;
@@ -95,9 +95,8 @@ export default function AboutPage() {
     setSaving(true);
     setError(undefined);
     try {
-      const [{ save }, { invoke }] = await Promise.all([
+      const [{ save }] = await Promise.all([
         import("@tauri-apps/plugin-dialog"),
-        import("@tauri-apps/api/core"),
       ]);
       const path = await save({
         title: text("保存 MetaClean 诊断信息", "Save MetaClean diagnostics"),
@@ -143,10 +142,10 @@ export default function AboutPage() {
     <section className="h-full overflow-y-auto pr-1">
       <div className="mx-auto grid max-w-[720px] gap-3.5 pb-1">
         <div className="flex items-center gap-4 rounded-panel border border-line bg-surface px-4 py-3.5 shadow-panel">
-          <img className="size-14 shrink-0 rounded-[12px] shadow-lift" src={appIcon} alt="" />
+          <img className="size-14 shrink-0 rounded-[12px] shadow-lift" src={appIcon} alt="MetaClean" width={56} height={56} />
           <div className="min-w-0 flex-1 grid gap-1">
-            <h2 className="font-display text-lg font-semibold">MetaClean</h2>
-            <p className="font-mono text-sm text-muted tabular-nums">
+            <h2 className="font-display text-lg font-semibold" translate="no">MetaClean</h2>
+            <p className="font-mono text-sm text-muted tabular-nums" translate="no">
               {about ? `v${about.version} · ${about.platform}-${about.arch}` : text("正在读取运行信息…", "Reading runtime information…")}
             </p>
             <p className="text-sm text-muted">{text("纯本地、开源的文件隐私净化工具", "Local, open-source file privacy cleaner")}</p>
@@ -204,23 +203,23 @@ export default function AboutPage() {
         <section className="grid gap-2">
           <h2 className="caption">{text("社区与项目", "Community and project")}</h2>
           <div className="grid grid-cols-3 gap-2">
-            <CommunityLink icon={Bug} label={text("报告问题", "Report a bug")} onClick={() => void openLink(BUG_REPORT_URL)} />
-            <CommunityLink icon={Lightbulb} label={text("功能建议", "Request a feature")} onClick={() => void openLink(FEATURE_REQUEST_URL)} />
-            <CommunityLink icon={Rocket} label={text("正式版本", "Releases")} onClick={() => void openLink(RELEASES_URL)} />
+            <CommunityLink href={BUG_REPORT_URL} icon={Bug} label={text("报告问题", "Report a bug")} onClick={() => void openLink(BUG_REPORT_URL)} />
+            <CommunityLink href={FEATURE_REQUEST_URL} icon={Lightbulb} label={text("功能建议", "Request a feature")} onClick={() => void openLink(FEATURE_REQUEST_URL)} />
+            <CommunityLink href={RELEASES_URL} icon={Rocket} label={text("正式版本", "Releases")} onClick={() => void openLink(RELEASES_URL)} />
           </div>
         </section>
 
         <footer className="flex items-center gap-4 px-1 text-sm text-faint">
-          <button className="inline-flex items-center gap-1.5 hover:text-brand" type="button" onClick={() => void openLink(REPOSITORY_URL)}>
-            <Github size={13} />{text("源代码", "Source code")}<ExternalLink size={11} />
-          </button>
-          <button className="inline-flex items-center gap-1.5 hover:text-brand" type="button" onClick={() => void openLink(LICENSE_URL)}>
-            <Scale size={13} />MIT License<ExternalLink size={11} />
-          </button>
+          <ProjectLink href={REPOSITORY_URL} onClick={() => void openLink(REPOSITORY_URL)}>
+            <Github size={13} aria-hidden="true" />{text("源代码", "Source code")}<ExternalLink size={11} aria-hidden="true" />
+          </ProjectLink>
+          <ProjectLink href={LICENSE_URL} onClick={() => void openLink(LICENSE_URL)}>
+            <Scale size={13} aria-hidden="true" />MIT License<ExternalLink size={11} aria-hidden="true" />
+          </ProjectLink>
         </footer>
 
         {error || update.error ? (
-          <p className="selectable rounded-control border border-danger/40 bg-danger/10 px-3 py-2 text-sm leading-relaxed text-danger" role="alert">
+          <p className="selectable rounded-control border border-danger/40 bg-danger/10 px-3 py-2 text-sm leading-relaxed text-danger" role="alert" aria-live="assertive">
             {error ?? update.error}
           </p>
         ) : null}
@@ -285,7 +284,7 @@ function PathRow({
           <>
             <button className="flex min-w-0 items-center gap-1.5 font-mono text-sm text-muted hover:text-brand" type="button" title={path} onClick={() => onReveal(path)}>
               <FolderOpen size={13} className="shrink-0 text-faint" />
-              <span className="truncate">{path}</span>
+              <span className="truncate" translate="no">{path}</span>
             </button>
             <IconButton size="sm" aria-label={text(`复制${label}`, `Copy ${label}`)} title={text("复制路径", "Copy path")} onClick={() => onCopy(path)}>
               {copied ? <Check size={13} className="text-ok" /> : <Copy size={13} />}
@@ -297,10 +296,26 @@ function PathRow({
   );
 }
 
-function CommunityLink({ icon: Icon, label, onClick }: { icon: typeof Bug; label: string; onClick: () => void }) {
+function ProjectLink({ href, onClick, children, className = "" }: { href: ProjectUrl; onClick: () => void; children: ReactNode; className?: string }) {
   return (
-    <button className="flex items-center justify-center gap-2 rounded-panel border border-line bg-surface px-3 py-3 text-sm text-muted shadow-panel transition-colors hover:border-line-strong hover:text-brand" type="button" onClick={onClick}>
-      <Icon size={15} />{label}<ExternalLink size={11} />
-    </button>
+    <a
+      className={`inline-flex items-center gap-1.5 hover:text-brand ${className}`}
+      href={href}
+      onClick={(event) => { event.preventDefault(); onClick(); }}
+    >
+      {children}
+    </a>
+  );
+}
+
+function CommunityLink({ href, icon: Icon, label, onClick }: { href: ProjectUrl; icon: typeof Bug; label: string; onClick: () => void }) {
+  return (
+    <ProjectLink
+      href={href}
+      onClick={onClick}
+      className="flex items-center justify-center gap-2 rounded-panel border border-line bg-surface px-3 py-3 text-sm text-muted shadow-panel transition-colors hover:border-line-strong hover:text-brand"
+    >
+      <Icon size={15} aria-hidden="true" />{label}<ExternalLink size={11} aria-hidden="true" />
+    </ProjectLink>
   );
 }

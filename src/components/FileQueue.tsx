@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { invoke } from "@tauri-apps/api/core";
 import { ArrowDownWideNarrow, ArrowUpNarrowWide, ChevronRight, Copy, FileDown, FileImage, FileSearch, FileText, FileType2, FileVideo2, FolderOpen, Music2, Tag, Trash2, X } from "lucide-react";
 import Button, { IconButton } from "./Button";
 import Select from "./Select";
@@ -99,9 +100,8 @@ export default function FileQueue({ entries, preserveColorProfile, removeExtende
     const completed = entries.filter((entry) => entry.report || entry.result);
     if (!completed.length) return;
     try {
-      const [{ save }, { invoke }, { getVersion }] = await Promise.all([
+      const [{ save }, { getVersion }] = await Promise.all([
         import("@tauri-apps/plugin-dialog"),
-        import("@tauri-apps/api/core"),
         import("@tauri-apps/api/app"),
       ]);
       const destination = await save({

@@ -1,14 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { ArrowUpCircle, CircleHelp, FileCheck2, FilePlus2, FolderOpen, History, Moon, MonitorCog, ScanSearch, Settings, ShieldCheck, Sun, Trash2 } from "lucide-react";
 import Sidebar from "./components/Sidebar";
 import DropZone from "./components/DropZone";
 import FileQueue from "./components/FileQueue";
 import CleanOptions from "./components/CleanOptions";
-import HistoryPage from "./components/HistoryPage";
-import PrivacyPage from "./components/PrivacyPage";
-import SettingsPage from "./components/SettingsPage";
-import AboutPage from "./components/AboutPage";
 import UpdateDialog from "./components/UpdateDialog";
 import TitleBar from "./components/TitleBar";
 import StatusBar from "./components/StatusBar";
@@ -25,6 +21,11 @@ import type { CleanResult, ScanReport } from "./types";
 import { useI18n } from "./lib/i18n";
 import { useTheme } from "./contexts/ThemeContext";
 import { useUpdate } from "./contexts/UpdateContext";
+
+const HistoryPage = lazy(() => import("./components/HistoryPage"));
+const PrivacyPage = lazy(() => import("./components/PrivacyPage"));
+const SettingsPage = lazy(() => import("./components/SettingsPage"));
+const AboutPage = lazy(() => import("./components/AboutPage"));
 
 export default function App() {
   const { text } = useI18n();
@@ -48,7 +49,6 @@ export default function App() {
   const addNativePaths = useCallback(async (paths: string[]) => {
     if (!paths.length) return;
     try {
-      const { invoke } = await import("@tauri-apps/api/core");
       const intake = await invoke<IntakeResult>("expand_paths", { paths });
       addEntries(intake.files.map(entryFromPath));
       if (intake.skippedCount || intake.limitReached) {
@@ -77,7 +77,7 @@ export default function App() {
       setDragActive(event.payload.type === "enter" || event.payload.type === "over");
       if (event.payload.type === "drop") void addNativePaths(event.payload.paths);
     })).then((unlisten) => { dispose = unlisten; }).catch(() => undefined);
-    void import("@tauri-apps/api/core").then(({ invoke }) => invoke<string[]>("get_launch_paths"))
+    void invoke<string[]>("get_launch_paths")
       .then((paths) => { if (paths.length) void addNativePaths(paths); })
       .catch(() => undefined);
     return () => dispose?.();
@@ -129,7 +129,6 @@ export default function App() {
     operationRef.current = true;
     setBusy(true); setMessage(undefined); setEntries((current) => markEntryPaths(current, paths, "scanning"));
     try {
-      const { invoke } = await import("@tauri-apps/api/core");
       const reports = await invoke<ScanReport[]>("scan_files", { paths });
       const requested = new Set(paths);
       const relevant = [...new Map(reports
@@ -150,7 +149,6 @@ export default function App() {
     operationRef.current = true;
     setBusy(true); setMessage(undefined);
     try {
-      const { invoke } = await import("@tauri-apps/api/core");
       const results = await invoke<CleanResult[]>("clean_files", { request: { paths, mode, preserveTimestamps, preserveOrientation, preserveColorProfile, removeExtendedAttributes } });
       const requested = new Set(paths);
       const relevant = [...new Map(results
@@ -249,18 +247,20 @@ export default function App() {
         {/* Keyed on the page so switching remounts, and the new page rises into
             place instead of appearing mid-scroll where the last one left off. */}
         <div className="animate-rise min-h-0 flex-1 px-5 pb-5" key={page}>
-        {page === "clean" ? <div className="grid h-full max-w-[1180px] grid-cols-[minmax(0,1fr)_296px] gap-3">
-          <div className="flex min-h-0 flex-col gap-3">
-            {message ? (
-              <div className="shrink-0 rounded-control border border-line bg-surface px-2.5 py-2 text-sm text-muted shadow-panel" role="status">
-                {message}
-              </div>
-            ) : null}
-            <DropZone onAdd={addEntries} onAddNativePaths={addNativePaths} dragActive={dragActive} compact={entries.length > 0} />
-            <FileQueue entries={entries} preserveColorProfile={preserveColorProfile} removeExtendedAttributes={removeExtendedAttributes} busy={busy} onClear={() => setEntries([])} onRemove={(id) => setEntries((current) => current.filter((entry) => entry.id !== id))} onReveal={(path) => void reveal(path)} onNotify={setMessage} />
-          </div>
-          <CleanOptions mode={mode} onModeChange={setMode} preserveTimestamps={preserveTimestamps} onPreserveTimestampsChange={setPreserveTimestamps} preserveOrientation={preserveOrientation} onPreserveOrientationChange={setPreserveOrientation} preserveColorProfile={preserveColorProfile} onPreserveColorProfileChange={setPreserveColorProfile} removeExtendedAttributes={removeExtendedAttributes} onRemoveExtendedAttributesChange={setRemoveExtendedAttributes} disabled={!entries.length} scanned={scanned} hasFindings={cleanableEntries.length > 0} busy={busy} onAction={() => void (scanned ? clean() : scan())} />
-        </div> : page === "history" ? <HistoryPage entries={history} onClear={clearHistory} /> : page === "privacy" ? <PrivacyPage /> : page === "about" ? <AboutPage /> : <SettingsPage mode={mode} onModeChange={setMode} preserveTimestamps={preserveTimestamps} onPreserveTimestampsChange={setPreserveTimestamps} preserveOrientation={preserveOrientation} onPreserveOrientationChange={setPreserveOrientation} preserveColorProfile={preserveColorProfile} onPreserveColorProfileChange={setPreserveColorProfile} removeExtendedAttributes={removeExtendedAttributes} onRemoveExtendedAttributesChange={setRemoveExtendedAttributes} closeToTray={closeToTray} onCloseToTrayChange={setCloseToTray} />}
+        <Suspense fallback={<div className="grid h-full place-items-center text-sm text-muted" role="status">{text("正在加载页面…", "Loading page…")}</div>}>
+          {page === "clean" ? <div className="grid h-full max-w-[1180px] grid-cols-[minmax(0,1fr)_296px] gap-3">
+            <div className="flex min-h-0 flex-col gap-3">
+              {message ? (
+                <div className="shrink-0 rounded-control border border-line bg-surface px-2.5 py-2 text-sm text-muted shadow-panel" role="status" aria-live="polite">
+                  {message}
+                </div>
+              ) : null}
+              <DropZone onAdd={addEntries} onAddNativePaths={addNativePaths} dragActive={dragActive} compact={entries.length > 0} />
+              <FileQueue entries={entries} preserveColorProfile={preserveColorProfile} removeExtendedAttributes={removeExtendedAttributes} busy={busy} onClear={() => setEntries([])} onRemove={(id) => setEntries((current) => current.filter((entry) => entry.id !== id))} onReveal={(path) => void reveal(path)} onNotify={setMessage} />
+            </div>
+            <CleanOptions mode={mode} onModeChange={setMode} preserveTimestamps={preserveTimestamps} onPreserveTimestampsChange={setPreserveTimestamps} preserveOrientation={preserveOrientation} onPreserveOrientationChange={setPreserveOrientation} preserveColorProfile={preserveColorProfile} onPreserveColorProfileChange={setPreserveColorProfile} removeExtendedAttributes={removeExtendedAttributes} onRemoveExtendedAttributesChange={setRemoveExtendedAttributes} disabled={!entries.length} scanned={scanned} hasFindings={cleanableEntries.length > 0} busy={busy} onAction={() => void (scanned ? clean() : scan())} />
+          </div> : page === "history" ? <HistoryPage entries={history} onClear={clearHistory} /> : page === "privacy" ? <PrivacyPage /> : page === "about" ? <AboutPage /> : <SettingsPage mode={mode} onModeChange={setMode} preserveTimestamps={preserveTimestamps} onPreserveTimestampsChange={setPreserveTimestamps} preserveOrientation={preserveOrientation} onPreserveOrientationChange={setPreserveOrientation} preserveColorProfile={preserveColorProfile} onPreserveColorProfileChange={setPreserveColorProfile} removeExtendedAttributes={removeExtendedAttributes} onRemoveExtendedAttributesChange={setRemoveExtendedAttributes} closeToTray={closeToTray} onCloseToTrayChange={setCloseToTray} />}
+        </Suspense>
         </div>
       </main>
     </div>

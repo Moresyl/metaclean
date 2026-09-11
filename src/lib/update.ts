@@ -1,3 +1,5 @@
+import { invoke as tauriInvoke } from "@tauri-apps/api/core";
+
 export const RELEASES_PAGE_URL = "https://github.com/Moresyl/metaclean/releases/latest";
 
 const CHECK_TIMEOUT_MS = 15_000;
@@ -150,10 +152,7 @@ export async function checkForUpdate(options: {
 }
 
 export async function getUpdateRuntime(invoker?: InvokeLike): Promise<UpdateRuntime> {
-  const invoke = invoker ?? (async <T,>(command: string) => {
-    const core = await import("@tauri-apps/api/core");
-    return await core.invoke<T>(command);
-  });
+  const invoke = invoker ?? tauriInvoke;
   return await invoke<UpdateRuntime>("get_update_runtime");
 }
 
@@ -163,10 +162,7 @@ export async function installAvailableUpdate(options: {
   invoker?: InvokeLike;
   listener?: ListenLike;
 }): Promise<boolean> {
-  const invoke = options.invoker ?? (async <T,>(command: string, args?: Record<string, unknown>) => {
-    const core = await import("@tauri-apps/api/core");
-    return await core.invoke<T>(command, args);
-  });
+  const invoke = options.invoker ?? tauriInvoke;
   const listen = options.listener ?? (async (event, handler) => {
     const events = await import("@tauri-apps/api/event");
     return await events.listen<UpdateProgress>(event, handler);

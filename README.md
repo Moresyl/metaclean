@@ -87,19 +87,36 @@ before it.
 - Caps input at 256 MiB, and expanded Office archives at 512 MiB
 - Malformed or unsupported files fail without touching the source
 
+## Processing model
+
+MetaClean uses a deliberately narrow pipeline: intake rejects symlinks, reparse
+points, oversized trees and unsupported folder entries; scanning reads a bounded
+snapshot without writing; cleaning produces an in-memory candidate; the native
+engine detects and inspects that exact candidate again; only then does it create
+a unique copy or a backup followed by an atomic replacement. The UI receives
+categories and counts, not raw GPS, author, device or comment values. This keeps
+sensitive values out of the React state tree, history, clipboard and audit
+exports while still giving every file an explicit outcome.
+
+The application is intentionally fail-closed. Unknown binary formats, legacy
+binary Office files and pixel/statistical watermark removal are refused instead
+of being routed through a generic rewriter. See [SUPPORT_POLICY.md](SUPPORT_POLICY.md)
+for the format-by-format safety bar and [COMPETITIVE_AUDIT.md](COMPETITIVE_AUDIT.md)
+for the evidence-backed comparison with other local cleaners.
+
 ## The desktop app
 
 - Drag in files or folders, or recursively import a folder from the native picker
-- Four panes: **Clean**, **History**, **Privacy**, and **Settings**
+- Five panes: **Clean**, **History**, **Privacy**, **Settings**, and **About**
 - Optional Windows File Explorer command across all 105 supported extensions — on Windows 11 it lives under **Show more options**
 - Closing the window exits MetaClean by default; Settings can instead keep it in the system tray, where the tray menu can reopen or exit it
-- Repository and issue-report links are available in Settings → System & updates
+- About provides version/runtime facts, copyable diagnostics, JSON export, issue/feature/release links and the source/license entry points
 - Stable queue sorting by name, extension, source/output size or finding count, with per-file size savings and reveal-in-folder actions for completed outputs
 - Versioned local JSON audit-report export with per-file findings and outcomes but no raw metadata values
 - Fixed 1180 × 720 enterprise workspace with compact icon navigation and a persistent local-only status bar
 - Preserves JPEG display orientation, ICC/sRGB color profiles and file timestamps by default, with independent removal controls
 - Preserves every macOS extended attribute by default; an explicit opt-in removes only six known download/provenance attributes and leaves Finder data, resource forks, tags, and custom attributes intact
-- Native application menus, `Ctrl/Cmd+1…4` navigation accelerators, and persisted window size, position, and maximized state
+- Native application menus, `Ctrl/Cmd+1…5` navigation accelerators, command palette, and persisted window size, position, and maximized state
 - Checks, downloads and installs cryptographically signed stable updates in installed builds, failing over from the GitHub Release manifest to the official Pages feed; portable Windows packages and non-AppImage Linux builds fall back to the official Releases page
 - Automatic update checks are independently switchable off, restoring fully offline operation
 - 32 complete interface languages spanning Europe, East and Southeast Asia, South Asia, and right-to-left Arabic and Persian; system/light/dark theme, output mode, fidelity options, and local cleanup history persist between sessions
@@ -133,6 +150,7 @@ Test coverage and release evidence are tracked in [VALIDATION.md](VALIDATION.md)
 Release changes are recorded in [CHANGELOG.md](CHANGELOG.md).
 The deliberate no-value metadata policy, the per-format cleaning strategies and
 what stays out of scope are documented in [SUPPORT_POLICY.md](SUPPORT_POLICY.md).
+The implementation-facing visual and interaction rules are recorded in [DESIGN.md](DESIGN.md).
 
 ## Contributing
 

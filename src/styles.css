@@ -382,6 +382,16 @@
     background-color: var(--color-surface);
   }
 
+  /* Queue rows are independent visual units. Let the webview skip painting
+     rows outside the scrollport when a folder contributes thousands of files,
+     while reserving the same compact row height so the scrollbar remains
+     stable before a row comes into view. Expanded detail panels still paint
+     normally once their row is visible. */
+  .file-item {
+    content-visibility: auto;
+    contain-intrinsic-size: 72px;
+  }
+
   /* The small label a desktop tool puts above a group of settings.
    *
    * Not the tracked-out all-caps caption that idiom usually means. Tracking is

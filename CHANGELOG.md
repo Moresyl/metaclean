@@ -5,6 +5,26 @@ All notable changes to MetaClean are documented here. The project follows
 
 ## [Unreleased]
 
+### Added
+
+- Added `DESIGN.md`, a project-owned interaction and visual reference derived
+  from the navigation, CTA, footer and information-grouping inspirations in
+  `C:\Users\18468\Desktop\wcb.txt`.
+
+### Changed
+
+- Secondary pages now load on demand, and Rollup keeps React, icons and each
+  page family in stable cacheable chunks; the production entry chunk is now
+  about 234 KiB instead of a single 525 KiB application chunk.
+- README, README.zh-CN and VALIDATION now describe the five-page application,
+  About support surface, 105-extension boundary and current automated evidence.
+
+### Fixed
+
+- About-page project actions use link semantics, the app icon has explicit
+  dimensions, status/error announcements are live regions, and long file
+  queues skip painting rows outside the scrollport.
+
 ## [0.7.1] - 2026-08-27
 
 ### Added
