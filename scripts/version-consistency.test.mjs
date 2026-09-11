@@ -30,6 +30,15 @@ test("keeps updater trust in the base config and signing in the release-only con
   assert.equal(releaseConfig.bundle.createUpdaterArtifacts, true);
 });
 
+test("keeps the reviewed updater version argument aligned across Rust and TypeScript", async () => {
+  const rust = await readFile(new URL("../src-tauri/src/lib.rs", import.meta.url), "utf8");
+  const update = await readFile(new URL("../src/lib/update.ts", import.meta.url), "utf8");
+
+  assert.match(rust, /#\[tauri::command\(rename_all = "camelCase"\)\]\s*async fn install_update_and_restart[\s\S]*?expected_version: String/u);
+  assert.match(update, /install_update_and_restart", \{ expectedVersion \}/u);
+  assert.doesNotMatch(update, /install_update_and_restart", \{ expected_version/u);
+});
+
 test("keeps the signed Pages fallback tied to successful releases", async () => {
   const workflow = await readFile(new URL("../.github/workflows/update-feed.yml", import.meta.url), "utf8");
   assert.match(workflow, /workflow_run:[\s\S]*workflows: \["Release"\][\s\S]*conclusion == 'success'/u);

@@ -411,7 +411,7 @@ fn get_update_runtime() -> UpdateRuntime {
     detect_update_runtime()
 }
 
-#[tauri::command]
+#[tauri::command(rename_all = "camelCase")]
 async fn install_update_and_restart(
     app: tauri::AppHandle,
     expected_version: String,
