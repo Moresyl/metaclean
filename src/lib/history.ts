@@ -4,6 +4,7 @@ import { readStorage, removeStorage, writeStorage } from "./storage";
 export const HISTORY_STORAGE_KEY = "metaclean.history";
 const MAX_HISTORY_ENTRIES = 100;
 const MAX_HISTORY_RESULTS_PER_ENTRY = 10_000;
+const MAX_HISTORY_RESULTS_TOTAL = 10_000;
 const MAX_HISTORY_STORAGE_CHARS = 2_000_000;
 const MAX_HISTORY_PATH_CHARS = 32_768;
 const MAX_HISTORY_LABEL_CHARS = 256;
@@ -57,7 +58,15 @@ function isHistoryEntry(value: unknown): value is HistoryEntry {
 }
 
 export function limitHistory(entries: HistoryEntry[]): HistoryEntry[] {
-  return entries.slice(0, MAX_HISTORY_ENTRIES);
+  let remainingResults = MAX_HISTORY_RESULTS_TOTAL;
+  const limited: HistoryEntry[] = [];
+  for (const entry of entries.slice(0, MAX_HISTORY_ENTRIES)) {
+    if (!remainingResults) break;
+    const results = entry.results.slice(0, remainingResults);
+    limited.push(results.length === entry.results.length ? entry : { ...entry, results });
+    remainingResults -= results.length;
+  }
+  return limited;
 }
 
 export function loadHistory(): HistoryEntry[] {

@@ -81,6 +81,10 @@ All notable changes to MetaClean are documented here. The project follows
 - Scan, clean and cancellation IPC now reject batch identifiers over 128 bytes
   before registering them, while tokenless legacy cleanup remains supported.
 
+- History keeps the newest records within a 10,000-result render budget in
+  addition to its 100-batch cap, preventing long-lived installations from
+  accumulating a million-row history surface.
+
 - Markdown front matter now recognizes both YAML `---` and TOML `+++` fences,
   while only removing targeted author and generator fields inside the opening
   metadata block.

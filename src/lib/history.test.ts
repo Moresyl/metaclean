@@ -57,6 +57,20 @@ describe("history persistence", () => {
     expect(limitHistory(entries).at(-1)?.id).toBe("99");
   });
 
+  it("keeps the newest results within a bounded history render budget", () => {
+    const entries = Array.from({ length: 100 }, (_, index) => ({
+      ...entry(String(index)),
+      results: Array.from({ length: 200 }, (_, resultIndex) => ({
+        ...entry(`${index}-${resultIndex}`).results[0],
+        sourcePath: `${index}-${resultIndex}.jpg`,
+      })),
+    }));
+    const limited = limitHistory(entries);
+    expect(limited).toHaveLength(50);
+    expect(limited.reduce((total, item) => total + item.results.length, 0)).toBe(10_000);
+    expect(limited.at(-1)?.results).toHaveLength(200);
+  });
+
   it("keeps in-memory history when the browser storage quota is exhausted", () => {
     const set = vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => { throw new DOMException("quota"); });
     expect(persistHistory([entry("kept")])).toEqual([entry("kept")]);
