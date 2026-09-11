@@ -209,11 +209,13 @@ describe("MetaClean desktop application", () => {
           removeExtendedAttributes: false,
         },
       }),
+      core.invoke("cancel_clean_batch", { batchId: "missing-batch" }),
     ]), missingPath);
     assert.equal(outcome[0][0].supported, false);
     assert.ok(outcome[0][0].error);
     assert.equal(outcome[1][0].success, false);
     assert.ok(outcome[1][0].error);
     assert.equal(outcome[1][0].outputPath, null);
+    assert.equal(outcome[2], false);
   });
 });
