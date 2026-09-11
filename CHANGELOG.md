@@ -46,6 +46,10 @@ All notable changes to MetaClean are documented here. The project follows
 
 ### Fixed
 
+- Malformed, oversized or unrecognized `data:image` payloads are now reported
+  as residual embedded-image risk instead of being silently counted as clean;
+  cleanup leaves those bytes untouched and the engine refuses a false-safe
+  output.
 - Cleanup calls from legacy clients that omit `batchId` now participate in the
   same RAII activity guard as cancellable batches, so closing the window cannot
   terminate an in-progress write merely because the compatibility token is

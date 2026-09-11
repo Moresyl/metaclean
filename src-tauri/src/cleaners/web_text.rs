@@ -182,7 +182,10 @@ fn inspect_embedded_bytes(data: &[u8], mime: &str, depth: usize) -> usize {
             })
         }
     } else {
-        0
+        // Every caller reached this function through a data:image URI. An
+        // unrecognized payload must remain visible as residual risk instead
+        // of being silently treated as a clean image.
+        1
     }
 }
 
@@ -216,16 +219,20 @@ fn clean_embedded_bytes(data: &[u8], mime: &str, depth: usize) -> Option<Vec<u8>
 fn inspect_embedded(value: &str, depth: usize) -> usize {
     data_image_pattern()
         .captures_iter(value)
-        .filter_map(|capture| {
+        .fold(0usize, |total, capture| {
             let params = capture.name("params").map_or("", |value| value.as_str());
-            let data = decode_data_uri(
-                capture.name("payload")?.as_str(),
-                params.to_ascii_lowercase().contains("base64"),
-            )?;
-            let count = inspect_embedded_bytes(&data, capture.name("mime")?.as_str(), depth);
-            (count > 0).then_some(count)
+            let count = match (capture.name("payload"), capture.name("mime")) {
+                (Some(payload), Some(mime)) => decode_data_uri(
+                    payload.as_str(),
+                    params.to_ascii_lowercase().contains("base64"),
+                )
+                .map_or(1, |data| {
+                    inspect_embedded_bytes(&data, mime.as_str(), depth)
+                }),
+                _ => 1,
+            };
+            total.saturating_add(count)
         })
-        .sum()
 }
 
 fn clean_embedded<'a>(value: &'a str, depth: usize) -> Cow<'a, str> {
@@ -366,6 +373,14 @@ mod tests {
         png
     }
 
+    fn clean_png() -> Vec<u8> {
+        let mut png = b"\x89PNG\r\n\x1a\n".to_vec();
+        png.extend(png_chunk(b"IHDR", &[0, 0, 0, 1, 0, 0, 0, 1, 8, 6, 0, 0, 0]));
+        png.extend(png_chunk(b"IDAT", b"pixels"));
+        png.extend(png_chunk(b"IEND", b""));
+        png
+    }
+
     #[test]
     fn removes_html_generator_and_ai_attributes() {
         let source =
@@ -472,7 +487,10 @@ mod tests {
 
     #[test]
     fn scans_and_cleans_embedded_images_after_the_hundredth_item() {
-        let benign = "<img src=\"data:image/png;base64,AAAA\">";
+        let benign = format!(
+            "<img src=\"data:image/png;base64,{}\">",
+            BASE64.encode(clean_png())
+        );
         let mut source = benign.repeat(100);
         source.push_str(&format!(
             "<img src=\"data:image/png;base64,{}\">",
@@ -492,8 +510,32 @@ mod tests {
         let oversized_base64 = "A".repeat(MAX_EMBEDDED_BYTES.div_ceil(3) * 4 + 1);
         assert!(decode_data_uri(&oversized_base64, true).is_none());
 
+        let source = format!("<img src=\"data:image/png;base64,{oversized_base64}\">");
+        let findings = inspect(&source, "html");
+        assert_eq!(
+            findings
+                .iter()
+                .find(|finding| finding.category == "embedded_image_metadata")
+                .map(|finding| finding.count),
+            Some(1)
+        );
+
         let oversized_plain = "a".repeat(MAX_EMBEDDED_BYTES + 1);
         assert!(decode_data_uri(&oversized_plain, false).is_none());
+    }
+
+    #[test]
+    fn treats_unrecognized_declared_images_as_residual() {
+        let source = "<img src=\"data:image/png;base64,AAAA\">";
+        let findings = inspect(source, "html");
+        assert_eq!(
+            findings
+                .iter()
+                .find(|finding| finding.category == "embedded_image_metadata")
+                .map(|finding| finding.count),
+            Some(1)
+        );
+        assert_eq!(clean(source, "html").0, source);
     }
 
     #[test]

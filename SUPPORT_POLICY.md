@@ -71,10 +71,11 @@ two bounded embedded surfaces:
   payloads after the first 100 are still inspected instead of being silently
   skipped.
 
-Unknown or oversized embedded data is left unchanged rather than sent through
-a generic decoder. WAV C2PA chunks and ID3v2/C2PA prefixes before FLAC streams
-follow the same rule: only container structures the cleaner can bound and
-re-inspect are retired.
+Malformed, unknown or oversized embedded data is left unchanged rather than
+sent through a generic decoder, and is reported as residual risk so cleanup
+cannot produce a false-safe output. WAV C2PA chunks and ID3v2/C2PA prefixes
+before FLAC streams follow the same rule: only container structures the cleaner
+can bound and re-inspect are retired.
 
 The optional JSON audit export records categories, counts, paths and outcomes
 but never raw metadata values. The native writer accepts JSON only, caps the
