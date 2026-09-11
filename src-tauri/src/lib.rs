@@ -47,8 +47,19 @@ fn updater_network_error(action: &str, error: impl std::fmt::Display) -> String 
 }
 
 fn reviewed_update_matches(available: &str, expected: &str) -> bool {
-    available.strip_prefix('v').unwrap_or(available)
-        == expected.strip_prefix('v').unwrap_or(expected)
+    fn stable_version(value: &str) -> Option<&str> {
+        let trimmed = value.trim();
+        let value = trimmed.strip_prefix('v').unwrap_or(trimmed);
+        let mut parts = value.split('.');
+        let valid = parts.clone().count() == 3
+            && parts.all(|part| !part.is_empty() && part.bytes().all(|byte| byte.is_ascii_digit()));
+        valid.then_some(value)
+    }
+
+    match (stable_version(available), stable_version(expected)) {
+        (Some(available), Some(expected)) => available == expected,
+        _ => false,
+    }
 }
 
 fn validate_batch_size(count: usize) -> Result<(), String> {
@@ -859,7 +870,11 @@ mod update_tests {
     fn install_requires_the_exact_reviewed_update_version() {
         assert!(reviewed_update_matches("0.6.1", "0.6.1"));
         assert!(reviewed_update_matches("v0.6.1", "0.6.1"));
+        assert!(reviewed_update_matches("  v0.6.1  ", "0.6.1"));
         assert!(!reviewed_update_matches("0.6.2", "0.6.1"));
+        assert!(!reviewed_update_matches("0.6", "0.6.0"));
+        assert!(!reviewed_update_matches("0.6.1-beta.1", "0.6.1-beta.1"));
+        assert!(!reviewed_update_matches("0.6.1", "latest"));
     }
 
     #[test]

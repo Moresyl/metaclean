@@ -714,6 +714,9 @@ pub fn clean_file_with_options(
         Ok(snapshot) => snapshot,
         Err(error) => return fail(error.to_string()),
     };
+    if matches!(mode, OutputMode::Replace) && source_metadata.permissions().readonly() {
+        return fail(CleanError::ReadOnly(display_path(source)).to_string());
+    }
     let format = detect(source, &data);
     let (cleaned, mut removed) = match clean_data(
         source,
@@ -1816,6 +1819,34 @@ mod tests {
             old
         );
     }
+
+    #[cfg(windows)]
+    #[test]
+    fn read_only_sources_copy_safely_and_replace_without_creating_a_backup() {
+        let dir = tempfile::tempdir().unwrap();
+        let source = dir.path().join("read-only.txt");
+        fs::write(&source, "a\u{200b}b").unwrap();
+        let mut permissions = fs::metadata(&source).unwrap().permissions();
+        permissions.set_readonly(true);
+        fs::set_permissions(&source, permissions).unwrap();
+
+        let copied = clean_file_with_options(&source, &OutputMode::Copy, true, true, true, false);
+        assert!(copied.success, "{:?}", copied.error);
+        let output = PathBuf::from(copied.output_path.unwrap());
+        assert_eq!(fs::read_to_string(&output).unwrap(), "ab");
+        assert!(fs::metadata(&output).unwrap().permissions().readonly());
+        assert!(fs::metadata(&source).unwrap().permissions().readonly());
+
+        let replaced =
+            clean_file_with_options(&source, &OutputMode::Replace, true, true, true, false);
+        assert!(!replaced.success, "read-only replacement must fail closed");
+        assert!(replaced.backup_path.is_none());
+        assert!(replaced.error.unwrap().contains("只读"));
+        assert_eq!(fs::read_to_string(&source).unwrap(), "a\u{200b}b");
+        assert!(fs::metadata(&source).unwrap().permissions().readonly());
+        assert!(!dir.path().join("read-only.txt.bak").exists());
+    }
+
     #[test]
     fn rejects_unknown_binary() {
         let dir = tempfile::tempdir().unwrap();

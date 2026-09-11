@@ -43,6 +43,14 @@ All notable changes to MetaClean are documented here. The project follows
 
 ### Fixed
 
+- The native updater now validates the reviewed version as a stable three-part
+  release before comparing it, so malformed, prerelease or directly-invoked
+  IPC arguments cannot bypass the install contract. Windows read-only source
+  files also have a public-engine regression proving copy mode succeeds while
+  replacement is rejected before a backup is created.
+- Generic filesystem errors now say that a read/write operation failed instead
+  of incorrectly labelling output, backup and replacement failures as input
+  read errors.
 - HTML/SVG metadata could be missed when a zero-width Unicode character split
   a sensitive attribute name, because structural matching ran before Unicode
   normalization. The scanner now normalizes first, the public UTF-16 engine
