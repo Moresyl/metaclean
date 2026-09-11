@@ -96,6 +96,16 @@ export default function FileQueue({ entries, preserveColorProfile, removeExtende
       : text("无法访问剪贴板", "The clipboard is unavailable"));
   }
 
+  async function copyAllPaths() {
+    const paths = entries
+      .map((entry) => entry.result?.outputPath ?? entry.path)
+      .filter((path): path is string => Boolean(path));
+    if (!paths.length) return;
+    onNotify(await copyText(paths.join("\r\n"))
+      ? text(`已复制 ${paths.length} 个路径`, `Copied ${paths.length} path(s)`)
+      : text("无法访问剪贴板", "The clipboard is unavailable"));
+  }
+
   async function exportReport() {
     const completed = entries.filter((entry) => entry.report || entry.result);
     if (!completed.length) return;
@@ -198,6 +208,15 @@ export default function FileQueue({ entries, preserveColorProfile, removeExtende
         </div>
 
         <span className="mx-0.5 h-4 w-px shrink-0 bg-line-strong" aria-hidden="true" />
+
+        <IconButton
+          aria-label={text("复制全部路径", "Copy all paths")}
+          data-tip={text("复制全部路径", "Copy all paths")}
+          onClick={() => void copyAllPaths()}
+          disabled={!entries.some((entry) => entry.result?.outputPath ?? entry.path)}
+        >
+          <Copy size={14} strokeWidth={2} />
+        </IconButton>
 
         <IconButton
           aria-label={text("导出审计报告", "Export audit report")}

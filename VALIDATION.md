@@ -18,7 +18,7 @@ This file records evidence, not intent. A row is complete only when the named ar
 
 ## Automated quality gates
 
-- Frontend: 240 tests. Statements 88.42%, branches 81.19%, functions 90.51%, lines 91.14%. The queue suite covers audit export as well as sorting, size deltas, errors, direct path copying and reveal actions; status-bar state/version and count-only batch progress, stale progress-event isolation, updater flows, focus-contained dialogs, lazy page boundaries, support links and current localized scope counts are also exercised.
+- Frontend: 240 tests. Statements 88.91%, branches 81.21%, functions 90.70%, lines 91.58%. The queue suite covers audit export as well as sorting, size deltas, per-file and batch path copying, errors and reveal actions; status-bar state/version and count-only batch progress, stale progress-event isolation, updater flows, focus-contained dialogs, lazy page boundaries, support links and current localized scope counts are also exercised.
 - Rust: 165 tests total: 164 pass and one external Office compatibility test is ignored unless `METACLEAN_OFFICE_SAMPLE_DIR` supplies real fixtures. Strict Clippy passes with warnings denied.
 - Installed desktop E2E: all 12 WebdriverIO scenarios pass locally against the rebuilt Windows webview. They cover startup, keyboard navigation, all 32 locale options and RTL, named controls/landmarks, About support links, theme and fidelity persistence, the Rust IPC boundary, updater capability and fail-closed missing-input paths.
 - Frontend regression tests cover update-dialog focus containment/restoration, direct queue path copying, duplicate-safe native batch handling and delayed progress-event isolation.

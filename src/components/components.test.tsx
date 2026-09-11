@@ -103,7 +103,7 @@ describe("desktop components", () => {
     expect(onAdd).toHaveBeenCalledWith([expect.objectContaining({ name: "local.txt" })]);
   });
 
-  it("renders queue findings, errors and removal controls", () => {
+  it("renders queue findings, errors and removal controls", async () => {
     const onRemove = vi.fn();
     const entries: FileEntry[] = [
       { id: "1", name: "photo.jpg", path: "photo.jpg", kind: "image", status: "scanned", report: { path: "photo.jpg", name: "photo.jpg", format: "JPEG", size: 1, supported: true, findings: [{ category: "image_metadata", label: "metadata", count: 2, severity: "privacy" }] } },
@@ -113,6 +113,8 @@ describe("desktop components", () => {
     expect(screen.getByText("发现 2 项痕迹")).toBeInTheDocument();
     expect(screen.getByText("图片元数据 · 2")).toBeInTheDocument();
     expect(screen.getByText("格式损坏")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "复制全部路径" }));
+    await waitFor(() => expect(clipboardMock).toHaveBeenCalledWith("photo.jpg\r\nbad.pdf"));
     fireEvent.click(screen.getByRole("button", { name: "移除 photo.jpg" }));
     expect(onRemove).toHaveBeenCalledWith("1");
   });

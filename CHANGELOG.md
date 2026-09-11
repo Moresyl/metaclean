@@ -42,6 +42,8 @@ All notable changes to MetaClean are documented here. The project follows
 - Queue rows now expose a direct copy-path action instead of requiring a context
   menu; the existing context menu remains available for keyboard and pointer
   workflows.
+- The queue toolbar now copies all current output/source paths in one action,
+  using one path per line for shell, ticket and review workflows.
 - About-page diagnostics and path copying now share the same clipboard fallback,
   so locked-down WebViews can still use the selection-based copy path.
 - Long cleanup batches now emit privacy-safe count-only progress events and show
