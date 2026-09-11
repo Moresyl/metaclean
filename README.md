@@ -145,6 +145,7 @@ pnpm test:security                              # production WebView CSP policy
 pnpm test:release                               # release-note and checksum automation
 pnpm test:supply-chain                          # patched dependency regression
 pnpm test:docs                                   # product/documentation claim consistency
+pnpm docs:build                                  # searchable VitePress documentation site
 pnpm test:benchmark                             # optional release-mode native batch benchmark
 pnpm build                                      # typecheck + production bundle
 cargo fmt --manifest-path src-tauri/Cargo.toml -- --check

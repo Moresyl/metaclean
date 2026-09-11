@@ -136,6 +136,7 @@ pnpm test:security                              # 生产 WebView CSP 安全策�
 pnpm test:release                               # 发行说明与校验和自动化
 pnpm test:supply-chain                          # 已修补依赖的安全回归测试
 pnpm test:docs                                   # 产品与文档描述一致性
+pnpm docs:build                                  # 可搜索的 VitePress 文档站构建
 pnpm test:benchmark                             # 可选的 release-mode 原生批处理基准
 pnpm build                                      # 类型检查 + 生产构建
 cargo fmt --manifest-path src-tauri/Cargo.toml -- --check

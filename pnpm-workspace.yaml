@@ -7,3 +7,4 @@ overrides:
   serialize-javascript@6.0.2: 7.0.5
   deepmerge-ts: 8.0.0
   js-yaml: 4.3.2
+  vitepress>vite: 6.4.3

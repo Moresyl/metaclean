@@ -5,29 +5,43 @@
 文档按读者要完成的任务组织。第一次了解项目从 README 开始；修改清理
 内核先读安全策略和架构；准备发布时以验证账本为准。
 
+## 文档站
+
+仓库内置 VitePress 文档站，使用本仓库的事实文档作为唯一内容来源，提供本地全文搜索、任务导航和版本化发布入口：
+
+```bash
+pnpm docs:dev       # 本地预览
+pnpm docs:build     # 生产构建，CI 可复现
+pnpm docs:preview   # 预览已构建站点
+```
+
+站点首页适合用户和新贡献者；本页及仓库根目录文档仍是可直接审阅的 Markdown 原文。站点构建产物不提交到 Git。
+
 ## 快速入口
 
 | 你要做什么 | 从这里开始 | 最终证据 |
 | --- | --- | --- |
-| 了解产品、下载或构建 | [`README.zh-CN.md`](../README.zh-CN.md) / [`README.md`](../README.md) | 当前用户能力与明确边界 |
+| 了解产品、下载或构建 | [`产品能力`](product.md) | 当前用户能力与明确边界 |
 | 修改架构、IPC 或状态流 | [`ARCHITECTURE.md`](ARCHITECTURE.md) | 模块责任、数据边界与不变量 |
-| 新增或修改格式 | [`SUPPORT_POLICY.md`](../SUPPORT_POLICY.md) | 格式安全门槛与失败关闭策略 |
-| 审核当前完成度 | [`VALIDATION.md`](../VALIDATION.md) | 实际测试、构建、E2E 和外部限制 |
+| 新增或修改格式 | [`支持策略`](support-policy.md) | 格式安全门槛与失败关闭策略 |
+| 审核当前完成度 | [`验证账本`](validation.md) | 实际测试、构建、E2E 和外部限制 |
 | 安排下一阶段工作 | [`PLAN.md`](PLAN.md) | 当前事实、风险和证据优先级 |
-| 准备贡献或安全报告 | [`CONTRIBUTING.md`](../CONTRIBUTING.md) / [`SECURITY.md`](../SECURITY.md) | 提交流程和私密漏洞渠道 |
+| 准备贡献或安全报告 | [`贡献与发布`](release.md) / [`安全报告`](security.md) | 提交流程和私密漏洞渠道 |
+| 使用应用或排查失败 | [`用户指南`](user-guide.md) / [`安全模型`](safety.md) | 处理流程、拒绝边界和诊断顺序 |
+| 准备候选发布 | [`发布手册`](release.md) / [`验证账本`](validation.md) | 门禁、Windows preflight 和未验证项 |
 
 ## 完整地图
 
 | 分类 | 文档 | 责任与用途 |
 | --- | --- | --- |
-| 产品 | [`README.zh-CN.md`](../README.zh-CN.md), [`README.md`](../README.md) | 面向用户的能力、安装方式、处理模型和边界 |
+| 产品 | [`产品能力`](product.md) | 面向用户的能力、安装方式、处理模型和边界 |
 | 架构 | [`ARCHITECTURE.md`](ARCHITECTURE.md) | 处理链、模块所有权、IPC、持久化、并发和发布边界 |
-| 安全 | [`SUPPORT_POLICY.md`](../SUPPORT_POLICY.md), [`SECURITY.md`](../SECURITY.md) | 格式准入、隐私模型、更新信任根和漏洞报告 |
-| 证据 | [`VALIDATION.md`](../VALIDATION.md) | 当前代码线已经实际运行的门禁与尚未验证项 |
-| 设计 | [`DESIGN.md`](../DESIGN.md) | 设计 tokens、信息层级、可访问性和禁止回退项 |
+| 安全 | [`支持策略`](support-policy.md), [`安全报告`](security.md) | 格式准入、隐私模型、更新信任根和漏洞报告 |
+| 证据 | [`验证账本`](validation.md) | 当前代码线已经实际运行的门禁与尚未验证项 |
+| 设计 | [`设计系统`](design.md) | 设计 tokens、信息层级、可访问性和禁止回退项 |
 | 规划 | [`PLAN.md`](PLAN.md) | 已验证能力、开放风险和后续路线 |
-| 对比 | [`COMPETITIVE_AUDIT.md`](../COMPETITIVE_AUDIT.md) | 带日期、提交和证据边界的竞品审计 |
-| 历史 | [`CHANGELOG.md`](../CHANGELOG.md) | 已发布版本与未发布改动，不代替当前能力说明 |
+| 对比 | [`竞品审计`](competitive-audit.md) | 带日期、提交和证据边界的竞品审计 |
+| 历史 | [`变更记录`](changelog.md) | 已发布版本与未发布改动，不代替当前能力说明 |
 
 ## 文档规则
 

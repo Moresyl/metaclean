@@ -16,6 +16,9 @@
     "test:coverage": "vitest run --coverage",
     "test:formats": "node scripts/verify-format-manifests.mjs",
     "test:docs": "node scripts/verify-docs.mjs",
+    "docs:dev": "vitepress dev docs",
+    "docs:build": "vitepress build docs",
+    "docs:preview": "vitepress preview docs",
     "test:security": "node scripts/verify-csp.mjs",
     "test:release": "node --test scripts/collect-release-assets.test.mjs scripts/collect-updater-assets.test.mjs scripts/generate-checksums.test.mjs scripts/generate-updater-manifest.test.mjs scripts/load-release-notes.test.mjs scripts/preflight-windows.test.mjs scripts/prepare-appimage-zsync.test.mjs scripts/stage-updater-feed.test.mjs scripts/verify-appimage-update.test.mjs scripts/verify-windows-gui-subsystem.test.mjs scripts/version-consistency.test.mjs",
     "test:supply-chain": "node scripts/verify-extract-zip-patch.mjs",
@@ -55,6 +58,7 @@
     "tailwindcss": "^4.2.1",
     "typescript": "^5.9.3",
     "vite": "^6.4.1",
+    "vitepress": "^1.6.4",
     "vitest": "^4.1.11"
   },
   "packageManager": "pnpm@10.32.1"

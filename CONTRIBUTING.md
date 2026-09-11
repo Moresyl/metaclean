@@ -24,6 +24,7 @@ pnpm test:security    # production WebView network and opener boundaries
 pnpm test:supply-chain
 pnpm test:release
 pnpm test:docs
+pnpm docs:build        # 构建可搜索的 VitePress 文档站
 pnpm build            # typecheck + production bundle
 cargo fmt --manifest-path src-tauri/Cargo.toml -- --check
 cargo test --manifest-path src-tauri/Cargo.toml

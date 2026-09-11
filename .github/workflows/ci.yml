@@ -38,6 +38,8 @@ jobs:
         run: pnpm test:formats
       - name: Verify documentation claims
         run: pnpm test:docs
+      - name: Build documentation site
+        run: pnpm docs:build
       - name: Audit dependencies
         run: pnpm audit --audit-level moderate --registry=https://registry.npmjs.org
       - run: pnpm test:coverage

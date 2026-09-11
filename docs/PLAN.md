@@ -107,7 +107,7 @@ MetaClean 是“分享前的文件隐私护栏”，不是取证查看器，也�
 
 ### P2：文档与生态
 
-1. 以 docs/README.md 作为文档导航入口；每份文档标明适用版本、证据、未验证边界和责任人。Windows 队列路径身份已与 Rust 端统一，大小写、斜杠、设备前缀和 UNC 别名不会再制造重复队列或“未返回结果”。
+1. 以 docs/README.md 作为文档导航入口，并用 VitePress 提供可搜索的任务型站点；每份文档标明适用版本、证据、未验证边界和责任人。Windows 队列路径身份已与 Rust 端统一，大小写、斜杠、设备前缀和 UNC 别名不会再制造重复队列或“未返回结果”。
 2. 按“用户指南 / 安全模型 / 格式策略 / 贡献与发布 / 设计系统”分层，避免把早期市场调研和当前运行事实混在一起。
 3. 竞品对比只保留可复查的源码、测试、公开 issue 或构建证据；不使用过时 star 数和未验证的“碾压”表述。
 
@@ -122,6 +122,7 @@ MetaClean 是“分享前的文件隐私护栏”，不是取证查看器，也�
 - pnpm test:security
 - pnpm test:supply-chain
 - pnpm test:release
+- pnpm docs:build
 - pnpm audit --audit-level moderate --registry=https://registry.npmjs.org
 - pnpm build
 - cargo fmt --manifest-path src-tauri/Cargo.toml -- --check

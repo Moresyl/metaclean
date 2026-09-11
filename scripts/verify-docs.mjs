@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 
 const root = fileURLToPath(new URL("..", import.meta.url));
 const read = (file) => readFile(path.join(root, file), "utf8");
-const [packageJson, tauriJson, readme, readmeZh, docsIndex, architecture, design, plan] = await Promise.all([
+const [packageJson, tauriJson, readme, readmeZh, docsIndex, architecture, design, plan, docsConfig, docsHome] = await Promise.all([
   read("package.json").then(JSON.parse),
   read("src-tauri/tauri.conf.json").then(JSON.parse),
   read("README.md"),
@@ -14,6 +14,8 @@ const [packageJson, tauriJson, readme, readmeZh, docsIndex, architecture, design
   read("docs/ARCHITECTURE.md"),
   read("DESIGN.md"),
   read("docs/PLAN.md"),
+  read("docs/.vitepress/config.mts"),
+  read("docs/index.md"),
 ]);
 
 assert.equal(tauriJson.version, packageJson.version, "package and Tauri versions drifted");
@@ -28,6 +30,17 @@ assert.match(architecture, /Non-negotiable invariants/u);
 assert.match(architecture, /pathIdentity/u);
 assert.match(design, /wcb\.txt/u);
 assert.match(plan, /Word 与 WPS/u);
+assert.match(docsConfig, /defineConfig/u);
+assert.match(docsConfig, /search: \{ provider: "local" \}/u);
+assert.match(docsConfig, /srcExclude/u);
+assert.doesNotMatch(docsConfig, /ignoreDeadLinks/u, "site links must be checked by VitePress");
+assert.match(docsHome, /按任务进入/u);
+assert.equal(packageJson.scripts["docs:dev"], "vitepress dev docs");
+assert.equal(packageJson.scripts["docs:build"], "vitepress build docs");
+assert.equal(packageJson.scripts["docs:preview"], "vitepress preview docs");
+for (const file of ["docs/user-guide.md", "docs/release.md", "docs/validation.md", "docs/safety.md", "docs/competitive-audit.md", "docs/product.md", "docs/security.md", "docs/support-policy.md", "docs/design.md", "docs/changelog.md"]) {
+  await read(file);
+}
 
 for (const [name, contents] of Object.entries({ README: readme, "README.zh-CN": readmeZh, DESIGN: design, "docs/README": docsIndex, "docs/ARCHITECTURE": architecture, "docs/PLAN": plan })) {
   assert.doesNotMatch(contents, /[A-Z]:\\Users\\/u, `${name} publishes a workstation path`);
