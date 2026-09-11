@@ -304,5 +304,9 @@ describe("App", () => {
     await screen.findByText("broken.pdf");
     fireEvent.click(screen.getByRole("button", { name: "扫描隐私痕迹" }));
     await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("扫描失败"));
+    const retry = screen.getByRole("button", { name: "扫描隐私痕迹" });
+    expect(retry).toBeEnabled();
+    fireEvent.click(retry);
+    await waitFor(() => expect(invokeMock.mock.calls.filter(([command]) => command === "scan_files")).toHaveLength(2));
   });
 });

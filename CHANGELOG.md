@@ -52,6 +52,9 @@ All notable changes to MetaClean are documented here. The project follows
   all 113 supported extension commands install and remove cleanly from HKCU.
 - The Windows candidate preflight now runs that per-user shell integration check
   automatically and refuses to overwrite pre-existing command keys.
+- A batch-level scan IPC failure now returns affected rows to the ready state,
+  preserving the visible error while keeping the scan action available for a
+  retry instead of trapping the queue in a false completed state.
 - Upgraded Vitest to 4.1.11 and pinned the WebdriverIO/Mocha `js-yaml` chain
   to 4.3.2, closing the current official npm audit findings without changing
   the production runtime dependency surface.

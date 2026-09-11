@@ -187,7 +187,7 @@ export default function App() {
       const count = relevant.reduce((total, report) => total + report.findings.reduce((sum, finding) => sum + finding.count, 0), 0);
       const missing = paths.length - relevant.length;
       setMessage(text(`扫描完成：${count} 项痕迹等待确认。${missing > 0 ? ` ${missing} 个文件未返回结果，可重试扫描。` : ""}`, `Scan complete: ${count} trace(s) await confirmation.${missing > 0 ? ` ${missing} file(s) returned no result and can be retried.` : ""}`));
-    } catch (error) { setEntries((current) => markEntryPaths(current, paths, "error")); setMessage(text(`扫描失败：${String(error)}`, `Scan failed: ${String(error)}`)); }
+    } catch (error) { setEntries((current) => markEntryPaths(current, paths, "ready")); setMessage(text(`扫描失败：${String(error)}`, `Scan failed: ${String(error)}`)); }
     finally { operationRef.current = false; operationKindRef.current = undefined; batchIdRef.current = undefined; setActiveBatchId(undefined); setCancelRequested(false); cancelRequestedRef.current = false; setBusy(false); }
   }
 
