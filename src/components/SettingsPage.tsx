@@ -285,9 +285,9 @@ export default function SettingsPage({
                   {text("检查更新", "Check now")}
                 </Button>
                 {update.info ? (
-                  <Button size="sm" variant="primary" disabled={updateBusy} onClick={() => void update.installUpdate()}>
+                  <Button size="sm" variant="primary" disabled={updateBusy || !update.runtimeReady} onClick={() => void update.installUpdate()}>
                     {update.runtime.selfUpdateSupported ? <Download size={14} strokeWidth={2} /> : <ExternalLink size={14} strokeWidth={2} />}
-                    {update.runtime.selfUpdateSupported ? text("安装更新", "Install update") : text("前往 GitHub", "Open GitHub")}
+                    {!update.runtimeReady ? text("正在确认…", "Checking…") : update.runtime.selfUpdateSupported ? text("安装更新", "Install update") : text("前往 GitHub", "Open GitHub")}
                   </Button>
                 ) : null}
               </div>

@@ -24,6 +24,7 @@ function Probe() {
     <span data-testid="available-version">{update.info?.availableVersion}</span>
     <span>{update.error}</span>
     <span data-testid="self-update-supported">{String(update.runtime.selfUpdateSupported)}</span>
+    <span data-testid="runtime-ready">{String(update.runtimeReady)}</span>
     <span>{update.progress?.downloaded}</span>
     <span data-testid="prompt-open">{String(update.promptOpen)}</span>
     <button type="button" onClick={() => void update.checkUpdate()}>check</button>
@@ -113,7 +114,7 @@ describe("UpdateProvider", () => {
       return true;
     });
     render(<UpdateProvider><Probe /></UpdateProvider>);
-    await screen.findByText("true");
+    await screen.findByTestId("runtime-ready");
     fireEvent.click(screen.getByRole("button", { name: "check" }));
     await screen.findByText("available");
     fireEvent.click(screen.getByRole("button", { name: "install" }));

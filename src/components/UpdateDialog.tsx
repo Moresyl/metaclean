@@ -1,4 +1,4 @@
-import { ArrowRight, ExternalLink, Sparkles, X } from "lucide-react";
+import { ArrowRight, Download, ExternalLink, Sparkles, X } from "lucide-react";
 import { useLayoutEffect, useRef, useState } from "react";
 import Button, { IconButton } from "./Button";
 import { useUpdate } from "../contexts/UpdateContext";
@@ -37,7 +37,14 @@ export default function UpdateDialog() {
   if (!update.promptOpen || !update.info) return null;
 
   const publishedDate = update.info.publishedAt?.slice(0, 10);
-  const openGitHub = async () => {
+  const updatePercent = update.progress?.total
+    ? Math.min(100, Math.round((update.progress.downloaded / update.progress.total) * 100))
+    : undefined;
+  const runPrimaryAction = async () => {
+    if (update.runtime.selfUpdateSupported) {
+      await update.installUpdate();
+      return;
+    }
     setOpening(true);
     setOpenError(undefined);
     try {
@@ -105,9 +112,15 @@ export default function UpdateDialog() {
           </p>
         </div>
 
-        {openError ? (
+        {update.status === "updating" ? (
+          <progress className="progress" aria-label={text("更新进度", "Update progress")} max={100} value={updatePercent} />
+        ) : null}
+
+        {openError || (update.status === "error" && update.error) ? (
           <p className="rounded-control border border-danger/40 bg-danger/10 px-2.5 py-2 text-sm text-danger" role="alert">
-            {text(`无法打开 GitHub：${openError}`, `Could not open GitHub: ${openError}`)}
+            {openError
+              ? text(`无法打开 GitHub：${openError}`, `Could not open GitHub: ${openError}`)
+              : text(`安装失败：${update.error}`, `Update failed: ${update.error}`)}
           </p>
         ) : null}
 
@@ -115,10 +128,18 @@ export default function UpdateDialog() {
           <Button variant="ghost" onClick={update.dismissUpdatePrompt}>
             {text("稍后", "Later")}
           </Button>
-          <Button ref={primaryAction} variant="primary" disabled={opening} onClick={() => void openGitHub()}>
-            <ExternalLink size={14} strokeWidth={2} />
-            {opening ? text("正在打开…", "Opening…") : text("前往 GitHub 查看并下载", "View and download on GitHub")}
-            <ArrowRight size={14} strokeWidth={2} />
+          <Button ref={primaryAction} variant="primary" disabled={opening || update.status === "updating" || !update.runtimeReady} onClick={() => void runPrimaryAction()}>
+            {update.runtime.selfUpdateSupported ? <Download size={14} strokeWidth={2} /> : <ExternalLink size={14} strokeWidth={2} />}
+            {!update.runtimeReady
+              ? text("正在确认安装方式…", "Checking install method…")
+              : update.runtime.selfUpdateSupported
+                ? update.status === "updating"
+                  ? `${text("正在安装…", "Installing…")}${updatePercent === undefined ? "" : ` ${updatePercent}%`}`
+                  : text("一键安装更新", "Install update")
+                : opening
+                  ? text("正在打开…", "Opening…")
+                  : text("前往 GitHub 查看并下载", "View and download on GitHub")}
+            {update.runtime.selfUpdateSupported ? null : <ArrowRight size={14} strokeWidth={2} />}
           </Button>
         </div>
       </section>

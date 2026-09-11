@@ -20,6 +20,7 @@ interface UpdateContextValue {
   error?: string;
   progress?: UpdateProgress;
   runtime: UpdateRuntime;
+  runtimeReady: boolean;
   promptOpen: boolean;
   autoCheckEnabled: boolean;
   setAutoCheckEnabled: (enabled: boolean) => void;
@@ -51,6 +52,7 @@ export function UpdateProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string>();
   const [progress, setProgress] = useState<UpdateProgress>();
   const [runtime, setRuntime] = useState<UpdateRuntime>(DEFAULT_RUNTIME);
+  const [runtimeReady, setRuntimeReady] = useState(false);
   const [promptOpen, setPromptOpen] = useState(false);
   const [autoCheckEnabled, setAutoCheckState] = useState(() => readStorage(AUTO_CHECK_KEY) !== "false");
   const checking = useRef(false);
@@ -147,7 +149,8 @@ export function UpdateProvider({ children }: { children: ReactNode }) {
       .catch(() => undefined);
     void getUpdateRuntime()
       .then((value) => { if (active) setRuntime(normalizeRuntime(value)); })
-      .catch(() => undefined);
+      .catch(() => undefined)
+      .finally(() => { if (active) setRuntimeReady(true); });
     return () => { active = false; };
   }, []);
 
@@ -164,6 +167,7 @@ export function UpdateProvider({ children }: { children: ReactNode }) {
     error,
     progress,
     runtime,
+    runtimeReady,
     promptOpen,
     autoCheckEnabled,
     setAutoCheckEnabled,
@@ -172,7 +176,7 @@ export function UpdateProvider({ children }: { children: ReactNode }) {
     openRelease,
     showUpdatePrompt,
     dismissUpdatePrompt,
-  }), [status, info, currentVersion, error, progress, runtime, promptOpen, autoCheckEnabled, setAutoCheckEnabled, checkUpdate, installUpdate, openRelease, showUpdatePrompt, dismissUpdatePrompt]);
+  }), [status, info, currentVersion, error, progress, runtime, runtimeReady, promptOpen, autoCheckEnabled, setAutoCheckEnabled, checkUpdate, installUpdate, openRelease, showUpdatePrompt, dismissUpdatePrompt]);
 
   return <UpdateContext.Provider value={value}>{children}</UpdateContext.Provider>;
 }

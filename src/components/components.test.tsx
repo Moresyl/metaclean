@@ -360,6 +360,29 @@ describe("desktop components", () => {
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
+  it("installs a signed update directly from the update prompt", async () => {
+    getUpdateRuntimeMock.mockResolvedValue({ selfUpdateSupported: true, portable: false });
+    checkForUpdateMock.mockResolvedValue({
+      status: "available",
+      info: {
+        currentVersion: "0.4.1",
+        availableVersion: "0.5.0",
+        name: "MetaClean v0.5.0",
+        releaseUrl: "https://github.com/Moresyl/metaclean/releases/tag/v0.5.0",
+      },
+    });
+    installAvailableUpdateMock.mockImplementation(async ({ onProgress }) => {
+      onProgress({ stage: "downloading", downloaded: 40, total: 100 });
+      return false;
+    });
+    wrap(<UpdateDialogHarness />);
+    fireEvent.click(screen.getByRole("button", { name: "trigger update" }));
+    const install = await screen.findByRole("button", { name: "一键安装更新" });
+    fireEvent.click(install);
+    await waitFor(() => expect(installAvailableUpdateMock).toHaveBeenCalledWith(expect.objectContaining({ expectedVersion: "0.5.0" })));
+    expect(openUrlMock).not.toHaveBeenCalled();
+  });
+
   it("keeps keyboard focus inside the update prompt and restores it on close", async () => {
     checkForUpdateMock.mockResolvedValue({
       status: "available",
