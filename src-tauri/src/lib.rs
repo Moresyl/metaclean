@@ -66,10 +66,15 @@ fn deduplicate_paths(paths: Vec<String>) -> Vec<String> {
 #[cfg(windows)]
 fn path_key(path: &str) -> String {
     let normalized = path.replace('/', "\\").to_ascii_lowercase();
-    if normalized.len() > 3 {
-        normalized.trim_end_matches('\\').to_owned()
+    let without_device_prefix = normalized.strip_prefix("\\\\?\\").unwrap_or(&normalized);
+    let canonical = without_device_prefix.strip_prefix("unc\\").map_or_else(
+        || without_device_prefix.to_owned(),
+        |unc| format!("\\\\{unc}"),
+    );
+    if canonical.len() > 3 {
+        canonical.trim_end_matches('\\').to_owned()
     } else {
-        normalized
+        canonical
     }
 }
 
@@ -532,6 +537,20 @@ mod update_tests {
         assert_eq!(
             deduplicate_paths(vec!["C:\\One.txt".into(), "c:/one.txt".into()]),
             vec!["C:\\One.txt"],
+        );
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn deduplicates_windows_device_and_unc_path_aliases() {
+        assert_eq!(
+            deduplicate_paths(vec![
+                "C:\\Data\\note.txt".into(),
+                "\\\\?\\C:\\Data\\note.txt".into(),
+                "\\\\?\\UNC\\server\\share\\note.txt".into(),
+                "\\\\server\\share\\note.txt".into(),
+            ]),
+            vec!["C:\\Data\\note.txt", "\\\\?\\UNC\\server\\share\\note.txt"],
         );
     }
 
