@@ -189,31 +189,63 @@ fn inspect_embedded_bytes(data: &[u8], mime: &str, depth: usize) -> usize {
     }
 }
 
-fn clean_embedded_bytes(data: &[u8], mime: &str, depth: usize) -> Option<Vec<u8>> {
+fn clean_embedded_bytes_with_count(
+    data: &[u8],
+    mime: &str,
+    depth: usize,
+) -> (usize, Option<Vec<u8>>) {
     let (cleaned, findings) = if data.starts_with(&[0xff, 0xd8, 0xff]) {
-        image::clean_jpeg_with_options(data, true, true).ok()?
+        match image::clean_jpeg_with_options(data, true, true) {
+            Ok(value) => value,
+            Err(_) => return (1, None),
+        }
     } else if data.starts_with(b"\x89PNG\r\n\x1a\n") {
-        image::clean_png_with_options(data, true).ok()?
+        match image::clean_png_with_options(data, true) {
+            Ok(value) => value,
+            Err(_) => return (1, None),
+        }
     } else if data.len() >= 12 && &data[..4] == b"RIFF" && &data[8..12] == b"WEBP" {
-        image::clean_webp_with_options(data, true).ok()?
+        match image::clean_webp_with_options(data, true) {
+            Ok(value) => value,
+            Err(_) => return (1, None),
+        }
     } else if jxl::is_jxl(data) {
-        jxl::clean(data).ok()?
+        match jxl::clean(data) {
+            Ok(value) => value,
+            Err(_) => return (1, None),
+        }
     } else if data.starts_with(b"GIF87a") || data.starts_with(b"GIF89a") {
-        media::clean_gif(data).ok()?
+        match media::clean_gif(data) {
+            Ok(value) => value,
+            Err(_) => return (1, None),
+        }
     } else if bmp::is_bmp(data) {
-        bmp::clean(data, true).ok()?
+        match bmp::clean(data, true) {
+            Ok(value) => value,
+            Err(_) => return (1, None),
+        }
     } else if heif::is_heif(data) {
-        heif::clean(data).ok()?
+        match heif::clean(data) {
+            Ok(value) => value,
+            Err(_) => return (1, None),
+        }
     } else if depth < MAX_EMBEDDED_DEPTH
         && (mime.contains("svg") || first_non_whitespace(data) == Some(b'<'))
     {
-        let source = std::str::from_utf8(data).ok()?;
-        let cleaned = clean_with_depth(source, "svg", depth + 1).0.into_bytes();
-        return (cleaned != data).then_some(cleaned);
+        let Some(source) = std::str::from_utf8(data).ok() else {
+            return (1, None);
+        };
+        let (cleaned, findings) = clean_with_depth(source, "svg", depth + 1);
+        let count = findings.iter().map(|finding| finding.count).sum();
+        return (
+            count,
+            (count > 0 && cleaned.as_bytes() != data).then_some(cleaned.into_bytes()),
+        );
     } else {
-        return None;
+        return (1, None);
     };
-    (privacy_count(&findings) > 0 && cleaned != data).then_some(cleaned)
+    let count = privacy_count(&findings);
+    (count, (count > 0 && cleaned != data).then_some(cleaned))
 }
 
 fn inspect_embedded(value: &str, depth: usize) -> usize {
@@ -235,26 +267,38 @@ fn inspect_embedded(value: &str, depth: usize) -> usize {
         })
 }
 
-fn clean_embedded<'a>(value: &'a str, depth: usize) -> Cow<'a, str> {
+fn clean_embedded<'a>(value: &'a str, depth: usize) -> (Cow<'a, str>, usize) {
     let pattern = data_image_pattern();
     let mut output: Option<String> = None;
+    let mut findings = 0usize;
     let mut cursor = 0;
     for capture in pattern.captures_iter(value) {
         let whole = capture.get(0).unwrap();
         let params = capture.name("params").map_or("", |item| item.as_str());
         let encoded = capture.name("payload").unwrap().as_str();
         let base64 = params.to_ascii_lowercase().contains("base64");
-        let replacement = decode_data_uri(encoded, base64)
-            .and_then(|data| {
-                clean_embedded_bytes(&data, capture.name("mime").unwrap().as_str(), depth)
-            })
-            .map(|cleaned| {
-                format!(
-                    "data:image/{}{params},{}",
+        let replacement = match decode_data_uri(encoded, base64) {
+            Some(data) => {
+                let (count, cleaned) = clean_embedded_bytes_with_count(
+                    &data,
                     capture.name("mime").unwrap().as_str(),
-                    encode_data_uri(&cleaned, base64)
-                )
-            });
+                    depth,
+                );
+                findings = findings.saturating_add(count);
+                cleaned
+            }
+            None => {
+                findings = findings.saturating_add(1);
+                None
+            }
+        }
+        .map(|cleaned| {
+            format!(
+                "data:image/{}{params},{}",
+                capture.name("mime").unwrap().as_str(),
+                encode_data_uri(&cleaned, base64)
+            )
+        });
         if let Some(replacement) = replacement {
             let had_previous_replacement = output.is_some();
             let target = output.get_or_insert_with(|| {
@@ -274,9 +318,9 @@ fn clean_embedded<'a>(value: &'a str, depth: usize) -> Cow<'a, str> {
     match output {
         Some(mut output) => {
             output.push_str(&value[cursor..]);
-            Cow::Owned(output)
+            (Cow::Owned(output), findings)
         }
-        None => Cow::Borrowed(value),
+        None => (Cow::Borrowed(value), findings),
     }
 }
 
@@ -284,7 +328,7 @@ pub fn inspect(value: &str, extension: &str) -> Vec<Finding> {
     inspect_with_depth(value, extension, 0)
 }
 
-fn inspect_structured(value: &str, extension: &str, depth: usize) -> Vec<Finding> {
+fn inspect_structured_metadata(value: &str, extension: &str) -> Vec<Finding> {
     let mut findings = Vec::new();
     let metadata = match extension {
         "html" | "htm" | "xhtml" => html_patterns()
@@ -300,6 +344,11 @@ fn inspect_structured(value: &str, extension: &str, depth: usize) -> Vec<Finding
     if metadata > 0 {
         findings.push(metadata_finding(metadata));
     }
+    findings
+}
+
+fn inspect_structured(value: &str, extension: &str, depth: usize) -> Vec<Finding> {
+    let mut findings = inspect_structured_metadata(value, extension);
     let embedded = inspect_embedded(value, depth);
     if embedded > 0 {
         findings.push(Finding {
@@ -325,10 +374,7 @@ pub fn clean(value: &str, extension: &str) -> (String, Vec<Finding>) {
 fn clean_with_depth(value: &str, extension: &str, depth: usize) -> (String, Vec<Finding>) {
     let (normalized, mut findings) = text::clean_cow(value);
     let mut output = normalized.into_owned();
-    findings.extend(inspect_structured(&output, extension, depth));
-    if findings.is_empty() {
-        return (output, findings);
-    }
+    findings.extend(inspect_structured_metadata(&output, extension));
     match extension {
         "html" | "htm" | "xhtml" => {
             for pattern in html_patterns() {
@@ -346,7 +392,16 @@ fn clean_with_depth(value: &str, extension: &str, depth: usize) -> (String, Vec<
         }
         _ => {}
     }
-    if let Cow::Owned(cleaned) = clean_embedded(&output, depth) {
+    let (embedded, embedded_count) = clean_embedded(&output, depth);
+    if embedded_count > 0 {
+        findings.push(Finding {
+            category: "embedded_image_metadata".into(),
+            label: "嵌入图片元数据 / C2PA".into(),
+            count: embedded_count,
+            severity: FindingSeverity::Provenance,
+        });
+    }
+    if let Cow::Owned(cleaned) = embedded {
         output = cleaned;
     }
     (output, findings)

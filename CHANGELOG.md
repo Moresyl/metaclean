@@ -28,6 +28,9 @@ All notable changes to MetaClean are documented here. The project follows
 - Parallel scanning now draws work from a bounded dynamic queue instead of two
   static path chunks, keeping both workers useful when file sizes or storage
   latency are uneven while returning reports in the original input order.
+- Embedded image cleanup now combines risk counting with candidate decoding in
+  one bounded pass, avoiding a second full decode before the required final
+  verification scan.
 - Secondary pages now load on demand, and Rollup keeps React, icons and each
   page family in stable cacheable chunks; the production entry chunk is now
   about 234 KiB instead of a single 525 KiB application chunk.
