@@ -81,7 +81,7 @@ export const SOURCE_STRINGS = [
   "Image metadata",
   "Images",
   "Invisible Unicode",
-  "105 extensions: metadata in JPEG, PNG, WebP/JPEG XL, GIF, BMP, TIFF, HEIC/HEIF, AVIF and 23 camera raw formats; MP3, WAV, FLAC/AIFF, WMA and M4A audio tags; user data, XMP and location in 19 MP4/QuickTime, AVI, ASF/WMV and Matroska/WebM containers; DOCX, XLSX, PPTX, ODF and EPUB properties and comments; PDF properties and XMP; invisible Unicode and applicable generator metadata in 16 UTF-8 text and markup formats.",
+  "113 extensions: metadata in JPEG, PNG, WebP/JPEG XL, GIF, BMP, TIFF, HEIC/HEIF, AVIF and 23 camera raw formats; MP3, WAV, FLAC/AIFF, WMA and M4A audio tags; user data, XMP and location in 19 MP4/QuickTime, AVI, ASF/WMV and Matroska/WebM containers; DOCX, XLSX, PPTX, ODF and EPUB properties and comments; PDF properties and XMP; invisible Unicode and applicable generator metadata in 24 UTF-8 text, markup and configuration formats.",
   "Keep only information needed for display and file management, never GPS, author, or provenance metadata.",
   "Keep the original and create a .cleaned copy",
   "Language",
@@ -1652,7 +1652,16 @@ export function translate(locale: Locale, zh: string, en: string): string {
   if (locale === "zh") return zh;
   if (locale === "en") return en;
   const exact = CATALOGS[locale]?.get(en);
-  if (exact) return exact;
+  if (exact) {
+    // The supported-scope sentence is intentionally kept as one source key so
+    // every catalog remains index-stable. Older catalogs may still carry the
+    // previous count; normalize that shared product fact at the translation
+    // boundary until translators refresh the longer prose in each language.
+    if (en.startsWith("113 extensions: metadata in ")) {
+      return exact.replaceAll("105", "113").replaceAll("16", "24");
+    }
+    return exact;
+  }
   for (const [pattern, render] of DYNAMIC_RULES[locale] ?? []) {
     const match = pattern.exec(en);
     if (match) return render(match);

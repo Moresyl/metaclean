@@ -21,7 +21,7 @@ const DOCUMENT_EXTENSIONS = new Set([
 ]);
 const TEXT_EXTENSIONS = new Set([
   "txt", "md", "markdown", "html", "htm", "xhtml", "svg", "xml", "json", "csv", "tsv",
-  "yaml", "yml", "log", "srt", "vtt",
+  "yaml", "yml", "log", "srt", "vtt", "css", "scss", "less", "ini", "conf", "cfg", "toml", "properties",
 ]);
 
 export function classifyFile(name: string): FileEntry["kind"] {

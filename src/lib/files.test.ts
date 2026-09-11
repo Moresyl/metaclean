@@ -17,18 +17,18 @@ describe("classifyFile", () => {
     ],
     document: ["docx", "xlsx", "pptx", "odt", "ods", "odp", "odg", "odf", "odb", "odm", "ott", "ots", "otp", "otg", "epub"],
     pdf: ["pdf"],
-    text: ["txt", "md", "markdown", "html", "htm", "xhtml", "svg", "xml", "json", "csv", "tsv", "yaml", "yml", "log", "srt", "vtt"],
+    text: ["txt", "md", "markdown", "html", "htm", "xhtml", "svg", "xml", "json", "csv", "tsv", "yaml", "yml", "log", "srt", "vtt", "css", "scss", "less", "ini", "conf", "cfg", "toml", "properties"],
   } as const;
   const supportedCases = Object.entries(groups).flatMap(([kind, extensions]) =>
     extensions.map((extension) => [`sample.${extension.toUpperCase()}`, kind] as const),
   );
 
-  /* The engine's SUPPORTED_EXTENSIONS is the same 105 entries. A row that shows
+  /* The engine's SUPPORTED_EXTENSIONS is the same 113 entries. A row that shows
      a generic glyph for a file the engine happily cleans is the visible half of
      the two lists drifting apart. */
-  it("covers every one of the engine's 105 supported extensions", () => {
-    expect(supportedCases).toHaveLength(105);
-    expect(new Set(supportedCases.map(([name]) => name)).size).toBe(105);
+  it("covers every one of the engine's 113 supported extensions", () => {
+    expect(supportedCases).toHaveLength(113);
+    expect(new Set(supportedCases.map(([name]) => name)).size).toBe(113);
   });
 
   it.each(supportedCases)("classifies %s case-insensitively", (name, expected) => {

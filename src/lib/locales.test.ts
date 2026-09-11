@@ -48,6 +48,13 @@ describe("locales", () => {
     expect(translate("fr", "", "missing")).toBe("missing");
   });
 
+  it("keeps the supported-scope count current in every locale", () => {
+    const scope = SOURCE_STRINGS.find((source) => source.startsWith("113 extensions: metadata in "))!;
+    for (const locale of TRANSLATED) {
+      expect(translate(locale, "", scope), locale).not.toMatch(/105|16 UTF/u);
+    }
+  });
+
   it("localizes dynamic values without altering user or version data", () => {
     expect(translate("ja", "", "3 trace(s) found")).toBe("3件の痕跡が見つかりました");
     expect(translate("ko", "", "Remove report.pdf")).toBe("report.pdf 제거");

@@ -46,7 +46,7 @@ Grab the latest package from [GitHub Releases](https://github.com/Moresyl/metacl
 
 ## What it removes
 
-105 extensions, cleaned by native Rust code — no ExifTool, no re-encoding.
+113 extensions, cleaned by native Rust code — no ExifTool, no re-encoding.
 
 | Format | Extensions | Cleaned |
 | --- | --- | --- |
@@ -67,7 +67,7 @@ Grab the latest package from [GitHub Releases](https://github.com/Moresyl/metacl
 | ASF | `.asf` `.wmv` `.wma` | Content descriptions and the `WM/` attribute space overwritten with the format's own padding object; the header's object count stays honest |
 | Documents | `.docx` `.xlsx` `.pptx` `.odt` `.ods` `.odp` `.odg` `.odf` `.odb` `.odm` `.ott` `.ots` `.otp` `.otg` `.epub` | Author and application properties, comments, custom XML. DOCX and OpenDocument revisions are resolved — insertions accepted, deletions removed. EPUB loses its Dublin Core people and dates plus Calibre/Sigil/Kobo/Apple/Adobe leftovers |
 | PDF | `.pdf` | Info dictionary, XMP and metadata inside embedded JPEG images, then a full reserialization that discards metadata stranded in incremental-update history |
-| Text & markup | `.txt` `.md` `.markdown` `.html` `.htm` `.xhtml` `.svg` `.xml` `.json` `.csv` `.tsv` `.yaml` `.yml` `.log` `.srt` `.vtt` | Invisible Unicode, generator/author metadata in Markdown front matter, HTML/XHTML and SVG, plus metadata inside embedded image data URIs |
+| Text & markup | `.txt` `.md` `.markdown` `.html` `.htm` `.xhtml` `.svg` `.xml` `.json` `.csv` `.tsv` `.yaml` `.yml` `.log` `.srt` `.vtt` `.css` `.scss` `.less` `.ini` `.conf` `.cfg` `.toml` `.properties` | Invisible Unicode, generator/author metadata in Markdown front matter, HTML/XHTML and SVG, plus metadata inside embedded image data URIs |
 
 Every container above keeps its byte offsets. Nothing is deleted from a file
 that indexes itself by position — the metadata is compacted, blanked or
@@ -109,7 +109,7 @@ for the evidence-backed comparison with other local cleaners.
 
 - Drag in files or folders, or recursively import a folder from the native picker
 - Five panes: **Clean**, **History**, **Privacy**, **Settings**, and **About**
-- Optional Windows File Explorer command across all 105 supported extensions — on Windows 11 it lives under **Show more options**
+- Optional Windows File Explorer command across all 113 supported extensions — on Windows 11 it lives under **Show more options**
 - Closing the window exits MetaClean by default; Settings can instead keep it in the system tray, where the tray menu can reopen or exit it
 - About provides version/runtime facts, copyable diagnostics, JSON export, issue/feature/release links and the source/license entry points
 - Queue rows expose direct path copying as well as the full context menu, and update/command dialogs keep keyboard focus contained until dismissed

@@ -17,7 +17,10 @@ All notable changes to MetaClean are documented here. The project follows
   page family in stable cacheable chunks; the production entry chunk is now
   about 234 KiB instead of a single 525 KiB application chunk.
 - README, README.zh-CN and VALIDATION now describe the five-page application,
-  About support surface, 105-extension boundary and current automated evidence.
+  About support surface, 113-extension boundary and current automated evidence.
+- Text intake now covers CSS, SCSS, Less and common INI/CONF/CFG/TOML/Properties
+  configuration files, with frontend classification and Windows uninstall
+  manifests kept in lockstep with the native Rust allowlist.
 
 ### Fixed
 

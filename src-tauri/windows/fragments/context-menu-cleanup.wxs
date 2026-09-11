@@ -109,6 +109,14 @@
         <RemoveRegistryKey Id="RemoveMetaCleanContext102" Root="HKCU" Key="Software\Classes\SystemFileAssociations\.otp\shell\MetaClean" Action="removeOnUninstall" />
         <RemoveRegistryKey Id="RemoveMetaCleanContext103" Root="HKCU" Key="Software\Classes\SystemFileAssociations\.otg\shell\MetaClean" Action="removeOnUninstall" />
         <RemoveRegistryKey Id="RemoveMetaCleanContext104" Root="HKCU" Key="Software\Classes\SystemFileAssociations\.jxl\shell\MetaClean" Action="removeOnUninstall" />
+        <RemoveRegistryKey Id="RemoveMetaCleanContext105" Root="HKCU" Key="Software\Classes\SystemFileAssociations\.css\shell\MetaClean" Action="removeOnUninstall" />
+        <RemoveRegistryKey Id="RemoveMetaCleanContext106" Root="HKCU" Key="Software\Classes\SystemFileAssociations\.scss\shell\MetaClean" Action="removeOnUninstall" />
+        <RemoveRegistryKey Id="RemoveMetaCleanContext107" Root="HKCU" Key="Software\Classes\SystemFileAssociations\.less\shell\MetaClean" Action="removeOnUninstall" />
+        <RemoveRegistryKey Id="RemoveMetaCleanContext108" Root="HKCU" Key="Software\Classes\SystemFileAssociations\.ini\shell\MetaClean" Action="removeOnUninstall" />
+        <RemoveRegistryKey Id="RemoveMetaCleanContext109" Root="HKCU" Key="Software\Classes\SystemFileAssociations\.conf\shell\MetaClean" Action="removeOnUninstall" />
+        <RemoveRegistryKey Id="RemoveMetaCleanContext110" Root="HKCU" Key="Software\Classes\SystemFileAssociations\.cfg\shell\MetaClean" Action="removeOnUninstall" />
+        <RemoveRegistryKey Id="RemoveMetaCleanContext111" Root="HKCU" Key="Software\Classes\SystemFileAssociations\.toml\shell\MetaClean" Action="removeOnUninstall" />
+        <RemoveRegistryKey Id="RemoveMetaCleanContext112" Root="HKCU" Key="Software\Classes\SystemFileAssociations\.properties\shell\MetaClean" Action="removeOnUninstall" />
         <RemoveRegistryKey Id="RemoveMetaCleanInstallState" Root="HKCU" Key="Software\moresl\MetaClean" Action="removeOnUninstall" />
         <RemoveRegistryKey Id="RemoveMetaCleanCleanupState" Root="HKCU" Key="Software\MetaClean" Action="removeOnUninstall" />
       </Component>
