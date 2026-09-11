@@ -78,6 +78,12 @@ describe("desktop components", () => {
     expect(screen.queryByText(/C:\\/)).not.toBeInTheDocument();
   });
 
+  it("shows bounded scan progress without exposing a file path", () => {
+    wrap(<StatusBar busy operation="scan" fileCount={3} progress={{ operation: "scan", batchId: "batch-1", completed: 2, total: 3, failed: 1, cancelled: false }} />);
+    expect(screen.getByText("正在扫描 2/3")).toBeInTheDocument();
+    expect(screen.queryByText(/C:\\/)).not.toBeInTheDocument();
+  });
+
   it("labels an active scan separately from cleanup", () => {
     wrap(<StatusBar busy operation="scan" fileCount={2} />);
     expect(screen.getByText("正在扫描")).toBeInTheDocument();

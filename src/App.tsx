@@ -128,7 +128,7 @@ export default function App() {
             || recovery.batchId !== event.payload.batchId
             || event.payload.completed - recovery.completed >= 16
             || now - recovery.persistedAt >= 250;
-          if (shouldPersist) {
+          if (event.payload.operation === "clean" && shouldPersist) {
             updateActiveBatchProgress(event.payload.batchId, event.payload.completed);
             recoveryProgressRef.current = { batchId: event.payload.batchId, completed: event.payload.completed, persistedAt: now };
           }
@@ -182,7 +182,7 @@ export default function App() {
     setActiveBatchId(batchId);
     cancelRequestedRef.current = false;
     setCancelRequested(false);
-    setBusy(true); setMessage(undefined); setEntries((current) => markEntryPaths(current, paths, "scanning"));
+    setBusy(true); setProgress(undefined); setMessage(undefined); setEntries((current) => markEntryPaths(current, paths, "scanning"));
     try {
       const reports = await invoke<ScanReport[]>("scan_files", { paths, batchId });
       const requested = new Set(paths.map(pathIdentity));
@@ -196,7 +196,7 @@ export default function App() {
         ? text(`已取消扫描：${relevant.length} 个文件已返回结果，${missing} 个可重试。`, `Scan cancelled: ${relevant.length} file(s) returned results; ${missing} can be retried.`)
         : text(`扫描完成：${count} 项痕迹等待确认。${missing > 0 ? ` ${missing} 个文件未返回结果，可重试扫描。` : ""}`, `Scan complete: ${count} trace(s) await confirmation.${missing > 0 ? ` ${missing} file(s) returned no result and can be retried.` : ""}`));
     } catch (error) { setEntries((current) => markEntryPaths(current, paths, "ready")); setMessage(text(`扫描失败：${String(error)}`, `Scan failed: ${String(error)}`)); }
-    finally { operationRef.current = false; operationKindRef.current = undefined; batchIdRef.current = undefined; setActiveBatchId(undefined); setActiveOperation(undefined); setCancelRequested(false); cancelRequestedRef.current = false; setBusy(false); }
+    finally { operationRef.current = false; operationKindRef.current = undefined; batchIdRef.current = undefined; setActiveBatchId(undefined); setActiveOperation(undefined); setCancelRequested(false); cancelRequestedRef.current = false; setBusy(false); setProgress(undefined); }
   }
 
   async function clean() {

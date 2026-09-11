@@ -39,7 +39,7 @@ export default function StatusBar({ busy, operation, fileCount, progress }: Stat
             ? progress
               ? progress.cancelled
                 ? text("正在停止…", "Stopping…")
-                : `${text("正在清理", "Cleaning")} ${progress.completed}/${progress.total}`
+                : `${progress.operation === "scan" ? text("正在扫描", "Scanning") : text("正在清理", "Cleaning")} ${progress.completed}/${progress.total}`
               : operation === "scan" ? text("正在扫描", "Scanning") : text("正在处理", "Working")
             : text("就绪", "Ready")}
         </span>

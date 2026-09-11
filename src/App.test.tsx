@@ -239,6 +239,31 @@ describe("App", () => {
     expect(screen.getByRole("button", { name: "扫描隐私痕迹" })).toBeEnabled();
   });
 
+  it("shows count-only scan progress and clears it after the scan", async () => {
+    let finishScan: ((reports: ScanReport[]) => void) | undefined;
+    const pendingScan = new Promise<ScanReport[]>((resolve) => { finishScan = resolve; });
+    invokeMock.mockImplementation((command: string) => {
+      if (command === "get_launch_paths") return Promise.resolve(["C:\\work\\notes.txt"]);
+      if (command === "expand_paths") return Promise.resolve({ files: ["C:\\work\\notes.txt"], skippedCount: 0, issues: [], limitReached: false });
+      if (command === "scan_files") return pendingScan;
+      if (command === "set_close_to_tray") return Promise.resolve(undefined);
+      return Promise.reject(new Error(`unexpected ${command}`));
+    });
+    renderApp();
+    await screen.findByText("notes.txt");
+    fireEvent.click(screen.getByRole("button", { name: "扫描隐私痕迹" }));
+    await waitFor(() => expect(invokeMock).toHaveBeenCalledWith("scan_files", { paths: ["C:\\work\\notes.txt"], batchId: expect.any(String) }));
+    const scanCall = invokeMock.mock.calls.find(([command]) => command === "scan_files");
+    const batchId = scanCall?.[1].batchId as string;
+    const progressListener = listenMock.mock.calls.find(([name]) => name === "batch-progress")?.[1] as ((event: { payload: { operation: "scan"; batchId: string; completed: number; total: number; failed: number; cancelled: boolean } }) => void) | undefined;
+    progressListener?.({ payload: { operation: "scan", batchId, completed: 1, total: 1, failed: 0, cancelled: false } });
+    await waitFor(() => expect(screen.getByRole("contentinfo")).toHaveTextContent("正在扫描 1/1"));
+    finishScan?.([]);
+    await screen.findByText(/扫描完成/);
+    expect(screen.getByRole("contentinfo")).toHaveTextContent("就绪");
+    expect(screen.getByRole("contentinfo")).not.toHaveTextContent("正在扫描 1/1");
+  });
+
   it("warns once when the previous cleanup may have been interrupted", async () => {
     localStorage.setItem(ACTIVE_BATCH_STORAGE_KEY, JSON.stringify({ batchId: "old-batch", total: 4, completed: 2, mode: "copy", startedAt: "2026-09-12T10:00:00.000Z" }));
     renderApp();

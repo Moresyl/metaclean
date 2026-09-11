@@ -218,6 +218,7 @@ impl Drop for ActiveCleanBatchGuard {
 
 #[tauri::command]
 async fn scan_files(
+    app: tauri::AppHandle,
     paths: Vec<String>,
     batch_id: Option<String>,
 ) -> Result<Vec<ScanReport>, String> {
@@ -226,10 +227,51 @@ async fn scan_files(
     let cancellation = Arc::new(AtomicBool::new(false));
     let active_batch = ActiveScanBatchGuard::register(batch_id.as_deref(), cancellation.clone())?;
     let active_read = ActiveReadGuard::start();
+    let progress_batch_id = batch_id.clone().unwrap_or_default();
+    let progress_total = paths.len();
+    let progress_state = Mutex::new((0usize, 0usize));
     tauri::async_runtime::spawn_blocking(move || {
         let _active_batch = active_batch;
         let _active_read = active_read;
-        engine::scan_paths_cancellable(&paths, &cancellation)
+        let on_progress = |report: &ScanReport| {
+            if progress_batch_id.is_empty() {
+                return;
+            }
+            let Ok(mut progress) = progress_state.lock() else {
+                return;
+            };
+            progress.0 += 1;
+            progress.1 += usize::from(report.error.is_some());
+            let _ = app.emit(
+                "batch-progress",
+                BatchProgress {
+                    operation: "scan",
+                    batch_id: progress_batch_id.clone(),
+                    completed: progress.0,
+                    total: progress_total,
+                    failed: progress.1,
+                    cancelled: false,
+                },
+            );
+        };
+        let reports =
+            engine::scan_paths_cancellable_with_progress(&paths, &cancellation, &on_progress);
+        if cancellation.load(Ordering::SeqCst) && !progress_batch_id.is_empty() {
+            if let Ok(progress) = progress_state.lock() {
+                let _ = app.emit(
+                    "batch-progress",
+                    BatchProgress {
+                        operation: "scan",
+                        batch_id: progress_batch_id,
+                        completed: progress.0,
+                        total: progress_total,
+                        failed: progress.1,
+                        cancelled: true,
+                    },
+                );
+            }
+        }
+        reports
     })
     .await
     .map_err(|error| format!("扫描任务异常结束：{error}"))

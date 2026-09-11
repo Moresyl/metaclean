@@ -815,16 +815,26 @@ pub fn clean_file_with_options(
 
 #[cfg(test)]
 pub fn scan_paths(paths: &[String]) -> Vec<ScanReport> {
-    scan_paths_with_cancellation(paths, None)
+    scan_paths_with_cancellation(paths, None, None)
 }
 
+#[cfg(test)]
 pub fn scan_paths_cancellable(paths: &[String], cancellation: &AtomicBool) -> Vec<ScanReport> {
-    scan_paths_with_cancellation(paths, Some(cancellation))
+    scan_paths_with_cancellation(paths, Some(cancellation), None)
+}
+
+pub fn scan_paths_cancellable_with_progress(
+    paths: &[String],
+    cancellation: &AtomicBool,
+    progress: &(dyn Fn(&ScanReport) + Send + Sync),
+) -> Vec<ScanReport> {
+    scan_paths_with_cancellation(paths, Some(cancellation), Some(progress))
 }
 
 fn scan_paths_with_cancellation(
     paths: &[String],
     cancellation: Option<&AtomicBool>,
+    progress: Option<&(dyn Fn(&ScanReport) + Send + Sync)>,
 ) -> Vec<ScanReport> {
     const MAX_SCAN_WORKERS: usize = 2;
     let workers = std::thread::available_parallelism()
@@ -835,7 +845,13 @@ fn scan_paths_with_cancellation(
         return paths
             .iter()
             .take_while(|_| !cancellation.is_some_and(|token| token.load(Ordering::SeqCst)))
-            .map(|path| scan_path_isolated(path))
+            .map(|path| {
+                let report = scan_path_isolated(path);
+                if let Some(progress) = progress {
+                    progress(&report);
+                }
+                report
+            })
             .collect();
     }
     let chunk_size = paths.len().div_ceil(workers);
@@ -851,7 +867,13 @@ fn scan_paths_with_cancellation(
                             .take_while(|_| {
                                 !cancellation.is_some_and(|token| token.load(Ordering::SeqCst))
                             })
-                            .map(|path| scan_path_isolated(path))
+                            .map(|path| {
+                                let report = scan_path_isolated(path);
+                                if let Some(progress) = progress {
+                                    progress(&report);
+                                }
+                                report
+                            })
                             .collect::<Vec<_>>()
                     }),
                 )
@@ -1347,6 +1369,26 @@ mod tests {
         let cancellation = AtomicBool::new(true);
         let reports = scan_paths_cancellable(&["missing.txt".into()], &cancellation);
         assert!(reports.is_empty());
+    }
+
+    #[test]
+    fn cancellable_scan_reports_count_only_progress() {
+        let dir = tempfile::tempdir().unwrap();
+        let existing = dir.path().join("notes.txt");
+        fs::write(&existing, "plain text").unwrap();
+        let paths = vec![
+            existing.to_string_lossy().into_owned(),
+            "missing.txt".into(),
+        ];
+        let cancellation = AtomicBool::new(false);
+        let progress = std::sync::Mutex::new(Vec::new());
+        let reports = scan_paths_cancellable_with_progress(&paths, &cancellation, &|report| {
+            progress.lock().unwrap().push(report.error.is_some());
+        });
+        assert_eq!(reports.len(), paths.len());
+        let progress = progress.into_inner().unwrap();
+        assert_eq!(progress.len(), paths.len());
+        assert_eq!(progress.iter().filter(|failed| **failed).count(), 1);
     }
 
     #[test]

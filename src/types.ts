@@ -67,7 +67,7 @@ export interface IntakeResult {
 }
 
 export interface BatchProgress {
-  operation: "clean";
+  operation: "scan" | "clean";
   batchId: string;
   completed: number;
   total: number;
