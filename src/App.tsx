@@ -50,6 +50,7 @@ export default function App() {
   const operationKindRef = useRef<"scan" | "clean" | undefined>(undefined);
   const batchIdRef = useRef<string | undefined>(undefined);
   const cancelRequestedRef = useRef(false);
+  const recoveryProgressRef = useRef<{ batchId?: string; completed: number; persistedAt: number }>({ completed: 0, persistedAt: 0 });
   const [recoveryNotice] = useState(() => readActiveBatch());
   const [message, setMessage] = useState<string>();
   const [dragActive, setDragActive] = useState(false);
@@ -119,7 +120,17 @@ export default function App() {
       const unlistenProgress = await listen<BatchProgress>("batch-progress", (event) => {
         if (operationKindRef.current === event.payload.operation && batchIdRef.current === event.payload.batchId) {
           setProgress(event.payload);
-          updateActiveBatchProgress(event.payload.batchId, event.payload.completed);
+          const now = Date.now();
+          const recovery = recoveryProgressRef.current;
+          const shouldPersist = event.payload.cancelled
+            || event.payload.completed === event.payload.total
+            || recovery.batchId !== event.payload.batchId
+            || event.payload.completed - recovery.completed >= 16
+            || now - recovery.persistedAt >= 250;
+          if (shouldPersist) {
+            updateActiveBatchProgress(event.payload.batchId, event.payload.completed);
+            recoveryProgressRef.current = { batchId: event.payload.batchId, completed: event.payload.completed, persistedAt: now };
+          }
         }
       });
       const unlistenClose = await listen<string>("close-blocked", (event) => setMessage(event.payload));
@@ -193,6 +204,7 @@ export default function App() {
     setCancelRequested(false);
     setBusy(true); setProgress(undefined); setMessage(undefined);
     writeActiveBatch({ batchId, total: paths.length, completed: 0, mode, startedAt: new Date().toISOString() });
+    recoveryProgressRef.current = { batchId, completed: 0, persistedAt: Date.now() };
     try {
       const results = await invoke<CleanResult[]>("clean_files", { request: { paths, batchId, mode, preserveTimestamps, preserveOrientation, preserveColorProfile, removeExtendedAttributes } });
       const requested = new Set(paths);
@@ -212,7 +224,7 @@ export default function App() {
         : text(`${successes.length} 个文件清理完成${failures ? `，${failures} 个失败` : ""}${missing > 0 ? `，${missing} 个未返回结果、可重试` : ""}。${successes[0]?.outputPath ? ` 输出：${successes[0].outputPath}` : ""}`, `${successes.length} file(s) cleaned${failures ? `; ${failures} failed` : ""}${missing > 0 ? `; ${missing} returned no result and can be retried` : ""}.${successes[0]?.outputPath ? ` Output: ${successes[0].outputPath}` : ""}`));
       if (relevant.length) addHistory({ id: crypto.randomUUID(), createdAt: new Date().toISOString(), mode, results: relevant });
     } catch (error) { setMessage(text(`清理失败：${String(error)}`, `Cleanup failed: ${String(error)}`)); }
-    finally { clearActiveBatch(batchId); operationRef.current = false; operationKindRef.current = undefined; batchIdRef.current = undefined; setActiveBatchId(undefined); setCancelRequested(false); cancelRequestedRef.current = false; setBusy(false); setProgress(undefined); }
+    finally { clearActiveBatch(batchId); recoveryProgressRef.current = { completed: 0, persistedAt: 0 }; operationRef.current = false; operationKindRef.current = undefined; batchIdRef.current = undefined; setActiveBatchId(undefined); setCancelRequested(false); cancelRequestedRef.current = false; setBusy(false); setProgress(undefined); }
   }
 
   function cancelClean() {
