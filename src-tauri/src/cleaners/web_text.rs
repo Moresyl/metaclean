@@ -48,6 +48,30 @@ fn raw_text_content_ranges(value: &str) -> Vec<Range<usize>> {
     ranges
 }
 
+fn html_comment_ranges(value: &str) -> Vec<Range<usize>> {
+    let mut ranges = Vec::new();
+    let mut cursor = 0;
+    while let Some(relative_start) = value[cursor..].find("<!--") {
+        let start = cursor + relative_start;
+        let content_start = start + 4;
+        let Some(relative_end) = value[content_start..].find("-->") else {
+            ranges.push(start..value.len());
+            break;
+        };
+        let end = content_start + relative_end + 3;
+        ranges.push(start..end);
+        cursor = end;
+    }
+    ranges
+}
+
+fn ignored_html_ranges(value: &str) -> Vec<Range<usize>> {
+    let mut ranges = raw_text_content_ranges(value);
+    ranges.extend(html_comment_ranges(value));
+    ranges.sort_by_key(|range| range.start);
+    ranges
+}
+
 fn inside_ranges(index: usize, ranges: &[Range<usize>]) -> bool {
     ranges
         .iter()
@@ -180,10 +204,10 @@ fn clean_html_tag(tag: &str, metadata: &HtmlTagMetadata) -> String {
 }
 
 fn html_metadata_count(value: &str) -> usize {
-    let raw_text = raw_text_content_ranges(value);
+    let ignored = ignored_html_ranges(value);
     html_start_tag_pattern()
         .find_iter(value)
-        .filter(|tag| !inside_ranges(tag.start(), &raw_text))
+        .filter(|tag| !inside_ranges(tag.start(), &ignored))
         .map(|tag| {
             let metadata = html_tag_metadata(tag.as_str());
             usize::from(metadata.private_meta) + metadata.private_data_attributes.len()
@@ -192,14 +216,14 @@ fn html_metadata_count(value: &str) -> usize {
 }
 
 fn clean_html_metadata(value: &str) -> String {
-    let raw_text = raw_text_content_ranges(value);
+    let ignored = ignored_html_ranges(value);
     html_start_tag_pattern()
         .replace_all(value, |captures: &regex::Captures<'_>| {
             let Some(found) = captures.get(0) else {
                 return String::new();
             };
             let tag = found.as_str();
-            if inside_ranges(found.start(), &raw_text) {
+            if inside_ranges(found.start(), &ignored) {
                 return tag.to_owned();
             }
             let metadata = html_tag_metadata(tag);
@@ -687,6 +711,20 @@ mod tests {
             cleaned,
             r#"<script>const template = '<div data-ai-model="keep"><meta name="author">';</script><style>.x::after { content: '<i data-c2pa="keep">'; }</style><div>safe</div>"#
         );
+    }
+
+    #[test]
+    fn preserves_html_lookalikes_inside_comments() {
+        let source = r#"<body><!-- <meta name="generator" content="demo"> <div data-ai="example"></div> --><meta name="author" content="real"></body>"#;
+        assert_eq!(html_metadata_count(source), 1);
+        assert_eq!(
+            clean_html_metadata(source),
+            r#"<body><!-- <meta name="generator" content="demo"> <div data-ai="example"></div> --></body>"#
+        );
+
+        let unclosed = r#"<body><!-- <meta name="generator" content="demo"><meta name="author" content="also-demo">"#;
+        assert_eq!(html_metadata_count(unclosed), 0);
+        assert_eq!(clean_html_metadata(unclosed), unclosed);
     }
 
     #[test]

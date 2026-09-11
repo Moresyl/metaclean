@@ -890,7 +890,10 @@ mod update_tests {
         assert!(!reviewed_update_matches("0.6.1-beta.1", "0.6.1-beta.1"));
         assert!(!reviewed_update_matches("0.6.1", "latest"));
         assert!(!reviewed_update_matches("01.2.3", "01.2.3"));
-        assert!(!reviewed_update_matches("999999999999999999.0.1", "999999999999999999.0.1"));
+        assert!(!reviewed_update_matches(
+            "999999999999999999.0.1",
+            "999999999999999999.0.1"
+        ));
     }
 
     #[test]
