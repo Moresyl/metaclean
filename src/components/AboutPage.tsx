@@ -155,6 +155,17 @@ export default function AboutPage() {
     }
   }, [text]);
 
+  const openRelease = useCallback(async () => {
+    setError(undefined);
+    try {
+      await update.openRelease();
+    } catch (reason) {
+      if (!mountedRef.current) return;
+      const detail = reason instanceof Error ? reason.message : String(reason);
+      setError(text(`无法打开版本说明：${detail}`, `Could not open release notes: ${detail}`));
+    }
+  }, [text, update.openRelease]);
+
   const updateBusy = update.status === "checking" || update.status === "updating";
   const percent = update.progress?.total && update.progress.total > 0
     ? Math.min(100, Math.round((update.progress.downloaded / update.progress.total) * 100))
@@ -181,7 +192,7 @@ export default function AboutPage() {
           </Button>
         </div>
 
-        <UpdateCard update={update} percent={percent} />
+        <UpdateCard update={update} percent={percent} onOpenRelease={() => void openRelease()} />
 
         <section className="grid gap-2">
           <h2 className="caption">{text("应用位置", "Application paths")}</h2>
@@ -253,7 +264,7 @@ export default function AboutPage() {
   );
 }
 
-function UpdateCard({ update, percent }: { update: ReturnType<typeof useUpdate>; percent?: number }) {
+function UpdateCard({ update, percent, onOpenRelease }: { update: ReturnType<typeof useUpdate>; percent?: number; onOpenRelease: () => void }) {
   const { text } = useI18n();
   if (update.status === "idle" || update.status === "checking") return null;
 
@@ -268,7 +279,7 @@ function UpdateCard({ update, percent }: { update: ReturnType<typeof useUpdate>;
             </p>
           </div>
           <div className="flex shrink-0 gap-2">
-            <Button size="sm" onClick={() => void update.openRelease()}><ExternalLink size={14} />{text("版本说明", "Release notes")}</Button>
+            <Button size="sm" onClick={onOpenRelease}><ExternalLink size={14} />{text("版本说明", "Release notes")}</Button>
             <Button size="sm" variant="primary" disabled={update.status === "updating"} onClick={() => void update.installUpdate()}>
               {update.status === "updating" ? <LoaderCircle size={14} className="animate-spin" /> : update.runtime.selfUpdateSupported ? <Download size={14} /> : <ExternalLink size={14} />}
               {update.status === "updating" ? text("更新中…", "Updating…") : update.runtime.selfUpdateSupported ? text("安装更新", "Install update") : text("前往下载", "Open download")}

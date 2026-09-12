@@ -431,6 +431,23 @@ describe("desktop components", () => {
     expect(invokeMock).not.toHaveBeenCalledWith("export_audit_report", expect.anything());
   });
 
+  it("surfaces release-note opener failures on the about page", async () => {
+    localStorage.setItem("metaclean.update.autoCheck", "false");
+    invokeMock.mockImplementation((command: string) => command === "get_about_info"
+      ? Promise.resolve({ version: "0.7.0", platform: "windows", arch: "x86_64" })
+      : Promise.reject(new Error(command)));
+    checkForUpdateMock.mockResolvedValue({
+      status: "available",
+      info: { currentVersion: "0.6.1", availableVersion: "0.7.0", name: "MetaClean v0.7.0", releaseUrl: "https://github.com/Moresyl/metaclean/releases/tag/v0.7.0" },
+    });
+    openUrlMock.mockRejectedValueOnce(new Error("browser unavailable"));
+    wrap(<AboutPage />);
+    fireEvent.click(screen.getByRole("button", { name: "检查更新" }));
+    const notes = await screen.findByRole("button", { name: "版本说明" });
+    fireEvent.click(notes);
+    expect(await screen.findByRole("alert")).toHaveTextContent("无法打开版本说明：browser unavailable");
+  });
+
   it("builds diagnostics from explicit runtime facts without file history", () => {
     const report = JSON.parse(buildDiagnosticReport({
       version: "0.7.0",
