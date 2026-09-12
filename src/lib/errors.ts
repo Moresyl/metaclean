@@ -12,7 +12,12 @@ function utf8ByteLength(value: string): number {
  * their messages need the same UTF-8 byte budget before entering React state.
  */
 export function boundedErrorMessage(reason: unknown): string {
-  const value = reason instanceof Error ? reason.message : String(reason);
+  let value: string;
+  try {
+    value = reason instanceof Error ? reason.message : String(reason);
+  } catch {
+    value = "未知错误 / Unknown error";
+  }
   if (utf8ByteLength(value) <= MAX_ERROR_MESSAGE_BYTES) return value;
 
   const budget = MAX_ERROR_MESSAGE_BYTES - utf8ByteLength(TRUNCATION_MARKER);

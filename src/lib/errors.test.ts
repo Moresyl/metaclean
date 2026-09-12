@@ -12,4 +12,9 @@ describe("boundedErrorMessage", () => {
     expect(new TextEncoder().encode(value).byteLength).toBeLessThanOrEqual(8 * 1024);
     expect(value.endsWith("…")).toBe(true);
   });
+
+  it("falls back when an unknown rejection cannot be stringified", () => {
+    const reason = { toString: () => { throw new Error("broken coercion"); } };
+    expect(boundedErrorMessage(reason)).toBe("未知错误 / Unknown error");
+  });
 });

@@ -189,7 +189,8 @@ describe("native update commands", () => {
     const invoker = vi.fn();
     await expect(installAvailableUpdate({ expectedVersion: "latest", listener, invoker })).rejects.toThrow(/发生了变化/u);
     expect(invoker).not.toHaveBeenCalled();
-    expect(unlisten).toHaveBeenCalledOnce();
+    expect(listener).not.toHaveBeenCalled();
+    expect(unlisten).not.toHaveBeenCalled();
   });
 
   it.each(["01.2.3", "999999999999999999.0.1", `${"1".repeat(129)}.0.0`])("refuses non-canonical install version %s", async (expectedVersion) => {
@@ -198,6 +199,7 @@ describe("native update commands", () => {
     const invoker = vi.fn();
     await expect(installAvailableUpdate({ expectedVersion, listener, invoker })).rejects.toThrow(/发生了变化/u);
     expect(invoker).not.toHaveBeenCalled();
-    expect(unlisten).toHaveBeenCalledOnce();
+    expect(listener).not.toHaveBeenCalled();
+    expect(unlisten).not.toHaveBeenCalled();
   });
 });

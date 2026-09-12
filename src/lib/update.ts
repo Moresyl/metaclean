@@ -204,21 +204,22 @@ export async function installAvailableUpdate(options: {
   listener?: ListenLike;
 }): Promise<boolean> {
   const invoke = options.invoker ?? tauriInvoke;
+  const expectedVersion = options.expectedVersion.trim().replace(/^v/iu, "");
+  if (!isStableReleaseVersion(expectedVersion)) throw new Error(UPDATE_CHANGED);
   const listen = options.listener ?? (async (event, handler) => {
     const events = await import("@tauri-apps/api/event");
     return await events.listen<UpdateProgress>(event, handler);
   });
-  const unlisten = await listen("update-progress", (event) => {
-    const progress = normalizeUpdateProgress(event.payload);
-    if (progress) options.onProgress?.(progress);
-  });
+  let unlisten: (() => void) | undefined;
   try {
-    const expectedVersion = options.expectedVersion.trim().replace(/^v/iu, "");
-    if (!isStableReleaseVersion(expectedVersion)) throw new Error(UPDATE_CHANGED);
+    unlisten = await listen("update-progress", (event) => {
+      const progress = normalizeUpdateProgress(event.payload);
+      if (progress) options.onProgress?.(progress);
+    });
     return await invoke<boolean>("install_update_and_restart", { expectedVersion });
   } finally {
     try {
-      await unlisten();
+      await unlisten?.();
     } catch {
       // The updater may already have restarted the process. Listener cleanup
       // is best-effort and must not turn a successful install into an error.

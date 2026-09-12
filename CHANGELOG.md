@@ -60,6 +60,10 @@ All notable changes to MetaClean are documented here. The project follows
   invalid stages, negative or unsafe counters, and impossible totals are
   discarded without affecting an active installation.
 
+- Update installation validates the reviewed version before registering a
+  native progress listener, and listener setup is cleaned up safely if the
+  adapter fails before returning a handle.
+
 - The Rust coverage ledger now records 84.22% after the recursive path-budget,
   UTF-8-safe issue-path and bounded-diagnostics boundary tests.
 
