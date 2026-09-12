@@ -14,6 +14,9 @@ test("loads the concrete bilingual notes for a published version", async () => {
 
 test("rejects missing sections, generic bodies and invalid tags", () => {
   assert.throws(() => validateReleaseNotes("latest", ""), /Invalid release tag/u);
+  assert.throws(() => validateReleaseNotes("v1.2.3-beta.1", ""), /Invalid release tag/u);
+  assert.throws(() => validateReleaseNotes("v01.2.3", ""), /Invalid release tag/u);
+  assert.throws(() => validateReleaseNotes(`v${"1".repeat(129)}.0.0`, ""), /Invalid release tag/u);
   assert.throws(() => validateReleaseNotes("v1.0.0", "# MetaClean v1.0.0\n\n### 新功能\n\n- item"), /missing concrete bullets/u);
   const generic = "# MetaClean v1.0.0\n\n### 新功能\n- 仅见 changelog\n### 变更与安全\n- item\n### 修复与打磨\n- item\n### 安装\n- item\n### English summary\n- item";
   assert.throws(() => validateReleaseNotes("v1.0.0", generic), /cannot delegate/u);

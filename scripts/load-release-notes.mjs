@@ -1,12 +1,13 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import { stableVersion } from "./stable-version.mjs";
 
 const REQUIRED_HEADINGS = ["新功能", "变更与安全", "修复与打磨", "安装", "English summary"];
 
 export function validateReleaseNotes(tag, body) {
   const normalized = body.replace(/\r\n?/gu, "\n");
-  if (!/^v\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/u.test(tag)) throw new Error(`Invalid release tag: ${tag}`);
+  if (!tag.startsWith("v") || stableVersion(tag.slice(1)) !== tag.slice(1)) throw new Error(`Invalid release tag: ${tag}`);
   if (!normalized.startsWith(`# MetaClean ${tag}\n`)) throw new Error(`Release notes must start with # MetaClean ${tag}`);
   for (const heading of REQUIRED_HEADINGS) {
     const marker = `### ${heading}\n`;

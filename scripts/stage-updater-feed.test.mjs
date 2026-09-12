@@ -64,3 +64,14 @@ test("rejects stale, unsigned and unofficial fallback manifests", async () => {
     await rm(directory, { recursive: true, force: true });
   }
 });
+
+test("rejects non-stable fallback tags before reading the manifest", async () => {
+  const directory = await mkdtemp(path.join(os.tmpdir(), "metaclean-update-feed-tag-"));
+  try {
+    const options = { sourcePath: path.join(directory, "missing.json"), repository: "Moresyl/metaclean", outputPath: path.join(directory, "site.json") };
+    await assert.rejects(stageUpdaterFeed({ ...options, tag: "v1.2.3-beta.1" }), /Invalid release tag/u);
+    await assert.rejects(stageUpdaterFeed({ ...options, tag: "v01.2.3" }), /Invalid release tag/u);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});

@@ -111,6 +111,10 @@ All notable changes to MetaClean are documented here. The project follows
 - Release asset and manifest tooling now enforces that same 128-byte version
   bound, closing the remaining pipeline/client contract gap.
 
+- Release-note validation and the Pages fallback now reject non-canonical tags
+  before reading or staging artifacts, so prerelease and padded tags cannot
+  reach a later manifest step with a misleading error.
+
 - History persistence now checks the serialized storage budget before writing;
   an unusually large complete batch remains available in the current session
   without replacing an older recoverable history snapshot.
