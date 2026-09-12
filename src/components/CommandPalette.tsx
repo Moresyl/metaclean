@@ -71,6 +71,7 @@ export default function CommandPalette({ commands, onClose }: { commands: Comman
       .sort((left, right) => right.rank - left.rank)
       .map(({ command }) => command);
   }, [commands, query]);
+  const activeCommand = matches[active];
 
   // A new query invalidates the highlight; keep it on the best match instead of
   // wherever the previous list happened to leave it.
@@ -130,6 +131,7 @@ export default function CommandPalette({ commands, onClose }: { commands: Comman
             role="combobox"
             aria-expanded="true"
             aria-controls="palette-results"
+            aria-activedescendant={activeCommand ? `command-option-${activeCommand.id}` : undefined}
             aria-label={text("搜索命令…", "Search commands…")}
             placeholder={text("搜索命令…", "Search commands…")}
             spellCheck={false}
@@ -169,6 +171,7 @@ export default function CommandPalette({ commands, onClose }: { commands: Comman
                   <button
                     type="button"
                     role="option"
+                    id={`command-option-${command.id}`}
                     aria-selected={index === active}
                     // Every row is set in the window's own ink, the selected one
                     // included. The list used to grey fourteen commands so that

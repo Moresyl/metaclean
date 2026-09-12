@@ -149,9 +149,11 @@ describe("command palette", () => {
   it("groups the unfiltered list and drops the headings once ranked", () => {
     const { container } = wrap(<CommandPalette commands={commands} onClose={vi.fn()} />);
     expect([...container.querySelectorAll(".palette-group")].map((node) => node.textContent)).toEqual(["前往", "操作"]);
+    expect(screen.getByRole("combobox")).toHaveAttribute("aria-activedescendant", "command-option-go-clean");
     fireEvent.change(screen.getByRole("combobox"), { target: { value: "记录" } });
     expect(container.querySelectorAll(".palette-group")).toHaveLength(0);
     expect(screen.getAllByRole("option")).toHaveLength(1);
+    expect(screen.getByRole("combobox")).toHaveAttribute("aria-activedescendant", "command-option-go-history");
   });
 
   it("runs the highlighted command and refuses the disabled one", () => {
