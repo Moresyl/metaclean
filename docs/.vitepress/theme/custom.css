@@ -72,11 +72,19 @@
 .site-footer nav a { color: var(--vp-c-text-2); font-size: 12px; text-decoration: none; }
 .site-footer nav a:hover { color: var(--vp-c-brand-1); }
 .site-footer-meta { text-align: right; }
+.NotFound { margin: 88px auto 120px; max-width: 760px; padding: 0 24px; text-align: left; }
+.NotFound .code { color: var(--vp-c-brand-1); font-size: clamp(5rem, 14vw, 9rem); font-weight: 800; letter-spacing: -.09em; line-height: .8; margin: 0 0 30px; }
+.NotFound .title { font-size: clamp(2.5rem, 6vw, 4.5rem); letter-spacing: -.055em; line-height: 1; margin: 12px 0 18px; }
+.NotFound .divider { border-top: 1px solid var(--vp-c-divider); margin: 28px 0; }
+.NotFound .quote { border-left: 3px solid var(--vp-c-brand-1); color: var(--vp-c-text-2); font-size: 18px; line-height: 1.65; margin: 0; max-width: 620px; padding-left: 18px; }
+.NotFound .action { margin-top: 30px; }
+.NotFound .action .link { background: var(--vp-c-brand-1); border: 1px solid var(--vp-c-brand-1); border-radius: 9px; color: #071711; display: inline-flex; font-weight: 700; padding: 10px 15px; text-decoration: none; transition: transform .2s, filter .2s; }
+.NotFound .action .link:hover { filter: brightness(1.08); transform: translateY(-1px); }
 @media (min-width: 761px) and (max-width: 1100px) {
   .hero-grid { gap: 20px; grid-template-columns: minmax(0, 1.2fr) minmax(220px, .8fr); }
   .hero-grid h1 { font-size: clamp(2.65rem, 5vw, 3.5rem); }
   .hero-proof { padding: 20px; }
   .card-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
-@media (max-width: 760px) { .hero-grid, .card-grid, .rule-strip, .site-footer { grid-template-columns: 1fr; } .rule-strip div + div { border-left: 0; border-top: 1px solid var(--vp-c-divider); } .hero-grid { margin: 34px 0 54px; } .hero-grid h1 { font-size: clamp(2.6rem, 13vw, 3.6rem); } .lead { font-size: 16px; } .hero-proof { padding: 20px; } .site-footer-meta { text-align: left; } }
+@media (max-width: 760px) { .hero-grid, .card-grid, .rule-strip, .site-footer { grid-template-columns: 1fr; } .rule-strip div + div { border-left: 0; border-top: 1px solid var(--vp-c-divider); } .hero-grid { margin: 34px 0 54px; } .hero-grid h1 { font-size: clamp(2.6rem, 13vw, 3.6rem); } .lead { font-size: 16px; } .hero-proof { padding: 20px; } .site-footer-meta { text-align: left; } .NotFound { margin: 54px auto 80px; padding: 0; } .NotFound .quote { font-size: 16px; } }
 @media (prefers-reduced-motion: reduce) { .vp-button, .doc-card { transition: none; } .vp-button:hover, .doc-card:hover { transform: none; } }

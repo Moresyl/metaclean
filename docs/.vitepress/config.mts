@@ -85,6 +85,13 @@ export default defineConfig({
     langMenuLabel: "切换语言",
     skipToContentLabel: "跳转到正文",
     docFooter: { prev: "上一页", next: "下一页" },
+    notFound: {
+      code: "404",
+      title: "页面不存在",
+      quote: "这条路径没有文档。页面可能已移动，但你的文件从未离开本机。",
+      linkLabel: "回到文档中心",
+      linkText: "回到文档中心",
+    },
     footer: {
       message: "事实优先 · 本地处理 · 失败关闭",
       copyright: "MetaClean · MIT License",

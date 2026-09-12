@@ -32,6 +32,7 @@ All notable changes to MetaClean are documented here. The project follows
 - 发布脚本也会拒绝超过 64K 字符的 updater 说明，避免异常正文进入可分发签名 feed。
 - 扫描和清理批次的进度事件现在按 16 项或 50ms 节流，完成/取消仍强制发送最终计数，并避免在持锁时调用 WebView emit。
 - 文档首页在带侧栏的中等桌面窗口保留英雄区双列，能力证据卡不再被错误推到首屏之外；真正窄屏才切换单列。
+- 文档站新增产品化 404 页面，提供中文错误说明和回到文档中心的恢复动作。
 
 - Parallel scanning now draws work from a bounded dynamic queue instead of two
   static path chunks, keeping both workers useful when file sizes or storage
