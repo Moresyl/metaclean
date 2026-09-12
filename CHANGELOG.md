@@ -39,6 +39,7 @@ All notable changes to MetaClean are documented here. The project follows
 - 自绘右键菜单也会暴露键盘高亮项，方向键导航和回车执行对读屏器保持同步。
 - 清空文件队列、移除单项和清空处理记录现在统一经过可聚焦的双语确认对话框，支持 Escape 取消并在关闭后恢复焦点；命令面板入口不会绕过队列保护。
 - 文档主题修复垂直焦点裁剪，补齐导航/正文链接的 focus-visible 样式，长文本安全换行，并让 404 与首页动效遵循 reduced-motion 偏好。
+- 关于页复制反馈的计时器现在会在下一次复制前复用并在页面卸载时清理，避免快速连续操作或切页后残留异步状态更新。
 
 - Parallel scanning now draws work from a bounded dynamic queue instead of two
   static path chunks, keeping both workers useful when file sizes or storage

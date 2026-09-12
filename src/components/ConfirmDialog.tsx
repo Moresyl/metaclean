@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef } from "react";
+import { useId, useLayoutEffect, useRef } from "react";
 import Button, { IconButton } from "./Button";
 import { loopFocus } from "../lib/focus";
 import { useI18n } from "../lib/i18n";
@@ -15,8 +15,12 @@ interface ConfirmDialogProps {
 /** A small, modal guard for actions that discard local application state. */
 export default function ConfirmDialog({ title, description, confirmLabel, onConfirm, onCancel }: ConfirmDialogProps) {
   const { text } = useI18n();
+  const titleId = useId();
+  const descriptionId = useId();
   const dialog = useRef<HTMLElement>(null);
   const confirm = useRef<HTMLButtonElement>(null);
+  const onCancelRef = useRef(onCancel);
+  onCancelRef.current = onCancel;
 
   useLayoutEffect(() => {
     const previous = document.activeElement;
@@ -24,7 +28,7 @@ export default function ConfirmDialog({ title, description, confirmLabel, onConf
     const keepFocusInside = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         event.preventDefault();
-        onCancel();
+        onCancelRef.current();
         return;
       }
       if (dialog.current) loopFocus(event, dialog.current);
@@ -34,7 +38,7 @@ export default function ConfirmDialog({ title, description, confirmLabel, onConf
       window.removeEventListener("keydown", keepFocusInside);
       if (previous instanceof HTMLElement && document.contains(previous)) previous.focus();
     };
-  }, [onCancel]);
+  }, []);
 
   return (
     <div
@@ -49,8 +53,8 @@ export default function ConfirmDialog({ title, description, confirmLabel, onConf
         className="animate-pop relative flex w-[min(390px,100%)] flex-col gap-3 rounded-panel border border-line-strong bg-surface p-5 shadow-lift"
         role="dialog"
         aria-modal="true"
-        aria-labelledby="confirm-dialog-title"
-        aria-describedby="confirm-dialog-description"
+        aria-labelledby={titleId}
+        aria-describedby={descriptionId}
         onMouseDown={(event) => event.stopPropagation()}
       >
         <IconButton
@@ -62,8 +66,8 @@ export default function ConfirmDialog({ title, description, confirmLabel, onConf
           <X size={14} strokeWidth={2} />
         </IconButton>
         <div className="grid gap-1 pr-7">
-          <h2 id="confirm-dialog-title" className="font-display text-lg font-semibold">{title}</h2>
-          <p id="confirm-dialog-description" className="text-sm leading-relaxed text-muted">{description}</p>
+          <h2 id={titleId} className="font-display text-lg font-semibold">{title}</h2>
+          <p id={descriptionId} className="text-sm leading-relaxed text-muted">{description}</p>
         </div>
         <div className="flex items-center justify-end gap-2 border-t border-line pt-3">
           <Button variant="ghost" onClick={onCancel}>{text("取消", "Cancel")}</Button>

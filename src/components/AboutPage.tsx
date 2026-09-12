@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import {
   Bug,
@@ -50,6 +50,11 @@ export default function AboutPage() {
   const [error, setError] = useState<string>();
   const [copied, setCopied] = useState<CopyTarget>();
   const [saving, setSaving] = useState(false);
+  const copiedTimer = useRef<number | undefined>(undefined);
+
+  useEffect(() => () => {
+    if (copiedTimer.current !== undefined) window.clearTimeout(copiedTimer.current);
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -79,7 +84,11 @@ export default function AboutPage() {
     try {
       if (!await copyText(value)) throw new Error(text("剪贴板不可用", "Clipboard unavailable"));
       setCopied(target);
-      window.setTimeout(() => setCopied((current) => current === target ? undefined : current), 1_400);
+      if (copiedTimer.current !== undefined) window.clearTimeout(copiedTimer.current);
+      copiedTimer.current = window.setTimeout(() => {
+        copiedTimer.current = undefined;
+        setCopied((current) => current === target ? undefined : current);
+      }, 1_400);
     } catch (reason) {
       setError(text(`复制失败：${String(reason)}`, `Could not copy: ${String(reason)}`));
     }
