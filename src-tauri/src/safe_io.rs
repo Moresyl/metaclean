@@ -22,6 +22,24 @@ fn is_link_or_reparse_point(metadata: &fs::Metadata) -> bool {
     false
 }
 
+#[cfg(target_os = "macos")]
+fn is_trusted_macos_system_alias(path: &Path) -> bool {
+    let expected_target = match path {
+        path if path == Path::new("/etc") => "/private/etc",
+        path if path == Path::new("/tmp") => "/private/tmp",
+        path if path == Path::new("/var") => "/private/var",
+        _ => return false,
+    };
+    fs::canonicalize(path)
+        .map(|target| target == Path::new(expected_target))
+        .unwrap_or(false)
+}
+
+#[cfg(not(target_os = "macos"))]
+fn is_trusted_macos_system_alias(_path: &Path) -> bool {
+    false
+}
+
 /// Reject linked path components, not only a linked final file. A linked
 /// parent directory can redirect a normal-looking path into another tree.
 fn path_contains_link(path: &Path) -> Result<bool> {
@@ -30,7 +48,12 @@ fn path_contains_link(path: &Path) -> Result<bool> {
             continue;
         }
         match fs::symlink_metadata(component) {
-            Ok(metadata) if is_link_or_reparse_point(&metadata) => return Ok(true),
+            Ok(metadata)
+                if is_link_or_reparse_point(&metadata)
+                    && !is_trusted_macos_system_alias(component) =>
+            {
+                return Ok(true);
+            }
             Ok(_) => {}
             Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
             Err(error) => return Err(error.into()),
@@ -622,6 +645,14 @@ mod tests {
             atomic_write_with_metadata(&output_through_link, b"clean", None, false, false),
             Err(CleanError::Symlink(_))
         ));
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn allows_files_under_apple_system_aliases() {
+        for alias in ["/etc", "/tmp", "/var"] {
+            assert!(is_trusted_macos_system_alias(Path::new(alias)));
+        }
     }
 
     #[cfg(windows)]
