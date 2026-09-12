@@ -43,6 +43,14 @@ describe("history persistence", () => {
     expect(localStorage.getItem(HISTORY_STORAGE_KEY)).toBeNull();
   });
 
+  it("rejects history errors beyond the native diagnostic byte budget", () => {
+    localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify([{
+      ...entry("oversized-error"),
+      results: [{ ...entry("oversized-error").results[0], success: false, error: "界".repeat(4_097) }],
+    }]));
+    expect(loadHistory()).toEqual([]);
+  });
+
   it("rejects a history entry beyond the native batch result limit", () => {
     localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify([{
       ...entry("too-many-results"),

@@ -70,6 +70,9 @@ All notable changes to MetaClean are documented here. The project follows
 - Generated cleaned, backup and collision output paths now share the 32 KiB
   safety cap before filesystem work or IPC results are allocated.
 
+- Persisted history now rejects diagnostic error strings over the native 8 KiB
+  UTF-8 budget, preventing old or tampered local state from expanding the UI.
+
 - The Rust coverage ledger now records 84.28% after the recursive path-budget,
   UTF-8-safe issue-path, bounded-diagnostics and output-path boundary tests.
 

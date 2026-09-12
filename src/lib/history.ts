@@ -8,7 +8,9 @@ const MAX_HISTORY_RESULTS_PER_ENTRY = 10_000;
 const MAX_HISTORY_RESULTS_TOTAL = 10_000;
 const MAX_HISTORY_STORAGE_CHARS = 2_000_000;
 const MAX_HISTORY_PATH_CHARS = 32_768;
+const MAX_HISTORY_ERROR_BYTES = 8 * 1024;
 const MAX_HISTORY_LABEL_CHARS = 256;
+const UTF8_ENCODER = new TextEncoder();
 
 function isOptionalString(value: unknown, maxLength = MAX_HISTORY_PATH_CHARS): value is string | undefined {
   return value === undefined || (typeof value === "string" && value.length <= maxLength);
@@ -16,6 +18,10 @@ function isOptionalString(value: unknown, maxLength = MAX_HISTORY_PATH_CHARS): v
 
 function isOptionalSize(value: unknown): value is number | undefined {
   return value === undefined || (typeof value === "number" && Number.isSafeInteger(value) && value >= 0);
+}
+
+function isOptionalError(value: unknown): value is string | undefined {
+  return value === undefined || (typeof value === "string" && UTF8_ENCODER.encode(value).byteLength <= MAX_HISTORY_ERROR_BYTES);
 }
 
 function isFinding(value: unknown): value is Finding {
@@ -39,7 +45,7 @@ function isCleanResult(value: unknown): value is CleanResult {
     && typeof result.success === "boolean"
     && isOptionalString(result.outputPath)
     && isOptionalString(result.backupPath)
-    && isOptionalString(result.error)
+    && isOptionalError(result.error)
     && isOptionalSize(result.sourceSize)
     && isOptionalSize(result.outputSize)
     && Array.isArray(result.removed)
