@@ -7,7 +7,8 @@ import { ThemeProvider } from "./contexts/ThemeContext";
 import type { ScanReport } from "./types";
 import { ACTIVE_BATCH_STORAGE_KEY } from "./lib/recovery";
 
-vi.mock("@tauri-apps/api/webview", () => ({ getCurrentWebview: () => ({ onDragDropEvent: () => Promise.resolve(() => undefined) }) }));
+const dragDropEventMock = vi.hoisted(() => vi.fn());
+vi.mock("@tauri-apps/api/webview", () => ({ getCurrentWebview: () => ({ onDragDropEvent: dragDropEventMock }) }));
 const invokeMock = vi.hoisted(() => vi.fn());
 const revealMock = vi.hoisted(() => vi.fn());
 const listenMock = vi.hoisted(() => vi.fn());
@@ -24,6 +25,8 @@ describe("App", () => {
     localStorage.setItem("metaclean.locale", "zh");
     revealMock.mockReset();
     revealMock.mockResolvedValue(undefined);
+    dragDropEventMock.mockReset();
+    dragDropEventMock.mockResolvedValue(() => undefined);
     listenMock.mockReset();
     listenMock.mockResolvedValue(() => undefined);
     invokeMock.mockImplementation((command?: string) => command === "get_launch_paths" || command === undefined ? Promise.resolve([]) : command === "set_close_to_tray" ? Promise.resolve(undefined) : command === "get_about_info" ? Promise.resolve({ version: "0.7.0", platform: "windows", arch: "x86_64" }) : command === "expand_paths" ? Promise.resolve({ files: [], skippedCount: 0, issues: [], limitReached: false }) : Promise.reject(new Error(`unexpected ${command}`)));
@@ -31,6 +34,17 @@ describe("App", () => {
   it("starts with scanning disabled", () => {
     renderApp();
     expect(screen.getByRole("button", { name: "扫描隐私痕迹" })).toBeDisabled();
+  });
+
+  it("cleans up a drag-drop listener that finishes registering after unmount", async () => {
+    let resolveRegistration: ((unlisten: () => void) => void) | undefined;
+    const unlisten = vi.fn();
+    dragDropEventMock.mockReturnValueOnce(new Promise<() => void>((resolve) => { resolveRegistration = resolve; }));
+    const { unmount } = renderApp();
+    await waitFor(() => expect(dragDropEventMock).toHaveBeenCalledOnce());
+    unmount();
+    resolveRegistration?.(unlisten);
+    await waitFor(() => expect(unlisten).toHaveBeenCalledOnce());
   });
 
   it("exits on close by default and persists the optional tray behavior", async () => {
@@ -249,7 +263,7 @@ describe("App", () => {
     fireEvent.click(within(dialog).getAllByRole("button", { name: "取消" })[1]);
     expect(screen.getByText("notes.md")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "清空" }));
-    fireEvent.click(screen.getByRole("button", { name: "清空队列", exact: true }));
+    fireEvent.click(screen.getByRole("button", { name: /^清空队列$/ }));
     expect(screen.queryByText("notes.md")).not.toBeInTheDocument();
     expect(screen.getByText("添加文件后，将在这里展示扫描状态")).toBeInTheDocument();
   });

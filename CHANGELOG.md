@@ -43,6 +43,7 @@ All notable changes to MetaClean are documented here. The project follows
 - 确认对话框现在使用实例级 ARIA ID；确认后若触发按钮已被移除或禁用，焦点会回到主内容区而不是落到 document.body。
 - 关于页复制成功反馈现在通过 aria-live 状态节点同步给读屏器，同时保留按钮自身的已复制视觉状态。
 - 应用级回归测试现在覆盖队列与持久化处理记录的确认、取消和最终清空结果，避免组件单测通过但页面接线绕过保护。
+- Tauri 拖放监听和启动路径展开现在受应用生命周期保护；页面卸载期间完成注册的监听会立即注销，待处理路径结果也不会再回写已卸载页面。
 
 - Parallel scanning now draws work from a bounded dynamic queue instead of two
   static path chunks, keeping both workers useful when file sizes or storage

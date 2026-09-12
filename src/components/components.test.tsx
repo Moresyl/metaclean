@@ -344,6 +344,23 @@ describe("desktop components", () => {
     expect(screen.getByText("当前支持范围")).toBeInTheDocument();
   });
 
+  it("does not let an unmounted settings request overwrite a newer instance", async () => {
+    let resolveFirst: ((status: { available: boolean; enabled: boolean; detail: string }) => void) | undefined;
+    invokeMock
+      .mockReturnValueOnce(new Promise((resolve) => { resolveFirst = resolve; }))
+      .mockImplementation((command: string) => command === "get_context_menu_status"
+        ? Promise.resolve({ available: true, enabled: false, detail: "当前状态" })
+        : Promise.reject(new Error(command)));
+    const first = wrap(<SettingsPage mode="copy" onModeChange={vi.fn()} preserveTimestamps onPreserveTimestampsChange={vi.fn()} preserveOrientation onPreserveOrientationChange={vi.fn()} preserveColorProfile onPreserveColorProfileChange={vi.fn()} removeExtendedAttributes={false} onRemoveExtendedAttributesChange={vi.fn()} closeToTray={false} onCloseToTrayChange={vi.fn()} />);
+    first.unmount();
+    wrap(<SettingsPage mode="copy" onModeChange={vi.fn()} preserveTimestamps onPreserveTimestampsChange={vi.fn()} preserveOrientation onPreserveOrientationChange={vi.fn()} preserveColorProfile onPreserveColorProfileChange={vi.fn()} removeExtendedAttributes={false} onRemoveExtendedAttributesChange={vi.fn()} closeToTray={false} onCloseToTrayChange={vi.fn()} />);
+    fireEvent.click(screen.getByRole("button", { name: "系统与更新" }));
+    expect(await screen.findByRole("button", { name: "启用" })).toBeInTheDocument();
+    resolveFirst?.({ available: true, enabled: true, detail: "旧实例" });
+    await Promise.resolve();
+    expect(screen.getByRole("button", { name: "启用" })).toBeInTheDocument();
+  });
+
   it("shows runtime facts and copies or saves a bounded diagnostics report", async () => {
     invokeMock.mockImplementation((command: string, args?: { contents?: string }) => {
       if (command === "get_about_info") return Promise.resolve({

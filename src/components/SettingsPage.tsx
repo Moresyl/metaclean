@@ -14,7 +14,7 @@ import {
   Wrench,
 } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import Button from "./Button";
 import Select from "./Select";
 import { useI18n } from "../lib/i18n";
@@ -66,32 +66,43 @@ export default function SettingsPage({
   const [contextMenu, setContextMenu] = useState<ContextMenuStatus>();
   const [contextMenuError, setContextMenuError] = useState<string>();
   const [busy, setBusy] = useState(false);
+  const mountedRef = useRef(true);
   const { locale, setLocale, text } = useI18n();
   const update = useUpdate();
   const theme = useTheme();
 
   useEffect(() => {
+    let active = true;
     void invoke<ContextMenuStatus>("get_context_menu_status")
-      .then(setContextMenu)
-      .catch((error) => setContextMenuError(text(
-        `无法读取右键菜单状态：${String(error)}`,
-        `Could not read the context-menu status: ${String(error)}`,
-      )));
+      .then((value) => { if (active) setContextMenu(value); })
+      .catch((error) => {
+        if (active) setContextMenuError(text(
+          `无法读取右键菜单状态：${String(error)}`,
+          `Could not read the context-menu status: ${String(error)}`,
+        ));
+      });
+    return () => { active = false; };
   }, [text]);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; };
+  }, []);
 
   async function toggleContextMenu() {
     if (!contextMenu?.available) return;
     setBusy(true);
     setContextMenuError(undefined);
     try {
-      setContextMenu(await invoke<ContextMenuStatus>("set_context_menu_enabled", { enabled: !contextMenu.enabled }));
+      const next = await invoke<ContextMenuStatus>("set_context_menu_enabled", { enabled: !contextMenu.enabled });
+      if (mountedRef.current) setContextMenu(next);
     } catch (error) {
-      setContextMenuError(text(
-        `更新右键菜单失败：${String(error)}`,
-        `Could not update the context menu: ${String(error)}`,
-      ));
+      if (mountedRef.current) setContextMenuError(text(
+          `更新右键菜单失败：${String(error)}`,
+          `Could not update the context menu: ${String(error)}`,
+        ));
     } finally {
-      setBusy(false);
+      if (mountedRef.current) setBusy(false);
     }
   }
 

@@ -57,11 +57,13 @@ export default function App() {
   const [message, setMessage] = useState<string>();
   const [queueClearPromptOpen, setQueueClearPromptOpen] = useState(false);
   const [dragActive, setDragActive] = useState(false);
+  const mountedRef = useRef(true);
   const addEntries = useCallback((incoming: FileEntry[]) => setEntries((current) => mergeEntries(current, incoming)), []);
   const addNativePaths = useCallback(async (paths: string[]) => {
     if (!paths.length) return;
     try {
       const intake = await invoke<IntakeResult>("expand_paths", { paths });
+      if (!mountedRef.current) return;
       addEntries(intake.files.map(entryFromPath));
       if (intake.skippedCount || intake.limitReached) {
         const firstIssue = intake.issues[0];
@@ -71,6 +73,7 @@ export default function App() {
         ));
       }
     } catch (error) {
+      if (!mountedRef.current) return;
       setMessage(text(`无法展开所选路径：${String(error)}`, `Could not expand the selected paths: ${String(error)}`));
     }
   }, [addEntries, text]);
@@ -93,16 +96,26 @@ export default function App() {
   }, [recoveryNotice, text]);
 
   useEffect(() => {
+    let active = true;
     let dispose: (() => void) | undefined;
     void import("@tauri-apps/api/webview").then(({ getCurrentWebview }) => getCurrentWebview().onDragDropEvent((event) => {
+      if (!active) return;
       setDragActive(event.payload.type === "enter" || event.payload.type === "over");
       if (event.payload.type === "drop") void addNativePaths(event.payload.paths);
-    })).then((unlisten) => { dispose = unlisten; }).catch(() => undefined);
+    })).then((unlisten) => {
+      if (active) dispose = unlisten;
+      else unlisten();
+    }).catch(() => undefined);
     void invoke<string[]>("get_launch_paths")
-      .then((paths) => { if (paths.length) void addNativePaths(paths); })
+      .then((paths) => { if (active && paths.length) void addNativePaths(paths); })
       .catch(() => undefined);
-    return () => dispose?.();
+    return () => { active = false; dispose?.(); };
   }, [addNativePaths]);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; };
+  }, []);
 
   useEffect(() => {
     return installZoomLock();
