@@ -83,6 +83,11 @@ All notable changes to MetaClean are documented here. The project follows
 - Native drag-and-drop events now validate event type, path types and the same
   single-path, batch-size and item-count budgets before queue intake.
 
+- Native launch-path, folder-picker and directory-expansion responses now pass
+  through a shared fail-closed adapter that validates path types, duplicate
+  aliases, issue diagnostics and counters before invoking native work or
+  updating the queue.
+
 - The Rust coverage ledger now records 84.28% after the recursive path-budget,
   UTF-8-safe issue-path, bounded-diagnostics and output-path boundary tests.
 

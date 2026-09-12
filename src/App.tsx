@@ -18,7 +18,7 @@ import { pickPaths } from "./lib/pick";
 import { loadHistory, persistHistory } from "./lib/history";
 import { readStorage, writeStorage } from "./lib/storage";
 import { clearActiveBatch, readActiveBatch, updateActiveBatchProgress, writeActiveBatch } from "./lib/recovery";
-import type { BatchProgress, CleanMode, FileEntry, HistoryEntry, IntakeResult, Page } from "./types";
+import type { BatchProgress, CleanMode, FileEntry, HistoryEntry, Page } from "./types";
 import type { CleanResult, ScanReport } from "./types";
 import { useI18n } from "./lib/i18n";
 import { useTheme } from "./contexts/ThemeContext";
@@ -26,6 +26,7 @@ import { useUpdate } from "./contexts/UpdateContext";
 import { boundedErrorMessage } from "./lib/errors";
 import { normalizeBatchProgress } from "./lib/progress";
 import { normalizeNativeDropEvent } from "./lib/drag";
+import { normalizeIntakeResult, normalizePathList } from "./lib/intake";
 
 const HistoryPage = lazy(() => import("./components/HistoryPage"));
 const PrivacyPage = lazy(() => import("./components/PrivacyPage"));
@@ -65,7 +66,8 @@ export default function App() {
   const addNativePaths = useCallback(async (paths: string[]) => {
     if (!mountedRef.current || !paths.length) return;
     try {
-      const intake = await invoke<IntakeResult>("expand_paths", { paths });
+      const intake = normalizeIntakeResult(await invoke<unknown>("expand_paths", { paths }));
+      if (!intake) throw new Error(text("路径展开返回了无效数据", "Path expansion returned invalid data"));
       if (!mountedRef.current) return;
       addEntries(intake.files.map(entryFromPath));
       if (intake.skippedCount || intake.limitReached) {
@@ -112,8 +114,16 @@ export default function App() {
       if (active) dispose = unlisten;
       else unlisten();
     }).catch(() => undefined);
-    void invoke<string[]>("get_launch_paths")
-      .then((paths) => { if (active && paths.length) void addNativePaths(paths); })
+    void invoke<unknown>("get_launch_paths")
+      .then((value) => {
+        if (!active) return;
+        const paths = normalizePathList(value);
+        if (!paths) {
+          setMessage(text("启动路径返回了无效数据。", "The launch-path response was invalid."));
+          return;
+        }
+        if (paths.length) void addNativePaths(paths);
+      })
       .catch(() => undefined);
     return () => { active = false; dispose?.(); };
   }, [addNativePaths]);

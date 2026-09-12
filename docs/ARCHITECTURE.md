@@ -71,6 +71,9 @@ or history record.
 - Drag-and-drop payloads are validated in the UI boundary before path intake;
   malformed entries are ignored and valid paths remain within the native
   single-path, batch-byte and item-count budgets.
+- Native launch-path, folder-picker and directory-expansion responses are
+  normalized before reuse; malformed arrays, duplicate-heavy payloads, issue
+  diagnostics and counters fail closed at the UI boundary.
 - Parser, filesystem, updater and intake diagnostics are normalized through an
   8 KiB UTF-8-safe cap before they are returned over IPC or rendered by the UI.
 - Scan responses contain the source path, detected format, size, category,

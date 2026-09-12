@@ -1,3 +1,5 @@
+import { normalizePathList } from "./intake";
+
 /**
  * The system file picker.
  *
@@ -8,5 +10,5 @@ export async function pickPaths(directory: boolean): Promise<string[] | null> {
   const { open } = await import("@tauri-apps/plugin-dialog");
   const chosen = await open({ multiple: !directory, directory });
   if (!chosen) return null;
-  return Array.isArray(chosen) ? chosen : [chosen];
+  return normalizePathList(Array.isArray(chosen) ? chosen : [chosen]) ?? null;
 }

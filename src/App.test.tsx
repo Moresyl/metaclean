@@ -36,6 +36,26 @@ describe("App", () => {
     expect(screen.getByRole("button", { name: "扫描隐私痕迹" })).toBeDisabled();
   });
 
+  it("fails closed when the native launch-path response is malformed", async () => {
+    invokeMock.mockImplementation((command?: string) => command === "get_launch_paths"
+      ? Promise.resolve({ paths: ["C:\\work\\notes.txt"] })
+      : command === "set_close_to_tray" ? Promise.resolve(undefined) : Promise.resolve([]));
+    renderApp();
+    expect(await screen.findByText("启动路径返回了无效数据。")).toBeInTheDocument();
+    expect(screen.queryByText("notes.txt")).not.toBeInTheDocument();
+    expect(invokeMock).not.toHaveBeenCalledWith("expand_paths", expect.anything());
+  });
+
+  it("fails closed when native directory expansion returns malformed data", async () => {
+    invokeMock.mockImplementation((command?: string) => command === "get_launch_paths"
+      ? Promise.resolve(["C:\\work\\notes.txt"])
+      : command === "expand_paths" ? Promise.resolve({ files: "not-an-array", skippedCount: 0, issues: [], limitReached: false })
+        : command === "set_close_to_tray" ? Promise.resolve(undefined) : Promise.resolve([]));
+    renderApp();
+    expect(await screen.findByText("无法展开所选路径：路径展开返回了无效数据")).toBeInTheDocument();
+    expect(screen.queryByText("notes.txt")).not.toBeInTheDocument();
+  });
+
   it("cleans up a drag-drop listener that finishes registering after unmount", async () => {
     let resolveRegistration: ((unlisten: () => void) => void) | undefined;
     const unlisten = vi.fn();
