@@ -50,10 +50,15 @@ export default function AboutPage() {
   const [error, setError] = useState<string>();
   const [copied, setCopied] = useState<CopyTarget>();
   const [saving, setSaving] = useState(false);
+  const mountedRef = useRef(true);
   const copiedTimer = useRef<number | undefined>(undefined);
 
-  useEffect(() => () => {
-    if (copiedTimer.current !== undefined) window.clearTimeout(copiedTimer.current);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      if (copiedTimer.current !== undefined) window.clearTimeout(copiedTimer.current);
+    };
   }, []);
 
   useEffect(() => {
@@ -83,6 +88,7 @@ export default function AboutPage() {
     setError(undefined);
     try {
       if (!await copyText(value)) throw new Error(text("剪贴板不可用", "Clipboard unavailable"));
+      if (!mountedRef.current) return;
       setCopied(target);
       if (copiedTimer.current !== undefined) window.clearTimeout(copiedTimer.current);
       copiedTimer.current = window.setTimeout(() => {
@@ -90,6 +96,7 @@ export default function AboutPage() {
         setCopied((current) => current === target ? undefined : current);
       }, 1_400);
     } catch (reason) {
+      if (!mountedRef.current) return;
       setError(text(`复制失败：${String(reason)}`, `Could not copy: ${String(reason)}`));
     }
   }, [text]);
@@ -113,14 +120,17 @@ export default function AboutPage() {
         defaultPath: `MetaClean-diagnostics-${new Date().toISOString().slice(0, 10)}.json`,
         filters: [{ name: "JSON", extensions: ["json"] }],
       });
+      if (!mountedRef.current) return;
       if (!path) return;
       await invoke("export_audit_report", { path, contents });
+      if (!mountedRef.current) return;
       const { revealItemInDir } = await import("@tauri-apps/plugin-opener");
       await revealItemInDir(path);
     } catch (reason) {
+      if (!mountedRef.current) return;
       setError(text(`保存诊断信息失败：${String(reason)}`, `Could not save diagnostics: ${String(reason)}`));
     } finally {
-      setSaving(false);
+      if (mountedRef.current) setSaving(false);
     }
   }, [report, text]);
 
@@ -130,6 +140,7 @@ export default function AboutPage() {
       const { revealItemInDir } = await import("@tauri-apps/plugin-opener");
       await revealItemInDir(path);
     } catch (reason) {
+      if (!mountedRef.current) return;
       setError(text(`无法打开文件夹：${String(reason)}`, `Could not reveal the folder: ${String(reason)}`));
     }
   }, [text]);
@@ -139,6 +150,7 @@ export default function AboutPage() {
     try {
       await openProjectUrl(url);
     } catch (reason) {
+      if (!mountedRef.current) return;
       setError(text(`无法打开链接：${String(reason)}`, `Could not open the link: ${String(reason)}`));
     }
   }, [text]);

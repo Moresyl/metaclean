@@ -394,6 +394,22 @@ describe("desktop components", () => {
     await waitFor(() => expect(openUrlMock).toHaveBeenCalledWith("https://github.com/Moresyl/metaclean/issues/new?labels=bug"));
   });
 
+  it("does not continue exporting diagnostics after the about page unmounts", async () => {
+    let finishSave: ((path: string) => void) | undefined;
+    invokeMock.mockImplementation((command: string) => command === "get_about_info"
+      ? Promise.resolve({ version: "0.7.0", platform: "windows", arch: "x86_64" })
+      : Promise.reject(new Error(command)));
+    saveMock.mockReturnValueOnce(new Promise((resolve) => { finishSave = resolve; }));
+    const rendered = wrap(<AboutPage />);
+    await screen.findByText("v0.7.0 · windows-x86_64");
+    fireEvent.click(screen.getByRole("button", { name: "保存 JSON" }));
+    await waitFor(() => expect(saveMock).toHaveBeenCalledOnce());
+    rendered.unmount();
+    finishSave?.("C:\\reports\\late.json");
+    await Promise.resolve();
+    expect(invokeMock).not.toHaveBeenCalledWith("export_audit_report", expect.anything());
+  });
+
   it("builds diagnostics from explicit runtime facts without file history", () => {
     const report = JSON.parse(buildDiagnosticReport({
       version: "0.7.0",
