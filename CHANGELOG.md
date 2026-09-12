@@ -56,6 +56,7 @@ All notable changes to MetaClean are documented here. The project follows
 - 命令面板方向键、Home/End 导航现在跳过不可执行的禁用命令，回车不会落到灰色操作上。
 - 更新提示打开外部版本页时也受卸载保护；切页期间迟到的外链结果不会关闭新建的更新提示或回写旧对话框状态。
 - 更新安装完成后的进度监听清理现在按最佳努力处理；重启时 WebView 已关闭不会把成功安装误报为失败。
+- 取消批次的异步响应现在绑定原始批次和操作类型，旧批次的迟到拒绝不会覆盖新批次的取消状态或错误提示。
 
 - Parallel scanning now draws work from a bounded dynamic queue instead of two
   static path chunks, keeping both workers useful when file sizes or storage

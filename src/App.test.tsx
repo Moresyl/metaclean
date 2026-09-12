@@ -321,6 +321,42 @@ describe("App", () => {
     expect(screen.getByRole("button", { name: "扫描隐私痕迹" })).toBeEnabled();
   });
 
+  it("ignores a stale cancellation response from an older batch", async () => {
+    let finishFirstScan: ((reports: ScanReport[]) => void) | undefined;
+    let finishSecondScan: ((reports: ScanReport[]) => void) | undefined;
+    let rejectFirstCancel: ((accepted: boolean) => void) | undefined;
+    let finishSecondCancel: ((accepted: boolean) => void) | undefined;
+    const firstScan = new Promise<ScanReport[]>((resolve) => { finishFirstScan = resolve; });
+    const secondScan = new Promise<ScanReport[]>((resolve) => { finishSecondScan = resolve; });
+    const firstCancel = new Promise<boolean>((resolve) => { rejectFirstCancel = resolve; });
+    const secondCancel = new Promise<boolean>((resolve) => { finishSecondCancel = resolve; });
+    let scanCount = 0;
+    let cancelCount = 0;
+    invokeMock.mockImplementation((command: string) => {
+      if (command === "get_launch_paths") return Promise.resolve(["C:\\work\\notes.txt"]);
+      if (command === "expand_paths") return Promise.resolve({ files: ["C:\\work\\notes.txt"], skippedCount: 0, issues: [], limitReached: false });
+      if (command === "scan_files") return scanCount++ === 0 ? firstScan : secondScan;
+      if (command === "cancel_scan_batch") return cancelCount++ === 0 ? firstCancel : secondCancel;
+      if (command === "set_close_to_tray") return Promise.resolve(undefined);
+      return Promise.reject(new Error(`unexpected ${command}`));
+    });
+    renderApp();
+    await screen.findByText("notes.txt");
+    fireEvent.click(screen.getByRole("button", { name: "扫描隐私痕迹" }));
+    await waitFor(() => expect(invokeMock).toHaveBeenCalledWith("scan_files", expect.anything()));
+    fireEvent.click(screen.getByRole("button", { name: "取消扫描" }));
+    finishFirstScan?.([]);
+    await screen.findByText(/已取消扫描/);
+    fireEvent.click(screen.getByRole("button", { name: "扫描隐私痕迹" }));
+    await waitFor(() => expect(invokeMock.mock.calls.filter(([name]) => name === "scan_files")).toHaveLength(2));
+    fireEvent.click(screen.getByRole("button", { name: "取消扫描" }));
+    rejectFirstCancel?.(false);
+    await waitFor(() => expect(screen.getByRole("button", { name: "正在取消…" })).toBeDisabled());
+    finishSecondCancel?.(true);
+    finishSecondScan?.([]);
+    await screen.findByText(/已取消扫描/);
+  });
+
   it("requires confirmation before clearing the queue and preserves it on cancel", () => {
     renderApp();
     const zone = screen.getByText("拖入要净化的文件").closest("section");

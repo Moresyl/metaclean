@@ -324,12 +324,12 @@ export default function App() {
     setCancelRequested(true);
     const command = operationKindRef.current === "scan" ? "cancel_scan_batch" : "cancel_clean_batch";
     void invoke<boolean>(command, { batchId }).then((accepted) => {
-      if (!accepted && mountedRef.current) {
+      if (!accepted && mountedRef.current && batchIdRef.current === batchId && operationKindRef.current === (command === "cancel_scan_batch" ? "scan" : "clean")) {
         cancelRequestedRef.current = false;
         setCancelRequested(false);
       }
     }).catch((error) => {
-      if (!mountedRef.current) return;
+      if (!mountedRef.current || batchIdRef.current !== batchId || operationKindRef.current !== (command === "cancel_scan_batch" ? "scan" : "clean")) return;
       cancelRequestedRef.current = false;
       setCancelRequested(false);
       setMessage(text(`取消处理失败：${String(error)}`, `Could not cancel operation: ${String(error)}`));
