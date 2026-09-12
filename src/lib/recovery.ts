@@ -56,7 +56,10 @@ export function readActiveBatch(): ActiveBatchRecovery | undefined {
 }
 
 export function writeActiveBatch(value: ActiveBatchRecovery): boolean {
-  return writeStorage(ACTIVE_BATCH_STORAGE_KEY, JSON.stringify(value));
+  if (!isActiveBatchRecovery(value)) return false;
+  const serialized = JSON.stringify(value);
+  if (serialized.length > MAX_ACTIVE_BATCH_STORAGE_CHARS) return false;
+  return writeStorage(ACTIVE_BATCH_STORAGE_KEY, serialized);
 }
 
 export function updateActiveBatchProgress(batchId: string, completed: number): boolean {
