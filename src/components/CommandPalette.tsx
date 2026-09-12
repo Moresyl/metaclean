@@ -58,7 +58,7 @@ export default function CommandPalette({ commands, onClose }: { commands: Comman
   const field = useRef<HTMLInputElement>(null);
   const dialog = useRef<HTMLDivElement>(null);
   const restoreFocus = useRef<Element | null>(null);
-  const activeIdRef = useRef<string>();
+  const activeIdRef = useRef<string | undefined>(undefined);
   const queryRef = useRef(query);
 
   const matches = useMemo(() => {
