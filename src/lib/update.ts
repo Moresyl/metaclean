@@ -170,7 +170,12 @@ export async function checkForUpdate(options: {
       },
     };
   } finally {
-    await update.close?.();
+    try {
+      await update.close?.();
+    } catch {
+      // Closing a checked update is best-effort cleanup. A transient cleanup
+      // failure must not turn a valid signed version into a false update error.
+    }
   }
 }
 

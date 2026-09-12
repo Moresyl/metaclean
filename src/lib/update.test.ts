@@ -104,6 +104,18 @@ describe("checkForUpdate", () => {
     await expect(checkForUpdate({ checker: offline })).rejects.toThrow(/无法连接已签名更新源.*HTTPS_PROXY.*error sending request for url/su);
     expect(offline).toHaveBeenCalledWith({ timeout: 15_000 });
   });
+
+  it("keeps a valid update result when native resource cleanup fails", async () => {
+    const checker = vi.fn().mockResolvedValue({
+      currentVersion: "0.3.0",
+      version: "0.4.0",
+      close: vi.fn().mockRejectedValue(new Error("cleanup unavailable")),
+    });
+    await expect(checkForUpdate({ checker })).resolves.toMatchObject({
+      status: "available",
+      info: { availableVersion: "0.4.0" },
+    });
+  });
 });
 
 describe("getInstalledVersion", () => {

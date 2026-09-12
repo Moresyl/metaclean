@@ -50,6 +50,7 @@ All notable changes to MetaClean are documented here. The project follows
 - 应用事件总线改为可回滚的分段订阅；菜单、进度或关闭拦截事件的后续订阅失败时，已建立的前序监听会自动释放。
 - 事件订阅卸载现在也会中止挂起的后续注册；迟到的原生监听句柄返回后会立即自毁，不会积累后台监听。
 - 关于页复制、诊断导出、目录定位和外链打开加入统一卸载保护；切页后迟到的结果不会继续发起导出或回写旧页面状态。
+- 签名更新资源的关闭现在按最佳努力处理；更新元数据有效但清理句柄异常时仍保留可用版本，不误报为检查失败。
 
 - Parallel scanning now draws work from a bounded dynamic queue instead of two
   static path chunks, keeping both workers useful when file sizes or storage
