@@ -1,6 +1,7 @@
 import { copyFile, mkdir, readdir, stat } from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import { stableVersion } from "./stable-version.mjs";
 
 const PLATFORM_SPECS = {
   "windows-x86_64": { packageSuffix: ".exe", signatureSuffix: ".exe.sig" },
@@ -27,8 +28,8 @@ function exactSuffix(file, suffix) {
 export async function collectUpdaterAssets(bundleDirectory, outputDirectory, platform, version) {
   const spec = PLATFORM_SPECS[platform];
   if (!spec) throw new Error(`Unsupported updater platform: ${platform}`);
-  const normalizedVersion = version.replace(/^v/u, "");
-  if (!/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/u.test(normalizedVersion)) throw new Error(`Invalid updater version: ${version}`);
+  const normalizedVersion = stableVersion(version);
+  if (!normalizedVersion) throw new Error(`Invalid updater version: ${version}`);
 
   const files = await walk(bundleDirectory);
   const signatures = files.filter((file) => exactSuffix(file, spec.signatureSuffix));

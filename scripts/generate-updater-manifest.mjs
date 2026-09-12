@@ -1,6 +1,7 @@
 import { readdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import { stableVersion } from "./stable-version.mjs";
 
 const PLATFORM_ASSETS = {
   "windows-x86_64": (version) => `MetaClean_${version}_x64-setup.exe`,
@@ -27,7 +28,7 @@ function validateSignature(signature, signatureAsset) {
 
 export function validateUpdaterManifest(manifest, { version, repository }) {
   validateRepository(repository);
-  if (!/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/u.test(version)) throw new Error(`Invalid updater version: ${version}`);
+  if (stableVersion(version) !== version) throw new Error(`Invalid updater version: ${version}`);
   if (!manifest || typeof manifest !== "object") throw new Error("Updater manifest must be an object");
   if (manifest.version !== version) throw new Error(`Updater manifest version ${String(manifest.version)} does not match release ${version}`);
   if (typeof manifest.notes !== "string" || manifest.notes.trim().length === 0) throw new Error("Updater notes must not be empty");
@@ -48,9 +49,9 @@ export function validateUpdaterManifest(manifest, { version, repository }) {
 }
 
 export async function generateUpdaterManifest({ assetDirectory, tag, repository, notes, pubDate, outputPath }) {
-  if (!/^v\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/u.test(tag)) throw new Error(`Invalid release tag: ${tag}`);
+  const version = tag.startsWith("v") ? stableVersion(tag.slice(1)) : undefined;
+  if (!version) throw new Error(`Invalid release tag: ${tag}`);
   validateRepository(repository);
-  const version = tag.slice(1);
   const normalizedDate = new Date(pubDate);
   if (Number.isNaN(normalizedDate.valueOf())) throw new Error(`Invalid publication date: ${pubDate}`);
   if (typeof notes !== "string" || notes.trim().length === 0) throw new Error("Updater notes must not be empty");

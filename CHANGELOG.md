@@ -86,6 +86,10 @@ All notable changes to MetaClean are documented here. The project follows
   accumulating a million-row history surface without presenting a truncated
   batch as if it were complete.
 
+- Release asset collection and updater-manifest generation now share the
+  client's exact stable `major.minor.patch` contract, rejecting prereleases,
+  padded components and unsafe numeric versions before publishing metadata.
+
 - Markdown front matter now recognizes both YAML `---` and TOML `+++` fences,
   while only removing targeted author and generator fields inside the opening
   metadata block.
