@@ -31,6 +31,10 @@ All notable changes to MetaClean are documented here. The project follows
 
 - 扫描、清理、更新和目录导入的错误诊断现在统一限制为 8 KiB，并以 UTF-8 安全方式截断，避免损坏文件或底层库错误文本放大 IPC 与界面渲染压力。
 
+- 启动参数导入现在也经过相同的空路径、单路径、批次总量和去重边界，避免右键菜单/文件关联启动绕过 IPC 预算。
+
+- 前端插件、浏览器回退、打开器和队列错误也统一经过 8 KiB UTF-8 字节预算，避免原生边界之外的异常文本撑爆用户可见状态。
+
 - Rust 覆盖率账本现按新增递归路径预算、UTF-8 错误路径和 8 KiB 诊断边界测试更新为 84.22%。
 
 - Intake IPC now rejects empty paths before starting worker tasks, caps each
@@ -45,12 +49,19 @@ All notable changes to MetaClean are documented here. The project follows
   cap before crossing IPC or reaching the UI, limiting malformed-input error
   amplification.
 
+- Startup arguments now pass through the same empty-path, single-path, batch
+  and de-duplication checks, so shell/file-association launches cannot bypass
+  the IPC budget.
+
+- Browser/plugin fallback, opener and queue failures now use the same 8 KiB
+  UTF-8 byte budget before entering visible React state.
+
 - The Rust coverage ledger now records 84.22% after the recursive path-budget,
   UTF-8-safe issue-path and bounded-diagnostics boundary tests.
 
 - 更新检查现在将发布说明限制在 64K 字符以内；过大的说明会被安全忽略，但不会阻止已签名版本更新。
 - 替换原文件时会在临时输出完全落盘后、最终原子提交前再次校验源文件，缩短大文件处理期间的竞态窗口。
-- 队列的批量路径复制现在包含失败替换留下的备份路径，并按显示顺序去重。
+- 队列的批量路径复制现在按源文件、清理输出、备份的顺序复制所有可用路径，并按显示顺序去重。
 - 批量路径复制沿用 Windows 别名身份规则去重，避免设备前缀、大小写或分隔符差异造成重复。
 - 发布脚本也会拒绝超过 64K 字符的 updater 说明，避免异常正文进入可分发签名 feed。
 - 扫描和清理批次的进度事件现在按 16 项或 50ms 节流，完成/取消仍强制发送最终计数，并避免在持锁时调用 WebView emit。

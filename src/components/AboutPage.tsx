@@ -30,6 +30,7 @@ import {
 } from "../lib/links";
 import { buildDiagnosticReport, type AboutInfo } from "../lib/about";
 import { copyText } from "../lib/window";
+import { boundedErrorMessage } from "../lib/errors";
 
 type CopyTarget = "report" | "appData" | "executable";
 
@@ -71,7 +72,7 @@ export default function AboutPage() {
           setAbout(browserAboutInfo());
           return;
         }
-        setError(String(reason));
+        setError(boundedErrorMessage(reason));
       });
     return () => { active = false; };
   }, []);
@@ -97,7 +98,8 @@ export default function AboutPage() {
       }, 1_400);
     } catch (reason) {
       if (!mountedRef.current) return;
-      setError(text(`复制失败：${String(reason)}`, `Could not copy: ${String(reason)}`));
+      const detail = boundedErrorMessage(reason);
+      setError(text(`复制失败：${detail}`, `Could not copy: ${detail}`));
     }
   }, [text]);
 
@@ -128,7 +130,8 @@ export default function AboutPage() {
       await revealItemInDir(path);
     } catch (reason) {
       if (!mountedRef.current) return;
-      setError(text(`保存诊断信息失败：${String(reason)}`, `Could not save diagnostics: ${String(reason)}`));
+      const detail = boundedErrorMessage(reason);
+      setError(text(`保存诊断信息失败：${detail}`, `Could not save diagnostics: ${detail}`));
     } finally {
       if (mountedRef.current) setSaving(false);
     }
@@ -141,7 +144,8 @@ export default function AboutPage() {
       await revealItemInDir(path);
     } catch (reason) {
       if (!mountedRef.current) return;
-      setError(text(`无法打开文件夹：${String(reason)}`, `Could not reveal the folder: ${String(reason)}`));
+      const detail = boundedErrorMessage(reason);
+      setError(text(`无法打开文件夹：${detail}`, `Could not reveal the folder: ${detail}`));
     }
   }, [text]);
 
@@ -151,7 +155,8 @@ export default function AboutPage() {
       await openProjectUrl(url);
     } catch (reason) {
       if (!mountedRef.current) return;
-      setError(text(`无法打开链接：${String(reason)}`, `Could not open the link: ${String(reason)}`));
+      const detail = boundedErrorMessage(reason);
+      setError(text(`无法打开链接：${detail}`, `Could not open the link: ${detail}`));
     }
   }, [text]);
 
@@ -161,7 +166,7 @@ export default function AboutPage() {
       await update.openRelease();
     } catch (reason) {
       if (!mountedRef.current) return;
-      const detail = reason instanceof Error ? reason.message : String(reason);
+      const detail = boundedErrorMessage(reason);
       setError(text(`无法打开版本说明：${detail}`, `Could not open release notes: ${detail}`));
     }
   }, [text, update.openRelease]);

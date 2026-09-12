@@ -203,6 +203,22 @@ describe("desktop components", () => {
     await waitFor(() => expect(clipboardMock).toHaveBeenCalledWith(`C:\\work\\photo.jpg\r\n${backupPath}`));
   });
 
+  it("copies source, generated output and backup paths in one ordered list", async () => {
+    const sourcePath = "C:\\work\\photo.jpg";
+    const outputPath = "C:\\work\\photo.cleaned.jpg";
+    const backupPath = `${sourcePath}.bak`;
+    wrap(<FileQueue entries={[{
+      id: "copied-output",
+      name: "photo.jpg",
+      path: sourcePath,
+      kind: "image",
+      status: "clean",
+      result: { sourcePath, outputPath, backupPath, removed: [], success: true },
+    }]} preserveColorProfile removeExtendedAttributes={false} onRemove={vi.fn()} onClear={vi.fn()} onReveal={vi.fn()} onNotify={vi.fn()} />);
+    fireEvent.click(screen.getByRole("button", { name: "复制全部路径" }));
+    await waitFor(() => expect(clipboardMock).toHaveBeenCalledWith(`${sourcePath}\r\n${outputPath}\r\n${backupPath}`));
+  });
+
   it("deduplicates Windows aliases in the batch path copy", async () => {
     wrap(<FileQueue entries={[{
       id: "first",

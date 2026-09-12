@@ -525,9 +525,13 @@ fn export_audit_report_to(destination: &std::path::Path, contents: &str) -> Resu
         .map_err(|error| bounded_message(format!("导出审计报告失败：{error}")))
 }
 
+fn bounded_launch_paths(paths: Vec<String>) -> Result<Vec<String>, String> {
+    prepare_batch_paths(paths)
+}
+
 #[tauri::command]
-fn get_launch_paths() -> Vec<String> {
-    shell_integration::launch_paths()
+fn get_launch_paths() -> Result<Vec<String>, String> {
+    bounded_launch_paths(shell_integration::launch_paths())
 }
 
 #[tauri::command]
@@ -848,13 +852,13 @@ pub fn run_cli_action() -> Option<i32> {
 #[cfg(test)]
 mod update_tests {
     use super::{
-        cancel_clean_batch, cancel_scan_batch, clean_batch_active, close_action, deduplicate_paths,
-        export_audit_report, export_audit_report_to, portable_marker_exists, prepare_batch_paths,
-        read_task_active, reviewed_update_matches, self_update_supported_for,
-        updater_network_error, validate_batch_id, validate_batch_size, validate_path_inputs,
-        ActiveCleanBatchGuard, ActiveReadGuard, ActiveScanBatchGuard, BatchProgressState,
-        CloseAction, MAX_BATCH_FILES, MAX_BATCH_ID_BYTES, MAX_BATCH_PATH_BYTES, MAX_PATH_BYTES,
-        PORTABLE_MARKER, PROGRESS_EVENT_BATCH, UPDATE_REQUEST_TIMEOUT,
+        bounded_launch_paths, cancel_clean_batch, cancel_scan_batch, clean_batch_active,
+        close_action, deduplicate_paths, export_audit_report, export_audit_report_to,
+        portable_marker_exists, prepare_batch_paths, read_task_active, reviewed_update_matches,
+        self_update_supported_for, updater_network_error, validate_batch_id, validate_batch_size,
+        validate_path_inputs, ActiveCleanBatchGuard, ActiveReadGuard, ActiveScanBatchGuard,
+        BatchProgressState, CloseAction, MAX_BATCH_FILES, MAX_BATCH_ID_BYTES, MAX_BATCH_PATH_BYTES,
+        MAX_PATH_BYTES, PORTABLE_MARKER, PROGRESS_EVENT_BATCH, UPDATE_REQUEST_TIMEOUT,
     };
     use crate::models::CleanRequest;
     use std::sync::atomic::AtomicBool;
@@ -1036,6 +1040,17 @@ mod update_tests {
             .map(|index| format!("{index:05}{}", "x".repeat(MAX_PATH_BYTES - 6)))
             .collect::<Vec<_>>();
         let total = validate_path_inputs(&total_paths).unwrap_err();
+        assert!(total.contains("67108864"));
+    }
+
+    #[test]
+    fn bounds_paths_returned_from_startup_arguments_before_ipc() {
+        let oversized = bounded_launch_paths(vec!["x".repeat(MAX_PATH_BYTES + 1)]).unwrap_err();
+        assert!(oversized.contains("32768"));
+        let total_paths = (0..=MAX_BATCH_PATH_BYTES / (MAX_PATH_BYTES - 1))
+            .map(|index| format!("{index:05}{}", "x".repeat(MAX_PATH_BYTES - 6)))
+            .collect();
+        let total = bounded_launch_paths(total_paths).unwrap_err();
         assert!(total.contains("67108864"));
     }
 

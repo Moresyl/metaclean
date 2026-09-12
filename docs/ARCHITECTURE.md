@@ -66,6 +66,8 @@ or history record.
   64 MiB before de-duplication or worker creation. Recursive expansion applies
   the same output budget and truncates issue-path echoes at the single-path
   boundary.
+- Startup arguments returned by the shell integration pass through the same
+  batch preparation and path budgets before the first response reaches the UI.
 - Parser, filesystem, updater and intake diagnostics are normalized through an
   8 KiB UTF-8-safe cap before they are returned over IPC or rendered by the UI.
 - Scan responses contain the source path, detected format, size, category,

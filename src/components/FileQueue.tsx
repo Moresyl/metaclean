@@ -9,6 +9,7 @@ import type { FileEntry, Finding } from "../types";
 import { useI18n } from "../lib/i18n";
 import { actionableFindingCount, pathIdentity } from "../lib/files";
 import { copyText } from "../lib/window";
+import { boundedErrorMessage } from "../lib/errors";
 
 interface FileQueueProps { entries: FileEntry[]; preserveColorProfile: boolean; removeExtendedAttributes: boolean; busy?: boolean; onRemove: (id: string) => void; onClear: () => void; onReveal: (path: string) => void; onNotify: (message: string) => void }
 
@@ -107,7 +108,8 @@ export default function FileQueue({ entries, preserveColorProfile, removeExtende
 
   async function copyAllPaths() {
     const candidates = entries.flatMap((entry) => [
-      entry.result?.outputPath ?? entry.path,
+      entry.path,
+      entry.result?.outputPath,
       entry.result?.backupPath,
     ]).filter((path): path is string => Boolean(path));
     const seen = new Set<string>();
@@ -172,7 +174,8 @@ export default function FileQueue({ entries, preserveColorProfile, removeExtende
       onNotify(text(`审计报告已导出：${destination}`, `Audit report exported: ${destination}`));
     } catch (error) {
       if (!mountedRef.current) return;
-      onNotify(text(`无法导出审计报告：${String(error)}`, `Could not export audit report: ${String(error)}`));
+      const detail = boundedErrorMessage(error);
+      onNotify(text(`无法导出审计报告：${detail}`, `Could not export audit report: ${detail}`));
     } finally {
       exportingRef.current = false;
       if (mountedRef.current) setExporting(false);

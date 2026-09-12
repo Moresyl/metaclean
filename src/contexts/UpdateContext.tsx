@@ -10,6 +10,7 @@ import {
   type UpdateRuntime,
 } from "../lib/update";
 import { readStorage, removeStorage, writeStorage } from "../lib/storage";
+import { boundedErrorMessage } from "../lib/errors";
 
 type UpdateStatus = "idle" | "checking" | "current" | "available" | "updating" | "error";
 
@@ -87,7 +88,7 @@ export function UpdateProvider({ children }: { children: ReactNode }) {
       if (!mountedRef.current) return;
       setInfo(undefined);
       setPromptOpen(false);
-      setError(reason instanceof Error ? reason.message : String(reason));
+      setError(boundedErrorMessage(reason));
       setStatus("error");
     } finally {
       checking.current = false;
@@ -148,7 +149,7 @@ export function UpdateProvider({ children }: { children: ReactNode }) {
       }
     } catch (reason) {
       if (!mountedRef.current) return;
-      setError(reason instanceof Error ? reason.message : String(reason));
+      setError(boundedErrorMessage(reason));
       setProgress(undefined);
       setStatus("error");
     } finally {

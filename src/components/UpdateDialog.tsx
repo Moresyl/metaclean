@@ -4,6 +4,7 @@ import Button, { IconButton } from "./Button";
 import { useUpdate } from "../contexts/UpdateContext";
 import { useI18n } from "../lib/i18n";
 import { loopFocus } from "../lib/focus";
+import { boundedErrorMessage } from "../lib/errors";
 
 export default function UpdateDialog() {
   const update = useUpdate();
@@ -56,7 +57,7 @@ export default function UpdateDialog() {
       update.dismissUpdatePrompt();
     } catch (reason) {
       if (!mountedRef.current) return;
-      setOpenError(reason instanceof Error ? reason.message : String(reason));
+      setOpenError(boundedErrorMessage(reason));
     } finally {
       if (mountedRef.current) setOpening(false);
     }

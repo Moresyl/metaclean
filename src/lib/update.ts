@@ -1,4 +1,5 @@
 import { invoke as tauriInvoke } from "@tauri-apps/api/core";
+import { boundedErrorMessage } from "./errors";
 
 export const RELEASES_PAGE_URL = "https://github.com/Moresyl/metaclean/releases/latest";
 
@@ -110,7 +111,7 @@ function releaseUrlForVersion(version: string): string {
 }
 
 function updaterNetworkError(cause: unknown): Error {
-  const detail = cause instanceof Error ? cause.message.trim() : String(cause).trim();
+  const detail = boundedErrorMessage(cause).trim();
   return new Error(detail ? `${UPDATE_NETWORK_HELP}\n${detail}` : UPDATE_NETWORK_HELP, { cause });
 }
 

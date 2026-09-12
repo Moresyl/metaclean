@@ -23,6 +23,7 @@ import type { CleanResult, ScanReport } from "./types";
 import { useI18n } from "./lib/i18n";
 import { useTheme } from "./contexts/ThemeContext";
 import { useUpdate } from "./contexts/UpdateContext";
+import { boundedErrorMessage } from "./lib/errors";
 
 const HistoryPage = lazy(() => import("./components/HistoryPage"));
 const PrivacyPage = lazy(() => import("./components/PrivacyPage"));
@@ -74,7 +75,8 @@ export default function App() {
       }
     } catch (error) {
       if (!mountedRef.current) return;
-      setMessage(text(`无法展开所选路径：${String(error)}`, `Could not expand the selected paths: ${String(error)}`));
+      const detail = boundedErrorMessage(error);
+      setMessage(text(`无法展开所选路径：${detail}`, `Could not expand the selected paths: ${detail}`));
     }
   }, [addEntries, text]);
   const setMode = useCallback((next: CleanMode) => { setModeState(next); writeStorage("metaclean.outputMode", next); }, []);
@@ -241,7 +243,8 @@ export default function App() {
     } catch (error) {
       if (mountedRef.current) {
         setEntries((current) => markEntryPaths(current, paths, "ready"));
-        setMessage(text(`扫描失败：${String(error)}`, `Scan failed: ${String(error)}`));
+        const detail = boundedErrorMessage(error);
+        setMessage(text(`扫描失败：${detail}`, `Scan failed: ${detail}`));
       }
     }
     finally {
@@ -298,7 +301,10 @@ export default function App() {
         : text(`${successes.length} 个文件清理完成${failures ? `，${failures} 个失败` : ""}${missing > 0 ? `，${missing} 个未返回结果、可重试` : ""}。${successes[0]?.outputPath ? ` 输出：${successes[0].outputPath}` : ""}`, `${successes.length} file(s) cleaned${failures ? `; ${failures} failed` : ""}${missing > 0 ? `; ${missing} returned no result and can be retried` : ""}.${successes[0]?.outputPath ? ` Output: ${successes[0].outputPath}` : ""}`));
       if (relevant.length) addHistory({ id: crypto.randomUUID(), createdAt: new Date().toISOString(), mode, results: relevant });
     } catch (error) {
-      if (mountedRef.current) setMessage(text(`清理失败：${String(error)}`, `Cleanup failed: ${String(error)}`));
+      if (mountedRef.current) {
+        const detail = boundedErrorMessage(error);
+        setMessage(text(`清理失败：${detail}`, `Cleanup failed: ${detail}`));
+      }
     }
     finally {
       clearActiveBatch(batchId);
@@ -332,7 +338,8 @@ export default function App() {
       if (!mountedRef.current || batchIdRef.current !== batchId || operationKindRef.current !== (command === "cancel_scan_batch" ? "scan" : "clean")) return;
       cancelRequestedRef.current = false;
       setCancelRequested(false);
-      setMessage(text(`取消处理失败：${String(error)}`, `Could not cancel operation: ${String(error)}`));
+      const detail = boundedErrorMessage(error);
+      setMessage(text(`取消处理失败：${detail}`, `Could not cancel operation: ${detail}`));
     });
   }
 
@@ -344,7 +351,7 @@ export default function App() {
       await revealItemInDir(path);
     } catch (error) {
       if (!mountedRef.current) return;
-      setMessage(error instanceof Error ? error.message : String(error));
+      setMessage(boundedErrorMessage(error));
     }
   }
 

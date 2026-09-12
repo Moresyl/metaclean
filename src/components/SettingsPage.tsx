@@ -22,6 +22,7 @@ import type { CleanMode, ContextMenuStatus } from "../types";
 import { useUpdate } from "../contexts/UpdateContext";
 import { useTheme } from "../contexts/ThemeContext";
 import { LOCALES, type Locale } from "../lib/locales";
+import { boundedErrorMessage } from "../lib/errors";
 
 interface SettingsPageProps {
   mode: CleanMode;
@@ -77,9 +78,11 @@ export default function SettingsPage({
     void invoke<ContextMenuStatus>("get_context_menu_status")
       .then((value) => { if (active) setContextMenu(value); })
       .catch((error) => {
-        if (active) setContextMenuError(text(
-          `无法读取右键菜单状态：${String(error)}`,
-          `Could not read the context-menu status: ${String(error)}`,
+        if (!active) return;
+        const detail = boundedErrorMessage(error);
+        setContextMenuError(text(
+          `无法读取右键菜单状态：${detail}`,
+          `Could not read the context-menu status: ${detail}`,
         ));
       });
     return () => { active = false; };
@@ -99,10 +102,13 @@ export default function SettingsPage({
       const next = await invoke<ContextMenuStatus>("set_context_menu_enabled", { enabled: !contextMenu.enabled });
       if (mountedRef.current) setContextMenu(next);
     } catch (error) {
-      if (mountedRef.current) setContextMenuError(text(
-          `更新右键菜单失败：${String(error)}`,
-          `Could not update the context menu: ${String(error)}`,
+      if (mountedRef.current) {
+        const detail = boundedErrorMessage(error);
+        setContextMenuError(text(
+          `更新右键菜单失败：${detail}`,
+          `Could not update the context menu: ${detail}`,
         ));
+      }
     } finally {
       busyRef.current = false;
       if (mountedRef.current) setBusy(false);
