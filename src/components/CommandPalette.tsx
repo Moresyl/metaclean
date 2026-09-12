@@ -73,7 +73,7 @@ export default function CommandPalette({ commands, onClose }: { commands: Comman
       .sort((left, right) => right.rank - left.rank)
       .map(({ command }) => command);
   }, [commands, query]);
-  const activeCommand = matches[active];
+  const activeCommand = matches[active]?.disabled ? undefined : matches[active];
   const enabledIndexes = useMemo(
     () => {
       const indexes: number[] = [];
@@ -200,7 +200,7 @@ export default function CommandPalette({ commands, onClose }: { commands: Comman
                     type="button"
                     role="option"
                     id={`command-option-${command.id}`}
-                    aria-selected={index === active}
+                    aria-selected={index === active && !command.disabled}
                     // Every row is set in the window's own ink, the selected one
                     // included. The list used to grey fourteen commands so that
                     // one could be legible, which is backwards: these are the
@@ -219,14 +219,14 @@ export default function CommandPalette({ commands, onClose }: { commands: Comman
                     className={[
                       "flex w-full items-center gap-2.5 rounded-control px-2 py-[7px] text-left text-base text-text",
                       "transition-colors duration-75 disabled:pointer-events-none disabled:opacity-40",
-                      index === active ? "active bg-brand/12" : "",
+                      index === active && !command.disabled ? "active bg-brand/12" : "",
                     ].join(" ")}
                     disabled={command.disabled}
                     onPointerEnter={() => setActive(index)}
                     onClick={() => choose(command)}
                   >
                     <span
-                      className={`grid size-[15px] shrink-0 place-items-center ${index === active ? "text-brand" : "text-muted"}`}
+                      className={`grid size-[15px] shrink-0 place-items-center ${index === active && !command.disabled ? "text-brand" : "text-muted"}`}
                       aria-hidden="true"
                     >
                       {command.icon}

@@ -198,6 +198,14 @@ describe("command palette", () => {
     expect(onClose).toHaveBeenCalled();
   });
 
+  it("does not expose a disabled-only search result as the active command", () => {
+    wrap(<CommandPalette commands={[commands[3]]} onClose={vi.fn()} />);
+    const field = screen.getByRole("combobox");
+    fireEvent.change(field, { target: { value: "确认" } });
+    expect(screen.getByRole("option")).toHaveAttribute("aria-selected", "false");
+    expect(field).not.toHaveAttribute("aria-activedescendant");
+  });
+
   it("takes the keyboard on open and hands it back on close", () => {
     const opener = render(<button type="button">开启</button>).getByRole("button");
     opener.focus();
