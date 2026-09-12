@@ -42,7 +42,7 @@ fn is_trusted_macos_system_alias(_path: &Path) -> bool {
 
 /// Reject linked path components, not only a linked final file. A linked
 /// parent directory can redirect a normal-looking path into another tree.
-fn path_contains_link(path: &Path) -> Result<bool> {
+pub(crate) fn path_contains_link(path: &Path) -> Result<bool> {
     for component in path.ancestors() {
         if component.as_os_str().is_empty() {
             continue;

@@ -48,8 +48,8 @@ assert.match(customCss, /\.VPContent \{ overflow-x: clip; \}/u, "documentation c
 assert.match(customCss, /html \{ scroll-behavior: auto; \}/u, "documentation must disable smooth scrolling for reduced-motion users");
 assert.match(customCss, /@media \(min-width: 761px\) and \(max-width: 1100px\)/u, "documentation hero must keep a medium desktop split layout");
 assert.doesNotMatch(customCss, /@media \(max-width: 1100px\) \{ \.hero-grid \{ grid-template-columns: 1fr/u, "documentation hero must not collapse at the sidebar viewport boundary");
-assert.match(docsHome, /<b>84\.17%<\/b>/u, "documentation home coverage must match the current validation evidence");
-assert.match(validation, /84\.17% Rust line coverage/u, "documentation validation must expose the current coverage evidence");
+assert.match(docsHome, /<b>84\.16%<\/b>/u, "documentation home coverage must match the current validation evidence");
+assert.match(validation, /84\.16% Rust line coverage/u, "documentation validation must expose the current coverage evidence");
 assert.equal(packageJson.scripts["docs:dev"], "vitepress dev docs");
 assert.equal(packageJson.scripts["docs:build"], "vitepress build docs");
 assert.equal(packageJson.scripts["docs:preview"], "vitepress preview docs");

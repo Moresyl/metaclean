@@ -85,7 +85,7 @@ document models. Every candidate is re-detected and re-inspected before writing.
 - Writes to a temporary file, then atomically replaces the destination
 - Re-inspects the exact cleaned candidate bytes before creating a backup or writing any output
 - Re-checks source bytes, modification time, readonly permissions and extended attributes before allocating output or backup, and again before replacement
-- Refuses symlinks as both input and destination
+- Refuses symlinks and reparse points as input or destination, including paths reached through linked parent directories
 - Caps input at 256 MiB, and expanded Office archives at 512 MiB
 - Malformed or unsupported files fail without touching the source
 

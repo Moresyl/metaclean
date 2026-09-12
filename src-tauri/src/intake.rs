@@ -166,6 +166,19 @@ fn visit(
         result.skip(path, "跳过符号链接或重解析点");
         return;
     }
+    if !from_directory {
+        match crate::safe_io::path_contains_link(path) {
+            Ok(true) => {
+                result.skip(path, "跳过符号链接或重解析点");
+                return;
+            }
+            Err(error) => {
+                result.skip(path, format!("无法读取：{error}"));
+                return;
+            }
+            Ok(false) => {}
+        }
+    }
     if metadata.is_file() {
         if !from_directory || engine::has_supported_extension(path) {
             let value = path.to_string_lossy().into_owned();
@@ -310,6 +323,24 @@ mod tests {
         assert_eq!(result.issues[0].reason, "跳过符号链接或重解析点");
     }
 
+    #[cfg(unix)]
+    #[test]
+    fn refuses_explicit_files_reached_through_symlinked_parents() {
+        use std::os::unix::fs::symlink;
+
+        let root = tempfile::tempdir().unwrap();
+        let target = root.path().join("target");
+        fs::create_dir(&target).unwrap();
+        let file = target.join("photo.jpg");
+        fs::write(&file, b"jpeg").unwrap();
+        let link = root.path().join("link");
+        symlink(&target, &link).unwrap();
+
+        let result = expand_paths(&[link.join("photo.jpg").to_string_lossy().into_owned()]);
+        assert!(result.files.is_empty());
+        assert_eq!(result.issues[0].reason, "跳过符号链接或重解析点");
+    }
+
     #[cfg(windows)]
     #[test]
     fn refuses_windows_directory_links_when_supported() {
@@ -324,6 +355,26 @@ mod tests {
             return;
         }
         let result = expand_paths(&[link.to_string_lossy().into_owned()]);
+        assert!(result.files.is_empty());
+        assert_eq!(result.issues[0].reason, "跳过符号链接或重解析点");
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn refuses_explicit_files_reached_through_reparse_parents() {
+        use std::os::windows::fs::symlink_dir;
+
+        let root = tempfile::tempdir().unwrap();
+        let target = root.path().join("target");
+        fs::create_dir(&target).unwrap();
+        let file = target.join("photo.jpg");
+        fs::write(&file, b"jpeg").unwrap();
+        let link = root.path().join("link");
+        if symlink_dir(&target, &link).is_err() {
+            return;
+        }
+
+        let result = expand_paths(&[link.join("photo.jpg").to_string_lossy().into_owned()]);
         assert!(result.files.is_empty());
         assert_eq!(result.issues[0].reason, "跳过符号链接或重解析点");
     }
