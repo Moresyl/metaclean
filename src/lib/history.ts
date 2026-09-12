@@ -1,4 +1,5 @@
 import type { CleanResult, Finding, HistoryEntry } from "../types";
+import { pathIdentity } from "./files";
 import { readStorage, removeStorage, writeStorage } from "./storage";
 
 export const HISTORY_STORAGE_KEY = "metaclean.history";
@@ -56,8 +57,9 @@ function isHistoryEntry(value: unknown): value is HistoryEntry {
     && entry.results.length <= MAX_HISTORY_RESULTS_PER_ENTRY
     && entry.results.length > 0
     && entry.results.every((result) => {
-      if (!isCleanResult(result) || sourcePaths.has(result.sourcePath)) return false;
-      sourcePaths.add(result.sourcePath);
+      const identity = isCleanResult(result) ? pathIdentity(result.sourcePath) : undefined;
+      if (!identity || sourcePaths.has(identity)) return false;
+      sourcePaths.add(identity);
       return true;
     });
 }

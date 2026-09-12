@@ -113,6 +113,10 @@ All notable changes to MetaClean are documented here. The project follows
   requested path and ignores duplicate or foreign responses, preventing a
   later malformed duplicate from overwriting an earlier verified result.
 
+- History validation now treats Windows case, separator and device-prefix
+  aliases as the same source path, preventing legacy records from counting one
+  file more than once.
+
 - Markdown front matter now recognizes both YAML `---` and TOML `+++` fences,
   while only removing targeted author and generator fields inside the opening
   metadata block.

@@ -60,6 +60,21 @@ describe("history persistence", () => {
     expect(loadHistory()).toEqual([]);
   });
 
+  it("rejects Windows path aliases as duplicate results", () => {
+    const first = {
+      ...entry("aliases"),
+      results: [{ ...entry("aliases").results[0], sourcePath: "C:\\aliases.jpg" }],
+    };
+    localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify([{
+      ...first,
+      results: [
+        first.results[0],
+        { ...first.results[0], sourcePath: "\\\\?\\C:\\ALIASES.JPG" },
+      ],
+    }]));
+    expect(loadHistory()).toEqual([]);
+  });
+
   it("keeps the newest one hundred entries", () => {
     const entries = Array.from({ length: 105 }, (_, index) => entry(String(index)));
     expect(limitHistory(entries)).toHaveLength(100);
