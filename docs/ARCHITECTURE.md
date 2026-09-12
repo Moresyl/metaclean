@@ -68,6 +68,9 @@ or history record.
   boundary.
 - Startup arguments returned by the shell integration pass through the same
   batch preparation and path budgets before the first response reaches the UI.
+- Drag-and-drop payloads are validated in the UI boundary before path intake;
+  malformed entries are ignored and valid paths remain within the native
+  single-path, batch-byte and item-count budgets.
 - Parser, filesystem, updater and intake diagnostics are normalized through an
   8 KiB UTF-8-safe cap before they are returned over IPC or rendered by the UI.
 - Scan responses contain the source path, detected format, size, category,

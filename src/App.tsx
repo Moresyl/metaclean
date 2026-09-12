@@ -25,6 +25,7 @@ import { useTheme } from "./contexts/ThemeContext";
 import { useUpdate } from "./contexts/UpdateContext";
 import { boundedErrorMessage } from "./lib/errors";
 import { normalizeBatchProgress } from "./lib/progress";
+import { normalizeNativeDropEvent } from "./lib/drag";
 
 const HistoryPage = lazy(() => import("./components/HistoryPage"));
 const PrivacyPage = lazy(() => import("./components/PrivacyPage"));
@@ -103,8 +104,10 @@ export default function App() {
     let dispose: (() => void) | undefined;
     void import("@tauri-apps/api/webview").then(({ getCurrentWebview }) => getCurrentWebview().onDragDropEvent((event) => {
       if (!active) return;
-      setDragActive(event.payload.type === "enter" || event.payload.type === "over");
-      if (event.payload.type === "drop") void addNativePaths(event.payload.paths);
+      const payload = normalizeNativeDropEvent(event.payload);
+      if (!payload) return;
+      setDragActive(payload.type === "enter" || payload.type === "over");
+      if (payload.type === "drop" && payload.paths.length) void addNativePaths(payload.paths);
     })).then((unlisten) => {
       if (active) dispose = unlisten;
       else unlisten();
