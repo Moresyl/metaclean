@@ -201,6 +201,11 @@ export async function installAvailableUpdate(options: {
     if (!isStableReleaseVersion(expectedVersion)) throw new Error(UPDATE_CHANGED);
     return await invoke<boolean>("install_update_and_restart", { expectedVersion });
   } finally {
-    await unlisten();
+    try {
+      await unlisten();
+    } catch {
+      // The updater may already have restarted the process. Listener cleanup
+      // is best-effort and must not turn a successful install into an error.
+    }
   }
 }

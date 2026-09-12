@@ -146,6 +146,14 @@ describe("native update commands", () => {
     expect(unlisten).toHaveBeenCalled();
   });
 
+  it("keeps a successful install when listener cleanup fails", async () => {
+    const unlisten = vi.fn().mockRejectedValue(new Error("webview already closed"));
+    const listener = vi.fn().mockResolvedValue(unlisten);
+    const invoker = vi.fn().mockResolvedValue(true);
+    await expect(installAvailableUpdate({ expectedVersion: "0.4.0", listener, invoker })).resolves.toBe(true);
+    expect(invoker).toHaveBeenCalledWith("install_update_and_restart", { expectedVersion: "0.4.0" });
+  });
+
   it("forwards the reviewed version through the default Tauri adapter", async () => {
     const unlisten = vi.fn();
     invokeMock.mockResolvedValue(true);
