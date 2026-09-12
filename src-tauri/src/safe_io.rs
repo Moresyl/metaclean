@@ -8,6 +8,16 @@ use std::{
 
 use crate::error::{display_path, CleanError, Result};
 
+fn validate_output_path(path: &Path) -> Result<()> {
+    if path.to_string_lossy().len() > crate::MAX_PATH_BYTES {
+        return Err(CleanError::InvalidFormat(format!(
+            "输出路径最多 {} 字节",
+            crate::MAX_PATH_BYTES
+        )));
+    }
+    Ok(())
+}
+
 fn is_link_or_reparse_point(metadata: &fs::Metadata) -> bool {
     if metadata.file_type().is_symlink() {
         return true;
@@ -272,6 +282,7 @@ pub fn atomic_write_with_metadata(
     preserve_timestamps: bool,
     remove_private_xattrs: bool,
 ) -> Result<()> {
+    validate_output_path(path)?;
     if path_contains_link(path)? {
         return Err(CleanError::Symlink(display_path(path)));
     }
@@ -294,6 +305,7 @@ pub fn atomic_replace_if_unchanged(
     preserve_timestamps: bool,
     remove_private_xattrs: bool,
 ) -> Result<()> {
+    validate_output_path(path)?;
     if path_contains_link(path)? {
         return Err(CleanError::Symlink(display_path(path)));
     }
@@ -399,6 +411,7 @@ pub fn atomic_create_unique_with_metadata(
     preserve_timestamps: bool,
     remove_private_xattrs: bool,
 ) -> Result<PathBuf> {
+    validate_output_path(preferred)?;
     if path_contains_link(preferred)? {
         return Err(CleanError::Symlink(display_path(preferred)));
     }
@@ -422,6 +435,7 @@ pub fn atomic_create_unique_with_metadata(
 
     for index in 1..=10_000 {
         let candidate = numbered_path(preferred, index);
+        validate_output_path(&candidate)?;
         if path_contains_link(&candidate)? {
             return Err(CleanError::Symlink(display_path(&candidate)));
         }
@@ -532,6 +546,19 @@ mod tests {
         fs::write(&path, b"old").unwrap();
         atomic_write_with_metadata(&path, b"new", None, false, false).unwrap();
         assert_eq!(fs::read(path).unwrap(), b"new");
+    }
+
+    #[test]
+    fn write_paths_are_bounded_before_filesystem_work() {
+        let oversized = PathBuf::from(format!("{}{}.json", "x".repeat(crate::MAX_PATH_BYTES), "x"));
+        assert!(matches!(
+            atomic_write_with_metadata(&oversized, b"{}", None, false, false),
+            Err(CleanError::InvalidFormat(_))
+        ));
+        assert!(matches!(
+            atomic_create_unique_with_metadata(&oversized, b"{}", None, false, false),
+            Err(CleanError::InvalidFormat(_))
+        ));
     }
 
     #[test]

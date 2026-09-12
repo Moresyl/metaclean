@@ -35,7 +35,7 @@ All notable changes to MetaClean are documented here. The project follows
 
 - 前端插件、浏览器回退、打开器和队列错误也统一经过 8 KiB UTF-8 字节预算，避免原生边界之外的异常文本撑爆用户可见状态。
 
-- Rust 覆盖率账本现按新增递归路径预算、UTF-8 错误路径和 8 KiB 诊断边界测试更新为 84.22%。
+- Rust 覆盖率账本现按新增递归路径预算、UTF-8 错误路径、8 KiB 诊断和输出路径边界测试更新为 84.28%。
 
 - Intake IPC now rejects empty paths before starting worker tasks, caps each
   path at 32 KiB and each raw batch at 64 MiB; audit JSON destinations reuse
@@ -67,8 +67,11 @@ All notable changes to MetaClean are documented here. The project follows
 - Batch-progress and close-blocked events are now runtime-validated before
   entering React state, rejecting malformed counters and untrusted payloads.
 
-- The Rust coverage ledger now records 84.22% after the recursive path-budget,
-  UTF-8-safe issue-path and bounded-diagnostics boundary tests.
+- Generated cleaned, backup and collision output paths now share the 32 KiB
+  safety cap before filesystem work or IPC results are allocated.
+
+- The Rust coverage ledger now records 84.28% after the recursive path-budget,
+  UTF-8-safe issue-path, bounded-diagnostics and output-path boundary tests.
 
 - 更新检查现在将发布说明限制在 64K 字符以内；过大的说明会被安全忽略，但不会阻止已签名版本更新。
 - 替换原文件时会在临时输出完全落盘后、最终原子提交前再次校验源文件，缩短大文件处理期间的竞态窗口。

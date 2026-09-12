@@ -86,7 +86,9 @@ or history record.
   errors remove the marker; only an abnormal exit leaves a one-time notice.
 - Audit exports deliberately contain paths and outcomes because the user asks
   to save them. The native writer accepts JSON only, caps the destination path
-  at 32 KiB and the report at 10 MiB, then commits atomically.
+  at 32 KiB and the report at 10 MiB, then commits atomically. Generated
+  cleaned, backup and collision paths use the same output-path cap before any
+  directory or temporary file is created.
 
 ## Concurrency and backpressure
 
