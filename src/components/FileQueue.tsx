@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { ArrowDownWideNarrow, ArrowUpNarrowWide, ChevronRight, Copy, FileDown, FileImage, FileSearch, FileText, FileType2, FileVideo2, FolderOpen, Music2, Tag, Trash2, X } from "lucide-react";
 import Button, { IconButton } from "./Button";
@@ -59,7 +59,11 @@ export default function FileQueue({ entries, preserveColorProfile, removeExtende
   const [target, setTarget] = useState<FileEntry>();
   const [clearPromptOpen, setClearPromptOpen] = useState(false);
   const [removeTarget, setRemoveTarget] = useState<FileEntry>();
+  const [exporting, setExporting] = useState(false);
+  const mountedRef = useRef(true);
+  const exportingRef = useRef(false);
   const menu = useContextMenu();
+  useEffect(() => () => { mountedRef.current = false; }, []);
   const sortedEntries = useMemo(() => entries.map((entry, index) => ({ entry, index })).sort((left, right) => {
     const values: Record<SortKey, [string | number | undefined, string | number | undefined]> = {
       name: [left.entry.name, right.entry.name],
@@ -94,7 +98,9 @@ export default function FileQueue({ entries, preserveColorProfile, removeExtende
   } as Record<string, string>)[category] ?? fallback;
 
   async function copy(value: string) {
-    onNotify(await copyText(value)
+    const copied = await copyText(value);
+    if (!mountedRef.current) return;
+    onNotify(copied
       ? text("已复制到剪贴板", "Copied to clipboard")
       : text("无法访问剪贴板", "The clipboard is unavailable"));
   }
@@ -112,14 +118,19 @@ export default function FileQueue({ entries, preserveColorProfile, removeExtende
       return true;
     });
     if (!paths.length) return;
-    onNotify(await copyText(paths.join("\r\n"))
+    const copied = await copyText(paths.join("\r\n"));
+    if (!mountedRef.current) return;
+    onNotify(copied
       ? text(`已复制 ${paths.length} 个路径`, `Copied ${paths.length} path(s)`)
       : text("无法访问剪贴板", "The clipboard is unavailable"));
   }
 
   async function exportReport() {
+    if (exportingRef.current) return;
     const completed = entries.filter((entry) => entry.report || entry.result);
     if (!completed.length) return;
+    exportingRef.current = true;
+    setExporting(true);
     try {
       const [{ save }, { getVersion }] = await Promise.all([
         import("@tauri-apps/plugin-dialog"),
@@ -129,6 +140,7 @@ export default function FileQueue({ entries, preserveColorProfile, removeExtende
         defaultPath: `MetaClean-audit-${new Date().toISOString().slice(0, 10)}.json`,
         filters: [{ name: "JSON", extensions: ["json"] }],
       });
+      if (!mountedRef.current) return;
       if (!destination) return;
       const report = {
         schemaVersion: 1,
@@ -156,9 +168,14 @@ export default function FileQueue({ entries, preserveColorProfile, removeExtende
         })),
       };
       await invoke("export_audit_report", { path: destination, contents: JSON.stringify(report, null, 2) });
+      if (!mountedRef.current) return;
       onNotify(text(`审计报告已导出：${destination}`, `Audit report exported: ${destination}`));
     } catch (error) {
+      if (!mountedRef.current) return;
       onNotify(text(`无法导出审计报告：${String(error)}`, `Could not export audit report: ${String(error)}`));
+    } finally {
+      exportingRef.current = false;
+      if (mountedRef.current) setExporting(false);
     }
   }
 
@@ -241,7 +258,7 @@ export default function FileQueue({ entries, preserveColorProfile, removeExtende
           aria-label={text("导出审计报告", "Export audit report")}
           data-tip={text("导出审计报告", "Export audit report")}
           onClick={() => void exportReport()}
-          disabled={!entries.some((entry) => entry.report || entry.result)}
+          disabled={exporting || !entries.some((entry) => entry.report || entry.result)}
         >
           <FileDown size={14} strokeWidth={2} />
         </IconButton>

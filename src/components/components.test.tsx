@@ -238,6 +238,27 @@ describe("desktop components", () => {
     expect(onNotify).toHaveBeenCalledWith(expect.stringContaining("审计报告已导出"));
   });
 
+  it("serializes audit exports before the save dialog resolves", async () => {
+    let finishSave: ((path: string) => void) | undefined;
+    saveMock.mockReturnValueOnce(new Promise((resolve) => { finishSave = resolve; }));
+    const entries: FileEntry[] = [{
+      id: "export-once",
+      name: "notes.txt",
+      path: "C:\\work\\notes.txt",
+      kind: "text",
+      status: "scanned",
+      report: { path: "C:\\work\\notes.txt", name: "notes.txt", format: "Text", size: 4, supported: true, findings: [] },
+    }];
+    wrap(<FileQueue entries={entries} preserveColorProfile removeExtendedAttributes={false} onRemove={vi.fn()} onClear={vi.fn()} onReveal={vi.fn()} onNotify={vi.fn()} />);
+    const exportButton = screen.getByRole("button", { name: "导出审计报告" });
+    fireEvent.click(exportButton);
+    await waitFor(() => expect(saveMock).toHaveBeenCalledOnce());
+    fireEvent.click(exportButton);
+    expect(saveMock).toHaveBeenCalledOnce();
+    finishSave?.("C:\\reports\\once.json");
+    await waitFor(() => expect(invokeMock).toHaveBeenCalledWith("export_audit_report", expect.anything()));
+  });
+
   it("renders empty and every queue lifecycle status", () => {
     const { rerender } = wrap(<FileQueue entries={[]} preserveColorProfile removeExtendedAttributes={false} onRemove={vi.fn()} onClear={vi.fn()} onReveal={vi.fn()} onNotify={vi.fn()} />);
     expect(screen.getByText("添加文件后，将在这里展示扫描状态")).toBeInTheDocument();
