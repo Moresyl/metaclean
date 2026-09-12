@@ -44,6 +44,8 @@ assert.match(docsHome, /site-footer/u, "documentation home must expose a factual
 assert.match(docsHome, /proof-metrics/u, "documentation home must expose current capability evidence");
 assert.match(docsConfig, /notFound:\s*\{[\s\S]*title: "页面不存在"[\s\S]*回到文档中心/u, "documentation 404 must expose a localized recovery path");
 assert.match(customCss, /\.NotFound/u, "documentation 404 must have product styling");
+assert.match(customCss, /\.VPContent \{ overflow-x: clip; \}/u, "documentation content must not clip vertical focus targets");
+assert.match(customCss, /html \{ scroll-behavior: auto; \}/u, "documentation must disable smooth scrolling for reduced-motion users");
 assert.match(customCss, /@media \(min-width: 761px\) and \(max-width: 1100px\)/u, "documentation hero must keep a medium desktop split layout");
 assert.doesNotMatch(customCss, /@media \(max-width: 1100px\) \{ \.hero-grid \{ grid-template-columns: 1fr/u, "documentation hero must not collapse at the sidebar viewport boundary");
 assert.match(docsHome, /<b>84\.08%<\/b>/u, "documentation home coverage must match the current validation evidence");

@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { ArrowDownWideNarrow, ArrowUpNarrowWide, ChevronRight, Copy, FileDown, FileImage, FileSearch, FileText, FileType2, FileVideo2, FolderOpen, Music2, Tag, Trash2, X } from "lucide-react";
 import Button, { IconButton } from "./Button";
+import ConfirmDialog from "./ConfirmDialog";
 import Select from "./Select";
 import ContextMenu, { useContextMenu, type MenuEntry } from "./ContextMenu";
 import type { FileEntry, Finding } from "../types";
@@ -56,6 +57,8 @@ export default function FileQueue({ entries, preserveColorProfile, removeExtende
    *  list nobody can scan. */
   const [expanded, setExpanded] = useState<string>();
   const [target, setTarget] = useState<FileEntry>();
+  const [clearPromptOpen, setClearPromptOpen] = useState(false);
+  const [removeTarget, setRemoveTarget] = useState<FileEntry>();
   const menu = useContextMenu();
   const sortedEntries = useMemo(() => entries.map((entry, index) => ({ entry, index })).sort((left, right) => {
     const values: Record<SortKey, [string | number | undefined, string | number | undefined]> = {
@@ -173,13 +176,14 @@ export default function FileQueue({ entries, preserveColorProfile, removeExtende
       ] satisfies MenuEntry[] : []),
       { id: "copy-name", label: text("复制文件名", "Copy file name"), icon: <Tag size={14} />, run: () => void copy(entry.name) },
       "separator",
-      { id: "remove", label: text("从队列中移除", "Remove from queue"), icon: <X size={14} />, danger: true, disabled: busy, run: () => onRemove(entry.id) },
+      { id: "remove", label: text("从队列中移除", "Remove from queue"), icon: <X size={14} />, danger: true, disabled: busy, run: () => setRemoveTarget(entry) },
     ];
   };
 
   const queueLabel = text("待处理文件", "File queue");
 
   return (
+    <>
     <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-panel border border-line bg-surface shadow-panel">
       <header className="flex h-[42px] shrink-0 items-center gap-2 border-b border-line px-2.5">
         <h2 className="text-base font-semibold">{queueLabel}</h2>
@@ -242,7 +246,7 @@ export default function FileQueue({ entries, preserveColorProfile, removeExtende
           <FileDown size={14} strokeWidth={2} />
         </IconButton>
 
-        <Button variant="ghost" onClick={onClear} disabled={busy || !entries.length}>
+        <Button variant="ghost" onClick={() => setClearPromptOpen(true)} disabled={busy || !entries.length}>
           <Trash2 size={14} strokeWidth={2} />
           {text("清空", "Clear")}
         </Button>
@@ -398,7 +402,7 @@ export default function FileQueue({ entries, preserveColorProfile, removeExtende
                       aria-label={text(`移除 ${entry.name}`, `Remove ${entry.name}`)}
                       className="enabled:hover:bg-danger/12 enabled:hover:text-danger"
                       disabled={busy}
-                      onClick={() => onRemove(entry.id)}
+                      onClick={() => setRemoveTarget(entry)}
                     >
                       <X size={14} strokeWidth={2} />
                     </IconButton>
@@ -443,6 +447,25 @@ export default function FileQueue({ entries, preserveColorProfile, removeExtende
       )}
       {menu.anchor && target ? <ContextMenu entries={menuEntries(target)} anchor={menu.anchor} label={target.name} onClose={menu.close} /> : null}
     </section>
+    {clearPromptOpen ? (
+      <ConfirmDialog
+        title={text("清空文件队列？", "Clear the file queue?")}
+        description={text(`将移除当前队列中的 ${entries.length} 个文件，文件本身不会被修改。`, `This removes ${entries.length} file(s) from the queue; the files themselves will not be changed.`)}
+        confirmLabel={text("清空队列", "Clear queue")}
+        onCancel={() => setClearPromptOpen(false)}
+        onConfirm={() => { setClearPromptOpen(false); onClear(); }}
+      />
+    ) : null}
+    {removeTarget ? (
+      <ConfirmDialog
+        title={text("从队列中移除？", "Remove from the queue?")}
+        description={text(`${removeTarget.name} 将从当前队列移除，文件本身不会被修改。`, `${removeTarget.name} will be removed from the current queue; the file itself will not be changed.`)}
+        confirmLabel={text("移除", "Remove")}
+        onCancel={() => setRemoveTarget(undefined)}
+        onConfirm={() => { const id = removeTarget.id; setRemoveTarget(undefined); onRemove(id); }}
+      />
+    ) : null}
+    </>
   );
 }
 

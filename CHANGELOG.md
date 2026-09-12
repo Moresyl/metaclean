@@ -37,6 +37,8 @@ All notable changes to MetaClean are documented here. The project follows
 - Windows UNC 路径现在统一识别正斜杠和设备路径写法，拖拽、启动参数与队列合并不会把同一文件重复入队。
 - 命令面板现在向读屏器暴露当前键盘高亮项，搜索和回车执行的上下文保持可感知。
 - 自绘右键菜单也会暴露键盘高亮项，方向键导航和回车执行对读屏器保持同步。
+- 清空文件队列、移除单项和清空处理记录现在统一经过可聚焦的双语确认对话框，支持 Escape 取消并在关闭后恢复焦点；命令面板入口不会绕过队列保护。
+- 文档主题修复垂直焦点裁剪，补齐导航/正文链接的 focus-visible 样式，长文本安全换行，并让 404 与首页动效遵循 reduced-motion 偏好。
 
 - Parallel scanning now draws work from a bounded dynamic queue instead of two
   static path chunks, keeping both workers useful when file sizes or storage

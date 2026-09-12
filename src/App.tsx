@@ -6,6 +6,7 @@ import DropZone from "./components/DropZone";
 import FileQueue from "./components/FileQueue";
 import CleanOptions from "./components/CleanOptions";
 import UpdateDialog from "./components/UpdateDialog";
+import ConfirmDialog from "./components/ConfirmDialog";
 import TitleBar from "./components/TitleBar";
 import StatusBar from "./components/StatusBar";
 import TooltipHost from "./components/TooltipHost";
@@ -54,6 +55,7 @@ export default function App() {
   const recoveryProgressRef = useRef<{ batchId?: string; completed: number; persistedAt: number }>({ completed: 0, persistedAt: 0 });
   const [recoveryNotice] = useState(() => readActiveBatch());
   const [message, setMessage] = useState<string>();
+  const [queueClearPromptOpen, setQueueClearPromptOpen] = useState(false);
   const [dragActive, setDragActive] = useState(false);
   const addEntries = useCallback((incoming: FileEntry[]) => setEntries((current) => mergeEntries(current, incoming)), []);
   const addNativePaths = useCallback(async (paths: string[]) => {
@@ -296,7 +298,7 @@ export default function App() {
     { id: "pick-folder", group: act, label: text("选择文件夹", "Choose folder"), icon: <FolderOpen size={14} />, run: () => void choose(true) },
     { id: "scan", group: act, label: text("扫描隐私痕迹", "Scan privacy traces"), icon: <ScanSearch size={14} />, disabled: busy || !entries.length || scanned, run: () => { setPage("clean"); void scan(); } },
     { id: "clean", group: act, label: text("确认并开始清理", "Confirm and clean"), icon: <ShieldCheck size={14} />, disabled: busy || !scanned || !cleanableEntries.length, run: () => { setPage("clean"); void clean(); } },
-    { id: "clear", group: act, label: text("清空队列", "Clear queue"), icon: <Trash2 size={14} />, disabled: busy || !entries.length, run: () => setEntries([]) },
+    { id: "clear", group: act, label: text("清空队列", "Clear queue"), icon: <Trash2 size={14} />, disabled: busy || !entries.length, run: () => setQueueClearPromptOpen(true) },
     { id: "theme-light", group: appearance, label: text("浅色", "Light"), icon: <Sun size={14} />, disabled: theme.mode === "light", run: () => theme.setMode("light") },
     { id: "theme-dark", group: appearance, label: text("深色", "Dark"), icon: <Moon size={14} />, disabled: theme.mode === "dark", run: () => theme.setMode("dark") },
     { id: "theme-system", group: appearance, label: text("跟随系统", "System"), icon: <MonitorCog size={14} />, disabled: theme.mode === "system", run: () => theme.setMode("system") },
@@ -361,6 +363,15 @@ export default function App() {
     <StatusBar busy={busy} operation={activeOperation} fileCount={entries.length} progress={progress} />
     </div>
     <UpdateDialog />
+    {queueClearPromptOpen ? (
+      <ConfirmDialog
+        title={text("清空文件队列？", "Clear the file queue?")}
+        description={text(`将移除当前队列中的 ${entries.length} 个文件，文件本身不会被修改。`, `This removes ${entries.length} file(s) from the queue; the files themselves will not be changed.`)}
+        confirmLabel={text("清空队列", "Clear queue")}
+        onCancel={() => setQueueClearPromptOpen(false)}
+        onConfirm={() => { setQueueClearPromptOpen(false); setEntries([]); }}
+      />
+    ) : null}
     <TooltipHost />
     {commandsOpen ? <CommandPalette commands={commands} onClose={() => setCommandsOpen(false)} /> : null}
     </>

@@ -1,14 +1,18 @@
+import { useState } from "react";
 import { CheckCircle2, Clock3, Trash2, XCircle } from "lucide-react";
 import Button from "./Button";
+import ConfirmDialog from "./ConfirmDialog";
 import type { HistoryEntry } from "../types";
 import { useI18n } from "../lib/i18n";
 
 export default function HistoryPage({ entries, onClear }: { entries: HistoryEntry[]; onClear: () => void }) {
   const { locale, text } = useI18n();
+  const [clearPromptOpen, setClearPromptOpen] = useState(false);
   return (
+    <>
     <section className="flex h-full max-w-[900px] flex-col gap-3">
       <div className="flex shrink-0 justify-end">
-        <Button size="sm" onClick={onClear} disabled={!entries.length}>
+        <Button size="sm" onClick={() => setClearPromptOpen(true)} disabled={!entries.length}>
           <Trash2 size={14} strokeWidth={2} />
           {text("清空记录", "Clear history")}
         </Button>
@@ -81,5 +85,15 @@ export default function HistoryPage({ entries, onClear }: { entries: HistoryEntr
         </div>
       )}
     </section>
+    {clearPromptOpen ? (
+      <ConfirmDialog
+        title={text("清空处理记录？", "Clear processing history?")}
+        description={text(`将永久删除此设备上保存的 ${entries.length} 条记录。文件和已生成的副本不会受到影响。`, `This permanently deletes ${entries.length} locally stored record(s). Files and generated copies are not affected.`)}
+        confirmLabel={text("清空记录", "Clear history")}
+        onCancel={() => setClearPromptOpen(false)}
+        onConfirm={() => { setClearPromptOpen(false); onClear(); }}
+      />
+    ) : null}
+    </>
   );
 }

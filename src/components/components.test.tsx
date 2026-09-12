@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import CleanOptions from "./CleanOptions";
 import DropZone from "./DropZone";
@@ -9,6 +9,7 @@ import SettingsPage from "./SettingsPage";
 import StatusBar from "./StatusBar";
 import UpdateDialog from "./UpdateDialog";
 import AboutPage from "./AboutPage";
+import ConfirmDialog from "./ConfirmDialog";
 import { buildDiagnosticReport } from "../lib/about";
 import { I18nProvider, useI18n } from "../lib/i18n";
 import type { FileEntry, HistoryEntry } from "../types";
@@ -64,6 +65,18 @@ beforeEach(() => {
 });
 
 describe("desktop components", () => {
+  it("keeps destructive confirmation modal keyboard reachable and dismissible", () => {
+    const onConfirm = vi.fn();
+    const onCancel = vi.fn();
+    wrap(<ConfirmDialog title="确认操作" description="不会修改文件" confirmLabel="继续" onConfirm={onConfirm} onCancel={onCancel} />);
+    expect(screen.getByRole("dialog", { name: "确认操作" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "继续" })).toHaveFocus();
+    fireEvent.keyDown(window, { key: "Escape" });
+    expect(onCancel).toHaveBeenCalledOnce();
+    fireEvent.click(screen.getByRole("button", { name: "继续" }));
+    expect(onConfirm).toHaveBeenCalledOnce();
+  });
+
   it("keeps local processing state and version visible in the status bar", async () => {
     wrap(<StatusBar busy={false} fileCount={3} />);
     expect(screen.getByText("就绪")).toBeInTheDocument();
@@ -132,7 +145,17 @@ describe("desktop components", () => {
     fireEvent.click(screen.getByRole("button", { name: "复制全部路径" }));
     await waitFor(() => expect(clipboardMock).toHaveBeenCalledWith("photo.jpg\r\nbad.pdf"));
     fireEvent.click(screen.getByRole("button", { name: "移除 photo.jpg" }));
+    fireEvent.click(within(screen.getByRole("dialog", { name: "从队列中移除？" })).getByRole("button", { name: "移除" }));
     expect(onRemove).toHaveBeenCalledWith("1");
+  });
+
+  it("guards queue clearing until the destructive action is confirmed", () => {
+    const onClear = vi.fn();
+    wrap(<FileQueue entries={[{ id: "clear-me", name: "notes.txt", kind: "text", status: "ready" }]} preserveColorProfile removeExtendedAttributes={false} onRemove={vi.fn()} onClear={onClear} onReveal={vi.fn()} onNotify={vi.fn()} />);
+    fireEvent.click(screen.getByRole("button", { name: "清空" }));
+    expect(onClear).not.toHaveBeenCalled();
+    fireEvent.click(within(screen.getByRole("dialog", { name: "清空文件队列？" })).getByRole("button", { name: "清空队列" }));
+    expect(onClear).toHaveBeenCalledOnce();
   });
 
   it("keeps a generated backup directly copyable and revealable after failure", async () => {
@@ -275,6 +298,8 @@ describe("desktop components", () => {
     expect(screen.getByText("失败原因")).toBeInTheDocument();
     expect(screen.getByText("备份：C:\\b.txt.bak")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "清空记录" }));
+    expect(screen.getByRole("dialog", { name: "清空处理记录？" })).toBeInTheDocument();
+    fireEvent.click(within(screen.getByRole("dialog", { name: "清空处理记录？" })).getByRole("button", { name: "清空记录" }));
     expect(onClear).toHaveBeenCalled();
   });
 

@@ -307,6 +307,7 @@ describe("queue row details", () => {
     fireEvent.contextMenu(container.querySelector(".file-item")!, { clientX: 20, clientY: 20 });
     const menu = await screen.findByRole("menu", { name: "photo.jpg" });
     fireEvent.click(within(menu).getByRole("menuitem", { name: "从队列中移除" }));
+    fireEvent.click(within(screen.getByRole("dialog", { name: "从队列中移除？" })).getByRole("button", { name: "移除" }));
     expect(onRemove).toHaveBeenCalledWith("1");
   });
 });
