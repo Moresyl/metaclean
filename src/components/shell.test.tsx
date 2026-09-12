@@ -178,6 +178,16 @@ describe("command palette", () => {
     expect(screen.getByRole("option", { name: /处理记录/ })).toHaveAttribute("aria-selected", "true");
   });
 
+  it("reanchors when a command is replaced at the selected index", () => {
+    const { rerender } = wrap(<CommandPalette commands={[commands[0], commands[1]]} onClose={vi.fn()} />);
+    const field = screen.getByRole("combobox");
+    fireEvent.keyDown(field, { key: "ArrowDown" });
+    expect(screen.getByRole("option", { name: /处理记录/ })).toHaveAttribute("aria-selected", "true");
+    rerender(<I18nProvider><CommandPalette commands={[commands[0], commands[2]]} onClose={vi.fn()} /></I18nProvider>);
+    expect(screen.getByRole("option", { name: /选择文件/ })).toHaveAttribute("aria-selected", "false");
+    expect(screen.getByRole("option", { name: /文件净化/ })).toHaveAttribute("aria-selected", "true");
+  });
+
   it("says so when nothing matches, and closes on Escape", () => {
     const onClose = vi.fn();
     wrap(<CommandPalette commands={commands} onClose={onClose} />);

@@ -58,6 +58,8 @@ export default function CommandPalette({ commands, onClose }: { commands: Comman
   const field = useRef<HTMLInputElement>(null);
   const dialog = useRef<HTMLDivElement>(null);
   const restoreFocus = useRef<Element | null>(null);
+  const activeIdRef = useRef<string>();
+  const queryRef = useRef(query);
 
   const matches = useMemo(() => {
     if (!query.trim()) return commands;
@@ -80,13 +82,23 @@ export default function CommandPalette({ commands, onClose }: { commands: Comman
     },
     [matches],
   );
-  const enabledSignature = enabledIndexes.join(",");
+  const enabledSignature = enabledIndexes.map((index) => matches[index]?.id ?? "").join(",");
 
   // A new query invalidates the highlight; keep it on the best match instead of
   // wherever the previous list happened to leave it.
   useEffect(() => {
-    setActive((current) => enabledIndexes.includes(current) ? current : enabledIndexes[0] ?? 0);
+    const queryChanged = queryRef.current !== query;
+    queryRef.current = query;
+    const preferred = queryChanged || !activeIdRef.current
+      ? -1
+      : matches.findIndex((command) => command.id === activeIdRef.current);
+    const next = preferred >= 0 && !matches[preferred]?.disabled ? preferred : enabledIndexes[0] ?? 0;
+    setActive((current) => current === next ? current : next);
   }, [enabledSignature, query]);
+
+  useEffect(() => {
+    activeIdRef.current = activeCommand?.id;
+  }, [activeCommand?.id]);
 
   // The palette takes the keyboard on open and gives it back on close, so
   // dismissing it never strands focus on the document body.
