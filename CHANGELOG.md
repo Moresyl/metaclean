@@ -25,6 +25,8 @@ All notable changes to MetaClean are documented here. The project follows
 
 ### Changed
 
+- 更新检查现在将发布说明限制在 64 KiB 以内；过大的说明会被安全忽略，但不会阻止已签名版本更新。
+
 - Parallel scanning now draws work from a bounded dynamic queue instead of two
   static path chunks, keeping both workers useful when file sizes or storage
   latency are uneven while returning reports in the original input order.

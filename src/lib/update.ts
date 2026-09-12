@@ -4,6 +4,7 @@ export const RELEASES_PAGE_URL = "https://github.com/Moresyl/metaclean/releases/
 
 const CHECK_TIMEOUT_MS = 15_000;
 const MAX_STABLE_VERSION_BYTES = 128;
+const MAX_UPDATE_NOTES_CHARS = 64 * 1024;
 const UPDATE_NETWORK_HELP = "无法连接已签名更新源。请检查 GitHub 网络或 HTTPS_PROXY 后重试，也可从正式发布页手动下载安装包。 / Could not reach the signed update feed. Check GitHub access or HTTPS_PROXY, then retry, or download the installer from the Releases page.";
 const UPDATE_CHANGED = "可用版本在确认后发生了变化，请先重新检查并查看新版本说明。 / The available release changed after confirmation. Check again and review the new release before installing.";
 
@@ -153,7 +154,9 @@ export async function checkForUpdate(options: {
         currentVersion,
         availableVersion,
         name: `MetaClean v${availableVersion}`,
-        notes: typeof update.body === "string" && update.body.trim() ? update.body : undefined,
+        notes: typeof update.body === "string" && update.body.trim() && update.body.length <= MAX_UPDATE_NOTES_CHARS
+          ? update.body
+          : undefined,
         publishedAt: typeof update.date === "string" && update.date.trim() ? update.date : undefined,
         releaseUrl: releaseUrlForVersion(availableVersion),
       },

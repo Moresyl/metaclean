@@ -62,6 +62,21 @@ describe("checkForUpdate", () => {
     expect(getVersionMock).toHaveBeenCalled();
   });
 
+  it("omits oversized release notes while keeping the signed update available", async () => {
+    const checker = vi.fn().mockResolvedValue({
+      currentVersion: "0.3.0",
+      version: "0.4.0",
+      body: "x".repeat(64 * 1024 + 1),
+    });
+    await expect(checkForUpdate({ checker })).resolves.toMatchObject({
+      status: "available",
+      info: {
+        availableVersion: "0.4.0",
+        notes: undefined,
+      },
+    });
+  });
+
   it("refuses prereleases, malformed stable versions, and stale updater payloads", async () => {
     const prerelease = vi.fn().mockResolvedValue({ currentVersion: "0.3.0", version: "0.4.0-beta.1" });
     await expect(checkForUpdate({ checker: prerelease })).rejects.toThrow("prerelease");
