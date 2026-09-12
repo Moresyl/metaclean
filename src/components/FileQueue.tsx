@@ -97,9 +97,10 @@ export default function FileQueue({ entries, preserveColorProfile, removeExtende
   }
 
   async function copyAllPaths() {
-    const paths = entries
-      .map((entry) => entry.result?.outputPath ?? entry.path)
-      .filter((path): path is string => Boolean(path));
+    const paths = [...new Set(entries.flatMap((entry) => [
+      entry.result?.outputPath ?? entry.path,
+      entry.result?.backupPath,
+    ]).filter((path): path is string => Boolean(path)))];
     if (!paths.length) return;
     onNotify(await copyText(paths.join("\r\n"))
       ? text(`已复制 ${paths.length} 个路径`, `Copied ${paths.length} path(s)`)

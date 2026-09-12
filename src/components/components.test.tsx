@@ -155,6 +155,20 @@ describe("desktop components", () => {
     expect(onReveal).toHaveBeenCalledWith(backupPath);
   });
 
+  it("includes generated backups in the batch path copy", async () => {
+    const backupPath = "C:\\work\\photo.jpg.bak";
+    wrap(<FileQueue entries={[{
+      id: "failed-replace",
+      name: "photo.jpg",
+      path: "C:\\work\\photo.jpg",
+      kind: "image",
+      status: "error",
+      result: { sourcePath: "C:\\work\\photo.jpg", backupPath, removed: [], success: false, error: "写入失败" },
+    }]} preserveColorProfile removeExtendedAttributes={false} onRemove={vi.fn()} onClear={vi.fn()} onReveal={vi.fn()} onNotify={vi.fn()} />);
+    fireEvent.click(screen.getByRole("button", { name: "复制全部路径" }));
+    await waitFor(() => expect(clipboardMock).toHaveBeenCalledWith(`C:\\work\\photo.jpg\r\n${backupPath}`));
+  });
+
   it("exports a bounded value-free audit report through the native command", async () => {
     saveMock.mockResolvedValue("C:\\reports\\metaclean-audit.json");
     const entries: FileEntry[] = [
