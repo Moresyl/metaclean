@@ -7,6 +7,9 @@ import { readStorage, removeStorage, writeStorage } from "./storage";
  * gives the user enough progress context to decide whether to re-import.
  */
 export const ACTIVE_BATCH_STORAGE_KEY = "metaclean.activeBatch";
+const MAX_ACTIVE_BATCH_STORAGE_CHARS = 1_024;
+const MAX_BATCH_ID_BYTES = 128;
+const UTF8_ENCODER = new TextEncoder();
 
 export interface ActiveBatchRecovery {
   batchId: string;
@@ -21,7 +24,7 @@ function isActiveBatchRecovery(value: unknown): value is ActiveBatchRecovery {
   const candidate = value as Partial<ActiveBatchRecovery>;
   return typeof candidate.batchId === "string"
     && candidate.batchId.length > 0
-    && candidate.batchId.length <= 128
+    && UTF8_ENCODER.encode(candidate.batchId).byteLength <= MAX_BATCH_ID_BYTES
     && typeof candidate.total === "number"
     && Number.isSafeInteger(candidate.total)
     && candidate.total > 0
@@ -38,6 +41,10 @@ function isActiveBatchRecovery(value: unknown): value is ActiveBatchRecovery {
 export function readActiveBatch(): ActiveBatchRecovery | undefined {
   const raw = readStorage(ACTIVE_BATCH_STORAGE_KEY);
   if (!raw) return undefined;
+  if (raw.length > MAX_ACTIVE_BATCH_STORAGE_CHARS) {
+    removeStorage(ACTIVE_BATCH_STORAGE_KEY);
+    return undefined;
+  }
   try {
     const parsed: unknown = JSON.parse(raw);
     if (isActiveBatchRecovery(parsed)) return parsed;

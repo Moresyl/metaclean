@@ -77,6 +77,9 @@ All notable changes to MetaClean are documented here. The project follows
   accessors, falling back to a stable bilingual diagnostic instead of throwing
   while handling an exception.
 
+- Crash-recovery markers now have a bounded raw payload and UTF-8 batch-ID
+  budget before JSON parsing, so tampered local state cannot amplify startup.
+
 - The Rust coverage ledger now records 84.28% after the recursive path-budget,
   UTF-8-safe issue-path, bounded-diagnostics and output-path boundary tests.
 

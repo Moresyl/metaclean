@@ -18,6 +18,18 @@ describe("interrupted batch recovery marker", () => {
     expect(localStorage.getItem(ACTIVE_BATCH_STORAGE_KEY)).not.toContain("C:\\\\");
   });
 
+  it("rejects oversized or multibyte batch markers before rendering", () => {
+    localStorage.setItem(ACTIVE_BATCH_STORAGE_KEY, "{".repeat(1_025));
+    expect(readActiveBatch()).toBeUndefined();
+    expect(localStorage.getItem(ACTIVE_BATCH_STORAGE_KEY)).toBeNull();
+
+    localStorage.setItem(ACTIVE_BATCH_STORAGE_KEY, JSON.stringify({
+      batchId: "界".repeat(128), total: 1, completed: 0, mode: "copy", startedAt: "2026-09-13T00:00:00.000Z",
+    }));
+    expect(readActiveBatch()).toBeUndefined();
+    expect(localStorage.getItem(ACTIVE_BATCH_STORAGE_KEY)).toBeNull();
+  });
+
   it("ignores a foreign batch and removes malformed state", () => {
     writeActiveBatch({ batchId: "batch-1", total: 2, completed: 0, mode: "replace", startedAt: "now" });
     expect(updateActiveBatchProgress("batch-2", 1)).toBe(false);
