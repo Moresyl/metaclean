@@ -48,8 +48,16 @@ export type UpdateCheckResult =
   | { status: "available"; info: UpdateInfo };
 
 interface ParsedVersion {
-  core: number[];
+  core: string[];
   prerelease: string[];
+}
+
+function compareUnsignedIntegers(left: string, right: string): number {
+  const normalizedLeft = left.replace(/^0+(?=\d)/u, "");
+  const normalizedRight = right.replace(/^0+(?=\d)/u, "");
+  if (normalizedLeft.length !== normalizedRight.length) return normalizedLeft.length < normalizedRight.length ? -1 : 1;
+  if (normalizedLeft === normalizedRight) return 0;
+  return normalizedLeft < normalizedRight ? -1 : 1;
 }
 
 function parseVersion(value: string): ParsedVersion {
@@ -57,7 +65,7 @@ function parseVersion(value: string): ParsedVersion {
   const [coreValue, prereleaseValue = ""] = normalized.split("-", 2);
   if (!/^\d+(?:\.\d+)*$/u.test(coreValue)) throw new Error(`Invalid version: ${value}`);
   return {
-    core: coreValue.split(".").map(Number),
+    core: coreValue.split("."),
     prerelease: prereleaseValue ? prereleaseValue.split(".") : [],
   };
 }
@@ -74,8 +82,8 @@ export function compareVersions(left: string, right: string): number {
   const b = parseVersion(right);
   const coreLength = Math.max(a.core.length, b.core.length);
   for (let index = 0; index < coreLength; index += 1) {
-    const difference = (a.core[index] ?? 0) - (b.core[index] ?? 0);
-    if (difference !== 0) return Math.sign(difference);
+    const difference = compareUnsignedIntegers(a.core[index] ?? "0", b.core[index] ?? "0");
+    if (difference !== 0) return difference;
   }
   if (!a.prerelease.length && !b.prerelease.length) return 0;
   if (!a.prerelease.length) return 1;
@@ -89,7 +97,7 @@ export function compareVersions(left: string, right: string): number {
     if (aPart === bPart) continue;
     const aNumeric = /^\d+$/u.test(aPart);
     const bNumeric = /^\d+$/u.test(bPart);
-    if (aNumeric && bNumeric) return Math.sign(Number(aPart) - Number(bPart));
+    if (aNumeric && bNumeric) return compareUnsignedIntegers(aPart, bPart);
     if (aNumeric) return -1;
     if (bNumeric) return 1;
     return aPart.localeCompare(bPart) < 0 ? -1 : 1;

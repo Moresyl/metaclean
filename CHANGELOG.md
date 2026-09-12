@@ -33,6 +33,7 @@ All notable changes to MetaClean are documented here. The project follows
 - 扫描和清理批次的进度事件现在按 16 项或 50ms 节流，完成/取消仍强制发送最终计数，并避免在持锁时调用 WebView emit。
 - 文档首页在带侧栏的中等桌面窗口保留英雄区双列，能力证据卡不再被错误推到首屏之外；真正窄屏才切换单列。
 - 文档站新增产品化 404 页面，提供中文错误说明和回到文档中心的恢复动作。
+- 更新版本比较改用无损十进制段比较，超出 JavaScript 安全整数范围的合法版本不再被误判为相等。
 
 - Parallel scanning now draws work from a bounded dynamic queue instead of two
   static path chunks, keeping both workers useful when file sizes or storage
