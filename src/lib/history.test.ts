@@ -51,6 +51,15 @@ describe("history persistence", () => {
     expect(loadHistory()).toEqual([]);
   });
 
+  it("rejects duplicate result paths that would collide in the history DOM", () => {
+    const duplicate = entry("duplicate");
+    localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify([{
+      ...duplicate,
+      results: [duplicate.results[0], duplicate.results[0]],
+    }]));
+    expect(loadHistory()).toEqual([]);
+  });
+
   it("keeps the newest one hundred entries", () => {
     const entries = Array.from({ length: 105 }, (_, index) => entry(String(index)));
     expect(limitHistory(entries)).toHaveLength(100);

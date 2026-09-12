@@ -94,6 +94,9 @@ All notable changes to MetaClean are documented here. The project follows
   off-screen audit rows accessible without paying their full paint cost during
   scrolling.
 
+- History validation now rejects duplicate source paths before React receives
+  them, preventing duplicate-key row reuse from showing the wrong audit result.
+
 - Markdown front matter now recognizes both YAML `---` and TOML `+++` fences,
   while only removing targeted author and generator fields inside the opening
   metadata block.

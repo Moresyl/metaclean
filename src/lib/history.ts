@@ -48,13 +48,18 @@ function isCleanResult(value: unknown): value is CleanResult {
 function isHistoryEntry(value: unknown): value is HistoryEntry {
   if (!value || typeof value !== "object") return false;
   const entry = value as Partial<HistoryEntry>;
+  const sourcePaths = new Set<string>();
   return typeof entry.id === "string" && entry.id.length > 0 && entry.id.length <= 128
     && typeof entry.createdAt === "string" && entry.createdAt.length <= 64 && Number.isFinite(Date.parse(entry.createdAt))
     && (entry.mode === "copy" || entry.mode === "replace")
     && Array.isArray(entry.results)
     && entry.results.length <= MAX_HISTORY_RESULTS_PER_ENTRY
     && entry.results.length > 0
-    && entry.results.every(isCleanResult);
+    && entry.results.every((result) => {
+      if (!isCleanResult(result) || sourcePaths.has(result.sourcePath)) return false;
+      sourcePaths.add(result.sourcePath);
+      return true;
+    });
 }
 
 export function limitHistory(entries: HistoryEntry[]): HistoryEntry[] {
