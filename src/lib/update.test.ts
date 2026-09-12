@@ -146,6 +146,23 @@ describe("native update commands", () => {
     expect(unlisten).toHaveBeenCalled();
   });
 
+  it("drops malformed progress payloads before they enter UI state", async () => {
+    const unlisten = vi.fn();
+    const progress = vi.fn();
+    const listener = vi.fn().mockImplementation(async (_event, handler) => {
+      handler({ payload: { stage: "downloading", downloaded: 40, total: 100 } });
+      handler({ payload: { stage: "unknown", downloaded: 1, total: 2 } });
+      handler({ payload: { stage: "downloading", downloaded: -1, total: 2 } });
+      handler({ payload: { stage: "downloading", downloaded: Number.MAX_SAFE_INTEGER + 1, total: Number.MAX_SAFE_INTEGER + 2 } });
+      handler({ payload: { stage: "downloading", downloaded: 3, total: 2 } });
+      return unlisten;
+    });
+    const invoker = vi.fn().mockResolvedValue(true);
+    await expect(installAvailableUpdate({ expectedVersion: "0.4.0", listener, invoker, onProgress: progress })).resolves.toBe(true);
+    expect(progress).toHaveBeenCalledTimes(1);
+    expect(progress).toHaveBeenCalledWith({ stage: "downloading", downloaded: 40, total: 100 });
+  });
+
   it("keeps a successful install when listener cleanup fails", async () => {
     const unlisten = vi.fn().mockRejectedValue(new Error("webview already closed"));
     const listener = vi.fn().mockResolvedValue(unlisten);

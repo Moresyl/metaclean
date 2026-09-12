@@ -21,7 +21,7 @@ type UpdateChecker = (options: { timeout: number }) => Promise<NativeUpdate | nu
 type InvokeLike = <T>(command: string, args?: Record<string, unknown>) => Promise<T>;
 type ListenLike = (
   event: string,
-  handler: (event: { payload: UpdateProgress }) => void,
+  handler: (event: { payload: unknown }) => void,
 ) => Promise<() => void>;
 
 export interface UpdateInfo {
@@ -42,6 +42,18 @@ export interface UpdateProgress {
   stage: "downloading" | "installing";
   downloaded: number;
   total?: number;
+}
+
+function normalizeUpdateProgress(value: unknown): UpdateProgress | undefined {
+  if (!value || typeof value !== "object") return undefined;
+  const candidate = value as Partial<UpdateProgress>;
+  if (candidate.stage !== "downloading" && candidate.stage !== "installing") return undefined;
+  const downloaded = candidate.downloaded;
+  if (typeof downloaded !== "number" || !Number.isSafeInteger(downloaded) || downloaded < 0) return undefined;
+  if (candidate.total === undefined) return { stage: candidate.stage, downloaded };
+  const total = candidate.total;
+  if (typeof total !== "number" || !Number.isSafeInteger(total) || total <= 0 || downloaded > total) return undefined;
+  return { stage: candidate.stage, downloaded, total };
 }
 
 export type UpdateCheckResult =
@@ -196,7 +208,10 @@ export async function installAvailableUpdate(options: {
     const events = await import("@tauri-apps/api/event");
     return await events.listen<UpdateProgress>(event, handler);
   });
-  const unlisten = await listen("update-progress", (event) => options.onProgress?.(event.payload));
+  const unlisten = await listen("update-progress", (event) => {
+    const progress = normalizeUpdateProgress(event.payload);
+    if (progress) options.onProgress?.(progress);
+  });
   try {
     const expectedVersion = options.expectedVersion.trim().replace(/^v/iu, "");
     if (!isStableReleaseVersion(expectedVersion)) throw new Error(UPDATE_CHANGED);

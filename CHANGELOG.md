@@ -56,6 +56,10 @@ All notable changes to MetaClean are documented here. The project follows
 - Browser/plugin fallback, opener and queue failures now use the same 8 KiB
   UTF-8 byte budget before entering visible React state.
 
+- Update progress events are now schema-checked before reaching React state;
+  invalid stages, negative or unsafe counters, and impossible totals are
+  discarded without affecting an active installation.
+
 - The Rust coverage ledger now records 84.22% after the recursive path-budget,
   UTF-8-safe issue-path and bounded-diagnostics boundary tests.
 
