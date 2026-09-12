@@ -64,6 +64,9 @@ All notable changes to MetaClean are documented here. The project follows
   native progress listener, and listener setup is cleaned up safely if the
   adapter fails before returning a handle.
 
+- Batch-progress and close-blocked events are now runtime-validated before
+  entering React state, rejecting malformed counters and untrusted payloads.
+
 - The Rust coverage ledger now records 84.22% after the recursive path-budget,
   UTF-8-safe issue-path and bounded-diagnostics boundary tests.
 

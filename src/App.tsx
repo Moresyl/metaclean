@@ -24,6 +24,7 @@ import { useI18n } from "./lib/i18n";
 import { useTheme } from "./contexts/ThemeContext";
 import { useUpdate } from "./contexts/UpdateContext";
 import { boundedErrorMessage } from "./lib/errors";
+import { normalizeBatchProgress } from "./lib/progress";
 
 const HistoryPage = lazy(() => import("./components/HistoryPage"));
 const PrivacyPage = lazy(() => import("./components/PrivacyPage"));
@@ -152,26 +153,28 @@ export default function App() {
           if (["clean", "history", "privacy", "settings", "about"].includes(event.payload)) setPage(event.payload);
         });
         if (!active || disposed) return;
-        await register<BatchProgress>("batch-progress", (event) => {
+        await register<unknown>("batch-progress", (event) => {
           if (!active) return;
-          if (operationKindRef.current === event.payload.operation && batchIdRef.current === event.payload.batchId) {
-            setProgress(event.payload);
+          const progress = normalizeBatchProgress(event.payload);
+          if (!progress) return;
+          if (operationKindRef.current === progress.operation && batchIdRef.current === progress.batchId) {
+            setProgress(progress);
             const now = Date.now();
             const recovery = recoveryProgressRef.current;
-            const shouldPersist = event.payload.cancelled
-              || event.payload.completed === event.payload.total
-              || recovery.batchId !== event.payload.batchId
-              || event.payload.completed - recovery.completed >= 16
+            const shouldPersist = progress.cancelled
+              || progress.completed === progress.total
+              || recovery.batchId !== progress.batchId
+              || progress.completed - recovery.completed >= 16
               || now - recovery.persistedAt >= 250;
-            if (event.payload.operation === "clean" && shouldPersist) {
-              updateActiveBatchProgress(event.payload.batchId, event.payload.completed);
-              recoveryProgressRef.current = { batchId: event.payload.batchId, completed: event.payload.completed, persistedAt: now };
+            if (progress.operation === "clean" && shouldPersist) {
+              updateActiveBatchProgress(progress.batchId, progress.completed);
+              recoveryProgressRef.current = { batchId: progress.batchId, completed: progress.completed, persistedAt: now };
             }
           }
         });
         if (!active || disposed) return;
-        await register<string>("close-blocked", (event) => {
-          if (active) setMessage(event.payload);
+        await register<unknown>("close-blocked", (event) => {
+          if (active) setMessage(boundedErrorMessage(event.payload));
         });
         if (active) {
           dispose = cleanupPartial;
