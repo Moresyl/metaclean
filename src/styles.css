@@ -392,6 +392,19 @@
     contain-intrinsic-size: 72px;
   }
 
+  /* History can contain the results of a full 10,000-file batch. Keep every
+     row in the accessibility tree, but let the webview skip layout and paint
+     work for rows outside the scrollport. */
+  .history-entry {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 180px;
+  }
+
+  .history-result {
+    content-visibility: auto;
+    contain-intrinsic-size: 32px;
+  }
+
   /* The small label a desktop tool puts above a group of settings.
    *
    * Not the tracked-out all-caps caption that idiom usually means. Tracking is

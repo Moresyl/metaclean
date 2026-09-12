@@ -90,6 +90,10 @@ All notable changes to MetaClean are documented here. The project follows
   client's exact stable `major.minor.patch` contract, rejecting prereleases,
   padded components and unsafe numeric versions before publishing metadata.
 
+- Long history cards and result rows now use native content visibility, keeping
+  off-screen audit rows accessible without paying their full paint cost during
+  scrolling.
+
 - Markdown front matter now recognizes both YAML `---` and TOML `+++` fences,
   while only removing targeted author and generator fields inside the opening
   metadata block.

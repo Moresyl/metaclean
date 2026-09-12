@@ -32,7 +32,7 @@ export default function HistoryPage({ entries, onClear }: { entries: HistoryEntr
             const successes = entry.results.filter((result) => result.success).length;
             const complete = successes === entry.results.length;
             return (
-              <article className="overflow-hidden rounded-panel border border-line bg-surface shadow-panel" key={entry.id}>
+              <article className="history-entry overflow-hidden rounded-panel border border-line bg-surface shadow-panel" key={entry.id}>
                 <header className="flex items-center gap-3 border-b border-line px-3 py-2">
                   <div className="min-w-0 flex-1 grid gap-0.5">
                     <strong className="truncate text-base font-medium tabular-nums">
@@ -52,7 +52,7 @@ export default function HistoryPage({ entries, onClear }: { entries: HistoryEntr
                 </header>
                 <div className="grid">
                   {entry.results.map((result) => (
-                    <div className="flex items-start gap-2 px-3 py-1.5 text-sm" key={result.sourcePath}>
+                    <div className="history-result flex items-start gap-2 px-3 py-1.5 text-sm" key={result.sourcePath}>
                       <span className={`mt-px shrink-0 ${result.success ? "text-ok" : "text-danger"}`} aria-hidden="true">
                         {result.success ? <CheckCircle2 size={14} strokeWidth={2} /> : <XCircle size={14} strokeWidth={2} />}
                       </span>
