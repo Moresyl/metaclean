@@ -153,9 +153,16 @@ export default function FileQueue({ entries, preserveColorProfile, removeExtende
 
   const menuEntries = (entry: FileEntry): MenuEntry[] => {
     const location = entry.result?.outputPath ?? entry.path;
+    const backupPath = entry.result?.backupPath;
+    const backupCopyLabel = `${text("备份", "Backup")} · ${text("复制路径", "Copy path")}`;
+    const backupRevealLabel = `${text("备份", "Backup")} · ${text("在文件夹中显示", "Show in folder")}`;
     return [
       { id: "reveal", label: text("在文件夹中显示", "Show in folder"), icon: <FolderOpen size={14} />, disabled: !location, run: () => location && onReveal(location) },
       { id: "copy-path", label: text("复制路径", "Copy path"), icon: <Copy size={14} />, disabled: !location, run: () => location && void copy(location) },
+      ...(backupPath ? [
+        { id: "reveal-backup", label: backupRevealLabel, icon: <FileSearch size={14} />, run: () => onReveal(backupPath) },
+        { id: "copy-backup-path", label: backupCopyLabel, icon: <Copy size={14} />, run: () => void copy(backupPath) },
+      ] satisfies MenuEntry[] : []),
       { id: "copy-name", label: text("复制文件名", "Copy file name"), icon: <Tag size={14} />, run: () => void copy(entry.name) },
       "separator",
       { id: "remove", label: text("从队列中移除", "Remove from queue"), icon: <X size={14} />, danger: true, disabled: busy, run: () => onRemove(entry.id) },
@@ -257,6 +264,7 @@ export default function FileQueue({ entries, preserveColorProfile, removeExtende
             const outputSize = entry.result?.outputSize;
             const sizeDelta = sourceSize !== undefined && outputSize !== undefined ? sourceSize - outputSize : undefined;
             const outputPath = entry.result?.outputPath;
+            const backupPath = entry.result?.backupPath;
             const entryError = entry.result?.error ?? entry.report?.error;
             const status = entryError
               ? entryError
@@ -291,6 +299,11 @@ export default function FileQueue({ entries, preserveColorProfile, removeExtende
                     <span className={`block truncate text-xs ${entryError ? "text-danger" : entry.status === "clean" ? "text-ok" : "text-muted"}`}>
                       {status}
                     </span>
+                    {backupPath ? (
+                      <span className="block truncate text-xs text-warn">
+                        {text("备份", "Backup")}：{backupPath}
+                      </span>
+                    ) : null}
                     {sourceSize !== undefined ? (
                       /* `muted`, like the status line above it. The three lines
                          of a row are already ranked by size — 13, 12, 11 — and
@@ -332,6 +345,26 @@ export default function FileQueue({ entries, preserveColorProfile, removeExtende
                       >
                         <Copy size={14} strokeWidth={2} />
                       </IconButton>
+                    ) : null}
+                    {backupPath ? (
+                      <>
+                        <IconButton
+                          size="sm"
+                          aria-label={`${text("备份", "Backup")} · ${text("复制路径", "Copy path")} (${backupPath})`}
+                          data-tip={`${text("备份", "Backup")} · ${text("复制路径", "Copy path")}\n${backupPath}`}
+                          onClick={() => void copy(backupPath)}
+                        >
+                          <Copy size={14} strokeWidth={2} />
+                        </IconButton>
+                        <IconButton
+                          size="sm"
+                          aria-label={`${text("备份", "Backup")} · ${text("在文件夹中显示", "Show in folder")} (${backupPath})`}
+                          data-tip={`${text("备份", "Backup")} · ${text("在文件夹中显示", "Show in folder")}\n${backupPath}`}
+                          onClick={() => onReveal(backupPath)}
+                        >
+                          <FileSearch size={14} strokeWidth={2} />
+                        </IconButton>
+                      </>
                     ) : null}
                     {outputPath ? (
                       <IconButton size="sm" aria-label={outputPath} data-tip={outputPath} onClick={() => onReveal(outputPath)}>

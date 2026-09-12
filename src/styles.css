@@ -402,7 +402,7 @@
 
   .history-result {
     content-visibility: auto;
-    contain-intrinsic-size: 32px;
+    contain-intrinsic-size: 48px;
   }
 
   /* The small label a desktop tool puts above a group of settings.

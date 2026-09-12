@@ -135,6 +135,26 @@ describe("desktop components", () => {
     expect(onRemove).toHaveBeenCalledWith("1");
   });
 
+  it("keeps a generated backup directly copyable and revealable after failure", async () => {
+    const onReveal = vi.fn();
+    const onNotify = vi.fn();
+    const backupPath = "C:\\work\\photo.jpg.bak";
+    const entries: FileEntry[] = [{
+      id: "failed-replace",
+      name: "photo.jpg",
+      path: "C:\\work\\photo.jpg",
+      kind: "image",
+      status: "error",
+      result: { sourcePath: "C:\\work\\photo.jpg", backupPath, removed: [], success: false, error: "写入失败" },
+    }];
+    wrap(<FileQueue entries={entries} preserveColorProfile removeExtendedAttributes={false} onRemove={vi.fn()} onClear={vi.fn()} onReveal={onReveal} onNotify={onNotify} />);
+    expect(screen.getByText(`备份：${backupPath}`)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: `备份 · 复制路径 (${backupPath})` }));
+    await waitFor(() => expect(clipboardMock).toHaveBeenCalledWith(backupPath));
+    fireEvent.click(screen.getByRole("button", { name: `备份 · 在文件夹中显示 (${backupPath})` }));
+    expect(onReveal).toHaveBeenCalledWith(backupPath);
+  });
+
   it("exports a bounded value-free audit report through the native command", async () => {
     saveMock.mockResolvedValue("C:\\reports\\metaclean-audit.json");
     const entries: FileEntry[] = [
@@ -214,11 +234,12 @@ describe("desktop components", () => {
     const onClear = vi.fn();
     const entries: HistoryEntry[] = [{ id: "job", createdAt: "2026-08-15T00:00:00Z", mode: "replace", results: [
       { sourcePath: "C:\\a.txt", outputPath: "C:\\a.txt", removed: [], success: true },
-      { sourcePath: "C:\\b.txt", removed: [], success: false, error: "失败原因" },
+      { sourcePath: "C:\\b.txt", backupPath: "C:\\b.txt.bak", removed: [], success: false, error: "失败原因" },
     ] }];
     wrap(<HistoryPage entries={entries} onClear={onClear} />);
     expect(screen.getByText("1/2 成功")).toBeInTheDocument();
     expect(screen.getByText("失败原因")).toBeInTheDocument();
+    expect(screen.getByText("备份：C:\\b.txt.bak")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "清空记录" }));
     expect(onClear).toHaveBeenCalled();
   });

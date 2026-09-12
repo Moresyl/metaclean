@@ -97,6 +97,11 @@ All notable changes to MetaClean are documented here. The project follows
 - History validation now rejects duplicate source paths before React receives
   them, preventing duplicate-key row reuse from showing the wrong audit result.
 
+- Failed replacement rows now keep any generated backup path visible and add
+  direct copy and reveal actions, including the same recovery path in history;
+  users can locate an intact backup without guessing which failure details to
+  expand.
+
 - Markdown front matter now recognizes both YAML `---` and TOML `+++` fences,
   while only removing targeted author and generator fields inside the opening
   metadata block.

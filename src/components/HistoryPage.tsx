@@ -66,6 +66,11 @@ export default function HistoryPage({ entries, onClear }: { entries: HistoryEntr
                         <small className={`selectable truncate text-xs ${result.success ? "text-muted" : "text-danger"}`}>
                           {result.success ? result.outputPath : result.error}
                         </small>
+                        {result.backupPath ? (
+                          <small className="selectable truncate text-xs text-muted">
+                            {text("备份", "Backup")}：{result.backupPath}
+                          </small>
+                        ) : null}
                       </span>
                     </div>
                   ))}
