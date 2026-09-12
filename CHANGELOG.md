@@ -29,6 +29,7 @@ All notable changes to MetaClean are documented here. The project follows
 - 替换原文件时会在临时输出完全落盘后、最终原子提交前再次校验源文件，缩短大文件处理期间的竞态窗口。
 - 队列的批量路径复制现在包含失败替换留下的备份路径，并按显示顺序去重。
 - 批量路径复制沿用 Windows 别名身份规则去重，避免设备前缀、大小写或分隔符差异造成重复。
+- 发布脚本也会拒绝超过 64K 字符的 updater 说明，避免异常正文进入可分发签名 feed。
 
 - Parallel scanning now draws work from a bounded dynamic queue instead of two
   static path chunks, keeping both workers useful when file sizes or storage

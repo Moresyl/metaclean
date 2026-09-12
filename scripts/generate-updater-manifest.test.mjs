@@ -73,6 +73,7 @@ test("rejects invalid metadata and incomplete updater assets", async () => {
     await assert.rejects(generateUpdaterManifest({ ...options, repository: "https:\/\/github.com/a/b" }), /Invalid repository/u);
     await assert.rejects(generateUpdaterManifest({ ...options, pubDate: "never" }), /Invalid publication date/u);
     await assert.rejects(generateUpdaterManifest({ ...options, notes: "" }), /must not be empty/u);
+    await assert.rejects(generateUpdaterManifest({ ...options, notes: "x".repeat(64 * 1024 + 1) }), /64K character limit/u);
     await assert.rejects(generateUpdaterManifest(options), /Missing updater package/u);
     await createAssets(directory);
     await writeFile(path.join(directory, `${assets[0]}.sig`), "");

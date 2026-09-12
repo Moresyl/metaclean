@@ -10,6 +10,7 @@ const PLATFORM_ASSETS = {
   "darwin-x86_64": (version) => `MetaClean_${version}_x64.app.tar.gz`,
   "linux-x86_64": (version) => `MetaClean_${version}_amd64.AppImage`
 };
+const MAX_RELEASE_NOTES_CHARS = 64 * 1024;
 
 function validateRepository(repository) {
   if (!/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/u.test(repository)) throw new Error(`Invalid repository: ${repository}`);
@@ -32,6 +33,7 @@ export function validateUpdaterManifest(manifest, { version, repository }) {
   if (!manifest || typeof manifest !== "object") throw new Error("Updater manifest must be an object");
   if (manifest.version !== version) throw new Error(`Updater manifest version ${String(manifest.version)} does not match release ${version}`);
   if (typeof manifest.notes !== "string" || manifest.notes.trim().length === 0) throw new Error("Updater notes must not be empty");
+  if (manifest.notes.length > MAX_RELEASE_NOTES_CHARS) throw new Error("Updater notes exceed the 64K character limit");
   if (typeof manifest.pub_date !== "string" || Number.isNaN(new Date(manifest.pub_date).valueOf())) throw new Error("Updater publication date is invalid");
 
   const platforms = Object.entries(manifest.platforms ?? {});
@@ -55,6 +57,7 @@ export async function generateUpdaterManifest({ assetDirectory, tag, repository,
   const normalizedDate = new Date(pubDate);
   if (Number.isNaN(normalizedDate.valueOf())) throw new Error(`Invalid publication date: ${pubDate}`);
   if (typeof notes !== "string" || notes.trim().length === 0) throw new Error("Updater notes must not be empty");
+  if (notes.length > MAX_RELEASE_NOTES_CHARS) throw new Error("Updater notes exceed the 64K character limit");
 
   const availableAssets = new Set((await readdir(assetDirectory, { withFileTypes: true }))
     .filter((entry) => entry.isFile())
