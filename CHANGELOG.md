@@ -46,6 +46,7 @@ All notable changes to MetaClean are documented here. The project follows
 - Tauri 拖放监听和启动路径展开现在受应用生命周期保护；页面卸载期间完成注册的监听会立即注销，待处理路径结果也不会再回写已卸载页面。
 - 设置页右键菜单切换增加同步互斥；原生状态返回前的重复点击不会并发写入注册表，避免后到结果覆盖先到状态。
 - 更新检查、安装和下载进度回调现在受 UpdateProvider 生命周期保护；窗口卸载后，旧更新任务不会再写入已销毁或新建的上下文状态。
+- 更新上下文现在在挂载前拒绝启动检查/安装调用，避免快速卸载时把并发锁留在不可见实例上。
 
 - Parallel scanning now draws work from a bounded dynamic queue instead of two
   static path chunks, keeping both workers useful when file sizes or storage
