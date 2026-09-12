@@ -322,7 +322,7 @@ export default function App() {
     <TitleBar closeToTray={closeToTray} onOpenCommands={() => setCommandsOpen(true)} />
     <div className="grid min-h-0 grid-cols-[72px_minmax(0,1fr)]">
       <Sidebar page={page} onNavigate={setPage} />
-      <main className="flex min-h-0 flex-col overflow-hidden">
+      <main tabIndex={-1} className="flex min-h-0 flex-col overflow-hidden">
         <header className="flex shrink-0 items-start gap-4 px-5 pt-4 pb-3.5">
           <div className="min-w-0 flex-1 grid gap-0.5">
             <h1 className="font-display truncate text-xl font-semibold">{title}</h1>

@@ -40,6 +40,7 @@ All notable changes to MetaClean are documented here. The project follows
 - 清空文件队列、移除单项和清空处理记录现在统一经过可聚焦的双语确认对话框，支持 Escape 取消并在关闭后恢复焦点；命令面板入口不会绕过队列保护。
 - 文档主题修复垂直焦点裁剪，补齐导航/正文链接的 focus-visible 样式，长文本安全换行，并让 404 与首页动效遵循 reduced-motion 偏好。
 - 关于页复制反馈的计时器现在会在下一次复制前复用并在页面卸载时清理，避免快速连续操作或切页后残留异步状态更新。
+- 确认对话框现在使用实例级 ARIA ID；确认后若触发按钮已被移除或禁用，焦点会回到主内容区而不是落到 document.body。
 
 - Parallel scanning now draws work from a bounded dynamic queue instead of two
   static path chunks, keeping both workers useful when file sizes or storage

@@ -36,7 +36,11 @@ export default function ConfirmDialog({ title, description, confirmLabel, onConf
     window.addEventListener("keydown", keepFocusInside);
     return () => {
       window.removeEventListener("keydown", keepFocusInside);
-      if (previous instanceof HTMLElement && document.contains(previous)) previous.focus();
+      if (previous instanceof HTMLElement && previous !== document.body && previous !== document.documentElement && document.contains(previous) && !previous.matches(":disabled,[aria-disabled='true']")) {
+        previous.focus();
+      } else {
+        document.querySelector<HTMLElement>("main[tabindex='-1']")?.focus();
+      }
     };
   }, []);
 

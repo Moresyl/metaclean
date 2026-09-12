@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { useState } from "react";
 import CleanOptions from "./CleanOptions";
 import DropZone from "./DropZone";
 import FileQueue from "./FileQueue";
@@ -75,6 +76,16 @@ describe("desktop components", () => {
     expect(onCancel).toHaveBeenCalledOnce();
     fireEvent.click(screen.getByRole("button", { name: "继续" }));
     expect(onConfirm).toHaveBeenCalledOnce();
+  });
+
+  it("returns focus to the main content when the trigger is removed after confirmation", () => {
+    function Harness() {
+      const [open, setOpen] = useState(true);
+      return <><main tabIndex={-1} /><button type="button" disabled={!open}>触发</button>{open ? <ConfirmDialog title="确认" description="说明" confirmLabel="删除" onConfirm={() => setOpen(false)} onCancel={() => setOpen(false)} /> : null}</>;
+    }
+    wrap(<Harness />);
+    fireEvent.click(screen.getByRole("button", { name: "删除" }));
+    expect(screen.getByRole("main")).toHaveFocus();
   });
 
   it("keeps local processing state and version visible in the status bar", async () => {
