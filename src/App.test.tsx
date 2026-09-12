@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import App from "./App";
 import { I18nProvider } from "./lib/i18n";
@@ -237,6 +237,38 @@ describe("App", () => {
     finishScan?.([]);
     await screen.findByText(/已取消扫描/);
     expect(screen.getByRole("button", { name: "扫描隐私痕迹" })).toBeEnabled();
+  });
+
+  it("requires confirmation before clearing the queue and preserves it on cancel", () => {
+    renderApp();
+    const zone = screen.getByText("拖入要净化的文件").closest("section");
+    fireEvent.drop(zone!, { dataTransfer: { files: [new File(["hello"], "notes.md", { type: "text/markdown" })] } });
+    fireEvent.click(screen.getByRole("button", { name: "清空" }));
+    const dialog = screen.getByRole("dialog", { name: "清空文件队列？" });
+    expect(dialog).toBeInTheDocument();
+    fireEvent.click(within(dialog).getAllByRole("button", { name: "取消" })[1]);
+    expect(screen.getByText("notes.md")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "清空" }));
+    fireEvent.click(screen.getByRole("button", { name: "清空队列", exact: true }));
+    expect(screen.queryByText("notes.md")).not.toBeInTheDocument();
+    expect(screen.getByText("添加文件后，将在这里展示扫描状态")).toBeInTheDocument();
+  });
+
+  it("requires confirmation before deleting persisted processing history", async () => {
+    localStorage.setItem("metaclean.history", JSON.stringify([{
+      id: "history-entry",
+      createdAt: "2026-09-13T00:00:00.000Z",
+      mode: "copy",
+      results: [{ sourcePath: "C:\\work\\notes.txt", outputPath: "C:\\work\\notes.cleaned.txt", removed: [], success: true }],
+    }]));
+    renderApp();
+    fireEvent.click(screen.getByRole("button", { name: "处理记录" }));
+    expect(await screen.findByText("notes.txt")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "清空记录" }));
+    expect(screen.getByRole("dialog", { name: "清空处理记录？" })).toBeInTheDocument();
+    fireEvent.click(within(screen.getByRole("dialog", { name: "清空处理记录？" })).getByRole("button", { name: "清空记录" }));
+    await waitFor(() => expect(screen.getByText("还没有处理记录")).toBeInTheDocument());
+    expect(localStorage.getItem("metaclean.history")).toBe("[]");
   });
 
   it("shows count-only scan progress and clears it after the scan", async () => {

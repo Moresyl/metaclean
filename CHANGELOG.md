@@ -42,6 +42,7 @@ All notable changes to MetaClean are documented here. The project follows
 - 关于页复制反馈的计时器现在会在下一次复制前复用并在页面卸载时清理，避免快速连续操作或切页后残留异步状态更新。
 - 确认对话框现在使用实例级 ARIA ID；确认后若触发按钮已被移除或禁用，焦点会回到主内容区而不是落到 document.body。
 - 关于页复制成功反馈现在通过 aria-live 状态节点同步给读屏器，同时保留按钮自身的已复制视觉状态。
+- 应用级回归测试现在覆盖队列与持久化处理记录的确认、取消和最终清空结果，避免组件单测通过但页面接线绕过保护。
 
 - Parallel scanning now draws work from a bounded dynamic queue instead of two
   static path chunks, keeping both workers useful when file sizes or storage
