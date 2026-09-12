@@ -72,10 +72,18 @@ export default function CommandPalette({ commands, onClose }: { commands: Comman
       .map(({ command }) => command);
   }, [commands, query]);
   const activeCommand = matches[active];
+  const enabledIndexes = useMemo(
+    () => {
+      const indexes: number[] = [];
+      matches.forEach((command, index) => { if (!command.disabled) indexes.push(index); });
+      return indexes;
+    },
+    [matches],
+  );
 
   // A new query invalidates the highlight; keep it on the best match instead of
   // wherever the previous list happened to leave it.
-  useEffect(() => setActive(0), [query]);
+  useEffect(() => setActive(enabledIndexes[0] ?? 0), [enabledIndexes, query]);
 
   // The palette takes the keyboard on open and gives it back on close, so
   // dismissing it never strands focus on the document body.
@@ -98,8 +106,13 @@ export default function CommandPalette({ commands, onClose }: { commands: Comman
   }, [active, matches]);
 
   const step = (delta: number) => {
-    if (!matches.length) return;
-    setActive((current) => (current + delta + matches.length) % matches.length);
+    if (!enabledIndexes.length) return;
+    setActive((current) => {
+      const currentPosition = enabledIndexes.indexOf(current);
+      const basePosition = currentPosition < 0 ? (delta > 0 ? -1 : 0) : currentPosition;
+      const nextPosition = (basePosition + delta + enabledIndexes.length) % enabledIndexes.length;
+      return enabledIndexes[nextPosition];
+    });
   };
   const choose = (command: Command | undefined) => {
     if (!command || command.disabled) return;
@@ -143,8 +156,8 @@ export default function CommandPalette({ commands, onClose }: { commands: Comman
               if (event.key === "Escape") { event.preventDefault(); onClose(); return; }
               if (event.key === "ArrowDown") { event.preventDefault(); step(1); return; }
               if (event.key === "ArrowUp") { event.preventDefault(); step(-1); return; }
-              if (event.key === "Home") { event.preventDefault(); setActive(0); return; }
-              if (event.key === "End") { event.preventDefault(); setActive(Math.max(0, matches.length - 1)); return; }
+              if (event.key === "Home") { event.preventDefault(); setActive(enabledIndexes[0] ?? 0); return; }
+              if (event.key === "End") { event.preventDefault(); setActive(enabledIndexes.at(-1) ?? 0); return; }
               if (event.key === "Enter") { event.preventDefault(); choose(matches[active]); }
             }}
           />

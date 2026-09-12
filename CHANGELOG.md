@@ -52,6 +52,8 @@ All notable changes to MetaClean are documented here. The project follows
 - 关于页复制、诊断导出、目录定位和外链打开加入统一卸载保护；切页后迟到的结果不会继续发起导出或回写旧页面状态。
 - 签名更新资源的关闭现在按最佳努力处理；更新元数据有效但清理句柄异常时仍保留可用版本，不误报为检查失败。
 - 文件队列的诊断导出现在单实例串行执行，并在切页后停止复制/导出通知，避免双击产生多个保存任务或污染新页面。
+- 历史记录加载和持久化现在会按条目 ID 去重，保留较新的首条记录，避免异常本地数据造成重复 React key。
+- 命令面板方向键、Home/End 导航现在跳过不可执行的禁用命令，回车不会落到灰色操作上。
 
 - Parallel scanning now draws work from a bounded dynamic queue instead of two
   static path chunks, keeping both workers useful when file sizes or storage

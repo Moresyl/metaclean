@@ -75,6 +75,16 @@ describe("history persistence", () => {
     expect(loadHistory()).toEqual([]);
   });
 
+  it("drops duplicate entry ids before rendering or persisting history", () => {
+    const newest = entry("same-id");
+    const older = { ...entry("same-id"), createdAt: "2026-08-24T00:00:00.000Z" };
+    localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify([newest, older, entry("other-id")]));
+    expect(loadHistory()).toEqual([newest, entry("other-id")]);
+
+    expect(persistHistory([newest, older, entry("other-id")])).toEqual([newest, entry("other-id")]);
+    expect(JSON.parse(localStorage.getItem(HISTORY_STORAGE_KEY)!)).toEqual([newest, entry("other-id")]);
+  });
+
   it("keeps the newest one hundred entries", () => {
     const entries = Array.from({ length: 105 }, (_, index) => entry(String(index)));
     expect(limitHistory(entries)).toHaveLength(100);

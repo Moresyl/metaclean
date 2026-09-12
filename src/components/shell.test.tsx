@@ -157,19 +157,16 @@ describe("command palette", () => {
     expect(screen.getByRole("combobox")).toHaveAttribute("aria-activedescendant", "command-option-go-history");
   });
 
-  it("runs the highlighted command and refuses the disabled one", () => {
+  it("skips disabled commands during keyboard navigation", () => {
     const run = vi.fn();
     const onClose = vi.fn();
     wrap(<CommandPalette commands={[{ ...commands[2], run }, commands[3]]} onClose={onClose} />);
     const field = screen.getByRole("combobox");
     fireEvent.keyDown(field, { key: "ArrowDown" });
     fireEvent.keyDown(field, { key: "Enter" });
-    expect(run).not.toHaveBeenCalled();
-    expect(onClose).not.toHaveBeenCalled();
-    fireEvent.keyDown(field, { key: "Home" });
-    fireEvent.keyDown(field, { key: "Enter" });
     expect(run).toHaveBeenCalled();
     expect(onClose).toHaveBeenCalled();
+    expect(screen.getByRole("option", { name: "确认并开始清理" })).not.toHaveAttribute("aria-selected", "true");
   });
 
   it("says so when nothing matches, and closes on Escape", () => {

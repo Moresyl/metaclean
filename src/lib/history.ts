@@ -75,6 +75,15 @@ export function limitHistory(entries: HistoryEntry[]): HistoryEntry[] {
   return limited;
 }
 
+function uniqueHistoryEntries(entries: HistoryEntry[]): HistoryEntry[] {
+  const seen = new Set<string>();
+  return entries.filter((entry) => {
+    if (seen.has(entry.id)) return false;
+    seen.add(entry.id);
+    return true;
+  });
+}
+
 export function loadHistory(): HistoryEntry[] {
   const stored = readStorage(HISTORY_STORAGE_KEY);
   if (!stored) return [];
@@ -88,7 +97,7 @@ export function loadHistory(): HistoryEntry[] {
       removeStorage(HISTORY_STORAGE_KEY);
       return [];
     }
-    return limitHistory(value.filter(isHistoryEntry));
+    return limitHistory(uniqueHistoryEntries(value.filter(isHistoryEntry)));
   } catch {
     removeStorage(HISTORY_STORAGE_KEY);
     return [];
@@ -108,7 +117,7 @@ function storageSnapshot(entries: HistoryEntry[]): { entries: HistoryEntry[]; se
 }
 
 export function persistHistory(entries: HistoryEntry[]): HistoryEntry[] {
-  const limited = limitHistory(entries);
+  const limited = limitHistory(uniqueHistoryEntries(entries));
   const snapshot = storageSnapshot(limited);
   // A single native batch can be structurally valid yet too large for the
   // local-storage budget. Keep it in the live session, but do not replace a
