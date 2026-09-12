@@ -73,6 +73,10 @@ All notable changes to MetaClean are documented here. The project follows
 - Persisted history now rejects diagnostic error strings over the native 8 KiB
   UTF-8 budget, preventing old or tampered local state from expanding the UI.
 
+- Error normalization now survives hostile `Error.message` and `toString()`
+  accessors, falling back to a stable bilingual diagnostic instead of throwing
+  while handling an exception.
+
 - The Rust coverage ledger now records 84.28% after the recursive path-budget,
   UTF-8-safe issue-path, bounded-diagnostics and output-path boundary tests.
 

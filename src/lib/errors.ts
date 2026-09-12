@@ -14,7 +14,8 @@ function utf8ByteLength(value: string): number {
 export function boundedErrorMessage(reason: unknown): string {
   let value: string;
   try {
-    value = reason instanceof Error ? reason.message : String(reason);
+    const raw = reason instanceof Error ? reason.message : reason;
+    value = typeof raw === "string" ? raw : String(raw);
   } catch {
     value = "未知错误 / Unknown error";
   }

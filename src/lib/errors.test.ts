@@ -17,4 +17,10 @@ describe("boundedErrorMessage", () => {
     const reason = { toString: () => { throw new Error("broken coercion"); } };
     expect(boundedErrorMessage(reason)).toBe("未知错误 / Unknown error");
   });
+
+  it("falls back when an Error message has an unsafe value", () => {
+    const reason = new Error();
+    Object.defineProperty(reason, "message", { get: () => ({ toString: () => { throw new Error("broken message"); } }) });
+    expect(boundedErrorMessage(reason)).toBe("未知错误 / Unknown error");
+  });
 });
