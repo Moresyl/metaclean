@@ -26,6 +26,7 @@ All notable changes to MetaClean are documented here. The project follows
 ### Changed
 
 - 更新检查现在将发布说明限制在 64 KiB 以内；过大的说明会被安全忽略，但不会阻止已签名版本更新。
+- 替换原文件时会在临时输出完全落盘后、最终原子提交前再次校验源文件，缩短大文件处理期间的竞态窗口。
 
 - Parallel scanning now draws work from a bounded dynamic queue instead of two
   static path chunks, keeping both workers useful when file sizes or storage

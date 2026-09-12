@@ -226,6 +226,47 @@ pub fn atomic_write_with_metadata(
     {
         return Err(CleanError::Symlink(display_path(path)));
     }
+    let temp = prepare_temp_with_metadata(
+        path,
+        bytes,
+        source_metadata,
+        preserve_timestamps,
+        remove_private_xattrs,
+    )?;
+    commit_temp(path, temp, source_metadata)?;
+    Ok(())
+}
+
+pub fn atomic_replace_if_unchanged(
+    path: &Path,
+    expected: &[u8],
+    bytes: &[u8],
+    source_metadata: &FileMetadataSnapshot,
+    preserve_timestamps: bool,
+    remove_private_xattrs: bool,
+) -> Result<()> {
+    ensure_source_unchanged(path, expected, source_metadata)?;
+    let temp = prepare_temp_with_metadata(
+        path,
+        bytes,
+        Some(source_metadata),
+        preserve_timestamps,
+        remove_private_xattrs,
+    )?;
+    // Writing a large temporary file can take long enough for another process
+    // to edit the source. Keep the final source check immediately before the
+    // rename, after all expensive work has completed.
+    ensure_source_unchanged(path, expected, source_metadata)?;
+    commit_temp(path, temp, Some(source_metadata))
+}
+
+fn prepare_temp_with_metadata(
+    path: &Path,
+    bytes: &[u8],
+    source_metadata: Option<&FileMetadataSnapshot>,
+    preserve_timestamps: bool,
+    remove_private_xattrs: bool,
+) -> Result<tempfile::NamedTempFile> {
     let parent = path
         .parent()
         .ok_or_else(|| CleanError::InvalidFormat("输出路径没有父目录".into()))?;
@@ -240,6 +281,14 @@ pub fn atomic_write_with_metadata(
         metadata.apply_extended_attributes(temp.path(), remove_private_xattrs)?;
         fs::set_permissions(temp.path(), metadata.permissions.clone())?;
     }
+    Ok(temp)
+}
+
+fn commit_temp(
+    path: &Path,
+    temp: tempfile::NamedTempFile,
+    source_metadata: Option<&FileMetadataSnapshot>,
+) -> Result<()> {
     temp.persist(path)
         .map_err(|error| CleanError::Io(error.error))?;
     // Windows does not reliably carry the read-only bit across a rename.
@@ -251,24 +300,6 @@ pub fn atomic_write_with_metadata(
         let _ = fs::set_permissions(path, metadata.permissions.clone());
     }
     Ok(())
-}
-
-pub fn atomic_replace_if_unchanged(
-    path: &Path,
-    expected: &[u8],
-    bytes: &[u8],
-    source_metadata: &FileMetadataSnapshot,
-    preserve_timestamps: bool,
-    remove_private_xattrs: bool,
-) -> Result<()> {
-    ensure_source_unchanged(path, expected, source_metadata)?;
-    atomic_write_with_metadata(
-        path,
-        bytes,
-        Some(source_metadata),
-        preserve_timestamps,
-        remove_private_xattrs,
-    )
 }
 
 /// Re-check both the exact source bytes and the metadata snapshot taken before
@@ -438,6 +469,25 @@ mod tests {
             atomic_replace_if_unchanged(&path, &original, b"cleaned", &snapshot, true, false);
         assert!(matches!(result, Err(CleanError::SourceChanged(_))));
         assert_eq!(fs::read(&path).unwrap(), b"edited elsewhere");
+    }
+
+    #[test]
+    fn guarded_replace_keeps_the_last_source_check_after_temp_preparation() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("file.txt");
+        fs::write(&path, b"original").unwrap();
+        let (metadata, original) = read_validated_input(&path).unwrap();
+        let snapshot = FileMetadataSnapshot::capture(&path, &metadata).unwrap();
+
+        let temp =
+            prepare_temp_with_metadata(&path, b"cleaned", Some(&snapshot), true, false).unwrap();
+        fs::write(&path, b"edited while preparing output").unwrap();
+        assert!(matches!(
+            ensure_source_unchanged(&path, &original, &snapshot),
+            Err(CleanError::SourceChanged(_))
+        ));
+        drop(temp);
+        assert_eq!(fs::read(&path).unwrap(), b"edited while preparing output");
     }
 
     #[test]

@@ -41,8 +41,8 @@ assert.doesNotMatch(docsConfig, /ignoreDeadLinks/u, "site links must be checked 
 assert.match(docsHome, /按任务进入/u);
 assert.match(docsHome, /site-footer/u, "documentation home must expose a factual footer navigation");
 assert.match(docsHome, /proof-metrics/u, "documentation home must expose current capability evidence");
-assert.match(docsHome, /<b>84\.04%<\/b>/u, "documentation home coverage must match the current validation evidence");
-assert.match(validation, /84\.04% Rust line coverage/u, "documentation validation must expose the current coverage evidence");
+assert.match(docsHome, /<b>84\.08%<\/b>/u, "documentation home coverage must match the current validation evidence");
+assert.match(validation, /84\.08% Rust line coverage/u, "documentation validation must expose the current coverage evidence");
 assert.equal(packageJson.scripts["docs:dev"], "vitepress dev docs");
 assert.equal(packageJson.scripts["docs:build"], "vitepress build docs");
 assert.equal(packageJson.scripts["docs:preview"], "vitepress preview docs");
