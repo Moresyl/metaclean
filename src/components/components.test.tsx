@@ -169,6 +169,26 @@ describe("desktop components", () => {
     await waitFor(() => expect(clipboardMock).toHaveBeenCalledWith(`C:\\work\\photo.jpg\r\n${backupPath}`));
   });
 
+  it("deduplicates Windows aliases in the batch path copy", async () => {
+    wrap(<FileQueue entries={[{
+      id: "first",
+      name: "photo.jpg",
+      path: "C:\\work\\photo.jpg",
+      kind: "image",
+      status: "clean",
+      result: { sourcePath: "C:\\work\\photo.jpg", removed: [], success: true },
+    }, {
+      id: "alias",
+      name: "PHOTO.JPG",
+      path: "\\\\?\\C:\\WORK\\PHOTO.JPG",
+      kind: "image",
+      status: "clean",
+      result: { sourcePath: "\\\\?\\C:\\WORK\\PHOTO.JPG", removed: [], success: true },
+    }]} preserveColorProfile removeExtendedAttributes={false} onRemove={vi.fn()} onClear={vi.fn()} onReveal={vi.fn()} onNotify={vi.fn()} />);
+    fireEvent.click(screen.getByRole("button", { name: "复制全部路径" }));
+    await waitFor(() => expect(clipboardMock).toHaveBeenCalledWith("C:\\work\\photo.jpg"));
+  });
+
   it("exports a bounded value-free audit report through the native command", async () => {
     saveMock.mockResolvedValue("C:\\reports\\metaclean-audit.json");
     const entries: FileEntry[] = [

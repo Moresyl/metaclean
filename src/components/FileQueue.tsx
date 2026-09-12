@@ -6,7 +6,7 @@ import Select from "./Select";
 import ContextMenu, { useContextMenu, type MenuEntry } from "./ContextMenu";
 import type { FileEntry, Finding } from "../types";
 import { useI18n } from "../lib/i18n";
-import { actionableFindingCount } from "../lib/files";
+import { actionableFindingCount, pathIdentity } from "../lib/files";
 import { copyText } from "../lib/window";
 
 interface FileQueueProps { entries: FileEntry[]; preserveColorProfile: boolean; removeExtendedAttributes: boolean; busy?: boolean; onRemove: (id: string) => void; onClear: () => void; onReveal: (path: string) => void; onNotify: (message: string) => void }
@@ -97,10 +97,17 @@ export default function FileQueue({ entries, preserveColorProfile, removeExtende
   }
 
   async function copyAllPaths() {
-    const paths = [...new Set(entries.flatMap((entry) => [
+    const candidates = entries.flatMap((entry) => [
       entry.result?.outputPath ?? entry.path,
       entry.result?.backupPath,
-    ]).filter((path): path is string => Boolean(path)))];
+    ]).filter((path): path is string => Boolean(path));
+    const seen = new Set<string>();
+    const paths = candidates.filter((path) => {
+      const identity = pathIdentity(path);
+      if (seen.has(identity)) return false;
+      seen.add(identity);
+      return true;
+    });
     if (!paths.length) return;
     onNotify(await copyText(paths.join("\r\n"))
       ? text(`已复制 ${paths.length} 个路径`, `Copied ${paths.length} path(s)`)
