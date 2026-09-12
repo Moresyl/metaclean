@@ -61,10 +61,9 @@ export function limitHistory(entries: HistoryEntry[]): HistoryEntry[] {
   let remainingResults = MAX_HISTORY_RESULTS_TOTAL;
   const limited: HistoryEntry[] = [];
   for (const entry of entries.slice(0, MAX_HISTORY_ENTRIES)) {
-    if (!remainingResults) break;
-    const results = entry.results.slice(0, remainingResults);
-    limited.push(results.length === entry.results.length ? entry : { ...entry, results });
-    remainingResults -= results.length;
+    if (!entry.results.length || entry.results.length > remainingResults) break;
+    limited.push(entry);
+    remainingResults -= entry.results.length;
   }
   return limited;
 }

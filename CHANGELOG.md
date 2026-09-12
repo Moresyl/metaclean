@@ -83,7 +83,8 @@ All notable changes to MetaClean are documented here. The project follows
 
 - History keeps the newest records within a 10,000-result render budget in
   addition to its 100-batch cap, preventing long-lived installations from
-  accumulating a million-row history surface.
+  accumulating a million-row history surface without presenting a truncated
+  batch as if it were complete.
 
 - Markdown front matter now recognizes both YAML `---` and TOML `+++` fences,
   while only removing targeted author and generator fields inside the opening

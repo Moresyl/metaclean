@@ -69,6 +69,13 @@ describe("history persistence", () => {
     expect(limited).toHaveLength(50);
     expect(limited.reduce((total, item) => total + item.results.length, 0)).toBe(10_000);
     expect(limited.at(-1)?.results).toHaveLength(200);
+
+    const oversizedNextBatch = limitHistory([
+      { ...entry("first"), results: Array.from({ length: 6_000 }, (_, index) => ({ ...entry(String(index)).results[0], sourcePath: `${index}.jpg` })) },
+      { ...entry("second"), results: Array.from({ length: 5_000 }, (_, index) => ({ ...entry(`next-${index}`).results[0], sourcePath: `next-${index}.jpg` })) },
+    ]);
+    expect(oversizedNextBatch.map((item) => item.id)).toEqual(["first"]);
+    expect(oversizedNextBatch[0].results).toHaveLength(6_000);
   });
 
   it("keeps in-memory history when the browser storage quota is exhausted", () => {
