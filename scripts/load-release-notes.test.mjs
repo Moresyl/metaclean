@@ -54,6 +54,24 @@ test("release workflow consumes validated notes and finalizes checksums", async 
   assert.match(workflow, /smoke-macos-dmg\.sh/u);
   assert.match(workflow, /smoke-linux-deb\.sh/u);
   assert.match(workflow, /gh release create/u);
+  assert.match(workflow, /^  validate:/mu, "release builds must depend on a dedicated source validation job");
+  assert.match(workflow, /build:\n    needs: validate/u, "release package builds must wait for validation");
+  for (const gate of [
+    "pnpm test:supply-chain",
+    "pnpm test:security",
+    "pnpm test:release",
+    "pnpm test:formats",
+    "pnpm test:docs",
+    "pnpm docs:build",
+    "pnpm test:coverage",
+    "pnpm build",
+    "cargo fmt --check",
+    "cargo test --locked",
+    "cargo llvm-cov",
+    "cargo audit",
+  ]) {
+    assert.match(workflow, new RegExp(gate.replace(/[.*+?^${}()|[\]\\]/gu, "\\\\$&")), `release validation must run ${gate}`);
+  }
   for (const setup of [workflow, ciWorkflow]) {
     assert.doesNotMatch(setup, /pnpm\/action-setup|dtolnay\/rust-toolchain|Swatinem\/rust-cache/u);
     assert.match(setup, /corepack prepare pnpm@10\.32\.1 --activate/u);
@@ -63,5 +81,5 @@ test("release workflow consumes validated notes and finalizes checksums", async 
   assert.match(linuxSmoke, /deb_file="\$\(realpath /u);
   assert.match(linuxSmoke, /apt-get install -y "\$deb_file"/u);
   assert.doesNotMatch(workflow, /\$RUNNER_TEMP/u);
-  assert.equal((workflow.match(/ref: \$\{\{ env\.RELEASE_TAG \}\}/gu) ?? []).length, 2);
+  assert.equal((workflow.match(/ref: \$\{\{ env\.RELEASE_TAG \}\}/gu) ?? []).length, 3);
 });

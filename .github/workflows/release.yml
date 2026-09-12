@@ -18,7 +18,56 @@ env:
   APPIMAGE_UPDATE_INFORMATION: gh-releases-zsync|Moresyl|metaclean|latest|MetaClean_*_amd64.AppImage.zsync
 
 jobs:
+  validate:
+    name: Validate release source
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ env.RELEASE_TAG }}
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - run: corepack enable
+      - run: corepack prepare pnpm@10.32.1 --activate
+      - run: rustup default stable
+      - name: Install Linux system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential curl wget file libssl-dev libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev
+      - uses: actions/cache@v5
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            src-tauri/target
+          key: rust-release-validation-${{ hashFiles('src-tauri/Cargo.lock') }}
+          restore-keys: rust-release-validation-
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test:supply-chain
+      - run: pnpm test:security
+      - run: pnpm test:release
+      - run: pnpm test:formats
+      - run: pnpm test:docs
+      - run: pnpm docs:build
+      - run: pnpm audit --audit-level moderate --registry=https://registry.npmjs.org
+      - run: pnpm test:coverage
+      - run: pnpm build
+      - run: cargo fmt --check
+        working-directory: src-tauri
+      - run: cargo test --locked
+        working-directory: src-tauri
+      - run: cargo install cargo-llvm-cov --locked
+      - run: cargo llvm-cov --locked --ignore-filename-regex '(lib|main|models|shell_integration)\.rs$' --fail-under-lines 80
+        working-directory: src-tauri
+      - run: cargo install cargo-audit --locked
+      - run: cargo audit
+        working-directory: src-tauri
+
   build:
+    needs: validate
     strategy:
       fail-fast: false
       matrix:

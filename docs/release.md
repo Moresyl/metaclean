@@ -31,6 +31,14 @@ pwsh -NoLogo -NoProfile -File .\scripts\preflight-windows.ps1
 
 它会依次验证 Debug NSIS、MSI、x64 便携包和 113 个扩展名的当前用户右键菜单安装/清理。MSI 与右键菜单脚本都会拒绝覆盖已有 MetaClean 状态。
 
+## 自动发布门禁
+
+GitHub Release workflow 在任何平台打包前，会先 checkout 同一个
+`RELEASE_TAG` 并运行完整的源码校验 job：供应链、CSP、发布脚本、格式清单、
+文档构建、npm audit、前端覆盖率与生产构建，以及 Rust 格式化、测试、覆盖率和
+Cargo audit。只有这个 job 成功，Windows、macOS、Linux 的矩阵构建才会开始；
+所有平台 smoke test 和资产校验完成后才允许生成公开 Release。
+
 ## 发布边界
 
 正式发布还需要签名 updater 密钥、平台代码签名以及对应平台的真实运行证据。Apple Developer 签名/公证、Word/WPS 打开保存回读和旧版本升级回滚不能用本地源码构建替代。
