@@ -364,6 +364,7 @@ describe("desktop components", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "复制诊断信息" }));
     await waitFor(() => expect(clipboardMock).toHaveBeenCalledOnce());
+    expect(screen.getByRole("status")).toHaveTextContent("已复制到剪贴板");
     const copied = JSON.parse(clipboardMock.mock.calls[0][0]);
     expect(copied).toMatchObject({ product: "MetaClean", version: "0.7.0", platform: "windows", arch: "x86_64" });
     expect(JSON.stringify(copied)).not.toContain("processedFiles");

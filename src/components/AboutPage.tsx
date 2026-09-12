@@ -151,6 +151,9 @@ export default function AboutPage() {
   return (
     <section className="h-full overflow-y-auto pr-1">
       <div className="mx-auto grid max-w-[720px] gap-3.5 pb-1">
+        <span className="sr-only" role="status" aria-live="polite" aria-atomic="true">
+          {copied ? text("已复制到剪贴板", "Copied to clipboard") : ""}
+        </span>
         <div className="flex items-center gap-4 rounded-panel border border-line bg-surface px-4 py-3.5 shadow-panel">
           <img className="size-14 shrink-0 rounded-[12px] shadow-lift" src={appIcon} alt="MetaClean" width={56} height={56} />
           <div className="min-w-0 flex-1 grid gap-1">
