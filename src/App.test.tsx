@@ -47,6 +47,31 @@ describe("App", () => {
     await waitFor(() => expect(unlisten).toHaveBeenCalledOnce());
   });
 
+  it("releases event listeners when a later native subscription fails", async () => {
+    const unlistenMenu = vi.fn();
+    listenMock
+      .mockResolvedValueOnce(unlistenMenu)
+      .mockRejectedValueOnce(new Error("event bridge unavailable"));
+    renderApp();
+    await waitFor(() => expect(listenMock).toHaveBeenCalledTimes(2));
+    expect(unlistenMenu).toHaveBeenCalledOnce();
+  });
+
+  it("releases established listeners while a later subscription is still pending", async () => {
+    const unlistenMenu = vi.fn();
+    const unlistenProgress = vi.fn();
+    let resolveProgress: ((unlisten: () => void) => void) | undefined;
+    listenMock
+      .mockResolvedValueOnce(unlistenMenu)
+      .mockReturnValueOnce(new Promise((resolve) => { resolveProgress = resolve; }));
+    const { unmount } = renderApp();
+    await waitFor(() => expect(listenMock).toHaveBeenCalledTimes(2));
+    unmount();
+    expect(unlistenMenu).toHaveBeenCalledOnce();
+    resolveProgress?.(unlistenProgress);
+    await waitFor(() => expect(unlistenProgress).toHaveBeenCalledOnce());
+  });
+
   it("exits on close by default and persists the optional tray behavior", async () => {
     renderApp();
     await waitFor(() => expect(invokeMock).toHaveBeenCalledWith("set_close_to_tray", { enabled: false }));

@@ -47,6 +47,8 @@ All notable changes to MetaClean are documented here. The project follows
 - 设置页右键菜单切换增加同步互斥；原生状态返回前的重复点击不会并发写入注册表，避免后到结果覆盖先到状态。
 - 更新检查、安装和下载进度回调现在受 UpdateProvider 生命周期保护；窗口卸载后，旧更新任务不会再写入已销毁或新建的上下文状态。
 - 更新上下文现在在挂载前拒绝启动检查/安装调用，避免快速卸载时把并发锁留在不可见实例上。
+- 应用事件总线改为可回滚的分段订阅；菜单、进度或关闭拦截事件的后续订阅失败时，已建立的前序监听会自动释放。
+- 事件订阅卸载现在也会中止挂起的后续注册；迟到的原生监听句柄返回后会立即自毁，不会积累后台监听。
 
 - Parallel scanning now draws work from a bounded dynamic queue instead of two
   static path chunks, keeping both workers useful when file sizes or storage

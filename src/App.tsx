@@ -129,36 +129,59 @@ export default function App() {
   useEffect(() => {
     let active = true;
     let dispose: (() => void) | undefined;
+    const cleanups: Array<() => void> = [];
+    let disposed = false;
+    const cleanupPartial = () => {
+      disposed = true;
+      while (cleanups.length) cleanups.pop()?.();
+    };
     void import("@tauri-apps/api/event").then(async ({ listen }) => {
-      const unlistenMenu = await listen<Page>("menu:navigate", (event) => {
-        if (["clean", "history", "privacy", "settings", "about"].includes(event.payload)) setPage(event.payload);
-      });
-      const unlistenProgress = await listen<BatchProgress>("batch-progress", (event) => {
-        if (operationKindRef.current === event.payload.operation && batchIdRef.current === event.payload.batchId) {
-          setProgress(event.payload);
-          const now = Date.now();
-          const recovery = recoveryProgressRef.current;
-          const shouldPersist = event.payload.cancelled
-            || event.payload.completed === event.payload.total
-            || recovery.batchId !== event.payload.batchId
-            || event.payload.completed - recovery.completed >= 16
-            || now - recovery.persistedAt >= 250;
-          if (event.payload.operation === "clean" && shouldPersist) {
-            updateActiveBatchProgress(event.payload.batchId, event.payload.completed);
-            recoveryProgressRef.current = { batchId: event.payload.batchId, completed: event.payload.completed, persistedAt: now };
+      try {
+        const register = async <T,>(event: string, handler: (event: { payload: T }) => void) => {
+          const unlisten = await listen<T>(event, handler);
+          if (disposed || !active) {
+            unlisten();
+            return;
           }
+          cleanups.push(unlisten);
+        };
+        await register<Page>("menu:navigate", (event) => {
+          if (!active) return;
+          if (["clean", "history", "privacy", "settings", "about"].includes(event.payload)) setPage(event.payload);
+        });
+        if (!active || disposed) return;
+        await register<BatchProgress>("batch-progress", (event) => {
+          if (!active) return;
+          if (operationKindRef.current === event.payload.operation && batchIdRef.current === event.payload.batchId) {
+            setProgress(event.payload);
+            const now = Date.now();
+            const recovery = recoveryProgressRef.current;
+            const shouldPersist = event.payload.cancelled
+              || event.payload.completed === event.payload.total
+              || recovery.batchId !== event.payload.batchId
+              || event.payload.completed - recovery.completed >= 16
+              || now - recovery.persistedAt >= 250;
+            if (event.payload.operation === "clean" && shouldPersist) {
+              updateActiveBatchProgress(event.payload.batchId, event.payload.completed);
+              recoveryProgressRef.current = { batchId: event.payload.batchId, completed: event.payload.completed, persistedAt: now };
+            }
+          }
+        });
+        if (!active || disposed) return;
+        await register<string>("close-blocked", (event) => {
+          if (active) setMessage(event.payload);
+        });
+        if (active) {
+          dispose = cleanupPartial;
+          return;
         }
-      });
-      const unlistenClose = await listen<string>("close-blocked", (event) => setMessage(event.payload));
-      if (!active) {
-        unlistenMenu();
-        unlistenProgress();
-        unlistenClose();
-        return;
+      } catch {
+        // A partial registration is still ours to release; do not leave an
+        // earlier listener behind when a later native subscription fails.
       }
-      dispose = () => { unlistenMenu(); unlistenProgress(); unlistenClose(); };
-    }).catch(() => undefined);
-    return () => { active = false; dispose?.(); };
+      cleanupPartial();
+    }).catch(() => cleanupPartial());
+    return () => { active = false; cleanupPartial(); dispose?.(); };
   }, []);
 
   useEffect(() => {
