@@ -182,6 +182,49 @@ describe("App", () => {
     await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("扫描完成"));
   });
 
+  it("does not let a late scan result update a remounted app", async () => {
+    let finishScan: ((reports: ScanReport[]) => void) | undefined;
+    const pendingScan = new Promise<ScanReport[]>((resolve) => { finishScan = resolve; });
+    invokeMock.mockImplementation((command: string) => {
+      if (command === "get_launch_paths") return Promise.resolve(["C:\\work\\notes.md"]);
+      if (command === "expand_paths") return Promise.resolve({ files: ["C:\\work\\notes.md"], skippedCount: 0, issues: [], limitReached: false });
+      if (command === "scan_files") return pendingScan;
+      if (command === "set_close_to_tray") return Promise.resolve(undefined);
+      return Promise.reject(new Error(`unexpected ${command}`));
+    });
+    const first = renderApp();
+    await screen.findByText("notes.md");
+    fireEvent.click(screen.getByRole("button", { name: "扫描隐私痕迹" }));
+    await waitFor(() => expect(invokeMock).toHaveBeenCalledWith("scan_files", expect.anything()));
+    first.unmount();
+    finishScan?.([]);
+    renderApp();
+    expect(screen.queryByText("notes.md")).not.toBeInTheDocument();
+  });
+
+  it("does not let a late cleanup result update a remounted app", async () => {
+    let finishClean: ((results: never[]) => void) | undefined;
+    const pendingClean = new Promise<never[]>((resolve) => { finishClean = resolve; });
+    invokeMock.mockImplementation((command: string) => {
+      if (command === "get_launch_paths") return Promise.resolve(["C:\\work\\notes.txt"]);
+      if (command === "expand_paths") return Promise.resolve({ files: ["C:\\work\\notes.txt"], skippedCount: 0, issues: [], limitReached: false });
+      if (command === "scan_files") return Promise.resolve([{ path: "C:\\work\\notes.txt", name: "notes.txt", format: "Text", size: 4, supported: true, findings: [{ category: "unicode", label: "Invisible Unicode", count: 1, severity: "privacy" }] }]);
+      if (command === "clean_files") return pendingClean;
+      if (command === "set_close_to_tray") return Promise.resolve(undefined);
+      return Promise.reject(new Error(`unexpected ${command}`));
+    });
+    const first = renderApp();
+    await screen.findByText("notes.txt");
+    fireEvent.click(screen.getByRole("button", { name: "扫描隐私痕迹" }));
+    await screen.findByText("发现 1 项痕迹");
+    fireEvent.click(screen.getByRole("button", { name: "确认并开始清理" }));
+    await waitFor(() => expect(invokeMock).toHaveBeenCalledWith("clean_files", expect.anything()));
+    first.unmount();
+    finishClean?.([]);
+    renderApp();
+    expect(screen.queryByText("notes.txt")).not.toBeInTheDocument();
+  });
+
   it("keeps files retryable when the native cleaner omits a result", async () => {
     invokeMock.mockImplementation((command: string) => {
       if (command === "get_launch_paths") return Promise.resolve(["C:\\work\\notes.txt"]);

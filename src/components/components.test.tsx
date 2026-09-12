@@ -534,6 +534,22 @@ describe("desktop components", () => {
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
+  it("does not close or update an unmounted prompt after its release link resolves", async () => {
+    let finishOpen: (() => void) | undefined;
+    openUrlMock.mockReturnValueOnce(new Promise<void>((resolve) => { finishOpen = resolve; }));
+    checkForUpdateMock.mockResolvedValue({
+      status: "available",
+      info: { currentVersion: "0.4.1", availableVersion: "0.5.0", name: "MetaClean v0.5.0", releaseUrl: "https://github.com/Moresyl/metaclean/releases/tag/v0.5.0" },
+    });
+    const view = wrap(<UpdateDialogHarness />);
+    fireEvent.click(screen.getByRole("button", { name: "trigger update" }));
+    await screen.findByRole("dialog", { name: "v0.5.0" });
+    fireEvent.click(screen.getByRole("button", { name: /前往 GitHub 查看并下载/ }));
+    view.unmount();
+    finishOpen?.();
+    await waitFor(() => expect(openUrlMock).toHaveBeenCalledOnce());
+  });
+
   it("installs a signed update directly from the update prompt", async () => {
     getUpdateRuntimeMock.mockResolvedValue({ selfUpdateSupported: true, portable: false });
     checkForUpdateMock.mockResolvedValue({

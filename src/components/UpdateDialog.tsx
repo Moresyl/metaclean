@@ -1,5 +1,5 @@
 import { ArrowRight, Download, ExternalLink, Sparkles, X } from "lucide-react";
-import { useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import Button, { IconButton } from "./Button";
 import { useUpdate } from "../contexts/UpdateContext";
 import { useI18n } from "../lib/i18n";
@@ -12,6 +12,9 @@ export default function UpdateDialog() {
   const [openError, setOpenError] = useState<string>();
   const dialog = useRef<HTMLElement>(null);
   const primaryAction = useRef<HTMLButtonElement>(null);
+  const mountedRef = useRef(true);
+
+  useEffect(() => () => { mountedRef.current = false; }, []);
 
   useLayoutEffect(() => {
     if (!update.promptOpen) return;
@@ -49,11 +52,13 @@ export default function UpdateDialog() {
     setOpenError(undefined);
     try {
       await update.openRelease();
+      if (!mountedRef.current) return;
       update.dismissUpdatePrompt();
     } catch (reason) {
+      if (!mountedRef.current) return;
       setOpenError(reason instanceof Error ? reason.message : String(reason));
     } finally {
-      setOpening(false);
+      if (mountedRef.current) setOpening(false);
     }
   };
 

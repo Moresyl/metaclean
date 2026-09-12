@@ -207,7 +207,7 @@ export default function App() {
   ) && actionableFindingCount(entry.report, preserveColorProfile, removeExtendedAttributes) > 0);
 
   async function scan() {
-    if (operationRef.current) return;
+    if (!mountedRef.current || operationRef.current) return;
     const pendingEntries = entries.filter((entry) => entry.status === "ready" || (entry.status === "error" && !entry.result));
     if (!pendingEntries.length) return;
     const paths = pendingEntries.flatMap((entry) => entry.path ? [entry.path] : []);
@@ -223,6 +223,7 @@ export default function App() {
     setBusy(true); setProgress(undefined); setMessage(undefined); setEntries((current) => markEntryPaths(current, paths, "scanning"));
     try {
       const reports = await invoke<ScanReport[]>("scan_files", { paths, batchId });
+      if (!mountedRef.current) return;
       const requested = new Set(paths.map(pathIdentity));
       const seenReports = new Set<string>();
       const relevant = reports.filter((report) => {
@@ -237,12 +238,29 @@ export default function App() {
       setMessage(cancelRequestedRef.current
         ? text(`已取消扫描：${relevant.length} 个文件已返回结果，${missing} 个可重试。`, `Scan cancelled: ${relevant.length} file(s) returned results; ${missing} can be retried.`)
         : text(`扫描完成：${count} 项痕迹等待确认。${missing > 0 ? ` ${missing} 个文件未返回结果，可重试扫描。` : ""}`, `Scan complete: ${count} trace(s) await confirmation.${missing > 0 ? ` ${missing} file(s) returned no result and can be retried.` : ""}`));
-    } catch (error) { setEntries((current) => markEntryPaths(current, paths, "ready")); setMessage(text(`扫描失败：${String(error)}`, `Scan failed: ${String(error)}`)); }
-    finally { operationRef.current = false; operationKindRef.current = undefined; batchIdRef.current = undefined; setActiveBatchId(undefined); setActiveOperation(undefined); setCancelRequested(false); cancelRequestedRef.current = false; setBusy(false); setProgress(undefined); }
+    } catch (error) {
+      if (mountedRef.current) {
+        setEntries((current) => markEntryPaths(current, paths, "ready"));
+        setMessage(text(`扫描失败：${String(error)}`, `Scan failed: ${String(error)}`));
+      }
+    }
+    finally {
+      operationRef.current = false;
+      operationKindRef.current = undefined;
+      batchIdRef.current = undefined;
+      cancelRequestedRef.current = false;
+      if (mountedRef.current) {
+        setActiveBatchId(undefined);
+        setActiveOperation(undefined);
+        setCancelRequested(false);
+        setBusy(false);
+        setProgress(undefined);
+      }
+    }
   }
 
   async function clean() {
-    if (operationRef.current) return;
+    if (!mountedRef.current || operationRef.current) return;
     const paths = cleanableEntries.flatMap((entry) => entry.path ? [entry.path] : []);
     if (!paths.length) return;
     operationRef.current = true;
@@ -258,6 +276,7 @@ export default function App() {
     recoveryProgressRef.current = { batchId, completed: 0, persistedAt: Date.now() };
     try {
       const results = await invoke<CleanResult[]>("clean_files", { request: { paths, batchId, mode, preserveTimestamps, preserveOrientation, preserveColorProfile, removeExtendedAttributes } });
+      if (!mountedRef.current) return;
       const requested = new Set(paths.map(pathIdentity));
       const seenResults = new Set<string>();
       const relevant = results.filter((result) => {
@@ -278,8 +297,24 @@ export default function App() {
         ? text(`已取消清理：${successes.length} 个完成${missing > 0 ? `，${missing} 个未处理、可重试` : ""}。`, `Cleanup cancelled: ${successes.length} completed${missing > 0 ? `; ${missing} not processed and can be retried` : ""}.`)
         : text(`${successes.length} 个文件清理完成${failures ? `，${failures} 个失败` : ""}${missing > 0 ? `，${missing} 个未返回结果、可重试` : ""}。${successes[0]?.outputPath ? ` 输出：${successes[0].outputPath}` : ""}`, `${successes.length} file(s) cleaned${failures ? `; ${failures} failed` : ""}${missing > 0 ? `; ${missing} returned no result and can be retried` : ""}.${successes[0]?.outputPath ? ` Output: ${successes[0].outputPath}` : ""}`));
       if (relevant.length) addHistory({ id: crypto.randomUUID(), createdAt: new Date().toISOString(), mode, results: relevant });
-    } catch (error) { setMessage(text(`清理失败：${String(error)}`, `Cleanup failed: ${String(error)}`)); }
-    finally { clearActiveBatch(batchId); recoveryProgressRef.current = { completed: 0, persistedAt: 0 }; operationRef.current = false; operationKindRef.current = undefined; batchIdRef.current = undefined; setActiveBatchId(undefined); setActiveOperation(undefined); setCancelRequested(false); cancelRequestedRef.current = false; setBusy(false); setProgress(undefined); }
+    } catch (error) {
+      if (mountedRef.current) setMessage(text(`清理失败：${String(error)}`, `Cleanup failed: ${String(error)}`));
+    }
+    finally {
+      clearActiveBatch(batchId);
+      recoveryProgressRef.current = { completed: 0, persistedAt: 0 };
+      operationRef.current = false;
+      operationKindRef.current = undefined;
+      batchIdRef.current = undefined;
+      cancelRequestedRef.current = false;
+      if (mountedRef.current) {
+        setActiveBatchId(undefined);
+        setActiveOperation(undefined);
+        setCancelRequested(false);
+        setBusy(false);
+        setProgress(undefined);
+      }
+    }
   }
 
   function cancelOperation() {
@@ -289,11 +324,12 @@ export default function App() {
     setCancelRequested(true);
     const command = operationKindRef.current === "scan" ? "cancel_scan_batch" : "cancel_clean_batch";
     void invoke<boolean>(command, { batchId }).then((accepted) => {
-      if (!accepted) {
+      if (!accepted && mountedRef.current) {
         cancelRequestedRef.current = false;
         setCancelRequested(false);
       }
     }).catch((error) => {
+      if (!mountedRef.current) return;
       cancelRequestedRef.current = false;
       setCancelRequested(false);
       setMessage(text(`取消处理失败：${String(error)}`, `Could not cancel operation: ${String(error)}`));
@@ -305,6 +341,7 @@ export default function App() {
       const { revealItemInDir } = await import("@tauri-apps/plugin-opener");
       await revealItemInDir(path);
     } catch (error) {
+      if (!mountedRef.current) return;
       setMessage(error instanceof Error ? error.message : String(error));
     }
   }

@@ -54,6 +54,7 @@ All notable changes to MetaClean are documented here. The project follows
 - 文件队列的诊断导出现在单实例串行执行，并在切页后停止复制/导出通知，避免双击产生多个保存任务或污染新页面。
 - 历史记录加载和持久化现在会按条目 ID 去重，保留较新的首条记录，避免异常本地数据造成重复 React key。
 - 命令面板方向键、Home/End 导航现在跳过不可执行的禁用命令，回车不会落到灰色操作上。
+- 更新提示打开外部版本页时也受卸载保护；切页期间迟到的外链结果不会关闭新建的更新提示或回写旧对话框状态。
 
 - Parallel scanning now draws work from a bounded dynamic queue instead of two
   static path chunks, keeping both workers useful when file sizes or storage
