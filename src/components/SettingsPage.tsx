@@ -67,6 +67,7 @@ export default function SettingsPage({
   const [contextMenuError, setContextMenuError] = useState<string>();
   const [busy, setBusy] = useState(false);
   const mountedRef = useRef(true);
+  const busyRef = useRef(false);
   const { locale, setLocale, text } = useI18n();
   const update = useUpdate();
   const theme = useTheme();
@@ -90,7 +91,8 @@ export default function SettingsPage({
   }, []);
 
   async function toggleContextMenu() {
-    if (!contextMenu?.available) return;
+    if (!contextMenu?.available || busyRef.current) return;
+    busyRef.current = true;
     setBusy(true);
     setContextMenuError(undefined);
     try {
@@ -102,6 +104,7 @@ export default function SettingsPage({
           `Could not update the context menu: ${String(error)}`,
         ));
     } finally {
+      busyRef.current = false;
       if (mountedRef.current) setBusy(false);
     }
   }

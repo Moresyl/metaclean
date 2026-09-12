@@ -44,6 +44,7 @@ All notable changes to MetaClean are documented here. The project follows
 - 关于页复制成功反馈现在通过 aria-live 状态节点同步给读屏器，同时保留按钮自身的已复制视觉状态。
 - 应用级回归测试现在覆盖队列与持久化处理记录的确认、取消和最终清空结果，避免组件单测通过但页面接线绕过保护。
 - Tauri 拖放监听和启动路径展开现在受应用生命周期保护；页面卸载期间完成注册的监听会立即注销，待处理路径结果也不会再回写已卸载页面。
+- 设置页右键菜单切换增加同步互斥；原生状态返回前的重复点击不会并发写入注册表，避免后到结果覆盖先到状态。
 
 - Parallel scanning now draws work from a bounded dynamic queue instead of two
   static path chunks, keeping both workers useful when file sizes or storage

@@ -460,6 +460,23 @@ describe("desktop components", () => {
     await waitFor(() => expect(enable).toBeEnabled());
   });
 
+  it("serializes repeated context-menu toggles before the first result returns", async () => {
+    let finishToggle: ((status: { available: boolean; enabled: boolean; detail: string }) => void) | undefined;
+    invokeMock.mockImplementation((command: string) => {
+      if (command === "get_context_menu_status") return Promise.resolve({ available: true, enabled: false, detail: "可启用" });
+      if (command === "set_context_menu_enabled") return new Promise((resolve) => { finishToggle = resolve; });
+      return Promise.reject(new Error(command));
+    });
+    wrap(<SettingsPage mode="copy" onModeChange={vi.fn()} preserveTimestamps onPreserveTimestampsChange={vi.fn()} preserveOrientation onPreserveOrientationChange={vi.fn()} preserveColorProfile onPreserveColorProfileChange={vi.fn()} removeExtendedAttributes={false} onRemoveExtendedAttributesChange={vi.fn()} closeToTray={false} onCloseToTrayChange={vi.fn()} />);
+    fireEvent.click(screen.getByRole("button", { name: "系统与更新" }));
+    const enable = await screen.findByRole("button", { name: "启用" });
+    fireEvent.click(enable);
+    fireEvent.click(enable);
+    expect(invokeMock.mock.calls.filter(([command]) => command === "set_context_menu_enabled")).toHaveLength(1);
+    finishToggle?.({ available: true, enabled: true, detail: "已启用" });
+    expect(await screen.findByRole("button", { name: "停用" })).toBeInTheDocument();
+  });
+
   it("shows release notes and opens the GitHub release from the update prompt", async () => {
     checkForUpdateMock.mockResolvedValue({
       status: "available",
