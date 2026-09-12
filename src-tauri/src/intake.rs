@@ -3,6 +3,7 @@ use std::{collections::HashSet, fs, path::Path};
 use serde::Serialize;
 
 use crate::engine;
+use crate::error::bounded_message;
 use crate::{MAX_BATCH_PATH_BYTES, MAX_PATH_BYTES};
 
 const MAX_DISCOVERED_FILES: usize = 10_000;
@@ -53,7 +54,7 @@ impl IntakeResult {
         if self.issues.len() < MAX_REPORTED_ISSUES {
             self.issues.push(IntakeIssue {
                 path: bounded_issue_path(path),
-                reason: reason.into(),
+                reason: bounded_message(reason.into()),
             });
         }
     }

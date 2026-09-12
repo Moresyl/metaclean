@@ -7,6 +7,7 @@ mod models;
 mod safe_io;
 mod shell_integration;
 
+use error::bounded_message;
 use models::{CleanRequest, CleanResult, ScanReport};
 use std::collections::{HashMap, HashSet};
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
@@ -52,7 +53,9 @@ fn close_action(close_to_tray: bool) -> CloseAction {
 }
 
 fn updater_network_error(action: &str, error: impl std::fmt::Display) -> String {
-    format!("{action}。{UPDATE_NETWORK_HELP}\n技术详情 / Technical detail: {error}")
+    bounded_message(format!(
+        "{action}。{UPDATE_NETWORK_HELP}\n技术详情 / Technical detail: {error}"
+    ))
 }
 
 fn reviewed_update_matches(available: &str, expected: &str) -> bool {
@@ -398,7 +401,7 @@ async fn scan_files(
         reports
     })
     .await
-    .map_err(|error| format!("扫描任务异常结束：{error}"))
+    .map_err(|error| bounded_message(format!("扫描任务异常结束：{error}")))
 }
 
 #[tauri::command]
@@ -410,7 +413,7 @@ async fn expand_paths(paths: Vec<String>) -> Result<intake::IntakeResult, String
         intake::expand_paths(&paths)
     })
     .await
-    .map_err(|error| format!("目录导入任务异常结束：{error}"))
+    .map_err(|error| bounded_message(format!("目录导入任务异常结束：{error}")))
 }
 
 #[tauri::command]
@@ -462,7 +465,7 @@ async fn clean_files(
         results
     })
     .await
-    .map_err(|error| format!("清理任务异常结束：{error}"));
+    .map_err(|error| bounded_message(format!("清理任务异常结束：{error}")));
     result
 }
 
@@ -519,7 +522,7 @@ fn export_audit_report_to(destination: &std::path::Path, contents: &str) -> Resu
         return Err("审计报告必须使用 .json 扩展名".into());
     }
     safe_io::atomic_write_with_metadata(destination, contents.as_bytes(), None, false, false)
-        .map_err(|error| format!("导出审计报告失败：{error}"))
+        .map_err(|error| bounded_message(format!("导出审计报告失败：{error}")))
 }
 
 #[tauri::command]
@@ -539,7 +542,7 @@ fn set_context_menu_enabled(enabled: bool) -> Result<shell_integration::ContextM
     } else {
         shell_integration::remove()
     }
-    .map_err(|error| format!("更新 Windows 右键菜单失败：{error}"))
+    .map_err(|error| bounded_message(format!("更新 Windows 右键菜单失败：{error}")))
 }
 
 #[tauri::command]
@@ -638,7 +641,7 @@ async fn install_update_and_restart(
         .updater_builder()
         .timeout(UPDATE_REQUEST_TIMEOUT)
         .build()
-        .map_err(|error| format!("初始化更新器失败：{error}"))?;
+        .map_err(|error| bounded_message(format!("初始化更新器失败：{error}")))?;
     let Some(update) = updater
         .check()
         .await
@@ -686,7 +689,7 @@ async fn install_update_and_restart(
         app.remove_tray_by_id("main");
         if let Err(error) = update.install(bytes) {
             ALLOW_EXIT.store(false, Ordering::SeqCst);
-            return Err(format!("安装更新失败：{error}"));
+            return Err(bounded_message(format!("安装更新失败：{error}")));
         }
         Ok(true)
     }
@@ -695,7 +698,7 @@ async fn install_update_and_restart(
     {
         update
             .install(bytes)
-            .map_err(|error| format!("安装更新失败：{error}"))?;
+            .map_err(|error| bounded_message(format!("安装更新失败：{error}")))?;
         ALLOW_EXIT.store(true, Ordering::SeqCst);
         app.remove_tray_by_id("main");
         app.restart();

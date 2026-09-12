@@ -1,4 +1,25 @@
+use std::fmt::Display;
 use std::path::Path;
+
+/// Bound diagnostics before they cross the IPC boundary. Parser and
+/// filesystem errors may include data derived from malformed input, so their
+/// display output must not be treated as inherently small.
+pub(crate) const MAX_ERROR_MESSAGE_BYTES: usize = 8 * 1024;
+
+pub(crate) fn bounded_message(error: impl Display) -> String {
+    let value = error.to_string();
+    if value.len() <= MAX_ERROR_MESSAGE_BYTES {
+        return value;
+    }
+    let marker = "…";
+    let mut end = MAX_ERROR_MESSAGE_BYTES.saturating_sub(marker.len());
+    while end > 0 && !value.is_char_boundary(end) {
+        end -= 1;
+    }
+    let mut bounded = value[..end].to_owned();
+    bounded.push_str(marker);
+    bounded
+}
 
 #[derive(Debug, thiserror::Error)]
 pub enum CleanError {
@@ -32,7 +53,7 @@ pub fn display_path(path: &Path) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::CleanError;
+    use super::{bounded_message, CleanError, MAX_ERROR_MESSAGE_BYTES};
 
     #[test]
     fn io_errors_do_not_mislabel_write_failures_as_reads() {
@@ -41,5 +62,12 @@ mod tests {
             "access denied",
         ));
         assert_eq!(error.to_string(), "文件读写操作失败：access denied");
+    }
+
+    #[test]
+    fn diagnostics_are_bounded_without_splitting_utf8() {
+        let bounded = bounded_message(format!("{}界", "界".repeat(MAX_ERROR_MESSAGE_BYTES)));
+        assert!(bounded.len() <= MAX_ERROR_MESSAGE_BYTES);
+        assert!(bounded.ends_with('…'));
     }
 }

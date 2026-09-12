@@ -7,7 +7,7 @@ use std::fs;
 
 use crate::{
     cleaners::{asf, avi, bmp, heif, image, jxl, media, mkv, office, pdf, tiff, video, web_text},
-    error::{display_path, CleanError, Result},
+    error::{bounded_message, display_path, CleanError, Result},
     models::{CleanResult, Finding, FindingSeverity, OutputMode, ScanReport},
     safe_io::{
         atomic_create_unique_with_metadata, atomic_replace_if_unchanged, backup_path, cleaned_path,
@@ -589,7 +589,7 @@ pub fn scan_file(path: &Path) -> ScanReport {
                 0,
                 false,
                 Vec::new(),
-                Some(error.to_string()),
+                Some(bounded_message(error)),
             )
         }
     };
@@ -613,7 +613,7 @@ pub fn scan_file(path: &Path) -> ScanReport {
                 metadata.len(),
                 false,
                 findings,
-                Some(error.to_string()),
+                Some(bounded_message(error)),
             ),
         },
         Err(error) => base(
@@ -621,7 +621,7 @@ pub fn scan_file(path: &Path) -> ScanReport {
             metadata.len(),
             false,
             Vec::new(),
-            Some(error.to_string()),
+            Some(bounded_message(error)),
         ),
     }
 }
@@ -709,14 +709,14 @@ pub fn clean_file_with_options(
     };
     let (source_metadata, data) = match read_validated_input(source) {
         Ok(value) => value,
-        Err(error) => return fail(error.to_string()),
+        Err(error) => return fail(bounded_message(error)),
     };
     let metadata_snapshot = match FileMetadataSnapshot::capture(source, &source_metadata) {
         Ok(snapshot) => snapshot,
-        Err(error) => return fail(error.to_string()),
+        Err(error) => return fail(bounded_message(error)),
     };
     if matches!(mode, OutputMode::Replace) && source_metadata.permissions().readonly() {
-        return fail(CleanError::ReadOnly(display_path(source)).to_string());
+        return fail(bounded_message(CleanError::ReadOnly(display_path(source))));
     }
     let format = detect(source, &data);
     let (cleaned, mut removed) = match clean_data(
@@ -727,7 +727,7 @@ pub fn clean_file_with_options(
         preserve_color_profile,
     ) {
         Ok(value) => value,
-        Err(error) => return fail(error.to_string()),
+        Err(error) => return fail(bounded_message(error)),
     };
     let extended_attribute_count = metadata_snapshot.privacy_extended_attribute_count();
     if remove_extended_attributes {
@@ -742,12 +742,12 @@ pub fn clean_file_with_options(
         preserve_orientation,
         preserve_color_profile,
     ) {
-        return fail(error.to_string());
+        return fail(bounded_message(error));
     }
     let (output, backup): (PathBuf, Option<PathBuf>) = match mode {
         OutputMode::Copy => {
             if let Err(error) = ensure_source_unchanged(source, &data, &metadata_snapshot) {
-                return fail(error.to_string());
+                return fail(bounded_message(error));
             }
             let output = match atomic_create_unique_with_metadata(
                 &cleaned_path(source),
@@ -757,17 +757,17 @@ pub fn clean_file_with_options(
                 remove_extended_attributes,
             ) {
                 Ok(path) => path,
-                Err(error) => return fail(error.to_string()),
+                Err(error) => return fail(bounded_message(error)),
             };
             if let Err(error) = ensure_source_unchanged(source, &data, &metadata_snapshot) {
                 remove_created_output(&output);
-                return fail(error.to_string());
+                return fail(bounded_message(error));
             }
             (output, None)
         }
         OutputMode::Replace => {
             if let Err(error) = ensure_source_unchanged(source, &data, &metadata_snapshot) {
-                return fail(error.to_string());
+                return fail(bounded_message(error));
             }
             let backup = match atomic_create_unique_with_metadata(
                 &backup_path(source),
@@ -777,7 +777,7 @@ pub fn clean_file_with_options(
                 false,
             ) {
                 Ok(path) => path,
-                Err(error) => return fail(format!("创建备份失败：{error}")),
+                Err(error) => return fail(bounded_message(format!("创建备份失败：{error}"))),
             };
             (source.to_owned(), Some(backup))
         }
@@ -802,7 +802,7 @@ pub fn clean_file_with_options(
             output_size: None,
             removed,
             success: false,
-            error: Some(error.to_string()),
+            error: Some(bounded_message(error)),
         };
     }
     CleanResult {

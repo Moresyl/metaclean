@@ -66,6 +66,8 @@ or history record.
   64 MiB before de-duplication or worker creation. Recursive expansion applies
   the same output budget and truncates issue-path echoes at the single-path
   boundary.
+- Parser, filesystem, updater and intake diagnostics are normalized through an
+  8 KiB UTF-8-safe cap before they are returned over IPC or rendered by the UI.
 - Scan responses contain the source path, detected format, size, category,
   severity and count. They do not contain the underlying metadata value.
 - Progress events contain only operation, batch token, counts and cancellation
