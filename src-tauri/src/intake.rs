@@ -3,6 +3,7 @@ use std::{collections::HashSet, fs, path::Path};
 use serde::Serialize;
 
 use crate::engine;
+use crate::{MAX_BATCH_PATH_BYTES, MAX_PATH_BYTES};
 
 const MAX_DISCOVERED_FILES: usize = 10_000;
 const MAX_VISITED_ENTRIES: usize = 50_000;
@@ -22,6 +23,13 @@ fn is_link_or_reparse_point(metadata: &fs::Metadata) -> bool {
 }
 const MAX_RECURSION_DEPTH: usize = 64;
 const MAX_REPORTED_ISSUES: usize = 100;
+
+fn path_payload_fits(total: usize, path_len: usize) -> bool {
+    path_len <= MAX_PATH_BYTES
+        && total
+            .checked_add(path_len)
+            .is_some_and(|next| next <= MAX_BATCH_PATH_BYTES)
+}
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
@@ -44,11 +52,24 @@ impl IntakeResult {
         self.skipped_count += 1;
         if self.issues.len() < MAX_REPORTED_ISSUES {
             self.issues.push(IntakeIssue {
-                path: path.to_string_lossy().into_owned(),
+                path: bounded_issue_path(path),
                 reason: reason.into(),
             });
         }
     }
+}
+
+fn bounded_issue_path(path: &Path) -> String {
+    let value = path.to_string_lossy();
+    if value.len() <= MAX_PATH_BYTES {
+        return value.into_owned();
+    }
+    let marker = "…";
+    let mut end = MAX_PATH_BYTES.saturating_sub(marker.len());
+    while end > 0 && !value.is_char_boundary(end) {
+        end -= 1;
+    }
+    format!("{}{}", &value[..end], marker)
 }
 
 struct WalkBudget {
@@ -75,6 +96,7 @@ pub fn expand_paths(paths: &[String]) -> IntakeResult {
     let mut result = IntakeResult::default();
     let mut budget = WalkBudget::new();
     let mut seen_files = HashSet::new();
+    let mut path_bytes = 0usize;
     for path in paths {
         if result.limit_reached {
             break;
@@ -90,6 +112,7 @@ pub fn expand_paths(paths: &[String]) -> IntakeResult {
             0,
             &mut budget,
             &mut seen_files,
+            &mut path_bytes,
             &mut result,
         );
     }
@@ -149,6 +172,7 @@ fn visit(
     depth: usize,
     budget: &mut WalkBudget,
     seen_files: &mut HashSet<String>,
+    path_bytes: &mut usize,
     result: &mut IntakeResult,
 ) {
     if depth > MAX_RECURSION_DEPTH {
@@ -185,11 +209,17 @@ fn visit(
             if !seen_files.insert(path_identity(&value)) {
                 return;
             }
+            if !path_payload_fits(*path_bytes, value.len()) {
+                result.limit_reached = true;
+                result.skip(path, "已达到单次路径数据 64 MiB 或单路径 32 KiB 的安全上限");
+                return;
+            }
             if result.files.len() >= MAX_DISCOVERED_FILES {
                 result.limit_reached = true;
                 result.skip(path, "已达到单次导入 10000 个文件的安全上限");
                 return;
             }
+            *path_bytes += value.len();
             result.files.push(value);
         } else {
             result.skip(path, "暂不支持此扩展名");
@@ -224,7 +254,15 @@ fn visit(
         if result.limit_reached {
             break;
         }
-        visit(&child, true, depth + 1, budget, seen_files, result);
+        visit(
+            &child,
+            true,
+            depth + 1,
+            budget,
+            seen_files,
+            path_bytes,
+            result,
+        );
     }
     if walk_limit_reached && !result.limit_reached {
         result.limit_reached = true;
@@ -306,6 +344,29 @@ mod tests {
         assert!(budget.reserve());
         assert!(!budget.reserve());
         assert!(!budget.reserve());
+    }
+
+    #[test]
+    fn path_payload_budget_is_strict() {
+        assert!(path_payload_fits(0, 1));
+        assert!(path_payload_fits(
+            MAX_BATCH_PATH_BYTES - MAX_PATH_BYTES,
+            MAX_PATH_BYTES
+        ));
+        assert!(!path_payload_fits(
+            MAX_BATCH_PATH_BYTES - MAX_PATH_BYTES + 1,
+            MAX_PATH_BYTES
+        ));
+        assert!(!path_payload_fits(0, MAX_PATH_BYTES + 1));
+    }
+
+    #[test]
+    fn issue_paths_are_bounded_without_splitting_utf8() {
+        let value = format!("{}界", "x".repeat(MAX_PATH_BYTES));
+        let bounded = bounded_issue_path(Path::new(&value));
+        assert!(bounded.len() <= MAX_PATH_BYTES);
+        assert!(bounded.ends_with('…'));
+        assert!(bounded.is_char_boundary(bounded.len()));
     }
 
     #[cfg(unix)]

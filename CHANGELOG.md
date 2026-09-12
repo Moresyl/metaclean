@@ -27,9 +27,20 @@ All notable changes to MetaClean are documented here. The project follows
 
 - IPC 导入现在在创建任何后台任务前拒绝空路径，限制单路径 32 KiB、原始批次 64 MiB；审计 JSON 导出目标路径沿用同一单路径预算。
 
+- 递归目录展开现在对返回路径总量应用同一 64 MiB 预算，并将超长问题路径截断到 32 KiB，避免导入结果或错误回显放大内存与 IPC 负担。
+
+- Rust 覆盖率账本现按新增递归路径预算和 UTF-8 错误路径边界测试更新为 84.19%。
+
 - Intake IPC now rejects empty paths before starting worker tasks, caps each
   path at 32 KiB and each raw batch at 64 MiB; audit JSON destinations reuse
   the same single-path budget.
+
+- Recursive directory expansion applies the same 64 MiB output-path budget and
+  truncates oversized issue-path echoes to 32 KiB, preventing result or error
+  payload amplification across memory and IPC.
+
+- The Rust coverage ledger now records 84.19% after the recursive path-budget
+  and UTF-8-safe issue-path boundary tests.
 
 - 更新检查现在将发布说明限制在 64K 字符以内；过大的说明会被安全忽略，但不会阻止已签名版本更新。
 - 替换原文件时会在临时输出完全落盘后、最终原子提交前再次校验源文件，缩短大文件处理期间的竞态窗口。

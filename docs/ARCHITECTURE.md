@@ -63,7 +63,9 @@ or history record.
 - Intake IPC may carry paths because the native process must open the selected
   files. Paths stay inside the installed application process; empty paths are
   rejected, each path is capped at 32 KiB and one raw request is capped at
-  64 MiB before de-duplication or worker creation.
+  64 MiB before de-duplication or worker creation. Recursive expansion applies
+  the same output budget and truncates issue-path echoes at the single-path
+  boundary.
 - Scan responses contain the source path, detected format, size, category,
   severity and count. They do not contain the underlying metadata value.
 - Progress events contain only operation, batch token, counts and cancellation
