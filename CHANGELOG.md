@@ -109,6 +109,10 @@ All notable changes to MetaClean are documented here. The project follows
   an unusually large complete batch remains available in the current session
   without replacing an older recoverable history snapshot.
 
+- Frontend result reconciliation now keeps the first native result for each
+  requested path and ignores duplicate or foreign responses, preventing a
+  later malformed duplicate from overwriting an earlier verified result.
+
 - Markdown front matter now recognizes both YAML `---` and TOML `+++` fences,
   while only removing targeted author and generator fields inside the opening
   metadata block.

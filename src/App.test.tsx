@@ -276,7 +276,7 @@ describe("App", () => {
     invokeMock.mockImplementation((command: string) => {
       if (command === "get_launch_paths") return Promise.resolve(["C:\\work\\first.txt", "C:\\work\\second.txt"]);
       if (command === "expand_paths") return Promise.resolve({ files: ["C:\\work\\first.txt", "C:\\work\\second.txt"], skippedCount: 0, issues: [], limitReached: false });
-      if (command === "scan_files") return Promise.resolve([report, report, { ...report, path: "C:\\foreign.txt" }]);
+      if (command === "scan_files") return Promise.resolve([report, { ...report, error: "不应覆盖首个结果" }, { ...report, path: "C:\\foreign.txt" }]);
       if (command === "set_close_to_tray") return Promise.resolve(undefined);
       return Promise.reject(new Error(`unexpected ${command}`));
     });
@@ -284,6 +284,7 @@ describe("App", () => {
     await screen.findByText("second.txt");
     fireEvent.click(screen.getByRole("button", { name: "扫描隐私痕迹" }));
     await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("1 个文件未返回结果"));
+    expect(screen.queryByText("不应覆盖首个结果")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "扫描隐私痕迹" })).toBeEnabled();
     fireEvent.click(screen.getByRole("button", { name: "扫描隐私痕迹" }));
     await waitFor(() => expect(invokeMock.mock.calls.filter(([name]) => name === "scan_files")).toHaveLength(2));

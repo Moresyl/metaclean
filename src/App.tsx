@@ -186,9 +186,13 @@ export default function App() {
     try {
       const reports = await invoke<ScanReport[]>("scan_files", { paths, batchId });
       const requested = new Set(paths.map(pathIdentity));
-      const relevant = [...new Map(reports
-        .filter((report) => requested.has(pathIdentity(report.path)))
-        .map((report) => [pathIdentity(report.path), report])).values()];
+      const seenReports = new Set<string>();
+      const relevant = reports.filter((report) => {
+        const identity = pathIdentity(report.path);
+        if (!requested.has(identity) || seenReports.has(identity)) return false;
+        seenReports.add(identity);
+        return true;
+      });
       setEntries((current) => applyScanReports(current, paths, relevant));
       const count = relevant.reduce((total, report) => total + report.findings.reduce((sum, finding) => sum + finding.count, 0), 0);
       const missing = paths.length - relevant.length;
@@ -217,9 +221,13 @@ export default function App() {
     try {
       const results = await invoke<CleanResult[]>("clean_files", { request: { paths, batchId, mode, preserveTimestamps, preserveOrientation, preserveColorProfile, removeExtendedAttributes } });
       const requested = new Set(paths.map(pathIdentity));
-      const relevant = [...new Map(results
-        .filter((result) => requested.has(pathIdentity(result.sourcePath)))
-        .map((result) => [pathIdentity(result.sourcePath), result])).values()];
+      const seenResults = new Set<string>();
+      const relevant = results.filter((result) => {
+        const identity = pathIdentity(result.sourcePath);
+        if (!requested.has(identity) || seenResults.has(identity)) return false;
+        seenResults.add(identity);
+        return true;
+      });
       const byPath = new Map(relevant.map((result) => [pathIdentity(result.sourcePath), result]));
       setEntries((current) => current.map((entry) => {
         const result = entry.path ? byPath.get(pathIdentity(entry.path)) : undefined;
