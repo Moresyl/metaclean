@@ -27,6 +27,7 @@ static ACTIVE_CLEAN_BATCHES: OnceLock<Mutex<HashMap<String, Arc<AtomicBool>>>> =
 const PORTABLE_MARKER: &str = "metaclean-portable.marker";
 const MAX_BATCH_FILES: usize = 10_000;
 const MAX_BATCH_ID_BYTES: usize = 128;
+const MAX_UPDATE_VERSION_BYTES: usize = 128;
 const UPDATE_NETWORK_HELP: &str = "无法连接已签名更新源。请检查 GitHub 网络或 HTTPS_PROXY 后重试，也可从正式发布页手动下载安装包。 / Could not reach the signed update feed. Check GitHub access or HTTPS_PROXY, then retry, or download the installer from the Releases page.";
 const UPDATE_CHANGED: &str = "可用版本在确认后发生了变化，请先重新检查并查看新版本说明。 / The available release changed after confirmation. Check again and review the new release before installing.";
 const UPDATE_REQUEST_TIMEOUT: Duration = Duration::from_secs(300);
@@ -52,6 +53,9 @@ fn updater_network_error(action: &str, error: impl std::fmt::Display) -> String 
 
 fn reviewed_update_matches(available: &str, expected: &str) -> bool {
     fn stable_version(value: &str) -> Option<&str> {
+        if value.len() > MAX_UPDATE_VERSION_BYTES {
+            return None;
+        }
         let trimmed = value.trim();
         let value = trimmed
             .strip_prefix('v')
@@ -563,10 +567,7 @@ async fn install_update_and_restart(
     };
 
     if !reviewed_update_matches(&update.version, &expected_version) {
-        return Err(format!(
-            "{UPDATE_CHANGED}\nExpected {expected_version}; found {}",
-            update.version
-        ));
+        return Err(UPDATE_CHANGED.into());
     }
 
     let progress_app = app.clone();
@@ -941,6 +942,14 @@ mod update_tests {
         assert!(!reviewed_update_matches(
             "999999999999999999.0.1",
             "999999999999999999.0.1"
+        ));
+        assert!(!reviewed_update_matches(
+            &"0".repeat(super::MAX_UPDATE_VERSION_BYTES + 1),
+            "0.0.0"
+        ));
+        assert!(!reviewed_update_matches(
+            "0.0.0",
+            &"0".repeat(super::MAX_UPDATE_VERSION_BYTES + 1)
         ));
     }
 

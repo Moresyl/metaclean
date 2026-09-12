@@ -102,6 +102,9 @@ All notable changes to MetaClean are documented here. The project follows
   users can locate an intact backup without guessing which failure details to
   expand.
 
+- Native updater version checks now bound reviewed-version input and return a
+  fixed changed-release message instead of echoing untrusted IPC or feed text.
+
 - Markdown front matter now recognizes both YAML `---` and TOML `+++` fences,
   while only removing targeted author and generator fields inside the opening
   metadata block.
