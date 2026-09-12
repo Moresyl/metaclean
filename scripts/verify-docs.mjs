@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 
 const root = fileURLToPath(new URL("..", import.meta.url));
 const read = (file) => readFile(path.join(root, file), "utf8");
-const [packageJson, tauriJson, readme, readmeZh, docsIndex, architecture, design, plan, validation, docsConfig, docsHome] = await Promise.all([
+const [packageJson, tauriJson, readme, readmeZh, docsIndex, architecture, design, plan, validation, docsConfig, docsHome, customCss] = await Promise.all([
   read("package.json").then(JSON.parse),
   read("src-tauri/tauri.conf.json").then(JSON.parse),
   read("README.md"),
@@ -17,6 +17,7 @@ const [packageJson, tauriJson, readme, readmeZh, docsIndex, architecture, design
   read("VALIDATION.md"),
   read("docs/.vitepress/config.mts"),
   read("docs/index.md"),
+  read("docs/.vitepress/theme/custom.css"),
 ]);
 
 assert.equal(tauriJson.version, packageJson.version, "package and Tauri versions drifted");
@@ -41,6 +42,8 @@ assert.doesNotMatch(docsConfig, /ignoreDeadLinks/u, "site links must be checked 
 assert.match(docsHome, /按任务进入/u);
 assert.match(docsHome, /site-footer/u, "documentation home must expose a factual footer navigation");
 assert.match(docsHome, /proof-metrics/u, "documentation home must expose current capability evidence");
+assert.match(customCss, /@media \(min-width: 761px\) and \(max-width: 1100px\)/u, "documentation hero must keep a medium desktop split layout");
+assert.doesNotMatch(customCss, /@media \(max-width: 1100px\) \{ \.hero-grid \{ grid-template-columns: 1fr/u, "documentation hero must not collapse at the sidebar viewport boundary");
 assert.match(docsHome, /<b>84\.08%<\/b>/u, "documentation home coverage must match the current validation evidence");
 assert.match(validation, /84\.08% Rust line coverage/u, "documentation validation must expose the current coverage evidence");
 assert.equal(packageJson.scripts["docs:dev"], "vitepress dev docs");

@@ -72,6 +72,11 @@
 .site-footer nav a { color: var(--vp-c-text-2); font-size: 12px; text-decoration: none; }
 .site-footer nav a:hover { color: var(--vp-c-brand-1); }
 .site-footer-meta { text-align: right; }
-@media (max-width: 1100px) { .hero-grid { grid-template-columns: 1fr; } .card-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (min-width: 761px) and (max-width: 1100px) {
+  .hero-grid { gap: 20px; grid-template-columns: minmax(0, 1.2fr) minmax(220px, .8fr); }
+  .hero-grid h1 { font-size: clamp(2.65rem, 5vw, 3.5rem); }
+  .hero-proof { padding: 20px; }
+  .card-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
 @media (max-width: 760px) { .hero-grid, .card-grid, .rule-strip, .site-footer { grid-template-columns: 1fr; } .rule-strip div + div { border-left: 0; border-top: 1px solid var(--vp-c-divider); } .hero-grid { margin: 34px 0 54px; } .hero-grid h1 { font-size: clamp(2.6rem, 13vw, 3.6rem); } .lead { font-size: 16px; } .hero-proof { padding: 20px; } .site-footer-meta { text-align: left; } }
 @media (prefers-reduced-motion: reduce) { .vp-button, .doc-card { transition: none; } .vp-button:hover, .doc-card:hover { transform: none; } }
