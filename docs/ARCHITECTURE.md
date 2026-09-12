@@ -38,6 +38,7 @@ or history record.
 | Scan never writes | Scan commands call isolated readers only | `src-tauri/src/lib.rs`, `src-tauri/src/engine.rs` |
 | Candidate verification precedes every output | Cleaners re-detect and inspect in-memory bytes before allocation | `engine::verify_cleaned_data`, engine regressions |
 | Replacement is recoverable | A unique backup is created before guarded atomic replacement; metadata is prepared before commit and Windows readonly sync is best effort after commit | `src-tauri/src/safe_io.rs` |
+| Linked paths fail closed | Final files and every existing parent component are rejected when they are symlinks or Windows reparse points, before reads, copies or replacements | link/reparse tests in `safe_io.rs` and `intake.rs` |
 | Source races fail closed | Bytes, modification time, permissions and extended attributes are checked twice | guarded-write tests in `safe_io.rs` |
 | UI never receives raw metadata values | IPC models contain finding categories and counts only | `src-tauri/src/models.rs`, `src/types.ts` |
 | One physical Windows path is one batch item | Native and frontend use the same slash/case/device/UNC identity | `lib.rs::path_key`, `files.ts::pathIdentity` |

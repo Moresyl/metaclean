@@ -8,6 +8,37 @@ use std::{
 
 use crate::error::{display_path, CleanError, Result};
 
+fn is_link_or_reparse_point(metadata: &fs::Metadata) -> bool {
+    if metadata.file_type().is_symlink() {
+        return true;
+    }
+    #[cfg(windows)]
+    {
+        use std::os::windows::fs::MetadataExt;
+        const FILE_ATTRIBUTE_REPARSE_POINT: u32 = 0x0000_0400;
+        metadata.file_attributes() & FILE_ATTRIBUTE_REPARSE_POINT != 0
+    }
+    #[cfg(not(windows))]
+    false
+}
+
+/// Reject linked path components, not only a linked final file. A linked
+/// parent directory can redirect a normal-looking path into another tree.
+fn path_contains_link(path: &Path) -> Result<bool> {
+    for component in path.ancestors() {
+        if component.as_os_str().is_empty() {
+            continue;
+        }
+        match fs::symlink_metadata(component) {
+            Ok(metadata) if is_link_or_reparse_point(&metadata) => return Ok(true),
+            Ok(_) => {}
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+            Err(error) => return Err(error.into()),
+        }
+    }
+    Ok(false)
+}
+
 #[derive(Debug, Clone)]
 pub struct FileMetadataSnapshot {
     permissions: fs::Permissions,
@@ -142,9 +173,7 @@ fn open_without_following_links(path: &Path) -> Result<fs::File> {
     let file = options.open(path)?;
     #[cfg(windows)]
     {
-        use std::os::windows::fs::MetadataExt;
-        const FILE_ATTRIBUTE_REPARSE_POINT: u32 = 0x0000_0400;
-        if file.metadata()?.file_attributes() & FILE_ATTRIBUTE_REPARSE_POINT != 0 {
+        if is_link_or_reparse_point(&file.metadata()?) {
             return Err(CleanError::Symlink(display_path(path)));
         }
     }
@@ -153,7 +182,7 @@ fn open_without_following_links(path: &Path) -> Result<fs::File> {
 
 pub fn validate_input(path: &Path) -> Result<fs::Metadata> {
     let metadata = fs::symlink_metadata(path)?;
-    if metadata.file_type().is_symlink() {
+    if is_link_or_reparse_point(&metadata) || path_contains_link(path)? {
         return Err(CleanError::Symlink(display_path(path)));
     }
     if !metadata.is_file() {
@@ -220,10 +249,7 @@ pub fn atomic_write_with_metadata(
     preserve_timestamps: bool,
     remove_private_xattrs: bool,
 ) -> Result<()> {
-    if path
-        .symlink_metadata()
-        .is_ok_and(|metadata| metadata.file_type().is_symlink())
-    {
+    if path_contains_link(path)? {
         return Err(CleanError::Symlink(display_path(path)));
     }
     let temp = prepare_temp_with_metadata(
@@ -245,6 +271,9 @@ pub fn atomic_replace_if_unchanged(
     preserve_timestamps: bool,
     remove_private_xattrs: bool,
 ) -> Result<()> {
+    if path_contains_link(path)? {
+        return Err(CleanError::Symlink(display_path(path)));
+    }
     ensure_source_unchanged(path, expected, source_metadata)?;
     let temp = prepare_temp_with_metadata(
         path,
@@ -271,6 +300,9 @@ fn prepare_temp_with_metadata(
         .parent()
         .ok_or_else(|| CleanError::InvalidFormat("输出路径没有父目录".into()))?;
     fs::create_dir_all(parent)?;
+    if path_contains_link(path)? {
+        return Err(CleanError::Symlink(display_path(path)));
+    }
     let mut temp = tempfile::NamedTempFile::new_in(parent)?;
     temp.write_all(bytes)?;
     temp.as_file_mut().sync_all()?;
@@ -330,10 +362,16 @@ pub fn atomic_create_unique_with_metadata(
     preserve_timestamps: bool,
     remove_private_xattrs: bool,
 ) -> Result<PathBuf> {
+    if path_contains_link(preferred)? {
+        return Err(CleanError::Symlink(display_path(preferred)));
+    }
     let parent = preferred
         .parent()
         .ok_or_else(|| CleanError::InvalidFormat("输出路径没有父目录".into()))?;
     fs::create_dir_all(parent)?;
+    if path_contains_link(preferred)? {
+        return Err(CleanError::Symlink(display_path(preferred)));
+    }
     let mut temp = tempfile::NamedTempFile::new_in(parent)?;
     temp.write_all(bytes)?;
     temp.as_file_mut().sync_all()?;
@@ -549,6 +587,76 @@ mod tests {
         }
         assert!(matches!(
             read_validated_input(&link),
+            Err(CleanError::Symlink(_))
+        ));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn rejects_files_reached_through_symlinked_parent_directories() {
+        use std::os::unix::fs::symlink;
+
+        let dir = tempfile::tempdir().unwrap();
+        let target = dir.path().join("target");
+        fs::create_dir(&target).unwrap();
+        let file = target.join("private.txt");
+        fs::write(&file, b"private").unwrap();
+        let link = dir.path().join("linked-parent");
+        symlink(&target, &link).unwrap();
+        let through_link = link.join("private.txt");
+
+        assert!(matches!(
+            validate_input(&through_link),
+            Err(CleanError::Symlink(_))
+        ));
+        assert!(matches!(
+            read_validated_input(&through_link),
+            Err(CleanError::Symlink(_))
+        ));
+        let output_through_link = link.join("cleaned.txt");
+        assert!(matches!(
+            atomic_create_unique_with_metadata(&output_through_link, b"clean", None, false, false),
+            Err(CleanError::Symlink(_))
+        ));
+        assert!(matches!(
+            atomic_write_with_metadata(&output_through_link, b"clean", None, false, false),
+            Err(CleanError::Symlink(_))
+        ));
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn rejects_files_reached_through_reparse_parent_directories() {
+        use std::os::windows::fs::symlink_dir;
+
+        let dir = tempfile::tempdir().unwrap();
+        let target = dir.path().join("target");
+        fs::create_dir(&target).unwrap();
+        let file = target.join("private.txt");
+        fs::write(&file, b"private").unwrap();
+        let link = dir.path().join("linked-parent");
+        if symlink_dir(&target, &link).is_err() {
+            // Creating reparse points requires a developer-mode or elevated
+            // Windows test environment; keep the rest of the suite portable.
+            return;
+        }
+        let through_link = link.join("private.txt");
+
+        assert!(matches!(
+            validate_input(&through_link),
+            Err(CleanError::Symlink(_))
+        ));
+        assert!(matches!(
+            read_validated_input(&through_link),
+            Err(CleanError::Symlink(_))
+        ));
+        let output_through_link = link.join("cleaned.txt");
+        assert!(matches!(
+            atomic_create_unique_with_metadata(&output_through_link, b"clean", None, false, false),
+            Err(CleanError::Symlink(_))
+        ));
+        assert!(matches!(
+            atomic_write_with_metadata(&output_through_link, b"clean", None, false, false),
             Err(CleanError::Symlink(_))
         ));
     }
