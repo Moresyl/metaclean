@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { ScanReport } from "../types";
 import { actionableFindingCount, applyScanReports, classifyFile, entryFromFile, entryFromPath, markEntryPaths, mergeEntries, pathIdentity } from "./files";
 
@@ -57,6 +57,15 @@ describe("entryFromPath", () => {
     expect(pathIdentity("C:\\Work\\sub\\.\\..\\Photo.PNG")).toBe("c:\\work\\photo.png");
     expect(pathIdentity("..\\Photo.PNG")).toBe("..\\photo.png");
     expect(pathIdentity("/Users/Alice/Photo.PNG")).toBe("/Users/Alice/Photo.PNG");
+  });
+
+  it("normalizes slash-form UNC paths only on Windows runtimes", () => {
+    const originalPlatform = navigator.platform;
+    vi.stubGlobal("navigator", { ...navigator, platform: "Win32" });
+    expect(pathIdentity("//Server/Share/Photo.PNG")).toBe("\\\\server\\share\\photo.png");
+    vi.stubGlobal("navigator", { ...navigator, platform: originalPlatform.replace(/win/iu, "Linux") });
+    expect(pathIdentity("//Server/Share/Photo.PNG")).toBe("//Server/Share/Photo.PNG");
+    vi.unstubAllGlobals();
   });
 });
 

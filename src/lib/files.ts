@@ -24,6 +24,11 @@ const TEXT_EXTENSIONS = new Set([
   "yaml", "yml", "log", "srt", "vtt", "css", "scss", "less", "ini", "conf", "cfg", "toml", "properties",
 ]);
 
+function isWindowsRuntime(): boolean {
+  if (typeof navigator === "undefined") return false;
+  return /win(?:dows|32|64)/iu.test(`${navigator.platform} ${navigator.userAgent}`);
+}
+
 /**
  * Match the native Windows path identity used by the Rust IPC boundary while
  * keeping POSIX paths case-sensitive. The displayed path remains untouched;
@@ -34,7 +39,8 @@ export function pathIdentity(path: string): string {
   const lower = normalized.toLocaleLowerCase("en-US");
   const windowsPath = (path.includes("\\") && !path.startsWith("/"))
     || /^[a-z]:[\\/]/iu.test(path)
-    || path.startsWith("\\\\");
+    || path.startsWith("\\\\")
+    || (path.startsWith("//") && isWindowsRuntime());
   if (!windowsPath) return path;
   const withoutDevicePrefix = lower.startsWith("\\\\?\\") ? lower.slice(4) : lower;
   const canonical = withoutDevicePrefix.startsWith("unc\\")

@@ -34,6 +34,7 @@ All notable changes to MetaClean are documented here. The project follows
 - 文档首页在带侧栏的中等桌面窗口保留英雄区双列，能力证据卡不再被错误推到首屏之外；真正窄屏才切换单列。
 - 文档站新增产品化 404 页面，提供中文错误说明和回到文档中心的恢复动作。
 - 更新版本比较改用无损十进制段比较，超出 JavaScript 安全整数范围的合法版本不再被误判为相等。
+- Windows UNC 路径现在统一识别正斜杠和设备路径写法，拖拽、启动参数与队列合并不会把同一文件重复入队。
 
 - Parallel scanning now draws work from a bounded dynamic queue instead of two
   static path chunks, keeping both workers useful when file sizes or storage
