@@ -60,7 +60,7 @@ export default function App() {
   const mountedRef = useRef(true);
   const addEntries = useCallback((incoming: FileEntry[]) => setEntries((current) => mergeEntries(current, incoming)), []);
   const addNativePaths = useCallback(async (paths: string[]) => {
-    if (!paths.length) return;
+    if (!mountedRef.current || !paths.length) return;
     try {
       const intake = await invoke<IntakeResult>("expand_paths", { paths });
       if (!mountedRef.current) return;
@@ -337,8 +337,10 @@ export default function App() {
   }
 
   async function reveal(path: string) {
+    if (!mountedRef.current) return;
     try {
       const { revealItemInDir } = await import("@tauri-apps/plugin-opener");
+      if (!mountedRef.current) return;
       await revealItemInDir(path);
     } catch (error) {
       if (!mountedRef.current) return;
