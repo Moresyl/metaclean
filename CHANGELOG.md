@@ -25,6 +25,12 @@ All notable changes to MetaClean are documented here. The project follows
 
 ### Changed
 
+- IPC 导入现在在创建任何后台任务前拒绝空路径，限制单路径 32 KiB、原始批次 64 MiB；审计 JSON 导出目标路径沿用同一单路径预算。
+
+- Intake IPC now rejects empty paths before starting worker tasks, caps each
+  path at 32 KiB and each raw batch at 64 MiB; audit JSON destinations reuse
+  the same single-path budget.
+
 - 更新检查现在将发布说明限制在 64K 字符以内；过大的说明会被安全忽略，但不会阻止已签名版本更新。
 - 替换原文件时会在临时输出完全落盘后、最终原子提交前再次校验源文件，缩短大文件处理期间的竞态窗口。
 - 队列的批量路径复制现在包含失败替换留下的备份路径，并按显示顺序去重。
