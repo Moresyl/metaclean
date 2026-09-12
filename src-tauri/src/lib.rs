@@ -27,6 +27,8 @@ static ACTIVE_CLEAN_BATCHES: OnceLock<Mutex<HashMap<String, Arc<AtomicBool>>>> =
 const PORTABLE_MARKER: &str = "metaclean-portable.marker";
 const MAX_BATCH_FILES: usize = 10_000;
 const MAX_BATCH_ID_BYTES: usize = 128;
+const MAX_PATH_BYTES: usize = 32 * 1024;
+const MAX_BATCH_PATH_BYTES: usize = 64 * 1024 * 1024;
 const MAX_UPDATE_VERSION_BYTES: usize = 128;
 const UPDATE_NETWORK_HELP: &str = "无法连接已签名更新源。请检查 GitHub 网络或 HTTPS_PROXY 后重试，也可从正式发布页手动下载安装包。 / Could not reach the signed update feed. Check GitHub access or HTTPS_PROXY, then retry, or download the installer from the Releases page.";
 const UPDATE_CHANGED: &str = "可用版本在确认后发生了变化，请先重新检查并查看新版本说明。 / The available release changed after confirmation. Check again and review the new release before installing.";
@@ -105,7 +107,27 @@ fn deduplicate_paths(paths: Vec<String>) -> Vec<String> {
         .collect()
 }
 
+fn validate_path_inputs(paths: &[String]) -> Result<(), String> {
+    let mut total = 0usize;
+    for path in paths {
+        if path.is_empty() {
+            return Err("输入路径不能为空".into());
+        }
+        if path.len() > MAX_PATH_BYTES {
+            return Err(format!("单个输入路径最多 {MAX_PATH_BYTES} 字节"));
+        }
+        total = total
+            .checked_add(path.len())
+            .ok_or_else(|| format!("输入路径总量超过 {MAX_BATCH_PATH_BYTES} 字节"))?;
+    }
+    if total > MAX_BATCH_PATH_BYTES {
+        return Err(format!("单次输入路径总量最多 {MAX_BATCH_PATH_BYTES} 字节"));
+    }
+    Ok(())
+}
+
 fn prepare_batch_paths(paths: Vec<String>) -> Result<Vec<String>, String> {
+    validate_path_inputs(&paths)?;
     let paths = deduplicate_paths(paths);
     validate_batch_size(paths.len())?;
     Ok(paths)
@@ -820,9 +842,10 @@ mod update_tests {
         cancel_clean_batch, cancel_scan_batch, clean_batch_active, close_action, deduplicate_paths,
         export_audit_report_to, portable_marker_exists, prepare_batch_paths, read_task_active,
         reviewed_update_matches, self_update_supported_for, updater_network_error,
-        validate_batch_id, validate_batch_size, ActiveCleanBatchGuard, ActiveReadGuard,
-        ActiveScanBatchGuard, BatchProgressState, CloseAction, MAX_BATCH_FILES, MAX_BATCH_ID_BYTES,
-        PORTABLE_MARKER, PROGRESS_EVENT_BATCH, UPDATE_REQUEST_TIMEOUT,
+        validate_batch_id, validate_batch_size, validate_path_inputs, ActiveCleanBatchGuard,
+        ActiveReadGuard, ActiveScanBatchGuard, BatchProgressState, CloseAction, MAX_BATCH_FILES,
+        MAX_BATCH_ID_BYTES, MAX_BATCH_PATH_BYTES, MAX_PATH_BYTES, PORTABLE_MARKER,
+        PROGRESS_EVENT_BATCH, UPDATE_REQUEST_TIMEOUT,
     };
     use crate::models::CleanRequest;
     use std::sync::atomic::AtomicBool;
@@ -987,6 +1010,24 @@ mod update_tests {
         let error = prepare_batch_paths(distinct).unwrap_err();
         assert!(error.contains("10000"));
         assert!(error.contains("10001"));
+    }
+
+    #[test]
+    fn bounds_path_length_and_total_ipc_path_bytes() {
+        assert!(validate_path_inputs(&[]).is_ok());
+        assert!(validate_path_inputs(&["C:\\note.txt".into()]).is_ok());
+
+        let empty = validate_path_inputs(&[String::new()]).unwrap_err();
+        assert!(empty.contains("不能为空"));
+
+        let oversized = validate_path_inputs(&["x".repeat(MAX_PATH_BYTES + 1)]).unwrap_err();
+        assert!(oversized.contains("32768"));
+
+        let total_paths = (0..=MAX_BATCH_PATH_BYTES / (MAX_PATH_BYTES - 1))
+            .map(|index| format!("{index:05}{}", "x".repeat(MAX_PATH_BYTES - 6)))
+            .collect::<Vec<_>>();
+        let total = validate_path_inputs(&total_paths).unwrap_err();
+        assert!(total.contains("67108864"));
     }
 
     #[cfg(windows)]
