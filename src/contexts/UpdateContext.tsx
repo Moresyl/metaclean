@@ -57,6 +57,7 @@ export function UpdateProvider({ children }: { children: ReactNode }) {
   const [autoCheckEnabled, setAutoCheckState] = useState(() => readStorage(AUTO_CHECK_KEY) !== "false");
   const checking = useRef(false);
   const installing = useRef(false);
+  const mountedRef = useRef(true);
 
   const setAutoCheckEnabled = useCallback((enabled: boolean) => {
     writeStorage(AUTO_CHECK_KEY, String(enabled));
@@ -64,12 +65,13 @@ export function UpdateProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const checkUpdate = useCallback(async () => {
-    if (checking.current || installing.current) return;
+    if (!mountedRef.current || checking.current || installing.current) return;
     checking.current = true;
     setStatus("checking");
     setError(undefined);
     try {
       const result = await checkForUpdate();
+      if (!mountedRef.current) return;
       if (result.status === "available") {
         setInfo(result.info);
         setCurrentVersion(result.info.currentVersion);
@@ -82,6 +84,7 @@ export function UpdateProvider({ children }: { children: ReactNode }) {
         setPromptOpen(false);
       }
     } catch (reason) {
+      if (!mountedRef.current) return;
       setInfo(undefined);
       setPromptOpen(false);
       setError(reason instanceof Error ? reason.message : String(reason));
@@ -110,24 +113,33 @@ export function UpdateProvider({ children }: { children: ReactNode }) {
   }, [info?.availableVersion]);
 
   const installUpdate = useCallback(async () => {
-    if (installing.current || checking.current) return;
+    if (!mountedRef.current || installing.current || checking.current) return;
     if (!runtime.selfUpdateSupported) {
       await openRelease();
       return;
     }
     const expectedVersion = info?.availableVersion;
     if (!expectedVersion) {
+      if (!mountedRef.current) return;
       setError("没有经过确认的更新版本，请重新检查更新。 / No reviewed update is available. Check for updates again.");
       setProgress(undefined);
       setStatus("error");
       return;
     }
     installing.current = true;
+    if (!mountedRef.current) {
+      installing.current = false;
+      return;
+    }
     setStatus("updating");
     setError(undefined);
     setProgress({ stage: "downloading", downloaded: 0 });
     try {
-      const installed = await installAvailableUpdate({ expectedVersion, onProgress: setProgress });
+      const installed = await installAvailableUpdate({
+        expectedVersion,
+        onProgress: (value) => { if (mountedRef.current) setProgress(value); },
+      });
+      if (!mountedRef.current) return;
       if (!installed) {
         setInfo(undefined);
         setPromptOpen(false);
@@ -135,6 +147,7 @@ export function UpdateProvider({ children }: { children: ReactNode }) {
         setStatus("current");
       }
     } catch (reason) {
+      if (!mountedRef.current) return;
       setError(reason instanceof Error ? reason.message : String(reason));
       setProgress(undefined);
       setStatus("error");
@@ -144,6 +157,7 @@ export function UpdateProvider({ children }: { children: ReactNode }) {
   }, [info?.availableVersion, openRelease, runtime.selfUpdateSupported]);
 
   useEffect(() => {
+    mountedRef.current = true;
     let active = true;
     void getInstalledVersion()
       .then((version) => { if (active) setCurrentVersion(version); })
@@ -152,7 +166,7 @@ export function UpdateProvider({ children }: { children: ReactNode }) {
       .then((value) => { if (active) setRuntime(normalizeRuntime(value)); })
       .catch(() => undefined)
       .finally(() => { if (active) setRuntimeReady(true); });
-    return () => { active = false; };
+    return () => { active = false; mountedRef.current = false; };
   }, []);
 
   useEffect(() => {

@@ -104,6 +104,22 @@ describe("UpdateProvider", () => {
     await screen.findByText("current");
   });
 
+  it("does not let an unmounted update check overwrite a newer provider", async () => {
+    let resolveFirst: ((result: { status: "available"; info: { currentVersion: string; availableVersion: string; name: string; releaseUrl: string } }) => void) | undefined;
+    checkForUpdateMock
+      .mockReturnValueOnce(new Promise((resolve) => { resolveFirst = resolve; }))
+      .mockResolvedValue({ status: "current", currentVersion: "0.5.0" });
+    const first = render(<UpdateProvider><Probe /></UpdateProvider>);
+    fireEvent.click(screen.getByRole("button", { name: "check" }));
+    first.unmount();
+    render(<UpdateProvider><Probe /></UpdateProvider>);
+    fireEvent.click(screen.getByRole("button", { name: "check" }));
+    await screen.findByText("current");
+    resolveFirst?.({ status: "available", info: { currentVersion: "0.4.1", availableVersion: "0.6.0", name: "MetaClean v0.6.0", releaseUrl: "https://example.test/v0.6.0" } });
+    await Promise.resolve();
+    expect(screen.getByTestId("available-version")).toBeEmptyDOMElement();
+  });
+
   it("installs a signed update and forwards native download progress", async () => {
     checkForUpdateMock.mockResolvedValue({
       status: "available",
