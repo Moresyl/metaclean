@@ -11,7 +11,7 @@ use models::{CleanRequest, CleanResult, ScanReport};
 use std::collections::{HashMap, HashSet};
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex, OnceLock};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 #[cfg(target_os = "macos")]
 use tauri::menu::{MenuBuilder, MenuItemBuilder, SubmenuBuilder};
 use tauri::{menu::MenuItem, tray::TrayIconBuilder, Emitter, Manager};
@@ -32,6 +32,8 @@ const UPDATE_NETWORK_HELP: &str = "无法连接已签名更新源。请检查 Gi
 const UPDATE_CHANGED: &str = "可用版本在确认后发生了变化，请先重新检查并查看新版本说明。 / The available release changed after confirmation. Check again and review the new release before installing.";
 const UPDATE_REQUEST_TIMEOUT: Duration = Duration::from_secs(300);
 const CLEANUP_CLOSE_BLOCKED: &str = "任务正在进行，请等待完成；清理任务可以先取消。 / Work is still in progress; wait for it to finish, or cancel the cleanup first.";
+const PROGRESS_EVENT_BATCH: usize = 16;
+const PROGRESS_EVENT_INTERVAL: Duration = Duration::from_millis(50);
 
 #[derive(Debug, PartialEq, Eq)]
 enum CloseAction {
@@ -133,6 +135,74 @@ struct BatchProgress {
     total: usize,
     failed: usize,
     cancelled: bool,
+}
+
+struct BatchProgressState {
+    completed: usize,
+    failed: usize,
+    last_emitted: usize,
+    last_emitted_at: Instant,
+}
+
+impl BatchProgressState {
+    fn new() -> Self {
+        Self {
+            completed: 0,
+            failed: 0,
+            last_emitted: 0,
+            last_emitted_at: Instant::now(),
+        }
+    }
+
+    fn record(
+        &mut self,
+        operation: &'static str,
+        batch_id: &str,
+        total: usize,
+        failed: bool,
+    ) -> Option<BatchProgress> {
+        self.completed += 1;
+        self.failed += usize::from(failed);
+        let now = Instant::now();
+        let due = self.completed == total
+            || self.completed.saturating_sub(self.last_emitted) >= PROGRESS_EVENT_BATCH
+            || now.duration_since(self.last_emitted_at) >= PROGRESS_EVENT_INTERVAL;
+        if !due {
+            return None;
+        }
+        self.last_emitted = self.completed;
+        self.last_emitted_at = now;
+        Some(BatchProgress {
+            operation,
+            batch_id: batch_id.to_owned(),
+            completed: self.completed,
+            total,
+            failed: self.failed,
+            cancelled: false,
+        })
+    }
+
+    fn final_event(
+        &mut self,
+        operation: &'static str,
+        batch_id: &str,
+        total: usize,
+        cancelled: bool,
+    ) -> Option<BatchProgress> {
+        if !cancelled && (self.completed == 0 || self.completed == self.last_emitted) {
+            return None;
+        }
+        self.last_emitted = self.completed;
+        self.last_emitted_at = Instant::now();
+        Some(BatchProgress {
+            operation,
+            batch_id: batch_id.to_owned(),
+            completed: self.completed,
+            total,
+            failed: self.failed,
+            cancelled,
+        })
+    }
 }
 
 fn active_clean_batches() -> &'static Mutex<HashMap<String, Arc<AtomicBool>>> {
@@ -260,7 +330,7 @@ async fn scan_files(
     let active_read = ActiveReadGuard::start();
     let progress_batch_id = batch_id.clone().unwrap_or_default();
     let progress_total = paths.len();
-    let progress_state = Mutex::new((0usize, 0usize));
+    let progress_state = Mutex::new(BatchProgressState::new());
     tauri::async_runtime::spawn_blocking(move || {
         let _active_batch = active_batch;
         let _active_read = active_read;
@@ -271,35 +341,31 @@ async fn scan_files(
             let Ok(mut progress) = progress_state.lock() else {
                 return;
             };
-            progress.0 += 1;
-            progress.1 += usize::from(report.error.is_some());
-            let _ = app.emit(
-                "batch-progress",
-                BatchProgress {
-                    operation: "scan",
-                    batch_id: progress_batch_id.clone(),
-                    completed: progress.0,
-                    total: progress_total,
-                    failed: progress.1,
-                    cancelled: false,
-                },
+            let event = progress.record(
+                "scan",
+                &progress_batch_id,
+                progress_total,
+                report.error.is_some(),
             );
+            drop(progress);
+            if let Some(event) = event {
+                let _ = app.emit("batch-progress", event);
+            }
         };
         let reports =
             engine::scan_paths_cancellable_with_progress(&paths, &cancellation, &on_progress);
-        if cancellation.load(Ordering::SeqCst) && !progress_batch_id.is_empty() {
-            if let Ok(progress) = progress_state.lock() {
-                let _ = app.emit(
-                    "batch-progress",
-                    BatchProgress {
-                        operation: "scan",
-                        batch_id: progress_batch_id,
-                        completed: progress.0,
-                        total: progress_total,
-                        failed: progress.1,
-                        cancelled: true,
-                    },
+        if !progress_batch_id.is_empty() {
+            if let Ok(mut progress) = progress_state.lock() {
+                let event = progress.final_event(
+                    "scan",
+                    &progress_batch_id,
+                    progress_total,
+                    cancellation.load(Ordering::SeqCst),
                 );
+                drop(progress);
+                if let Some(event) = event {
+                    let _ = app.emit("batch-progress", event);
+                }
             }
         }
         reports
@@ -334,8 +400,7 @@ async fn clean_files(
     let progress_batch_id = batch_id.clone();
     let result = tauri::async_runtime::spawn_blocking(move || {
         let _active_batch = active_batch;
-        let mut completed = 0;
-        let mut failed = 0;
+        let mut progress = BatchProgressState::new();
         let mut results = Vec::with_capacity(total);
         for path in &paths {
             if cancellation.load(Ordering::SeqCst) {
@@ -349,35 +414,23 @@ async fn clean_files(
                 request.preserve_color_profile,
                 request.remove_extended_attributes,
             );
-            completed += 1;
-            if !result.success {
-                failed += 1;
-            }
+            let event = progress.record("clean", &progress_batch_id, total, !result.success);
             results.push(result);
-            let _ = app.emit(
-                "batch-progress",
-                BatchProgress {
-                    operation: "clean",
-                    batch_id: progress_batch_id.clone(),
-                    completed,
-                    total,
-                    failed,
-                    cancelled: false,
-                },
-            );
+            if !progress_batch_id.is_empty() {
+                if let Some(event) = event {
+                    let _ = app.emit("batch-progress", event);
+                }
+            }
         }
-        if cancellation.load(Ordering::SeqCst) {
-            let _ = app.emit(
-                "batch-progress",
-                BatchProgress {
-                    operation: "clean",
-                    batch_id: progress_batch_id,
-                    completed,
-                    total,
-                    failed,
-                    cancelled: true,
-                },
-            );
+        if !progress_batch_id.is_empty() {
+            if let Some(event) = progress.final_event(
+                "clean",
+                &progress_batch_id,
+                total,
+                cancellation.load(Ordering::SeqCst),
+            ) {
+                let _ = app.emit("batch-progress", event);
+            }
         }
         results
     })
@@ -768,13 +821,13 @@ mod update_tests {
         export_audit_report_to, portable_marker_exists, prepare_batch_paths, read_task_active,
         reviewed_update_matches, self_update_supported_for, updater_network_error,
         validate_batch_id, validate_batch_size, ActiveCleanBatchGuard, ActiveReadGuard,
-        ActiveScanBatchGuard, CloseAction, MAX_BATCH_FILES, MAX_BATCH_ID_BYTES, PORTABLE_MARKER,
-        UPDATE_REQUEST_TIMEOUT,
+        ActiveScanBatchGuard, BatchProgressState, CloseAction, MAX_BATCH_FILES, MAX_BATCH_ID_BYTES,
+        PORTABLE_MARKER, PROGRESS_EVENT_BATCH, UPDATE_REQUEST_TIMEOUT,
     };
     use crate::models::CleanRequest;
     use std::sync::atomic::AtomicBool;
     use std::sync::Arc;
-    use std::time::Duration;
+    use std::time::{Duration, Instant};
 
     static CLEAN_BATCH_TEST_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
 
@@ -795,6 +848,48 @@ mod update_tests {
     #[test]
     fn updater_network_operations_have_a_bounded_deadline() {
         assert_eq!(UPDATE_REQUEST_TIMEOUT, Duration::from_secs(300));
+    }
+
+    #[test]
+    fn batches_progress_events_without_losing_final_counts() {
+        let mut progress = BatchProgressState::new();
+        for completed in 1..PROGRESS_EVENT_BATCH {
+            progress.last_emitted_at = Instant::now();
+            assert!(
+                progress
+                    .record("scan", "batch", PROGRESS_EVENT_BATCH + 2, false,)
+                    .is_none(),
+                "unexpected event at item {completed}"
+            );
+        }
+        progress.last_emitted_at = Instant::now();
+        let event = progress
+            .record("scan", "batch", PROGRESS_EVENT_BATCH + 2, true)
+            .expect("batch threshold should emit");
+        assert_eq!(event.completed, PROGRESS_EVENT_BATCH);
+        assert_eq!(event.failed, 1);
+        assert!(!event.cancelled);
+        progress.last_emitted_at = Instant::now();
+        assert!(progress
+            .record("scan", "batch", PROGRESS_EVENT_BATCH + 2, false,)
+            .is_none());
+        let final_event = progress
+            .final_event("scan", "batch", PROGRESS_EVENT_BATCH + 2, false)
+            .expect("final count should flush");
+        assert_eq!(final_event.completed, PROGRESS_EVENT_BATCH + 1);
+        assert_eq!(final_event.failed, 1);
+    }
+
+    #[test]
+    fn cancellation_always_emits_a_terminal_progress_event() {
+        let mut progress = BatchProgressState::new();
+        assert!(progress.final_event("clean", "batch", 0, false).is_none());
+        let event = progress
+            .final_event("clean", "batch", 10, true)
+            .expect("cancellation must be visible even before the first item");
+        assert_eq!(event.completed, 0);
+        assert_eq!(event.total, 10);
+        assert!(event.cancelled);
     }
 
     #[test]
