@@ -6,6 +6,7 @@
 export function stableVersion(value) {
   if (typeof value !== "string") return undefined;
   const normalized = value.trim().replace(/^v/iu, "");
+  if (normalized.length > 128) return undefined;
   const parts = normalized.split(".");
   if (parts.length !== 3 || !parts.every((part) => /^(?:0|[1-9]\d*)$/u.test(part) && Number.isSafeInteger(Number(part)))) {
     return undefined;

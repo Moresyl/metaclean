@@ -69,6 +69,7 @@ test("rejects invalid metadata and incomplete updater assets", async () => {
     await assert.rejects(generateUpdaterManifest({ ...options, tag: "v1.02.3" }), /Invalid release tag/u);
     await assert.rejects(generateUpdaterManifest({ ...options, tag: "v1.2.3-beta.1" }), /Invalid release tag/u);
     await assert.rejects(generateUpdaterManifest({ ...options, tag: "v9007199254740992.0.0" }), /Invalid release tag/u);
+    await assert.rejects(generateUpdaterManifest({ ...options, tag: `v${"1".repeat(129)}.0.0` }), /Invalid release tag/u);
     await assert.rejects(generateUpdaterManifest({ ...options, repository: "https:\/\/github.com/a/b" }), /Invalid repository/u);
     await assert.rejects(generateUpdaterManifest({ ...options, pubDate: "never" }), /Invalid publication date/u);
     await assert.rejects(generateUpdaterManifest({ ...options, notes: "" }), /must not be empty/u);

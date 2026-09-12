@@ -3,6 +3,7 @@ import { invoke as tauriInvoke } from "@tauri-apps/api/core";
 export const RELEASES_PAGE_URL = "https://github.com/Moresyl/metaclean/releases/latest";
 
 const CHECK_TIMEOUT_MS = 15_000;
+const MAX_STABLE_VERSION_BYTES = 128;
 const UPDATE_NETWORK_HELP = "无法连接已签名更新源。请检查 GitHub 网络或 HTTPS_PROXY 后重试，也可从正式发布页手动下载安装包。 / Could not reach the signed update feed. Check GitHub access or HTTPS_PROXY, then retry, or download the installer from the Releases page.";
 const UPDATE_CHANGED = "可用版本在确认后发生了变化，请先重新检查并查看新版本说明。 / The available release changed after confirmation. Check again and review the new release before installing.";
 
@@ -62,7 +63,8 @@ function parseVersion(value: string): ParsedVersion {
 
 function isStableReleaseVersion(value: string): boolean {
   const parts = value.split(".");
-  return parts.length === 3
+  return value.length <= MAX_STABLE_VERSION_BYTES
+    && parts.length === 3
     && parts.every((part) => /^(?:0|[1-9]\d*)$/u.test(part) && Number.isSafeInteger(Number(part)));
 }
 
@@ -136,6 +138,7 @@ export async function checkForUpdate(options: {
 
   try {
     const availableVersion = update.version.trim().replace(/^v/iu, "");
+    if (availableVersion.length > MAX_STABLE_VERSION_BYTES) throw new Error("Update service returned an invalid stable version");
     const parsed = parseVersion(availableVersion);
     if (parsed.prerelease.length) throw new Error("Update service returned a prerelease version");
     if (!isStableReleaseVersion(availableVersion)) {

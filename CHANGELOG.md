@@ -105,6 +105,12 @@ All notable changes to MetaClean are documented here. The project follows
 - Native updater version checks now bound reviewed-version input and return a
   fixed changed-release message instead of echoing untrusted IPC or feed text.
 
+- The frontend updater now applies the same 128-byte stable-version bound as
+  Rust and release metadata generation before parsing remote version text.
+
+- Release asset and manifest tooling now enforces that same 128-byte version
+  bound, closing the remaining pipeline/client contract gap.
+
 - History persistence now checks the serialized storage budget before writing;
   an unusually large complete batch remains available in the current session
   without replacing an older recoverable history snapshot.

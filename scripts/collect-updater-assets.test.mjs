@@ -42,6 +42,7 @@ test("rejects unsupported, missing, duplicate and empty updater assets", async (
     await assert.rejects(collectUpdaterAssets(root, root, "windows-x86_64", "1.02.3"), /Invalid updater version/u);
     await assert.rejects(collectUpdaterAssets(root, root, "windows-x86_64", "1.2.3-beta.1"), /Invalid updater version/u);
     await assert.rejects(collectUpdaterAssets(root, root, "windows-x86_64", "9007199254740992.0.0"), /Invalid updater version/u);
+    await assert.rejects(collectUpdaterAssets(root, root, "windows-x86_64", `${"1".repeat(129)}.0.0`), /Invalid updater version/u);
     await assert.rejects(collectUpdaterAssets(root, root, "windows-x86_64", "1.0.0"), /found 0/u);
     await writeFile(path.join(root, "one.exe"), "one");
     await writeFile(path.join(root, "one.exe.sig"), "sig");
