@@ -105,6 +105,10 @@ All notable changes to MetaClean are documented here. The project follows
 - Native updater version checks now bound reviewed-version input and return a
   fixed changed-release message instead of echoing untrusted IPC or feed text.
 
+- History persistence now checks the serialized storage budget before writing;
+  an unusually large complete batch remains available in the current session
+  without replacing an older recoverable history snapshot.
+
 - Markdown front matter now recognizes both YAML `---` and TOML `+++` fences,
   while only removing targeted author and generator fields inside the opening
   metadata block.

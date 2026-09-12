@@ -92,4 +92,18 @@ describe("history persistence", () => {
     expect(persistHistory([entry("kept")])).toEqual([entry("kept")]);
     set.mockRestore();
   });
+
+  it("does not write an oversized complete batch or erase an older snapshot", () => {
+    const old = entry("old");
+    localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify([old]));
+    const huge: HistoryEntry = {
+      ...entry("huge"),
+      results: Array.from({ length: 100 }, (_, index) => ({
+        ...entry(`huge-${index}`).results[0],
+        sourcePath: `${"x".repeat(32_000)}-${index}`,
+      })),
+    };
+    expect(persistHistory([huge, old])).toEqual([huge, old]);
+    expect(loadHistory()).toEqual([old]);
+  });
 });

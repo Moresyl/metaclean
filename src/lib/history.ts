@@ -93,8 +93,24 @@ export function loadHistory(): HistoryEntry[] {
   }
 }
 
+function storageSnapshot(entries: HistoryEntry[]): { entries: HistoryEntry[]; serialized: string } {
+  let low = 0;
+  let high = entries.length;
+  while (low < high) {
+    const middle = Math.ceil((low + high) / 2);
+    if (JSON.stringify(entries.slice(0, middle)).length <= MAX_HISTORY_STORAGE_CHARS) low = middle;
+    else high = middle - 1;
+  }
+  const retained = entries.slice(0, low);
+  return { entries: retained, serialized: JSON.stringify(retained) };
+}
+
 export function persistHistory(entries: HistoryEntry[]): HistoryEntry[] {
   const limited = limitHistory(entries);
-  writeStorage(HISTORY_STORAGE_KEY, JSON.stringify(limited));
+  const snapshot = storageSnapshot(limited);
+  // A single native batch can be structurally valid yet too large for the
+  // local-storage budget. Keep it in the live session, but do not replace a
+  // previously recoverable on-disk history with an empty snapshot.
+  if (snapshot.entries.length || !limited.length) writeStorage(HISTORY_STORAGE_KEY, snapshot.serialized);
   return limited;
 }
