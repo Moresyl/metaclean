@@ -80,10 +80,13 @@ export default function CommandPalette({ commands, onClose }: { commands: Comman
     },
     [matches],
   );
+  const enabledSignature = enabledIndexes.join(",");
 
   // A new query invalidates the highlight; keep it on the best match instead of
   // wherever the previous list happened to leave it.
-  useEffect(() => setActive(enabledIndexes[0] ?? 0), [enabledIndexes, query]);
+  useEffect(() => {
+    setActive((current) => enabledIndexes.includes(current) ? current : enabledIndexes[0] ?? 0);
+  }, [enabledSignature, query]);
 
   // The palette takes the keyboard on open and gives it back on close, so
   // dismissing it never strands focus on the document body.

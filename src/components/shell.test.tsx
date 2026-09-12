@@ -169,6 +169,15 @@ describe("command palette", () => {
     expect(screen.getByRole("option", { name: "确认并开始清理" })).not.toHaveAttribute("aria-selected", "true");
   });
 
+  it("keeps the selected command when a parent rerenders", () => {
+    const { rerender } = wrap(<CommandPalette commands={[commands[0], commands[1], commands[2]]} onClose={vi.fn()} />);
+    const field = screen.getByRole("combobox");
+    fireEvent.keyDown(field, { key: "ArrowDown" });
+    expect(screen.getByRole("option", { name: /处理记录/ })).toHaveAttribute("aria-selected", "true");
+    rerender(<I18nProvider><CommandPalette commands={[commands[0], commands[1], commands[2]]} onClose={vi.fn()} /></I18nProvider>);
+    expect(screen.getByRole("option", { name: /处理记录/ })).toHaveAttribute("aria-selected", "true");
+  });
+
   it("says so when nothing matches, and closes on Escape", () => {
     const onClose = vi.fn();
     wrap(<CommandPalette commands={commands} onClose={onClose} />);
