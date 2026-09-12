@@ -282,7 +282,7 @@ pub fn atomic_write_with_metadata(
         preserve_timestamps,
         remove_private_xattrs,
     )?;
-    commit_temp(path, temp, source_metadata)?;
+    commit_temp(path, temp, source_metadata, false)?;
     Ok(())
 }
 
@@ -309,7 +309,7 @@ pub fn atomic_replace_if_unchanged(
     // to edit the source. Keep the final source check immediately before the
     // rename, after all expensive work has completed.
     ensure_source_unchanged(path, expected, source_metadata)?;
-    commit_temp(path, temp, Some(source_metadata))
+    commit_temp(path, temp, Some(source_metadata), true)
 }
 
 fn prepare_temp_with_metadata(
@@ -343,7 +343,21 @@ fn commit_temp(
     path: &Path,
     temp: tempfile::NamedTempFile,
     source_metadata: Option<&FileMetadataSnapshot>,
+    require_existing_file: bool,
 ) -> Result<()> {
+    if path_contains_link(path)? {
+        return Err(CleanError::Symlink(display_path(path)));
+    }
+    if require_existing_file {
+        match fs::symlink_metadata(path) {
+            Ok(metadata) if metadata.is_file() => {}
+            Ok(_) => return Err(CleanError::SourceChanged(display_path(path))),
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+                return Err(CleanError::SourceChanged(display_path(path)))
+            }
+            Err(error) => return Err(CleanError::Io(error)),
+        }
+    }
     temp.persist(path)
         .map_err(|error| CleanError::Io(error.error))?;
     // Windows does not reliably carry the read-only bit across a rename.
@@ -408,6 +422,9 @@ pub fn atomic_create_unique_with_metadata(
 
     for index in 1..=10_000 {
         let candidate = numbered_path(preferred, index);
+        if path_contains_link(&candidate)? {
+            return Err(CleanError::Symlink(display_path(&candidate)));
+        }
         match temp.persist_noclobber(&candidate) {
             Ok(_) => {
                 // Windows may need a best-effort post-rename permission sync;
@@ -549,6 +566,19 @@ mod tests {
         ));
         drop(temp);
         assert_eq!(fs::read(&path).unwrap(), b"edited while preparing output");
+    }
+
+    #[test]
+    fn replacement_commit_never_recreates_a_deleted_source() {
+        let dir = tempfile::tempdir().unwrap();
+        let source = dir.path().join("source.txt");
+        fs::write(&source, b"source").unwrap();
+        let temp = tempfile::NamedTempFile::new_in(dir.path()).unwrap();
+        fs::remove_file(&source).unwrap();
+
+        let error = commit_temp(&source, temp, None, true).unwrap_err();
+        assert!(matches!(error, CleanError::SourceChanged(_)));
+        assert!(!source.exists());
     }
 
     #[test]
