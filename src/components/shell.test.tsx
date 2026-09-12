@@ -96,6 +96,7 @@ describe("context menu", () => {
     fireEvent.keyDown(menu, { key: "ArrowDown" });
     // Two steps land on the third item, because the disabled second is skipped.
     expect(screen.getByRole("menuitem", { name: /第三项/ })).toHaveClass("active");
+    expect(menu).toHaveAttribute("aria-activedescendant", "context-menu-option-2");
     fireEvent.keyDown(menu, { key: "ArrowUp" });
     fireEvent.keyDown(menu, { key: "Enter" });
     expect(run).toHaveBeenCalled();

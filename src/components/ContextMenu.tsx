@@ -52,6 +52,7 @@ export default function ContextMenu({
   const [position, setPosition] = useState<MenuAnchor>(anchor);
   const [active, setActive] = useState(-1);
   const commands = entries.filter(isCommand);
+  const activeCommand = commands[active];
 
   // Measured after the first paint rather than guessed: the flyout is as wide
   // as its longest label, which depends on the locale.
@@ -111,6 +112,7 @@ export default function ContextMenu({
         className="animate-pop absolute grid min-w-[190px] gap-px rounded-panel border border-line-strong bg-surface p-1 shadow-lift outline-none"
         role="menu"
         aria-label={label}
+        aria-activedescendant={activeCommand ? `context-menu-option-${active}` : undefined}
         ref={surface}
         tabIndex={-1}
         style={{ left: `${position.x}px`, top: `${position.y}px` }}
@@ -133,6 +135,7 @@ export default function ContextMenu({
               key={entry.id}
               type="button"
               role="menuitem"
+              id={`context-menu-option-${commands.indexOf(entry)}`}
               disabled={entry.disabled}
               // `active` stays a bare token: the pointer and the arrow keys share
               // one highlight, so it cannot be left to :hover.

@@ -36,6 +36,7 @@ All notable changes to MetaClean are documented here. The project follows
 - 更新版本比较改用无损十进制段比较，超出 JavaScript 安全整数范围的合法版本不再被误判为相等。
 - Windows UNC 路径现在统一识别正斜杠和设备路径写法，拖拽、启动参数与队列合并不会把同一文件重复入队。
 - 命令面板现在向读屏器暴露当前键盘高亮项，搜索和回车执行的上下文保持可感知。
+- 自绘右键菜单也会暴露键盘高亮项，方向键导航和回车执行对读屏器保持同步。
 
 - Parallel scanning now draws work from a bounded dynamic queue instead of two
   static path chunks, keeping both workers useful when file sizes or storage
