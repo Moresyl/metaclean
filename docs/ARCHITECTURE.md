@@ -79,8 +79,8 @@ or history record.
   time. It never stores paths. Normal completion, cancellation and visible
   errors remove the marker; only an abnormal exit leaves a one-time notice.
 - Audit exports deliberately contain paths and outcomes because the user asks
-  to save them. The native writer accepts JSON only, caps it at 10 MiB and
-  commits atomically.
+  to save them. The native writer accepts JSON only, caps the destination path
+  at 32 KiB and the report at 10 MiB, then commits atomically.
 
 ## Concurrency and backpressure
 

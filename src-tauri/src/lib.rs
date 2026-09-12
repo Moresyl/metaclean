@@ -107,15 +107,20 @@ fn deduplicate_paths(paths: Vec<String>) -> Vec<String> {
         .collect()
 }
 
+fn validate_path_input(path: &str) -> Result<(), String> {
+    if path.is_empty() {
+        return Err("输入路径不能为空".into());
+    }
+    if path.len() > MAX_PATH_BYTES {
+        return Err(format!("单个输入路径最多 {MAX_PATH_BYTES} 字节"));
+    }
+    Ok(())
+}
+
 fn validate_path_inputs(paths: &[String]) -> Result<(), String> {
     let mut total = 0usize;
     for path in paths {
-        if path.is_empty() {
-            return Err("输入路径不能为空".into());
-        }
-        if path.len() > MAX_PATH_BYTES {
-            return Err(format!("单个输入路径最多 {MAX_PATH_BYTES} 字节"));
-        }
+        validate_path_input(path)?;
         total = total
             .checked_add(path.len())
             .ok_or_else(|| format!("输入路径总量超过 {MAX_BATCH_PATH_BYTES} 字节"))?;
@@ -497,6 +502,7 @@ fn cancel_scan_batch(batch_id: String) -> Result<bool, String> {
 
 #[tauri::command]
 fn export_audit_report(path: String, contents: String) -> Result<(), String> {
+    validate_path_input(&path)?;
     export_audit_report_to(std::path::Path::new(&path), &contents)
 }
 
@@ -840,12 +846,12 @@ pub fn run_cli_action() -> Option<i32> {
 mod update_tests {
     use super::{
         cancel_clean_batch, cancel_scan_batch, clean_batch_active, close_action, deduplicate_paths,
-        export_audit_report_to, portable_marker_exists, prepare_batch_paths, read_task_active,
-        reviewed_update_matches, self_update_supported_for, updater_network_error,
-        validate_batch_id, validate_batch_size, validate_path_inputs, ActiveCleanBatchGuard,
-        ActiveReadGuard, ActiveScanBatchGuard, BatchProgressState, CloseAction, MAX_BATCH_FILES,
-        MAX_BATCH_ID_BYTES, MAX_BATCH_PATH_BYTES, MAX_PATH_BYTES, PORTABLE_MARKER,
-        PROGRESS_EVENT_BATCH, UPDATE_REQUEST_TIMEOUT,
+        export_audit_report, export_audit_report_to, portable_marker_exists, prepare_batch_paths,
+        read_task_active, reviewed_update_matches, self_update_supported_for,
+        updater_network_error, validate_batch_id, validate_batch_size, validate_path_inputs,
+        ActiveCleanBatchGuard, ActiveReadGuard, ActiveScanBatchGuard, BatchProgressState,
+        CloseAction, MAX_BATCH_FILES, MAX_BATCH_ID_BYTES, MAX_BATCH_PATH_BYTES, MAX_PATH_BYTES,
+        PORTABLE_MARKER, PROGRESS_EVENT_BATCH, UPDATE_REQUEST_TIMEOUT,
     };
     use crate::models::CleanRequest;
     use std::sync::atomic::AtomicBool;
@@ -1123,5 +1129,7 @@ mod update_tests {
             &"x".repeat(10 * 1024 * 1024 + 1),
         )
         .is_err());
+        let oversized_path = format!("{}audit.json", "x".repeat(MAX_PATH_BYTES));
+        assert!(export_audit_report(oversized_path, "{}".into()).is_err());
     }
 }
