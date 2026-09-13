@@ -872,7 +872,7 @@ mod update_tests {
     };
     use crate::models::{
         BoundedAuditPath, BoundedBatchId, BoundedPaths, BoundedReportContents,
-        BoundedUpdateVersion, CleanRequest,
+        BoundedUpdateVersion, CleanRequest, MAX_RAW_BATCH_ITEMS,
     };
     use serde::Deserialize;
     use std::sync::atomic::AtomicBool;
@@ -897,8 +897,16 @@ mod update_tests {
 
     #[test]
     fn deserializes_path_batches_within_their_allocation_budget() {
-        let too_many = serde_json::json!(vec!["x"; MAX_BATCH_FILES + 1]);
+        let too_many = serde_json::json!((0..=MAX_BATCH_FILES)
+            .map(|index| format!("C:\\file-{index}.txt"))
+            .collect::<Vec<_>>());
         assert!(serde_json::from_value::<BoundedPaths>(too_many).is_err());
+        let repeated = serde_json::json!(vec!["C:\\same.txt"; MAX_BATCH_FILES + 1]);
+        let repeated = serde_json::from_value::<BoundedPaths>(repeated)
+            .expect("duplicate paths are de-duplicated before the unique limit");
+        assert_eq!(repeated.into_inner(), vec!["C:\\same.txt"]);
+        let too_many_repeated = serde_json::json!(vec!["C:\\same.txt"; MAX_RAW_BATCH_ITEMS + 1]);
+        assert!(serde_json::from_value::<BoundedPaths>(too_many_repeated).is_err());
         let too_wide = serde_json::json!(["x".repeat(MAX_BATCH_PATH_BYTES + 1)]);
         assert!(serde_json::from_value::<BoundedPaths>(too_wide).is_err());
         let empty = serde_json::json!([""]);

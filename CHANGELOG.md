@@ -47,6 +47,11 @@ All notable changes to MetaClean are documented here. The project follows
   and 113-extension Explorer integration smoke evidence is recorded without
   publishing or pushing a release.
 
+- Native path deserialization now de-duplicates platform aliases while reading,
+  applies the 10,000 unique-path limit, and caps raw input at 40,000 items so
+  repeated drag/drop paths remain compatible without creating an unbounded
+  duplicate stream.
+
 - Rust 覆盖率账本现按新增递归路径预算、UTF-8 错误路径、8 KiB 诊断和输出路径边界测试更新为 84.28%。
 
 - Intake IPC now rejects empty paths before starting worker tasks, caps each
@@ -75,6 +80,11 @@ All notable changes to MetaClean are documented here. The project follows
 - Audit-report paths and contents are now bounded during Serde deserialization
   to 32 KiB and 10 MiB respectively, preventing unbounded IPC strings before
   report validation and writing.
+
+- Native path deserialization now de-duplicates platform aliases while reading,
+  keeps the 10,000 unique-path limit, and caps raw input at 40,000 items so
+  repeated drag/drop paths remain compatible without an unbounded duplicate
+  stream.
 
 - Update progress events are now schema-checked before reaching React state;
   invalid stages, negative or unsafe counters, and impossible totals are

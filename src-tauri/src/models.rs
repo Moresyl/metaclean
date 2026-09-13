@@ -2,9 +2,12 @@ use serde::{
     de::{Error as DeError, SeqAccess, Visitor},
     Deserialize, Deserializer, Serialize,
 };
+use std::collections::HashSet;
 use std::fmt;
 
 use crate::{MAX_BATCH_FILES, MAX_BATCH_PATH_BYTES, MAX_PATH_BYTES, MAX_REPORT_BYTES};
+
+pub(crate) const MAX_RAW_BATCH_ITEMS: usize = MAX_BATCH_FILES * 4;
 
 #[derive(Debug, Clone)]
 pub struct BoundedString<const MAX_BYTES: usize>(String);
@@ -157,11 +160,14 @@ impl<'de> Visitor<'de> for PathsVisitor {
         A: SeqAccess<'de>,
     {
         let mut paths = Vec::new();
+        let mut seen = HashSet::new();
         let mut total_bytes = 0usize;
+        let mut raw_items = 0usize;
         while let Some(path) = sequence.next_element::<BoundedPath>()? {
-            if paths.len() >= MAX_BATCH_FILES {
+            raw_items += 1;
+            if raw_items > MAX_RAW_BATCH_ITEMS {
                 return Err(A::Error::custom(format!(
-                    "at most {MAX_BATCH_FILES} paths are allowed"
+                    "at most {MAX_RAW_BATCH_ITEMS} raw paths are allowed"
                 )));
             }
             total_bytes = total_bytes
@@ -172,7 +178,14 @@ impl<'de> Visitor<'de> for PathsVisitor {
                     "path payload exceeds {MAX_BATCH_PATH_BYTES} bytes"
                 )));
             }
-            paths.push(path.0);
+            if seen.insert(crate::intake::path_identity(&path.0)) {
+                if paths.len() >= MAX_BATCH_FILES {
+                    return Err(A::Error::custom(format!(
+                        "at most {MAX_BATCH_FILES} unique paths are allowed"
+                    )));
+                }
+                paths.push(path.0);
+            }
         }
         Ok(BoundedPaths(paths))
     }

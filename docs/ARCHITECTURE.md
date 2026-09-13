@@ -68,7 +68,9 @@ or history record.
   boundary.
 - Native path arrays use a streaming bounded deserializer, so scan, expansion
   and cleanup requests cannot first materialize an unbounded vector before the
-  later business-layer checks run.
+  later business-layer checks run. It de-duplicates platform path identities
+  during the stream, allows at most 10,000 unique paths, and rejects more than
+  40,000 raw items even when they are duplicates.
 - Native batch identifiers and reviewed update versions use the same
   allocation-before-validation rule: Serde rejects values over 128 UTF-8 bytes
   before an owned `String` is created, while legacy empty cleanup tokens remain
