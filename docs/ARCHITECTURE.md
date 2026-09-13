@@ -66,6 +66,9 @@ or history record.
   64 MiB before de-duplication or worker creation. Recursive expansion applies
   the same output budget and truncates issue-path echoes at the single-path
   boundary.
+- Native path arrays use a streaming bounded deserializer, so scan, expansion
+  and cleanup requests cannot first materialize an unbounded vector before the
+  later business-layer checks run.
 - Startup arguments returned by the shell integration pass through the same
   batch preparation and path budgets before the first response reaches the UI.
 - Drag-and-drop payloads are validated in the UI boundary before path intake;

@@ -8,7 +8,7 @@ mod safe_io;
 mod shell_integration;
 
 use error::bounded_message;
-use models::{CleanRequest, CleanResult, ScanReport};
+use models::{BoundedPaths, CleanRequest, CleanResult, ScanReport};
 use std::collections::{HashMap, HashSet};
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex, OnceLock};
@@ -348,13 +348,13 @@ impl Drop for ActiveCleanBatchGuard {
 #[tauri::command]
 async fn scan_files(
     app: tauri::AppHandle,
-    paths: Vec<String>,
+    paths: BoundedPaths,
     batch_id: Option<String>,
 ) -> Result<Vec<ScanReport>, String> {
     if let Some(batch_id) = batch_id.as_deref() {
         validate_batch_id(batch_id)?;
     }
-    let paths = prepare_batch_paths(paths)?;
+    let paths = prepare_batch_paths(paths.into_inner())?;
     let cancellation = Arc::new(AtomicBool::new(false));
     let active_batch = ActiveScanBatchGuard::register(batch_id.as_deref(), cancellation.clone())?;
     let active_read = ActiveReadGuard::start();
@@ -405,8 +405,8 @@ async fn scan_files(
 }
 
 #[tauri::command]
-async fn expand_paths(paths: Vec<String>) -> Result<intake::IntakeResult, String> {
-    let paths = prepare_batch_paths(paths)?;
+async fn expand_paths(paths: BoundedPaths) -> Result<intake::IntakeResult, String> {
+    let paths = prepare_batch_paths(paths.into_inner())?;
     let active_read = ActiveReadGuard::start();
     tauri::async_runtime::spawn_blocking(move || {
         let _active_read = active_read;
@@ -422,7 +422,7 @@ async fn clean_files(
     request: CleanRequest,
 ) -> Result<Vec<CleanResult>, String> {
     validate_batch_id(&request.batch_id)?;
-    let paths = prepare_batch_paths(request.paths)?;
+    let paths = prepare_batch_paths(request.paths.into_inner())?;
     let total = paths.len();
     let batch_id = request.batch_id;
     let cancellation = Arc::new(AtomicBool::new(false));
@@ -860,7 +860,7 @@ mod update_tests {
         BatchProgressState, CloseAction, MAX_BATCH_FILES, MAX_BATCH_ID_BYTES, MAX_BATCH_PATH_BYTES,
         MAX_PATH_BYTES, PORTABLE_MARKER, PROGRESS_EVENT_BATCH, UPDATE_REQUEST_TIMEOUT,
     };
-    use crate::models::CleanRequest;
+    use crate::models::{BoundedPaths, CleanRequest};
     use std::sync::atomic::AtomicBool;
     use std::sync::Arc;
     use std::time::{Duration, Instant};
@@ -879,6 +879,16 @@ mod update_tests {
         let error = validate_batch_size(MAX_BATCH_FILES + 1).unwrap_err();
         assert!(error.contains("10000"));
         assert!(error.contains("10001"));
+    }
+
+    #[test]
+    fn deserializes_path_batches_within_their_allocation_budget() {
+        let too_many = serde_json::json!(vec!["x"; MAX_BATCH_FILES + 1]);
+        assert!(serde_json::from_value::<BoundedPaths>(too_many).is_err());
+        let too_wide = serde_json::json!(["x".repeat(MAX_BATCH_PATH_BYTES + 1)]);
+        assert!(serde_json::from_value::<BoundedPaths>(too_wide).is_err());
+        let empty = serde_json::json!([""]);
+        assert!(serde_json::from_value::<BoundedPaths>(empty).is_err());
     }
 
     #[test]

@@ -102,6 +102,11 @@ All notable changes to MetaClean are documented here. The project follows
 - Browser drag/drop and file-input fallbacks now cap queue intake at 10,000
   files and reject malformed or overlong File-like metadata before rendering.
 
+- Native scan, directory-expansion and cleanup path arrays now use a streaming
+  bounded deserializer, rejecting empty, overlong, oversized-total and
+  over-count batches while they are decoded instead of first materializing an
+  unbounded `Vec<String>`.
+
 - The Rust coverage ledger now records 84.28% after the recursive path-budget,
   UTF-8-safe issue-path, bounded-diagnostics and output-path boundary tests.
 
