@@ -1,4 +1,5 @@
 import type { FileEntry, ScanReport } from "../types";
+import { MAX_BATCH_FILES, MAX_NAME_BYTES, isBoundedText } from "./bounds";
 
 /* These mirror the engine's intake list. They only choose the glyph on a queue
    row — the format itself is settled by the file's own signature during the
@@ -102,13 +103,45 @@ export function entryFromPath(path: string): FileEntry {
 }
 
 export function entryFromFile(file: File): FileEntry {
+  return entryFromFileParts(file.name, file.size, file.lastModified);
+}
+
+function entryFromFileParts(name: string, size: number, lastModified: number): FileEntry {
   return {
-    id: `${file.name}:${file.size}:${file.lastModified}`,
-    name: file.name,
-    size: file.size,
-    kind: classifyFile(file.name),
+    id: `${name}:${size}:${lastModified}`,
+    name,
+    size,
+    kind: classifyFile(name),
     status: "ready",
   };
+}
+
+/** Normalize browser FileList values before they become queue state. */
+export function normalizeBrowserFiles(value: unknown): FileEntry[] {
+  if (!value || typeof value !== "object") return [];
+  let length: number;
+  try {
+    const rawLength = (value as { length?: unknown }).length;
+    if (typeof rawLength !== "number" || !Number.isSafeInteger(rawLength) || rawLength < 0) return [];
+    length = Math.min(rawLength, MAX_BATCH_FILES);
+  } catch {
+    return [];
+  }
+  const entries: FileEntry[] = [];
+  for (let index = 0; index < length; index += 1) {
+    try {
+      const file = (value as ArrayLike<unknown>)[index];
+      if (!file || typeof file !== "object") continue;
+      const candidate = file as { name?: unknown; size?: unknown; lastModified?: unknown };
+      if (!isBoundedText(candidate.name, MAX_NAME_BYTES)
+        || typeof candidate.size !== "number" || !Number.isSafeInteger(candidate.size) || candidate.size < 0
+        || typeof candidate.lastModified !== "number" || !Number.isSafeInteger(candidate.lastModified) || candidate.lastModified < 0) continue;
+      entries.push(entryFromFileParts(candidate.name, candidate.size, candidate.lastModified));
+    } catch {
+      // A broken File-like object must not abort the remaining batch.
+    }
+  }
+  return entries;
 }
 
 export function mergeEntries(current: FileEntry[], incoming: FileEntry[]): FileEntry[] {

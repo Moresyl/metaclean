@@ -71,6 +71,9 @@ or history record.
 - Drag-and-drop payloads are validated in the UI boundary before path intake;
   malformed entries are ignored and valid paths remain within the native
   single-path, batch-byte and item-count budgets.
+- Browser FileList fallbacks apply the same 10,000-item cap and bounded UTF-8
+  file-name metadata before queue rendering, so plain-browser input cannot
+  create an unbounded React queue.
 - Native launch-path, folder-picker and directory-expansion responses are
   normalized before reuse; malformed arrays, duplicate-heavy payloads, issue
   diagnostics and counters fail closed at the UI boundary.

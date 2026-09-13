@@ -99,6 +99,9 @@ All notable changes to MetaClean are documented here. The project follows
 - Native menu-navigation and close-blocked events now validate their page and
   diagnostic payloads before changing navigation or visible error state.
 
+- Browser drag/drop and file-input fallbacks now cap queue intake at 10,000
+  files and reject malformed or overlong File-like metadata before rendering.
+
 - The Rust coverage ledger now records 84.28% after the recursive path-budget,
   UTF-8-safe issue-path, bounded-diagnostics and output-path boundary tests.
 

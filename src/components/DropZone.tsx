@@ -2,7 +2,7 @@ import { FilePlus2, FolderOpen } from "lucide-react";
 import { useRef, useState } from "react";
 import Button from "./Button";
 import type { FileEntry } from "../types";
-import { entryFromFile } from "../lib/files";
+import { normalizeBrowserFiles } from "../lib/files";
 import { pickPaths } from "../lib/pick";
 import { useI18n } from "../lib/i18n";
 
@@ -57,7 +57,7 @@ export default function DropZone({ onAdd, onAddNativePaths, dragActive = false, 
       onDrop={(event) => {
         event.preventDefault();
         setBrowserDrag(false);
-        onAdd(Array.from(event.dataTransfer.files, entryFromFile));
+        onAdd(normalizeBrowserFiles(event.dataTransfer.files));
       }}
     >
       {!compact ? (
@@ -97,7 +97,7 @@ export default function DropZone({ onAdd, onAddNativePaths, dragActive = false, 
         type="file"
         multiple
         onChange={(event) => {
-          onAdd(Array.from(event.target.files ?? [], entryFromFile));
+          onAdd(normalizeBrowserFiles(event.target.files));
           event.target.value = "";
         }}
       />

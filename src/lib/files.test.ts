@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import type { ScanReport } from "../types";
-import { actionableFindingCount, applyScanReports, classifyFile, entryFromFile, entryFromPath, markEntryPaths, mergeEntries, pathIdentity } from "./files";
+import { actionableFindingCount, applyScanReports, classifyFile, entryFromFile, entryFromPath, markEntryPaths, mergeEntries, normalizeBrowserFiles, pathIdentity } from "./files";
 
 describe("classifyFile", () => {
   const groups = {
@@ -79,6 +79,18 @@ describe("entryFromFile", () => {
       kind: "text",
       status: "ready",
     });
+  });
+
+  it("bounds browser FileList intake and skips malformed File-like values", () => {
+    const malformed = { name: "bad.txt", size: -1, lastModified: 1 };
+    const oversized = Array.from({ length: 10_001 }, (_, index) => new File(["x"], `file-${index}.txt`, { lastModified: index }));
+    expect(normalizeBrowserFiles([malformed, oversized[0]])).toHaveLength(1);
+    expect(normalizeBrowserFiles(oversized)).toHaveLength(10_000);
+  });
+
+  it("fails closed for broken FileList-like accessors", () => {
+    const broken = { get length() { throw new Error("broken"); } };
+    expect(normalizeBrowserFiles(broken)).toEqual([]);
   });
 });
 
