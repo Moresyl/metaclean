@@ -178,7 +178,21 @@ export default function App() {
     void import("@tauri-apps/api/webview").then(({ getCurrentWebview }) => getCurrentWebview().onDragDropEvent((event) => {
       if (!active) return;
       const payload = normalizeNativeDropEvent(event.payload);
-      if (!payload) return;
+      if (!payload) {
+        let type: unknown;
+        try {
+          type = event.payload && typeof event.payload === "object"
+            ? (event.payload as { type?: unknown }).type
+            : undefined;
+        } catch {
+          type = undefined;
+        }
+        if (type === "drop") {
+          setDragActive(false);
+          setMessage(text("拖放数据无效或超过安全上限。", "The dropped paths were invalid or exceeded the safety limit."));
+        }
+        return;
+      }
       setDragActive(payload.type === "enter" || payload.type === "over");
       if (payload.type === "drop" && payload.paths.length) void addNativePaths(payload.paths);
     })).then((unlisten) => {
