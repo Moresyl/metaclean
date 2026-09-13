@@ -29,6 +29,10 @@ All notable changes to MetaClean are documented here. The project follows
   JavaScript's maximum safe integer, so individually valid native counts cannot
   overflow aggregate UI or JSON values.
 
+- Native release-mode benchmark evidence was refreshed on the final source line;
+  the current workstation run is recorded with regular and mixed-failure
+  throughput plus first-result and p95 latency in `VALIDATION.md`.
+
 - 浏览器文件夹选择现在将受限的 `webkitRelativePath` 纳入队列身份；不同目录中同名、同大小、同修改时间的文件不会再被误去重。
 
 - Portable and non-self-updating runtimes now serialize release-page launches
