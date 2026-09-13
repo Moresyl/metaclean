@@ -131,6 +131,19 @@ describe("desktop components", () => {
     expect(onAdd).toHaveBeenLastCalledWith([expect.objectContaining({ name: "notes.md" })]);
   });
 
+  it("serializes rapid picker clicks", async () => {
+    let resolvePicker: ((value: string[]) => void) | undefined;
+    openMock.mockReturnValue(new Promise<string[]>((resolve) => { resolvePicker = resolve; }));
+    const onAddNativePaths = vi.fn().mockResolvedValue(undefined);
+    wrap(<DropZone onAdd={vi.fn()} onAddNativePaths={onAddNativePaths} />);
+    const button = screen.getByRole("button", { name: "选择文件" });
+    fireEvent.click(button);
+    fireEvent.click(button);
+    await waitFor(() => expect(openMock).toHaveBeenCalledOnce());
+    resolvePicker?.(["C:\\work\\photo.jpg"]);
+    await waitFor(() => expect(onAddNativePaths).toHaveBeenCalledWith(["C:\\work\\photo.jpg"]));
+  });
+
   it("falls back to the browser input when the native dialog is unavailable", async () => {
     const onAdd = vi.fn();
     openMock.mockRejectedValue(new Error("browser mode"));

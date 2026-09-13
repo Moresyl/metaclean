@@ -66,6 +66,7 @@ export default function App() {
   const [dragActive, setDragActive] = useState(false);
   const mountedRef = useRef(true);
   const pickerInputRef = useRef<HTMLInputElement>(null);
+  const pickerBusyRef = useRef(false);
   entriesRef.current = entries;
   const updateEntries = useCallback((next: FileEntry[] | ((current: FileEntry[]) => FileEntry[])) => {
     const value = typeof next === "function" ? next(entriesRef.current) : next;
@@ -127,6 +128,8 @@ export default function App() {
     }
   }, [addEntries, text]);
   const openPicker = useCallback(async (directory: boolean) => {
+    if (pickerBusyRef.current) return;
+    pickerBusyRef.current = true;
     try {
       const paths = await pickPaths(directory);
       if (paths) await addNativePaths(paths);
@@ -137,6 +140,8 @@ export default function App() {
         return;
       }
       reportPickerError(error);
+    } finally {
+      pickerBusyRef.current = false;
     }
   }, [addNativePaths, reportPickerError]);
   const setMode = useCallback((next: CleanMode) => { setModeState(next); writeStorage("metaclean.outputMode", next); }, []);

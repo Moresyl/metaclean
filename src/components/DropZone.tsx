@@ -22,6 +22,7 @@ const FORMATS = ["Images", "Audio", "Video", "Office", "PDF", "Text"];
 export default function DropZone({ onAdd, onAddNativePaths, onError, onOpenPicker, dragActive = false, compact = false }: DropZoneProps) {
   const { text } = useI18n();
   const inputRef = useRef<HTMLInputElement>(null);
+  const pickerBusyRef = useRef(false);
   const [browserDrag, setBrowserDrag] = useState(false);
   const hovering = dragActive || browserDrag;
   const labels = [text("图片", "Images"), text("音频", "Audio"), text("视频", "Video"), "Office", "PDF", text("文本", "Text")];
@@ -44,27 +45,33 @@ export default function DropZone({ onAdd, onAddNativePaths, onError, onOpenPicke
   }, [onAdd, onError]);
 
   const choose = useCallback(async (directory: boolean) => {
-    let paths: string[] | null;
+    if (pickerBusyRef.current) return;
+    pickerBusyRef.current = true;
     try {
-      paths = await pickPaths(directory);
-    } catch (error) {
-      if (!(error instanceof PickerUnavailableError)) {
-        onError?.(error);
+      let paths: string[] | null;
+      try {
+        paths = await pickPaths(directory);
+      } catch (error) {
+        if (!(error instanceof PickerUnavailableError)) {
+          onError?.(error);
+          return;
+        }
+        // A plain browser has no Tauri dialog. Mirror the desktop folder action
+        // with the native directory input so relative paths survive intake.
+        inputRef.current?.toggleAttribute("webkitdirectory", directory);
+        inputRef.current?.click();
         return;
       }
-      // A plain browser has no Tauri dialog. Mirror the desktop folder action
-      // with the native directory input so relative paths survive intake.
-      inputRef.current?.toggleAttribute("webkitdirectory", directory);
-      inputRef.current?.click();
-      return;
-    }
-    if (paths) {
-      try {
-        await onAddNativePaths(paths);
-      } catch {
-        // The parent owns the visible native-intake error. Never turn that
-        // failure into an unhandled rejection from a button event.
+      if (paths) {
+        try {
+          await onAddNativePaths(paths);
+        } catch {
+          // The parent owns the visible native-intake error. Never turn that
+          // failure into an unhandled rejection from a button event.
+        }
       }
+    } finally {
+      pickerBusyRef.current = false;
     }
   }, [onAddNativePaths, onError]);
 

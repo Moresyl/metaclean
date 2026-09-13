@@ -50,7 +50,7 @@ assert.match(customCss, /@media \(min-width: 761px\) and \(max-width: 1100px\)/u
 assert.doesNotMatch(customCss, /@media \(max-width: 1100px\) \{ \.hero-grid \{ grid-template-columns: 1fr/u, "documentation hero must not collapse at the sidebar viewport boundary");
 assert.match(docsHome, /<b>84\.28%<\/b>/u, "documentation home coverage must match the current validation evidence");
 assert.match(validation, /84\.28% Rust line coverage/u, "documentation validation must expose the current coverage evidence");
-assert.match(validation, /Frontend: 391 tests\. Statements 89\.24%, branches 84\.01%, functions 91\.89%, lines 93\.01%/u, "frontend coverage evidence must match the latest full run");
+assert.match(validation, /Frontend: 392 tests\. Statements 89\.24%, branches 83\.99%, functions 91\.89%, lines 93\.04%/u, "frontend coverage evidence must match the latest full run");
 assert.equal(packageJson.scripts["docs:dev"], "vitepress dev docs");
 assert.equal(packageJson.scripts["docs:build"], "vitepress build docs");
 assert.equal(packageJson.scripts["docs:preview"], "vitepress preview docs");
