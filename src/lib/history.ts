@@ -1,19 +1,18 @@
 import type { CleanResult, Finding, HistoryEntry } from "../types";
 import { pathIdentity } from "./files";
 import { readStorage, removeStorage, writeStorage } from "./storage";
+import { MAX_DIAGNOSTIC_BYTES, MAX_LABEL_BYTES, MAX_PATH_BYTES, isBoundedText } from "./bounds";
 
 export const HISTORY_STORAGE_KEY = "metaclean.history";
 const MAX_HISTORY_ENTRIES = 100;
 const MAX_HISTORY_RESULTS_PER_ENTRY = 10_000;
 const MAX_HISTORY_RESULTS_TOTAL = 10_000;
 const MAX_HISTORY_STORAGE_CHARS = 2_000_000;
-const MAX_HISTORY_PATH_CHARS = 32_768;
-const MAX_HISTORY_ERROR_BYTES = 8 * 1024;
-const MAX_HISTORY_LABEL_CHARS = 256;
-const UTF8_ENCODER = new TextEncoder();
+const MAX_HISTORY_ID_BYTES = 128;
+const MAX_HISTORY_DATE_BYTES = 64;
 
-function isOptionalString(value: unknown, maxLength = MAX_HISTORY_PATH_CHARS): value is string | undefined {
-  return value === undefined || (typeof value === "string" && value.length <= maxLength);
+function isOptionalPath(value: unknown): value is string | undefined {
+  return value === undefined || isBoundedText(value, MAX_PATH_BYTES);
 }
 
 function isOptionalSize(value: unknown): value is number | undefined {
@@ -21,16 +20,14 @@ function isOptionalSize(value: unknown): value is number | undefined {
 }
 
 function isOptionalError(value: unknown): value is string | undefined {
-  return value === undefined || (typeof value === "string" && UTF8_ENCODER.encode(value).byteLength <= MAX_HISTORY_ERROR_BYTES);
+  return value === undefined || isBoundedText(value, MAX_DIAGNOSTIC_BYTES, true);
 }
 
 function isFinding(value: unknown): value is Finding {
   if (!value || typeof value !== "object") return false;
   const finding = value as Partial<Finding>;
-  return typeof finding.category === "string"
-    && finding.category.length <= MAX_HISTORY_LABEL_CHARS
-    && typeof finding.label === "string"
-    && finding.label.length <= MAX_HISTORY_LABEL_CHARS
+  return isBoundedText(finding.category, MAX_LABEL_BYTES)
+    && isBoundedText(finding.label, MAX_LABEL_BYTES)
     && typeof finding.count === "number"
     && Number.isSafeInteger(finding.count)
     && finding.count >= 0
@@ -40,11 +37,10 @@ function isFinding(value: unknown): value is Finding {
 function isCleanResult(value: unknown): value is CleanResult {
   if (!value || typeof value !== "object") return false;
   const result = value as Partial<CleanResult>;
-  return typeof result.sourcePath === "string"
-    && result.sourcePath.length <= MAX_HISTORY_PATH_CHARS
+  return isBoundedText(result.sourcePath, MAX_PATH_BYTES)
     && typeof result.success === "boolean"
-    && isOptionalString(result.outputPath)
-    && isOptionalString(result.backupPath)
+    && isOptionalPath(result.outputPath)
+    && isOptionalPath(result.backupPath)
     && isOptionalError(result.error)
     && isOptionalSize(result.sourceSize)
     && isOptionalSize(result.outputSize)
@@ -56,8 +52,8 @@ function isHistoryEntry(value: unknown): value is HistoryEntry {
   if (!value || typeof value !== "object") return false;
   const entry = value as Partial<HistoryEntry>;
   const sourcePaths = new Set<string>();
-  return typeof entry.id === "string" && entry.id.length > 0 && entry.id.length <= 128
-    && typeof entry.createdAt === "string" && entry.createdAt.length <= 64 && Number.isFinite(Date.parse(entry.createdAt))
+  return isBoundedText(entry.id, MAX_HISTORY_ID_BYTES)
+    && isBoundedText(entry.createdAt, MAX_HISTORY_DATE_BYTES) && Number.isFinite(Date.parse(entry.createdAt))
     && (entry.mode === "copy" || entry.mode === "replace")
     && Array.isArray(entry.results)
     && entry.results.length <= MAX_HISTORY_RESULTS_PER_ENTRY

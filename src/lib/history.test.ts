@@ -51,6 +51,19 @@ describe("history persistence", () => {
     expect(loadHistory()).toEqual([]);
   });
 
+  it("rejects multibyte paths and labels that exceed native byte budgets", () => {
+    const oversizedPath = `${"界".repeat(16_385)}.jpg`;
+    const oversizedLabel = "界".repeat(129);
+    localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify([{
+      ...entry("oversized-path"),
+      results: [{ ...entry("oversized-path").results[0], sourcePath: oversizedPath }],
+    }, {
+      ...entry("oversized-label"),
+      results: [{ ...entry("oversized-label").results[0], removed: [{ category: oversizedLabel, label: "x", count: 1, severity: "privacy" }] }],
+    }]));
+    expect(loadHistory()).toEqual([]);
+  });
+
   it("rejects a history entry beyond the native batch result limit", () => {
     localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify([{
       ...entry("too-many-results"),

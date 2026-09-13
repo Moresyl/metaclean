@@ -92,6 +92,10 @@ All notable changes to MetaClean are documented here. The project follows
   the UI boundary; malformed arrays, sizes, findings, diagnostics and optional
   values are rejected before reconciliation, history persistence or rendering.
 
+- Persisted history now uses the same UTF-8 byte budgets as native IPC for
+  paths, labels, IDs, dates and diagnostics, preventing multibyte local data
+  from bypassing the native boundary assumptions during recovery.
+
 - The Rust coverage ledger now records 84.28% after the recursive path-budget,
   UTF-8-safe issue-path, bounded-diagnostics and output-path boundary tests.
 
