@@ -81,11 +81,29 @@ describe("entryFromFile", () => {
     });
   });
 
+  it("uses a browser folder path when available", () => {
+    const file = new File(["hello"], "note.txt", { lastModified: 123 });
+    Object.defineProperty(file, "webkitRelativePath", { value: "folder/note.txt" });
+    expect(entryFromFile(file).id).toBe("folder/note.txt:5:123");
+  });
+
   it("bounds browser FileList intake and skips malformed File-like values", () => {
     const malformed = { name: "bad.txt", size: -1, lastModified: 1 };
     const oversized = Array.from({ length: 10_001 }, (_, index) => new File(["x"], `file-${index}.txt`, { lastModified: index }));
     expect(normalizeBrowserFiles([malformed, oversized[0]])).toHaveLength(1);
     expect(normalizeBrowserFiles(oversized)).toEqual([]);
+  });
+
+  it("keeps same-metadata files from different browser folders distinct", () => {
+    const first = { name: "note.txt", size: 5, lastModified: 123, webkitRelativePath: "first/note.txt" };
+    const second = { name: "note.txt", size: 5, lastModified: 123, webkitRelativePath: "second/note.txt" };
+    const entries = normalizeBrowserFiles([first, second]);
+    expect(entries).toHaveLength(2);
+    expect(entries[0].id).not.toBe(entries[1].id);
+  });
+
+  it("rejects an unbounded browser relative path", () => {
+    expect(normalizeBrowserFiles([{ name: "note.txt", size: 5, lastModified: 123, webkitRelativePath: "界".repeat(16_385) }])).toEqual([]);
   });
 
   it("fails closed for broken FileList-like accessors", () => {

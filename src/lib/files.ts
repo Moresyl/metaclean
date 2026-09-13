@@ -1,5 +1,5 @@
 import type { FileEntry, ScanReport } from "../types";
-import { MAX_BATCH_FILES, MAX_NAME_BYTES, isBoundedText } from "./bounds";
+import { MAX_BATCH_FILES, MAX_NAME_BYTES, MAX_PATH_BYTES, isBoundedText } from "./bounds";
 
 /* These mirror the engine's intake list. They only choose the glyph on a queue
    row — the format itself is settled by the file's own signature during the
@@ -103,12 +103,20 @@ export function entryFromPath(path: string): FileEntry {
 }
 
 export function entryFromFile(file: File): FileEntry {
-  return entryFromFileParts(file.name, file.size, file.lastModified);
+  const relativePath = (file as File & { webkitRelativePath?: unknown }).webkitRelativePath;
+  const safeRelativePath = typeof relativePath === "string" && isBoundedText(relativePath, MAX_PATH_BYTES)
+    ? relativePath
+    : undefined;
+  return entryFromFileParts(file.name, file.size, file.lastModified, safeRelativePath);
 }
 
-function entryFromFileParts(name: string, size: number, lastModified: number): FileEntry {
+function entryFromFileParts(name: string, size: number, lastModified: number, relativePath?: string): FileEntry {
   return {
-    id: `${name}:${size}:${lastModified}`,
+    // Browser File objects do not expose an absolute path. When a directory
+    // selection or drag supplies webkitRelativePath, include it so two files
+    // with the same name/size/timestamp from different folders do not collapse
+    // into one queue row.
+    id: `${relativePath || name}:${size}:${lastModified}`,
     name,
     size,
     kind: classifyFile(name),
@@ -136,11 +144,19 @@ export function normalizeBrowserFiles(value: unknown): FileEntry[] {
     try {
       const file = (value as ArrayLike<unknown>)[index];
       if (!file || typeof file !== "object") continue;
-      const candidate = file as { name?: unknown; size?: unknown; lastModified?: unknown };
+      const candidate = file as { name?: unknown; size?: unknown; lastModified?: unknown; webkitRelativePath?: unknown };
       if (!isBoundedText(candidate.name, MAX_NAME_BYTES)
         || typeof candidate.size !== "number" || !Number.isSafeInteger(candidate.size) || candidate.size < 0
-        || typeof candidate.lastModified !== "number" || !Number.isSafeInteger(candidate.lastModified) || candidate.lastModified < 0) continue;
-      entries.push(entryFromFileParts(candidate.name, candidate.size, candidate.lastModified));
+        || typeof candidate.lastModified !== "number" || !Number.isSafeInteger(candidate.lastModified) || candidate.lastModified < 0
+        || (candidate.webkitRelativePath !== undefined
+          && candidate.webkitRelativePath !== ""
+          && !isBoundedText(candidate.webkitRelativePath, MAX_PATH_BYTES))) continue;
+      entries.push(entryFromFileParts(
+        candidate.name,
+        candidate.size,
+        candidate.lastModified,
+        typeof candidate.webkitRelativePath === "string" ? candidate.webkitRelativePath : undefined,
+      ));
     } catch {
       // A broken File-like object must not abort the remaining batch.
     }
