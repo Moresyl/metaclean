@@ -23,4 +23,9 @@ describe("normalizeNativeDropEvent", () => {
       paths: ["C:\\same.txt", "C:\\kept.txt"],
     });
   });
+
+  it("fails closed when unique paths exceed the batch limit", () => {
+    const paths = Array.from({ length: 10_001 }, (_, index) => `C:\\file-${index}.txt`);
+    expect(normalizeNativeDropEvent({ type: "drop", paths })).toBeUndefined();
+  });
 });

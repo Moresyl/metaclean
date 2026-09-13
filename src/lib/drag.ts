@@ -24,7 +24,7 @@ export function normalizeNativeDropEvent(value: unknown): NativeDropEvent | unde
     total += bytes;
     const identity = pathIdentity(path);
     if (seen.has(identity)) continue;
-    if (paths.length >= MAX_BATCH_FILES) break;
+    if (paths.length >= MAX_BATCH_FILES) return undefined;
     seen.add(identity);
     paths.push(path);
   }
