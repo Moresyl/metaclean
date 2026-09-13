@@ -77,6 +77,9 @@ or history record.
 - Scan, cleanup, About and shell-status responses are normalized with bounded
   paths, sizes, findings, diagnostics and nullable optional fields before they
   can affect reconciliation, history or visible UI state.
+- Persisted history reuses the same UTF-8 byte budgets for paths, labels,
+  identifiers, dates and diagnostics, so local recovery cannot accept payloads
+  that would have been rejected at the native boundary.
 - Parser, filesystem, updater and intake diagnostics are normalized through an
   8 KiB UTF-8-safe cap before they are returned over IPC or rendered by the UI.
 - Scan responses contain the source path, detected format, size, category,
