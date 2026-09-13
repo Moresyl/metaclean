@@ -86,4 +86,3 @@ This file records evidence, not intent. A row is complete only when the named ar
 
 1. Open cleaned DOCX/XLSX/PPTX/ODT samples in current Word and WPS builds. LibreOffice 26.2.5 validation is complete.
 2. Provide Apple Developer signing/notarization credentials and verify both DMGs with Gatekeeper.
-
