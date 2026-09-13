@@ -34,7 +34,7 @@ test("keeps the reviewed updater version argument aligned across Rust and TypeSc
   const rust = await readFile(new URL("../src-tauri/src/lib.rs", import.meta.url), "utf8");
   const update = await readFile(new URL("../src/lib/update.ts", import.meta.url), "utf8");
 
-  assert.match(rust, /#\[tauri::command\(rename_all = "camelCase"\)\]\s*async fn install_update_and_restart[\s\S]*?expected_version: String/u);
+  assert.match(rust, /#\[tauri::command\(rename_all = "camelCase"\)\]\s*async fn install_update_and_restart[\s\S]*?expected_version: BoundedUpdateVersion/u);
   assert.match(rust, /updater_builder\(\)[\s\S]*?\.timeout\(UPDATE_REQUEST_TIMEOUT\)/u);
   assert.match(update, /install_update_and_restart", \{ expectedVersion \}/u);
   assert.doesNotMatch(update, /install_update_and_restart", \{ expected_version/u);

@@ -35,6 +35,8 @@ All notable changes to MetaClean are documented here. The project follows
 
 - 前端插件、浏览器回退、打开器和队列错误也统一经过 8 KiB UTF-8 字节预算，避免原生边界之外的异常文本撑爆用户可见状态。
 
+- 原生批次 ID 与更新确认版本现在在 Serde 反序列化阶段即限制为 128 字节；取消任务、清理请求和一键更新不会先分配无界控制字符串。
+
 - Rust 覆盖率账本现按新增递归路径预算、UTF-8 错误路径、8 KiB 诊断和输出路径边界测试更新为 84.28%。
 
 - Intake IPC now rejects empty paths before starting worker tasks, caps each
@@ -55,6 +57,10 @@ All notable changes to MetaClean are documented here. The project follows
 
 - Browser/plugin fallback, opener and queue failures now use the same 8 KiB
   UTF-8 byte budget before entering visible React state.
+
+- Native batch identifiers and reviewed update versions are now bounded to 128
+  bytes during Serde deserialization, so cancellation, cleanup and one-click
+  update commands do not first allocate unbounded control strings.
 
 - Update progress events are now schema-checked before reaching React state;
   invalid stages, negative or unsafe counters, and impossible totals are

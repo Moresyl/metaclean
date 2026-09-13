@@ -7,6 +7,78 @@ use std::fmt;
 use crate::{MAX_BATCH_FILES, MAX_BATCH_PATH_BYTES, MAX_PATH_BYTES};
 
 #[derive(Debug, Clone)]
+pub struct BoundedString<const MAX_BYTES: usize>(String);
+
+impl<const MAX_BYTES: usize> BoundedString<MAX_BYTES> {
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+
+    pub fn into_inner(self) -> String {
+        self.0
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+}
+
+impl<const MAX_BYTES: usize> Default for BoundedString<MAX_BYTES> {
+    fn default() -> Self {
+        Self(String::new())
+    }
+}
+
+struct BoundedStringVisitor<const MAX_BYTES: usize>;
+
+impl<'de, const MAX_BYTES: usize> Visitor<'de> for BoundedStringVisitor<MAX_BYTES> {
+    type Value = BoundedString<MAX_BYTES>;
+
+    fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(formatter, "a string no longer than {MAX_BYTES} bytes")
+    }
+
+    fn visit_borrowed_str<E>(self, value: &'de str) -> Result<Self::Value, E>
+    where
+        E: DeError,
+    {
+        self.visit_str(value)
+    }
+
+    fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
+    where
+        E: DeError,
+    {
+        if value.len() > MAX_BYTES {
+            return Err(E::custom(format!("string exceeds {MAX_BYTES} bytes")));
+        }
+        Ok(BoundedString(value.to_owned()))
+    }
+
+    fn visit_string<E>(self, value: String) -> Result<Self::Value, E>
+    where
+        E: DeError,
+    {
+        if value.len() > MAX_BYTES {
+            return Err(E::custom(format!("string exceeds {MAX_BYTES} bytes")));
+        }
+        Ok(BoundedString(value))
+    }
+}
+
+impl<'de, const MAX_BYTES: usize> Deserialize<'de> for BoundedString<MAX_BYTES> {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        deserializer.deserialize_str(BoundedStringVisitor::<MAX_BYTES>)
+    }
+}
+
+pub type BoundedBatchId = BoundedString<128>;
+pub type BoundedUpdateVersion = BoundedString<128>;
+
+#[derive(Debug, Clone)]
 pub struct BoundedPaths(Vec<String>);
 
 impl BoundedPaths {
@@ -154,7 +226,7 @@ pub enum OutputMode {
 pub struct CleanRequest {
     pub paths: BoundedPaths,
     #[serde(default)]
-    pub batch_id: String,
+    pub batch_id: BoundedBatchId,
     pub mode: OutputMode,
     #[serde(default = "default_true")]
     pub preserve_timestamps: bool,

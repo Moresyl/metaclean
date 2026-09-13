@@ -69,6 +69,10 @@ or history record.
 - Native path arrays use a streaming bounded deserializer, so scan, expansion
   and cleanup requests cannot first materialize an unbounded vector before the
   later business-layer checks run.
+- Native batch identifiers and reviewed update versions use the same
+  allocation-before-validation rule: Serde rejects values over 128 UTF-8 bytes
+  before an owned `String` is created, while legacy empty cleanup tokens remain
+  accepted.
 - Startup arguments returned by the shell integration pass through the same
   batch preparation and path budgets before the first response reaches the UI.
 - Drag-and-drop payloads are validated in the UI boundary before path intake;

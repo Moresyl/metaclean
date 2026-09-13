@@ -8,7 +8,9 @@ mod safe_io;
 mod shell_integration;
 
 use error::bounded_message;
-use models::{BoundedPaths, CleanRequest, CleanResult, ScanReport};
+use models::{
+    BoundedBatchId, BoundedPaths, BoundedUpdateVersion, CleanRequest, CleanResult, ScanReport,
+};
 use std::collections::{HashMap, HashSet};
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex, OnceLock};
@@ -349,16 +351,19 @@ impl Drop for ActiveCleanBatchGuard {
 async fn scan_files(
     app: tauri::AppHandle,
     paths: BoundedPaths,
-    batch_id: Option<String>,
+    batch_id: Option<BoundedBatchId>,
 ) -> Result<Vec<ScanReport>, String> {
-    if let Some(batch_id) = batch_id.as_deref() {
-        validate_batch_id(batch_id)?;
+    if let Some(batch_id) = batch_id.as_ref() {
+        validate_batch_id(batch_id.as_str())?;
     }
     let paths = prepare_batch_paths(paths.into_inner())?;
     let cancellation = Arc::new(AtomicBool::new(false));
-    let active_batch = ActiveScanBatchGuard::register(batch_id.as_deref(), cancellation.clone())?;
+    let active_batch = ActiveScanBatchGuard::register(
+        batch_id.as_ref().map(BoundedBatchId::as_str),
+        cancellation.clone(),
+    )?;
     let active_read = ActiveReadGuard::start();
-    let progress_batch_id = batch_id.clone().unwrap_or_default();
+    let progress_batch_id = batch_id.map(BoundedBatchId::into_inner).unwrap_or_default();
     let progress_total = paths.len();
     let progress_state = Mutex::new(BatchProgressState::new());
     tauri::async_runtime::spawn_blocking(move || {
@@ -421,10 +426,10 @@ async fn clean_files(
     app: tauri::AppHandle,
     request: CleanRequest,
 ) -> Result<Vec<CleanResult>, String> {
-    validate_batch_id(&request.batch_id)?;
+    validate_batch_id(request.batch_id.as_str())?;
     let paths = prepare_batch_paths(request.paths.into_inner())?;
     let total = paths.len();
-    let batch_id = request.batch_id;
+    let batch_id = request.batch_id.into_inner();
     let cancellation = Arc::new(AtomicBool::new(false));
     let active_batch = ActiveCleanBatchGuard::register(&batch_id, cancellation.clone())?;
     let progress_batch_id = batch_id.clone();
@@ -470,15 +475,15 @@ async fn clean_files(
 }
 
 #[tauri::command]
-fn cancel_clean_batch(batch_id: String) -> Result<bool, String> {
-    validate_batch_id(&batch_id)?;
+fn cancel_clean_batch(batch_id: BoundedBatchId) -> Result<bool, String> {
+    validate_batch_id(batch_id.as_str())?;
     if batch_id.is_empty() {
         return Ok(false);
     }
     let active = active_clean_batches()
         .lock()
         .map_err(|_| "清理任务状态不可用，请重试".to_owned())?;
-    if let Some(flag) = active.get(&batch_id) {
+    if let Some(flag) = active.get(batch_id.as_str()) {
         flag.store(true, Ordering::SeqCst);
         Ok(true)
     } else {
@@ -487,15 +492,15 @@ fn cancel_clean_batch(batch_id: String) -> Result<bool, String> {
 }
 
 #[tauri::command]
-fn cancel_scan_batch(batch_id: String) -> Result<bool, String> {
-    validate_batch_id(&batch_id)?;
+fn cancel_scan_batch(batch_id: BoundedBatchId) -> Result<bool, String> {
+    validate_batch_id(batch_id.as_str())?;
     if batch_id.is_empty() {
         return Ok(false);
     }
     let active = active_scan_batches()
         .lock()
         .map_err(|_| "扫描任务状态不可用，请重试".to_owned())?;
-    if let Some(flag) = active.get(&batch_id) {
+    if let Some(flag) = active.get(batch_id.as_str()) {
         flag.store(true, Ordering::SeqCst);
         Ok(true)
     } else {
@@ -635,7 +640,7 @@ fn get_update_runtime() -> UpdateRuntime {
 #[tauri::command(rename_all = "camelCase")]
 async fn install_update_and_restart(
     app: tauri::AppHandle,
-    expected_version: String,
+    expected_version: BoundedUpdateVersion,
 ) -> Result<bool, String> {
     if !detect_update_runtime().self_update_supported {
         return Err("当前安装方式不支持应用内更新，请从官方发布页下载新版本。".into());
@@ -654,7 +659,7 @@ async fn install_update_and_restart(
         return Ok(false);
     };
 
-    if !reviewed_update_matches(&update.version, &expected_version) {
+    if !reviewed_update_matches(&update.version, expected_version.as_str()) {
         return Err(UPDATE_CHANGED.into());
     }
 
@@ -860,7 +865,8 @@ mod update_tests {
         BatchProgressState, CloseAction, MAX_BATCH_FILES, MAX_BATCH_ID_BYTES, MAX_BATCH_PATH_BYTES,
         MAX_PATH_BYTES, PORTABLE_MARKER, PROGRESS_EVENT_BATCH, UPDATE_REQUEST_TIMEOUT,
     };
-    use crate::models::{BoundedPaths, CleanRequest};
+    use crate::models::{BoundedBatchId, BoundedPaths, CleanRequest};
+    use serde::Deserialize;
     use std::sync::atomic::AtomicBool;
     use std::sync::Arc;
     use std::time::{Duration, Instant};
@@ -958,9 +964,11 @@ mod update_tests {
         .expect("legacy cleanup request should still deserialize");
         assert!(request.batch_id.is_empty());
 
-        let guard =
-            ActiveCleanBatchGuard::register(&request.batch_id, Arc::new(AtomicBool::new(false)))
-                .expect("register legacy clean batch");
+        let guard = ActiveCleanBatchGuard::register(
+            request.batch_id.as_str(),
+            Arc::new(AtomicBool::new(false)),
+        )
+        .expect("register legacy clean batch");
         assert!(clean_batch_active());
         drop(guard);
         assert!(!clean_batch_active());
@@ -976,11 +984,17 @@ mod update_tests {
         let guard = ActiveCleanBatchGuard::register(&batch_id, flag.clone())
             .expect("register active batch");
         assert!(ActiveCleanBatchGuard::register(&batch_id, flag.clone()).is_err());
-        assert!(cancel_clean_batch(batch_id).expect("cancel active batch"));
+        assert!(cancel_clean_batch(
+            BoundedBatchId::deserialize(serde_json::Value::String(batch_id)).unwrap()
+        )
+        .expect("cancel active batch"));
         assert!(flag.load(std::sync::atomic::Ordering::SeqCst));
         assert!(clean_batch_active());
-        assert!(!cancel_clean_batch("missing".into()).expect("missing batch is harmless"));
-        assert!(!cancel_clean_batch(String::new()).expect("empty batch is harmless"));
+        assert!(!cancel_clean_batch(
+            BoundedBatchId::deserialize(serde_json::Value::String("missing".into())).unwrap()
+        )
+        .expect("missing batch is harmless"));
+        assert!(!cancel_clean_batch(BoundedBatchId::default()).expect("empty batch is harmless"));
         drop(guard);
         assert!(!clean_batch_active());
         assert!(ActiveCleanBatchGuard::register("", flag).is_ok());
@@ -993,10 +1007,16 @@ mod update_tests {
         let guard = ActiveScanBatchGuard::register(Some(batch_id), flag.clone())
             .expect("register active scan");
         assert!(ActiveScanBatchGuard::register(Some(batch_id), flag.clone()).is_err());
-        assert!(cancel_scan_batch(batch_id.into()).expect("cancel active scan"));
+        assert!(cancel_scan_batch(
+            BoundedBatchId::deserialize(serde_json::Value::String(batch_id.into())).unwrap()
+        )
+        .expect("cancel active scan"));
         assert!(flag.load(std::sync::atomic::Ordering::SeqCst));
-        assert!(!cancel_scan_batch("missing".into()).expect("missing scan is harmless"));
-        assert!(!cancel_scan_batch(String::new()).expect("empty scan is harmless"));
+        assert!(!cancel_scan_batch(
+            BoundedBatchId::deserialize(serde_json::Value::String("missing".into())).unwrap()
+        )
+        .expect("missing scan is harmless"));
+        assert!(!cancel_scan_batch(BoundedBatchId::default()).expect("empty scan is harmless"));
         drop(guard);
         assert!(ActiveScanBatchGuard::register(None, flag).is_ok());
     }
