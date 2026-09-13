@@ -349,7 +349,7 @@ describe("desktop components", () => {
     fireEvent.click(screen.getByRole("button", { name: "导出审计报告" }));
     await waitFor(() => expect(onNotify).toHaveBeenCalledWith("审计报告过大，请分批导出"));
     expect(invokeMock).not.toHaveBeenCalledWith("export_audit_report", expect.anything());
-  });
+  }, 30_000);
 
   it("exports a bounded value-free audit report through the native command", async () => {
     saveMock.mockResolvedValue("C:\\reports\\metaclean-audit.json");

@@ -115,6 +115,23 @@ describe("App", () => {
     expect(zone.className).not.toContain("border-brand");
   });
 
+  it("clears native drag hover even when the event payload is revoked", async () => {
+    let handle: ((event: { payload: unknown }) => void) | undefined;
+    dragDropEventMock.mockImplementation((listener: (event: { payload: unknown }) => void) => {
+      handle = listener;
+      return Promise.resolve(() => undefined);
+    });
+    renderApp();
+    await waitFor(() => expect(dragDropEventMock).toHaveBeenCalledOnce());
+    const zone = screen.getByText("拖入要净化的文件").closest("section")!;
+    handle?.({ payload: { type: "enter", paths: [] } });
+    await waitFor(() => expect(zone.className).toContain("border-brand"));
+    const revoked = Proxy.revocable({ type: "drop", paths: [] }, {});
+    revoked.revoke();
+    handle?.({ payload: revoked.proxy });
+    await waitFor(() => expect(zone.className).not.toContain("border-brand"));
+  });
+
   it("releases event listeners when a later native subscription fails", async () => {
     const unlistenMenu = vi.fn();
     listenMock

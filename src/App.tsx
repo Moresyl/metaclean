@@ -179,6 +179,7 @@ export default function App() {
       if (!active) return;
       const payload = normalizeNativeDropEvent(event.payload);
       if (!payload) {
+        setDragActive(false);
         let type: unknown;
         try {
           type = event.payload && typeof event.payload === "object"
