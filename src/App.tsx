@@ -66,13 +66,23 @@ export default function App() {
   const [dragActive, setDragActive] = useState(false);
   const mountedRef = useRef(true);
   entriesRef.current = entries;
+  const updateEntries = useCallback((next: FileEntry[] | ((current: FileEntry[]) => FileEntry[])) => {
+    const value = typeof next === "function" ? next(entriesRef.current) : next;
+    entriesRef.current = value;
+    setEntries(value);
+  }, []);
   const addEntries = useCallback((incoming: FileEntry[]) => {
     if (!incoming.length) return;
     const merged = mergeEntries(entriesRef.current, incoming);
-    entriesRef.current = merged.entries;
     pendingMergeSkippedRef.current += merged.skipped;
-    setEntries(merged.entries);
-  }, []);
+    updateEntries(merged.entries);
+  }, [updateEntries]);
+  const removeEntry = useCallback((id: string) => {
+    updateEntries((current) => current.filter((entry) => entry.id !== id));
+  }, [updateEntries]);
+  const clearQueue = useCallback(() => {
+    updateEntries([]);
+  }, [updateEntries]);
   const addNativePaths = useCallback(async (paths: string[]) => {
     if (!mountedRef.current || !paths.length) return;
     try {
@@ -260,7 +270,7 @@ export default function App() {
     setActiveBatchId(batchId);
     cancelRequestedRef.current = false;
     setCancelRequested(false);
-    setBusy(true); setProgress(undefined); setMessage(undefined); setEntries((current) => markEntryPaths(current, paths, "scanning"));
+    setBusy(true); setProgress(undefined); setMessage(undefined); updateEntries((current) => markEntryPaths(current, paths, "scanning"));
     try {
       const reports = normalizeScanReports(await invoke<unknown>("scan_files", { paths, batchId }));
       if (!reports) throw new Error(text("扫描返回了无效数据", "Scanning returned invalid data"));
@@ -273,7 +283,7 @@ export default function App() {
         seenReports.add(identity);
         return true;
       });
-      setEntries((current) => applyScanReports(current, paths, relevant));
+      updateEntries((current) => applyScanReports(current, paths, relevant));
       const count = relevant.reduce((total, report) => total + report.findings.reduce((sum, finding) => sum + finding.count, 0), 0);
       const missing = paths.length - relevant.length;
       setMessage(cancelRequestedRef.current
@@ -281,7 +291,7 @@ export default function App() {
         : text(`扫描完成：${count} 项痕迹等待确认。${missing > 0 ? ` ${missing} 个文件未返回结果，可重试扫描。` : ""}`, `Scan complete: ${count} trace(s) await confirmation.${missing > 0 ? ` ${missing} file(s) returned no result and can be retried.` : ""}`));
     } catch (error) {
       if (mountedRef.current) {
-        setEntries((current) => markEntryPaths(current, paths, "ready"));
+        updateEntries((current) => markEntryPaths(current, paths, "ready"));
         const detail = boundedErrorMessage(error);
         setMessage(text(`扫描失败：${detail}`, `Scan failed: ${detail}`));
       }
@@ -329,7 +339,7 @@ export default function App() {
         return true;
       });
       const byPath = new Map(relevant.map((result) => [pathIdentity(result.sourcePath), result]));
-      setEntries((current) => current.map((entry) => {
+      updateEntries((current) => current.map((entry) => {
         const result = entry.path ? byPath.get(pathIdentity(entry.path)) : undefined;
         return result ? { ...entry, status: result.success ? "clean" : "error", result } : entry;
       }));
@@ -474,7 +484,7 @@ export default function App() {
                 </div>
               ) : null}
               <DropZone onAdd={addEntries} onAddNativePaths={addNativePaths} dragActive={dragActive} compact={entries.length > 0} />
-              <FileQueue entries={entries} preserveColorProfile={preserveColorProfile} removeExtendedAttributes={removeExtendedAttributes} busy={busy} onClear={() => setEntries([])} onRemove={(id) => setEntries((current) => current.filter((entry) => entry.id !== id))} onReveal={(path) => void reveal(path)} onNotify={setMessage} />
+              <FileQueue entries={entries} preserveColorProfile={preserveColorProfile} removeExtendedAttributes={removeExtendedAttributes} busy={busy} onClear={clearQueue} onRemove={removeEntry} onReveal={(path) => void reveal(path)} onNotify={setMessage} />
             </div>
               <CleanOptions mode={mode} onModeChange={setMode} preserveTimestamps={preserveTimestamps} onPreserveTimestampsChange={setPreserveTimestamps} preserveOrientation={preserveOrientation} onPreserveOrientationChange={setPreserveOrientation} preserveColorProfile={preserveColorProfile} onPreserveColorProfileChange={setPreserveColorProfile} removeExtendedAttributes={removeExtendedAttributes} onRemoveExtendedAttributesChange={setRemoveExtendedAttributes} disabled={!entries.length} scanned={scanned} hasFindings={cleanableEntries.length > 0} busy={busy} operation={activeOperation} cancelable={Boolean(activeBatchId)} cancelRequested={cancelRequested} onCancel={cancelOperation} onAction={() => void (scanned ? clean() : scan())} />
           </div> : page === "history" ? <HistoryPage entries={history} onClear={clearHistory} /> : page === "privacy" ? <PrivacyPage /> : page === "about" ? <AboutPage /> : <SettingsPage mode={mode} onModeChange={setMode} preserveTimestamps={preserveTimestamps} onPreserveTimestampsChange={setPreserveTimestamps} preserveOrientation={preserveOrientation} onPreserveOrientationChange={setPreserveOrientation} preserveColorProfile={preserveColorProfile} onPreserveColorProfileChange={setPreserveColorProfile} removeExtendedAttributes={removeExtendedAttributes} onRemoveExtendedAttributesChange={setRemoveExtendedAttributes} closeToTray={closeToTray} onCloseToTrayChange={setCloseToTray} />}
@@ -491,7 +501,7 @@ export default function App() {
         description={text(`将移除当前队列中的 ${entries.length} 个文件，文件本身不会被修改。`, `This removes ${entries.length} file(s) from the queue; the files themselves will not be changed.`)}
         confirmLabel={text("清空队列", "Clear queue")}
         onCancel={() => setQueueClearPromptOpen(false)}
-        onConfirm={() => { setQueueClearPromptOpen(false); setEntries([]); }}
+        onConfirm={() => { setQueueClearPromptOpen(false); clearQueue(); }}
       />
     ) : null}
     <TooltipHost />
