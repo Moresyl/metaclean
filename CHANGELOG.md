@@ -59,6 +59,10 @@ All notable changes to MetaClean are documented here. The project follows
   stream: platform aliases are de-duplicated while reading, 10,000 unique
   paths are allowed, and raw input is capped at 40,000 items.
 
+- Native drag/drop now rejects an aggregate path payload over 64 MiB as a
+  whole, and hover/leave lifecycle events stay closable even when their
+  irrelevant path field is malformed; no drop is silently truncated.
+
 - Rust 覆盖率账本现按新增递归路径预算、UTF-8 错误路径、8 KiB 诊断和输出路径边界测试更新为 84.28%。
 
 - Intake IPC now rejects empty paths before starting worker tasks, caps each

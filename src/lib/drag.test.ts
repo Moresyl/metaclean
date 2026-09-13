@@ -16,6 +16,12 @@ describe("normalizeNativeDropEvent", () => {
     expect(normalizeNativeDropEvent({ type: "drop", paths: ["", 4, "界".repeat(20_000), "ok.txt"] })).toEqual({ type: "drop", paths: ["ok.txt"] });
   });
 
+  it("keeps hover lifecycle events closable even with malformed path payloads", () => {
+    expect(normalizeNativeDropEvent({ type: "leave", paths: Array.from({ length: 40_001 }, () => "bad") })).toEqual({
+      type: "leave", paths: [],
+    });
+  });
+
   it("de-duplicates paths before the unique batch limit", () => {
     const paths = [...Array.from({ length: 10_001 }, () => "C:\\same.txt"), "C:\\kept.txt"];
     expect(normalizeNativeDropEvent({ type: "drop", paths })).toEqual({
@@ -26,6 +32,11 @@ describe("normalizeNativeDropEvent", () => {
 
   it("fails closed when unique paths exceed the batch limit", () => {
     const paths = Array.from({ length: 10_001 }, (_, index) => `C:\\file-${index}.txt`);
+    expect(normalizeNativeDropEvent({ type: "drop", paths })).toBeUndefined();
+  });
+
+  it("fails closed when the aggregate path payload exceeds the IPC budget", () => {
+    const paths = Array.from({ length: 2_200 }, (_, index) => `${index}-${"x".repeat(32_000)}`);
     expect(normalizeNativeDropEvent({ type: "drop", paths })).toBeUndefined();
   });
 });

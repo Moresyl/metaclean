@@ -84,6 +84,8 @@ or history record.
   malformed entries are ignored, platform aliases are de-duplicated while
   reading, and valid paths remain within the native single-path, 64 MiB,
   10,000-unique and 40,000-raw-item budgets.
+- A drag/drop payload that exceeds the aggregate 64 MiB path budget is rejected
+  as a whole; the UI never silently processes only the prefix that fit.
 - Browser FileList fallbacks apply the same 10,000-item cap and bounded UTF-8
   file-name metadata before queue rendering, so plain-browser input cannot
   create an unbounded React queue.
