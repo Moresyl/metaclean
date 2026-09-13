@@ -239,6 +239,22 @@ describe("desktop components", () => {
     await waitFor(() => expect(clipboardMock).toHaveBeenCalledWith("C:\\work\\photo.jpg"));
   });
 
+  it("refuses an oversized bulk path copy instead of freezing the window", async () => {
+    const longPath = (index: number) => `C:\\${String(index).padStart(5, "0")}-${"x".repeat(32_000)}.txt`;
+    const entries: FileEntry[] = Array.from({ length: 540 }, (_, index) => ({
+      id: `large-${index}`,
+      name: `${index}.txt`,
+      path: longPath(index),
+      kind: "text",
+      status: "ready",
+    }));
+    const onNotify = vi.fn();
+    wrap(<FileQueue entries={entries} preserveColorProfile removeExtendedAttributes={false} onRemove={vi.fn()} onClear={vi.fn()} onReveal={vi.fn()} onNotify={onNotify} />);
+    fireEvent.click(screen.getByRole("button", { name: "复制全部路径" }));
+    await waitFor(() => expect(onNotify).toHaveBeenCalledWith("路径列表过大，请分批复制"));
+    expect(clipboardMock).not.toHaveBeenCalled();
+  });
+
   it("exports a bounded value-free audit report through the native command", async () => {
     saveMock.mockResolvedValue("C:\\reports\\metaclean-audit.json");
     const entries: FileEntry[] = [

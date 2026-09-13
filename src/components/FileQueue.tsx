@@ -10,6 +10,7 @@ import { useI18n } from "../lib/i18n";
 import { actionableFindingCount, pathIdentity } from "../lib/files";
 import { copyText } from "../lib/window";
 import { boundedErrorMessage } from "../lib/errors";
+import { MAX_CLIPBOARD_BYTES, UTF8_ENCODER } from "../lib/bounds";
 
 interface FileQueueProps { entries: FileEntry[]; preserveColorProfile: boolean; removeExtendedAttributes: boolean; busy?: boolean; onRemove: (id: string) => void; onClear: () => void; onReveal: (path: string) => void; onNotify: (message: string) => void }
 
@@ -112,13 +113,21 @@ export default function FileQueue({ entries, preserveColorProfile, removeExtende
       entry.result?.outputPath,
       entry.result?.backupPath,
     ]).filter((path): path is string => Boolean(path));
+    const paths: string[] = [];
     const seen = new Set<string>();
-    const paths = candidates.filter((path) => {
+    let totalBytes = 0;
+    for (const path of candidates) {
       const identity = pathIdentity(path);
-      if (seen.has(identity)) return false;
+      if (seen.has(identity)) continue;
+      const bytes = UTF8_ENCODER.encode(path).byteLength + (paths.length ? 2 : 0);
+      if (totalBytes + bytes > MAX_CLIPBOARD_BYTES) {
+        onNotify(text("路径列表过大，请分批复制", "The path list is too large; copy it in smaller batches"));
+        return;
+      }
       seen.add(identity);
-      return true;
-    });
+      paths.push(path);
+      totalBytes += bytes;
+    }
     if (!paths.length) return;
     const copied = await copyText(paths.join("\r\n"));
     if (!mountedRef.current) return;

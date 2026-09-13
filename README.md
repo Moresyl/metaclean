@@ -90,6 +90,7 @@ document models. Every candidate is re-detected and re-inspected before writing.
 - De-duplicates platform path aliases while reading, keeps at most 10,000 unique files and caps raw input at 40,000 items so repeated drops do not consume the unique-file budget
 - Rejects a drag/drop batch whose aggregate path payload exceeds 64 MiB instead of silently processing only a prefix
 - Rejects browser file selections over 10,000 items instead of silently truncating the tail
+- Caps bulk path-copy output at 16 MiB UTF-8 and asks users to copy oversized lists in smaller batches
 - Caps parser, filesystem, updater and intake diagnostics at 8 KiB with UTF-8-safe truncation before they reach IPC/UI surfaces
 - Caps input at 256 MiB, and expanded Office archives at 512 MiB
 - Malformed or unsupported files fail without touching the source
