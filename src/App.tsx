@@ -27,6 +27,7 @@ import { normalizeBatchProgress } from "./lib/progress";
 import { normalizeNativeDropEvent } from "./lib/drag";
 import { normalizeIntakeResult, normalizePathList } from "./lib/intake";
 import { normalizeCleanResults, normalizeScanReports } from "./lib/results";
+import { normalizeCloseBlocked, normalizeNavigationPage } from "./lib/events";
 
 const HistoryPage = lazy(() => import("./components/HistoryPage"));
 const PrivacyPage = lazy(() => import("./components/PrivacyPage"));
@@ -161,9 +162,10 @@ export default function App() {
           }
           cleanups.push(unlisten);
         };
-        await register<Page>("menu:navigate", (event) => {
+        await register<unknown>("menu:navigate", (event) => {
           if (!active) return;
-          if (["clean", "history", "privacy", "settings", "about"].includes(event.payload)) setPage(event.payload);
+          const destination = normalizeNavigationPage(event.payload);
+          if (destination) setPage(destination);
         });
         if (!active || disposed) return;
         await register<unknown>("batch-progress", (event) => {
@@ -187,7 +189,8 @@ export default function App() {
         });
         if (!active || disposed) return;
         await register<unknown>("close-blocked", (event) => {
-          if (active) setMessage(boundedErrorMessage(event.payload));
+          const detail = normalizeCloseBlocked(event.payload);
+          if (active && detail) setMessage(detail);
         });
         if (active) {
           dispose = cleanupPartial;

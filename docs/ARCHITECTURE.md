@@ -80,6 +80,8 @@ or history record.
 - Persisted history reuses the same UTF-8 byte budgets for paths, labels,
   identifiers, dates and diagnostics, so local recovery cannot accept payloads
   that would have been rejected at the native boundary.
+- Native navigation and close-blocked events are schema-checked; unknown pages
+  and oversized diagnostics are ignored without changing UI state.
 - Parser, filesystem, updater and intake diagnostics are normalized through an
   8 KiB UTF-8-safe cap before they are returned over IPC or rendered by the UI.
 - Scan responses contain the source path, detected format, size, category,
