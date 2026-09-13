@@ -65,6 +65,7 @@ test("release workflow consumes validated notes and finalizes checksums", async 
     "pnpm docs:build",
     "pnpm test:coverage",
     "pnpm build",
+    "xvfb-run --auto-servernum pnpm test:e2e",
     "cargo fmt --check",
     "cargo test --locked",
     "cargo llvm-cov",

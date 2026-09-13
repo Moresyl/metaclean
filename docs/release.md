@@ -35,8 +35,8 @@ pwsh -NoLogo -NoProfile -File .\scripts\preflight-windows.ps1
 
 GitHub Release workflow 在任何平台打包前，会先 checkout 同一个
 `RELEASE_TAG` 并运行完整的源码校验 job：供应链、CSP、发布脚本、格式清单、
-文档构建、npm audit、前端覆盖率与生产构建，以及 Rust 格式化、测试、覆盖率和
-Cargo audit。只有这个 job 成功，Windows、macOS、Linux 的矩阵构建才会开始；
+文档构建、npm audit、前端覆盖率与生产构建、Linux Xvfb 下的桌面 E2E，以及 Rust
+格式化、测试、覆盖率和 Cargo audit。只有这个 job 成功，Windows、macOS、Linux 的矩阵构建才会开始；
 所有平台 smoke test 和资产校验完成后才允许生成公开 Release。
 
 ## 发布边界

@@ -36,7 +36,7 @@ jobs:
       - name: Install Linux system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential curl wget file libssl-dev libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev
+          sudo apt-get install -y build-essential curl wget file libssl-dev libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev xvfb
       - uses: actions/cache@v5
         with:
           path: |
@@ -55,6 +55,8 @@ jobs:
       - run: pnpm audit --audit-level moderate --registry=https://registry.npmjs.org
       - run: pnpm test:coverage
       - run: pnpm build
+      - name: Run desktop E2E under Xvfb
+        run: xvfb-run --auto-servernum pnpm test:e2e
       - run: cargo fmt --check
         working-directory: src-tauri
       - run: cargo test --locked

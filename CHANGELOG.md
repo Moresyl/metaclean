@@ -29,6 +29,10 @@ All notable changes to MetaClean are documented here. The project follows
   starting embedded WebDriver. Windows candidate/preflight builds can no longer
   leave a production-style debug binary that makes a later E2E run time out.
 
+- The release validation job now runs the desktop E2E suite under Linux Xvfb
+  before any platform package matrix starts, so a release cannot bypass the
+  installed-WebView regression gate.
+
 - Finding totals in scan messages, queue sorting and audit summaries now cap at
   JavaScript's maximum safe integer, so individually valid native counts cannot
   overflow aggregate UI or JSON values.
