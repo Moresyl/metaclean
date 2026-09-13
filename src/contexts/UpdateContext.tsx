@@ -116,7 +116,14 @@ export function UpdateProvider({ children }: { children: ReactNode }) {
   const installUpdate = useCallback(async () => {
     if (!mountedRef.current || installing.current || checking.current) return;
     if (!runtime.selfUpdateSupported) {
-      await openRelease();
+      try {
+        await openRelease();
+      } catch (reason) {
+        if (!mountedRef.current) return;
+        setError(boundedErrorMessage(reason));
+        setProgress(undefined);
+        setStatus("error");
+      }
       return;
     }
     const expectedVersion = info?.availableVersion;

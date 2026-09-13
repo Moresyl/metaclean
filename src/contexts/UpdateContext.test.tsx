@@ -185,6 +185,22 @@ describe("UpdateProvider", () => {
     expect(installAvailableUpdateMock).not.toHaveBeenCalled();
   });
 
+  it("surfaces release-page failures for portable runtimes", async () => {
+    getUpdateRuntimeMock.mockResolvedValue({ selfUpdateSupported: false, portable: true });
+    checkForUpdateMock.mockResolvedValue({
+      status: "available",
+      info: { currentVersion: "0.3.0", availableVersion: "0.4.0", name: "MetaClean v0.4.0", releaseUrl: "https://github.com/Moresyl/metaclean/releases/tag/v0.4.0" },
+    });
+    openUrlMock.mockRejectedValue(new Error("blocked by policy"));
+    render(<UpdateProvider><Probe /></UpdateProvider>);
+    fireEvent.click(screen.getByRole("button", { name: "check" }));
+    await screen.findByText("available");
+    fireEvent.click(screen.getByRole("button", { name: "install" }));
+    await screen.findByText("error");
+    expect(screen.getByText("blocked by policy")).toBeInTheDocument();
+    expect(installAvailableUpdateMock).not.toHaveBeenCalled();
+  });
+
   it("remembers a dismissed version and allows the prompt to be reopened", async () => {
     checkForUpdateMock.mockResolvedValue({
       status: "available",
