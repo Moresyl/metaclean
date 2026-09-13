@@ -29,7 +29,10 @@ export default function DropZone({ onAdd, onAddNativePaths, dragActive = false, 
       const paths = await pickPaths(directory);
       if (paths) await onAddNativePaths(paths);
     } catch {
-      if (!directory) inputRef.current?.click();
+      // A plain browser has no Tauri dialog. Mirror the desktop folder action
+      // with the native directory input so relative paths survive intake.
+      inputRef.current?.toggleAttribute("webkitdirectory", directory);
+      inputRef.current?.click();
     }
   }
 
@@ -98,6 +101,7 @@ export default function DropZone({ onAdd, onAddNativePaths, dragActive = false, 
         multiple
         onChange={(event) => {
           onAdd(normalizeBrowserFiles(event.target.files));
+          event.currentTarget.removeAttribute("webkitdirectory");
           event.target.value = "";
         }}
       />

@@ -143,6 +143,21 @@ describe("desktop components", () => {
     expect(onAdd).toHaveBeenCalledWith([expect.objectContaining({ name: "local.txt" })]);
   });
 
+  it("falls back to a directory-aware browser input for folder selection", async () => {
+    const onAdd = vi.fn();
+    openMock.mockRejectedValue(new Error("browser mode"));
+    const { container } = wrap(<DropZone onAdd={onAdd} onAddNativePaths={vi.fn().mockRejectedValue(new Error("browser mode"))} />);
+    const input = container.querySelector("input[type=file]") as HTMLInputElement;
+    const click = vi.spyOn(input, "click");
+    fireEvent.click(screen.getByRole("button", { name: "选择文件夹" }));
+    await waitFor(() => expect(click).toHaveBeenCalled());
+    expect(input.hasAttribute("webkitdirectory")).toBe(true);
+    fireEvent.change(input, { target: { files: [{ name: "note.txt", size: 1, lastModified: 1, webkitRelativePath: "folder/note.txt" }] } });
+    const [folderEntry] = onAdd.mock.calls.at(-1)?.[0] ?? [];
+    expect(folderEntry.id.replaceAll("\\", "/")).toBe("folder/note.txt:1:1");
+    expect(input.hasAttribute("webkitdirectory")).toBe(false);
+  });
+
   it("renders queue findings, errors and removal controls", async () => {
     const onRemove = vi.fn();
     const entries: FileEntry[] = [
