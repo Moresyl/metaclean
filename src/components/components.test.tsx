@@ -169,6 +169,28 @@ describe("desktop components", () => {
     expect(click).not.toHaveBeenCalled();
   });
 
+  it("surfaces malformed native picker responses without browser fallback", async () => {
+    openMock.mockResolvedValue(["x".repeat(32 * 1024 + 1)]);
+    const onAdd = vi.fn();
+    const onError = vi.fn();
+    const { container } = wrap(<DropZone onAdd={onAdd} onAddNativePaths={vi.fn()} onError={onError} />);
+    const input = container.querySelector("input[type=file]") as HTMLInputElement;
+    const click = vi.spyOn(input, "click");
+    fireEvent.click(screen.getByRole("button", { name: "选择文件" }));
+    await waitFor(() => expect(onError).toHaveBeenCalledWith(expect.any(Error)));
+    expect(click).not.toHaveBeenCalled();
+    expect(onAdd).not.toHaveBeenCalled();
+  });
+
+  it("shares the browser fallback with registered command-palette pickers", async () => {
+    const onOpenPicker = vi.fn();
+    const onAdd = vi.fn();
+    wrap(<DropZone onAdd={onAdd} onAddNativePaths={vi.fn()} onOpenPicker={onOpenPicker} />);
+    fireEvent.click(screen.getByRole("button", { name: "选择文件夹" }));
+    expect(onOpenPicker).toHaveBeenCalledWith(true);
+    expect(onAdd).not.toHaveBeenCalled();
+  });
+
   it("renders queue findings, errors and removal controls", async () => {
     const onRemove = vi.fn();
     const entries: FileEntry[] = [

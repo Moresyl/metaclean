@@ -12,10 +12,12 @@ vi.mock("@tauri-apps/api/webview", () => ({ getCurrentWebview: () => ({ onDragDr
 const invokeMock = vi.hoisted(() => vi.fn());
 const revealMock = vi.hoisted(() => vi.fn());
 const listenMock = vi.hoisted(() => vi.fn());
+const pickerOpenMock = vi.hoisted(() => vi.fn());
 vi.mock("@tauri-apps/api/core", () => ({ invoke: invokeMock }));
 vi.mock("@tauri-apps/api/event", () => ({ listen: listenMock }));
 vi.mock("@tauri-apps/api/app", () => ({ getVersion: () => Promise.resolve("0.4.1") }));
 vi.mock("@tauri-apps/plugin-opener", () => ({ revealItemInDir: revealMock }));
+vi.mock("@tauri-apps/plugin-dialog", () => ({ open: pickerOpenMock }));
 
 describe("App", () => {
   const renderApp = () => render(<ThemeProvider initialMode="light"><I18nProvider><UpdateProvider><App /></UpdateProvider></I18nProvider></ThemeProvider>);
@@ -25,6 +27,7 @@ describe("App", () => {
     localStorage.setItem("metaclean.locale", "zh");
     revealMock.mockReset();
     revealMock.mockResolvedValue(undefined);
+    pickerOpenMock.mockReset();
     dragDropEventMock.mockReset();
     dragDropEventMock.mockResolvedValue(() => undefined);
     listenMock.mockReset();
@@ -166,6 +169,27 @@ describe("App", () => {
     expect(screen.getByRole("button", { name: "扫描隐私痕迹" })).toBeInTheDocument();
     fireEvent.keyDown(window, { key: "5", ctrlKey: true });
     expect(await screen.findByText("诊断与支持")).toBeInTheDocument();
+  });
+
+  it("keeps picker commands usable after leaving the clean page", async () => {
+    pickerOpenMock.mockRejectedValue(new Error("dialog unavailable"));
+    const { container } = renderApp();
+    fireEvent.click(screen.getByRole("button", { name: "设置" }));
+    const rootInput = container.querySelector("input[type=file]") as HTMLInputElement;
+    const click = vi.spyOn(rootInput, "click");
+    fireEvent.keyDown(window, { key: "k", ctrlKey: true });
+    const palette = await screen.findByRole("dialog", { name: "命令" });
+    fireEvent.click(within(palette).getByRole("option", { name: "选择文件" }));
+    await waitFor(() => expect(pickerOpenMock).toHaveBeenCalledWith({ multiple: true, directory: false }));
+    await waitFor(() => expect(click).toHaveBeenCalledOnce());
+  });
+
+  it("surfaces an invalid browser picker batch instead of silently dropping it", async () => {
+    pickerOpenMock.mockRejectedValue(new Error("dialog unavailable"));
+    const { container } = renderApp();
+    const input = container.querySelector("input[type=file]") as HTMLInputElement;
+    fireEvent.change(input, { target: { files: { length: 10_001 } } });
+    expect(await screen.findByRole("status")).toHaveTextContent("浏览器选择无效或超过 10,000 个文件");
   });
 
   it("switches all primary navigation labels to Japanese", () => {

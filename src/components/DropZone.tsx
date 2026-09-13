@@ -1,14 +1,16 @@
 import { FilePlus2, FolderOpen } from "lucide-react";
-import { useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import Button from "./Button";
 import type { FileEntry } from "../types";
 import { normalizeBrowserFiles } from "../lib/files";
-import { pickPaths } from "../lib/pick";
+import { PickerUnavailableError, pickPaths } from "../lib/pick";
 import { useI18n } from "../lib/i18n";
 
 interface DropZoneProps {
   onAdd: (entries: FileEntry[]) => void;
   onAddNativePaths: (paths: string[]) => Promise<void>;
+  onError?: (error: unknown) => void;
+  onOpenPicker?: (directory: boolean) => void;
   /** Set while a native (Tauri) drag hovers the window. */
   dragActive?: boolean;
   /** Collapse to a slim intake bar once the queue has files to show. */
@@ -17,18 +19,22 @@ interface DropZoneProps {
 
 const FORMATS = ["Images", "Audio", "Video", "Office", "PDF", "Text"];
 
-export default function DropZone({ onAdd, onAddNativePaths, dragActive = false, compact = false }: DropZoneProps) {
+export default function DropZone({ onAdd, onAddNativePaths, onError, onOpenPicker, dragActive = false, compact = false }: DropZoneProps) {
   const { text } = useI18n();
   const inputRef = useRef<HTMLInputElement>(null);
   const [browserDrag, setBrowserDrag] = useState(false);
   const hovering = dragActive || browserDrag;
   const labels = [text("图片", "Images"), text("音频", "Audio"), text("视频", "Video"), "Office", "PDF", text("文本", "Text")];
 
-  async function choose(directory: boolean) {
+  const choose = useCallback(async (directory: boolean) => {
     let paths: string[] | null;
     try {
       paths = await pickPaths(directory);
-    } catch {
+    } catch (error) {
+      if (!(error instanceof PickerUnavailableError)) {
+        onError?.(error);
+        return;
+      }
       // A plain browser has no Tauri dialog. Mirror the desktop folder action
       // with the native directory input so relative paths survive intake.
       inputRef.current?.toggleAttribute("webkitdirectory", directory);
@@ -43,7 +49,7 @@ export default function DropZone({ onAdd, onAddNativePaths, dragActive = false, 
         // failure into an unhandled rejection from a button event.
       }
     }
-  }
+  }, [onAddNativePaths, onError]);
 
   return (
     <section
@@ -91,29 +97,32 @@ export default function DropZone({ onAdd, onAddNativePaths, dragActive = false, 
       </div>
 
       <div className="flex flex-wrap justify-center gap-2">
-        <Button variant="primary" onClick={() => void choose(false)}>
+        <Button variant="primary" onClick={() => onOpenPicker ? onOpenPicker(false) : void choose(false)}>
           <FilePlus2 size={14} strokeWidth={2} />
           {text("选择文件", "Choose files")}
         </Button>
-        <Button onClick={() => void choose(true)}>
+        <Button onClick={() => onOpenPicker ? onOpenPicker(true) : void choose(true)}>
           <FolderOpen size={14} strokeWidth={2} />
           {text("选择文件夹", "Choose folder")}
         </Button>
       </div>
 
       {/* The desktop build never reaches this: it is the fallback for a plain
-          browser, where there is no system picker to fail over from. */}
-      <input
-        ref={inputRef}
-        className="sr-only"
-        type="file"
-        multiple
-        onChange={(event) => {
-          onAdd(normalizeBrowserFiles(event.target.files));
-          event.currentTarget.removeAttribute("webkitdirectory");
-          event.target.value = "";
-        }}
-      />
+          browser, where there is no system picker to fail over from. The App
+          root owns one persistent input when commands share this zone. */}
+      {!onOpenPicker ? (
+        <input
+          ref={inputRef}
+          className="sr-only"
+          type="file"
+          multiple
+          onChange={(event) => {
+            onAdd(normalizeBrowserFiles(event.target.files));
+            event.currentTarget.removeAttribute("webkitdirectory");
+            event.target.value = "";
+          }}
+        />
+      ) : null}
 
       {!compact ? (
         <div className="mt-0.5 flex flex-wrap justify-center gap-1">

@@ -11,10 +11,9 @@ import TitleBar from "./components/TitleBar";
 import StatusBar from "./components/StatusBar";
 import TooltipHost from "./components/TooltipHost";
 import CommandPalette, { type Command } from "./components/CommandPalette";
-import { actionableFindingCount, applyScanReports, entryFromPath, markEntryPaths, mergeEntries, pathIdentity, sumFindingCounts } from "./lib/files";
+import { actionableFindingCount, applyScanReports, entryFromPath, markEntryPaths, mergeEntries, normalizeBrowserFiles, pathIdentity, sumFindingCounts } from "./lib/files";
 import { installZoomLock } from "./lib/window";
 import { commandKeyLabel } from "./lib/keys";
-import { pickPaths } from "./lib/pick";
 import { loadHistory, persistHistory } from "./lib/history";
 import { readStorage, writeStorage } from "./lib/storage";
 import { clearActiveBatch, readActiveBatch, updateActiveBatchProgress, writeActiveBatch } from "./lib/recovery";
@@ -28,6 +27,7 @@ import { normalizeNativeDropEvent } from "./lib/drag";
 import { normalizeIntakeResult, normalizePathList } from "./lib/intake";
 import { normalizeCleanResults, normalizeScanReports } from "./lib/results";
 import { normalizeCloseBlocked, normalizeNavigationPage } from "./lib/events";
+import { PickerUnavailableError, pickPaths } from "./lib/pick";
 
 const HistoryPage = lazy(() => import("./components/HistoryPage"));
 const PrivacyPage = lazy(() => import("./components/PrivacyPage"));
@@ -65,6 +65,7 @@ export default function App() {
   const [queueClearPromptOpen, setQueueClearPromptOpen] = useState(false);
   const [dragActive, setDragActive] = useState(false);
   const mountedRef = useRef(true);
+  const pickerInputRef = useRef<HTMLInputElement>(null);
   entriesRef.current = entries;
   const updateEntries = useCallback((next: FileEntry[] | ((current: FileEntry[]) => FileEntry[])) => {
     const value = typeof next === "function" ? next(entriesRef.current) : next;
@@ -77,6 +78,15 @@ export default function App() {
     pendingMergeSkippedRef.current += merged.skipped;
     updateEntries(merged.entries);
   }, [updateEntries]);
+  const addBrowserFiles = useCallback((files: FileList | null) => {
+    if (!files) return;
+    const incoming = normalizeBrowserFiles(files);
+    if (files.length > 0 && incoming.length === 0) {
+      setMessage(text("浏览器选择无效或超过 10,000 个文件。", "The browser selection is invalid or exceeds 10,000 files."));
+      return;
+    }
+    addEntries(incoming);
+  }, [addEntries, text]);
   const removeEntry = useCallback((id: string) => {
     updateEntries((current) => current.filter((entry) => entry.id !== id));
   }, [updateEntries]);
@@ -104,6 +114,21 @@ export default function App() {
       setMessage(text(`无法展开所选路径：${detail}`, `Could not expand the selected paths: ${detail}`));
     }
   }, [addEntries, text]);
+  const openPicker = useCallback(async (directory: boolean) => {
+    try {
+      const paths = await pickPaths(directory);
+      if (paths) await addNativePaths(paths);
+    } catch (error) {
+      if (error instanceof PickerUnavailableError) {
+        pickerInputRef.current?.toggleAttribute("webkitdirectory", directory);
+        pickerInputRef.current?.click();
+        return;
+      }
+      if (!mountedRef.current) return;
+      const detail = boundedErrorMessage(error);
+      setMessage(text(`选择器返回了无效数据：${detail}`, `The picker returned invalid data: ${detail}`));
+    }
+  }, [addNativePaths, text]);
   const setMode = useCallback((next: CleanMode) => { setModeState(next); writeStorage("metaclean.outputMode", next); }, []);
   const setPreserveTimestamps = useCallback((next: boolean) => { setPreserveTimestampsState(next); writeStorage("metaclean.preserveTimestamps", String(next)); }, []);
   const setPreserveOrientation = useCallback((next: boolean) => { setPreserveOrientationState(next); writeStorage("metaclean.preserveOrientation", String(next)); }, []);
@@ -406,15 +431,6 @@ export default function App() {
     }
   }
 
-  async function choose(directory: boolean) {
-    try {
-      const paths = await pickPaths(directory);
-      if (paths) await addNativePaths(paths);
-    } catch {
-      /* Only the desktop build has a system picker; the drop zone has its own fallback. */
-    }
-  }
-
   /* Everything the window can do, in one list. The palette searches it, and it
      doubles as the inventory that keeps the accelerators honest. */
   const modifier = commandKeyLabel();
@@ -427,8 +443,8 @@ export default function App() {
     { id: "go-privacy", group: go, label: text("隐私说明", "Privacy"), icon: <ShieldCheck size={14} />, accelerator: `${modifier}3`, run: () => setPage("privacy") },
     { id: "go-settings", group: go, label: text("设置", "Settings"), icon: <Settings size={14} />, accelerator: `${modifier}4`, run: () => setPage("settings") },
     { id: "go-about", group: go, label: text("关于", "About"), icon: <CircleHelp size={14} />, accelerator: `${modifier}5`, run: () => setPage("about") },
-    { id: "pick-files", group: act, label: text("选择文件", "Choose files"), icon: <FilePlus2 size={14} />, run: () => void choose(false) },
-    { id: "pick-folder", group: act, label: text("选择文件夹", "Choose folder"), icon: <FolderOpen size={14} />, run: () => void choose(true) },
+    { id: "pick-files", group: act, label: text("选择文件", "Choose files"), icon: <FilePlus2 size={14} />, run: () => void openPicker(false) },
+    { id: "pick-folder", group: act, label: text("选择文件夹", "Choose folder"), icon: <FolderOpen size={14} />, run: () => void openPicker(true) },
     { id: "scan", group: act, label: text("扫描隐私痕迹", "Scan privacy traces"), icon: <ScanSearch size={14} />, disabled: busy || !entries.length || scanned, run: () => { setPage("clean"); void scan(); } },
     { id: "clean", group: act, label: text("确认并开始清理", "Confirm and clean"), icon: <ShieldCheck size={14} />, disabled: busy || !scanned || !cleanableEntries.length, run: () => { setPage("clean"); void clean(); } },
     { id: "clear", group: act, label: text("清空队列", "Clear queue"), icon: <Trash2 size={14} />, disabled: busy || !entries.length, run: () => setQueueClearPromptOpen(true) },
@@ -448,6 +464,17 @@ export default function App() {
 
   return (
     <>
+    <input
+      ref={pickerInputRef}
+      className="sr-only"
+      type="file"
+      multiple
+      onChange={(event) => {
+        addBrowserFiles(event.currentTarget.files);
+        event.currentTarget.removeAttribute("webkitdirectory");
+        event.currentTarget.value = "";
+      }}
+    />
     {/* Three fixed bands and one that takes what is left: the title bar and the
         status strip are chrome, and chrome that resizes with the content is the
         thing that makes a window feel like a page. */}
@@ -484,7 +511,7 @@ export default function App() {
                   {message}
                 </div>
               ) : null}
-              <DropZone onAdd={addEntries} onAddNativePaths={addNativePaths} dragActive={dragActive} compact={entries.length > 0} />
+              <DropZone onAdd={addEntries} onAddNativePaths={addNativePaths} onOpenPicker={(directory) => void openPicker(directory)} dragActive={dragActive} compact={entries.length > 0} />
               <FileQueue entries={entries} preserveColorProfile={preserveColorProfile} removeExtendedAttributes={removeExtendedAttributes} busy={busy} onClear={clearQueue} onRemove={removeEntry} onReveal={(path) => void reveal(path)} onNotify={setMessage} />
             </div>
               <CleanOptions mode={mode} onModeChange={setMode} preserveTimestamps={preserveTimestamps} onPreserveTimestampsChange={setPreserveTimestamps} preserveOrientation={preserveOrientation} onPreserveOrientationChange={setPreserveOrientation} preserveColorProfile={preserveColorProfile} onPreserveColorProfileChange={setPreserveColorProfile} removeExtendedAttributes={removeExtendedAttributes} onRemoveExtendedAttributesChange={setRemoveExtendedAttributes} disabled={!entries.length} scanned={scanned} hasFindings={cleanableEntries.length > 0} busy={busy} operation={activeOperation} cancelable={Boolean(activeBatchId)} cancelRequested={cancelRequested} onCancel={cancelOperation} onAction={() => void (scanned ? clean() : scan())} />
