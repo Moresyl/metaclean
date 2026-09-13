@@ -10,7 +10,7 @@ import { useI18n } from "../lib/i18n";
 import { actionableFindingCount, pathIdentity } from "../lib/files";
 import { copyText } from "../lib/window";
 import { boundedErrorMessage } from "../lib/errors";
-import { MAX_CLIPBOARD_BYTES, UTF8_ENCODER } from "../lib/bounds";
+import { MAX_CLIPBOARD_BYTES, MAX_REPORT_BYTES, UTF8_ENCODER } from "../lib/bounds";
 
 interface FileQueueProps { entries: FileEntry[]; preserveColorProfile: boolean; removeExtendedAttributes: boolean; busy?: boolean; onRemove: (id: string) => void; onClear: () => void; onReveal: (path: string) => void; onNotify: (message: string) => void }
 
@@ -178,7 +178,15 @@ export default function FileQueue({ entries, preserveColorProfile, removeExtende
           error: entry.result?.error ?? entry.report?.error,
         })),
       };
-      await invoke("export_audit_report", { path: destination, contents: JSON.stringify(report, null, 2) });
+      const contents = JSON.stringify(report, null, 2);
+      if (UTF8_ENCODER.encode(contents).byteLength > MAX_REPORT_BYTES) {
+        if (mountedRef.current) onNotify(text("审计报告过大，请分批导出", "The audit report is too large; export it in smaller batches"));
+        return;
+      }
+      // getVersion() is asynchronous. The queue can disappear while it is
+      // resolving, so never continue into a native write after unmount.
+      if (!mountedRef.current) return;
+      await invoke("export_audit_report", { path: destination, contents });
       if (!mountedRef.current) return;
       onNotify(text(`审计报告已导出：${destination}`, `Audit report exported: ${destination}`));
     } catch (error) {

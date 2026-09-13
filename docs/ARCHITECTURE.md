@@ -92,6 +92,8 @@ or history record.
 - Bulk path copy is capped at a 16 MiB UTF-8 clipboard payload; an oversized
   list is rejected with a visible message rather than concatenated into a
   WebView-freezing string or silently truncated.
+- Audit JSON is checked against the native 10 MiB UTF-8 report budget before
+  IPC, and export aborts if the queue unmounts while version metadata resolves.
 - Native launch-path, folder-picker and directory-expansion responses are
   normalized before reuse; malformed arrays, duplicate-heavy payloads, issue
   diagnostics and counters fail closed at the UI boundary.

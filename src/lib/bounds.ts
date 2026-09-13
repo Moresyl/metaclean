@@ -4,6 +4,7 @@ export const MAX_BATCH_FILES = 10_000;
 export const MAX_RAW_BATCH_ITEMS = 40_000;
 /** Keep bulk clipboard operations responsive even for the largest valid queue. */
 export const MAX_CLIPBOARD_BYTES = 16 * 1024 * 1024;
+export const MAX_REPORT_BYTES = 10 * 1024 * 1024;
 export const MAX_DIAGNOSTIC_BYTES = 8 * 1024;
 export const MAX_LABEL_BYTES = 256;
 export const MAX_NAME_BYTES = 256;

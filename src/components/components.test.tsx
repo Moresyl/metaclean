@@ -255,6 +255,23 @@ describe("desktop components", () => {
     expect(clipboardMock).not.toHaveBeenCalled();
   });
 
+  it("refuses an oversized audit report before crossing the native boundary", async () => {
+    saveMock.mockResolvedValue("C:\\reports\\large.json");
+    const entries: FileEntry[] = Array.from({ length: 300 }, (_, index) => ({
+      id: `report-${index}`,
+      name: `${index}.txt`,
+      path: `C:\\work\\${index}.txt`,
+      kind: "text",
+      status: "error",
+      result: { sourcePath: `C:\\work\\${index}.txt`, removed: [], success: false, error: "x".repeat(40_000) },
+    }));
+    const onNotify = vi.fn();
+    wrap(<FileQueue entries={entries} preserveColorProfile removeExtendedAttributes={false} onRemove={vi.fn()} onClear={vi.fn()} onReveal={vi.fn()} onNotify={onNotify} />);
+    fireEvent.click(screen.getByRole("button", { name: "导出审计报告" }));
+    await waitFor(() => expect(onNotify).toHaveBeenCalledWith("审计报告过大，请分批导出"));
+    expect(invokeMock).not.toHaveBeenCalledWith("export_audit_report", expect.anything());
+  });
+
   it("exports a bounded value-free audit report through the native command", async () => {
     saveMock.mockResolvedValue("C:\\reports\\metaclean-audit.json");
     const entries: FileEntry[] = [
