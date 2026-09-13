@@ -195,7 +195,10 @@ export default function App() {
         return;
       }
       setDragActive(payload.type === "enter" || payload.type === "over");
-      if (payload.type === "drop" && payload.paths.length) void addNativePaths(payload.paths);
+      if (payload.type === "drop") {
+        if (payload.paths.length) void addNativePaths(payload.paths);
+        else setMessage(text("拖放数据无效或未包含可处理文件。", "The dropped data was invalid or contained no processable files."));
+      }
     })).then((unlisten) => {
       if (active) dispose = unlisten;
       else unlisten();

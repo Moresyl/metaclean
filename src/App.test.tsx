@@ -132,6 +132,19 @@ describe("App", () => {
     await waitFor(() => expect(zone.className).not.toContain("border-brand"));
   });
 
+  it("reports a native drop whose paths are all filtered out", async () => {
+    let handle: ((event: { payload: unknown }) => void) | undefined;
+    dragDropEventMock.mockImplementation((listener: (event: { payload: unknown }) => void) => {
+      handle = listener;
+      return Promise.resolve(() => undefined);
+    });
+    renderApp();
+    await waitFor(() => expect(dragDropEventMock).toHaveBeenCalledOnce());
+    handle?.({ payload: { type: "drop", paths: ["", 4, "界".repeat(20_000)] } });
+    expect(await screen.findByRole("status")).toHaveTextContent("拖放数据无效或未包含可处理文件");
+    expect(invokeMock).not.toHaveBeenCalledWith("expand_paths", expect.anything());
+  });
+
   it("releases event listeners when a later native subscription fails", async () => {
     const unlistenMenu = vi.fn();
     listenMock
