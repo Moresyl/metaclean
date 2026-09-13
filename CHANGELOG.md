@@ -53,7 +53,7 @@ All notable changes to MetaClean are documented here. The project follows
   duplicate stream.
 
 - Final Windows candidate preflight was rerun against the source content
-  committed as `dd79fbc` after the streaming intake hardening; it remains
+  committed as `19795a0` after the streaming intake hardening; it remains
   non-publishing.
 
 - Browser folder-pick and native drag/drop normalization now mirrors the native
