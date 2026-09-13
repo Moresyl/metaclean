@@ -52,7 +52,7 @@ All notable changes to MetaClean are documented here. The project follows
   repeated drag/drop paths remain compatible without creating an unbounded
   duplicate stream.
 
-- Final Windows candidate preflight was rerun on the current `6529efe` source
+- Final Windows candidate preflight was rerun on the current `c084271` source
   line after the streaming de-duplication change; it remains non-publishing.
 
 - Browser folder-pick and native drag/drop normalization now mirrors the native
