@@ -63,6 +63,7 @@ describe("entryFromPath", () => {
     const originalPlatform = navigator.platform;
     vi.stubGlobal("navigator", { ...navigator, platform: "Win32" });
     expect(pathIdentity("//Server/Share/Photo.PNG")).toBe("\\\\server\\share\\photo.png");
+    expect(pathIdentity("Folder/Photo.PNG")).toBe("folder\\photo.png");
     vi.stubGlobal("navigator", { ...navigator, platform: originalPlatform.replace(/win/iu, "Linux") });
     expect(pathIdentity("//Server/Share/Photo.PNG")).toBe("//Server/Share/Photo.PNG");
     vi.unstubAllGlobals();

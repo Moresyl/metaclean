@@ -46,7 +46,12 @@ export function pathIdentity(path: string): string {
   const windowsPath = (path.includes("\\") && !path.startsWith("/"))
     || /^[a-z]:[\\/]/iu.test(path)
     || path.startsWith("\\\\")
-    || (path.startsWith("//") && isWindowsRuntime());
+    // Rust's Windows intake identity also folds relative forward-slash paths;
+    // keep queue reconciliation identical when a browser/plugin hands us one.
+    // Rust's Windows intake identity also folds relative and UNC slash
+    // spellings; keep queue reconciliation identical across browser/plugin
+    // boundaries while leaving POSIX-rooted paths alone.
+    || (isWindowsRuntime() && (path.startsWith("//") || !path.startsWith("/")));
   if (!windowsPath) return path;
   const withoutDevicePrefix = lower.startsWith("\\\\?\\") ? lower.slice(4) : lower;
   const canonical = withoutDevicePrefix.startsWith("unc\\")
