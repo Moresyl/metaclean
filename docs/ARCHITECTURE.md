@@ -81,8 +81,9 @@ or history record.
 - Startup arguments returned by the shell integration pass through the same
   batch preparation and path budgets before the first response reaches the UI.
 - Drag-and-drop payloads are validated in the UI boundary before path intake;
-  malformed entries are ignored and valid paths remain within the native
-  single-path, batch-byte and item-count budgets.
+  malformed entries are ignored, platform aliases are de-duplicated while
+  reading, and valid paths remain within the native single-path, 64 MiB,
+  10,000-unique and 40,000-raw-item budgets.
 - Browser FileList fallbacks apply the same 10,000-item cap and bounded UTF-8
   file-name metadata before queue rendering, so plain-browser input cannot
   create an unbounded React queue.

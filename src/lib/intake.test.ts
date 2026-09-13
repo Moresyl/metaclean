@@ -23,8 +23,13 @@ describe("native intake boundary", () => {
     expect(normalizePathList(Array.from({ length: 2_200 }, (_, index) => `${index}-${"x".repeat(32_000)}`))).toBeUndefined();
   });
 
-  it("rejects a duplicate-heavy raw array before spending time normalizing it", () => {
-    expect(normalizePathList(Array.from({ length: 10_001 }, () => "same.txt"))).toBeUndefined();
+  it("rejects an oversized raw array before spending time normalizing it", () => {
+    expect(normalizePathList(Array.from({ length: 40_001 }, () => "same.txt"))).toBeUndefined();
+    expect(normalizePathList(Array.from({ length: 10_001 }, (_, index) => `${index}.txt`))).toBeUndefined();
+  });
+
+  it("de-duplicates repeated paths before the unique-file limit", () => {
+    expect(normalizePathList(Array.from({ length: 10_001 }, () => "same.txt"))).toEqual(["same.txt"]);
   });
 
   it("normalizes a complete directory expansion response", () => {

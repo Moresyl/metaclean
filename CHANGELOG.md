@@ -55,6 +55,10 @@ All notable changes to MetaClean are documented here. The project follows
 - Final Windows candidate preflight was rerun on the current `6529efe` source
   line after the streaming de-duplication change; it remains non-publishing.
 
+- Browser folder-pick and native drag/drop normalization now mirrors the native
+  stream: platform aliases are de-duplicated while reading, 10,000 unique
+  paths are allowed, and raw input is capped at 40,000 items.
+
 - Rust 覆盖率账本现按新增递归路径预算、UTF-8 错误路径、8 KiB 诊断和输出路径边界测试更新为 84.28%。
 
 - Intake IPC now rejects empty paths before starting worker tasks, caps each
@@ -88,6 +92,10 @@ All notable changes to MetaClean are documented here. The project follows
   keeps the 10,000 unique-path limit, and caps raw input at 40,000 items so
   repeated drag/drop paths remain compatible without an unbounded duplicate
   stream.
+
+- Browser folder-pick and native drag/drop normalization now mirror the native
+  stream: platform aliases are de-duplicated while reading, 10,000 unique
+  paths are allowed, and raw input is capped at 40,000 items.
 
 - Update progress events are now schema-checked before reaching React state;
   invalid stages, negative or unsafe counters, and impossible totals are

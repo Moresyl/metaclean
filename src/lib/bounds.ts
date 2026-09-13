@@ -1,6 +1,7 @@
 export const MAX_PATH_BYTES = 32 * 1024;
 export const MAX_BATCH_PATH_BYTES = 64 * 1024 * 1024;
 export const MAX_BATCH_FILES = 10_000;
+export const MAX_RAW_BATCH_ITEMS = 40_000;
 export const MAX_DIAGNOSTIC_BYTES = 8 * 1024;
 export const MAX_LABEL_BYTES = 256;
 export const MAX_NAME_BYTES = 256;

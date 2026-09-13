@@ -1,8 +1,7 @@
 import type { IntakeIssue, IntakeResult } from "../types";
 import { pathIdentity } from "./files";
-import { MAX_BATCH_FILES, MAX_BATCH_PATH_BYTES, MAX_PATH_BYTES, UTF8_ENCODER, isBoundedText } from "./bounds";
+import { MAX_BATCH_FILES, MAX_BATCH_PATH_BYTES, MAX_PATH_BYTES, MAX_RAW_BATCH_ITEMS, UTF8_ENCODER, isBoundedText } from "./bounds";
 
-const MAX_RAW_PATHS = 10_000;
 // One final budget-overflow diagnostic can be emitted after the 50,000-entry
 // walker budget is exhausted.
 const MAX_SKIPPED_COUNT = 50_001;
@@ -11,7 +10,7 @@ const MAX_ISSUE_REASON_BYTES = 8 * 1024;
 /** Validate path arrays crossing the native/UI boundary before IPC reuse. */
 export function normalizePathList(value: unknown): string[] | undefined {
   if (!Array.isArray(value)) return undefined;
-  if (value.length > MAX_RAW_PATHS) return undefined;
+  if (value.length > MAX_RAW_BATCH_ITEMS) return undefined;
   const paths: string[] = [];
   const seen = new Set<string>();
   let totalBytes = 0;
@@ -19,9 +18,10 @@ export function normalizePathList(value: unknown): string[] | undefined {
     if (!isBoundedText(candidate, MAX_PATH_BYTES)) return undefined;
     const bytes = UTF8_ENCODER.encode(candidate).byteLength;
     totalBytes += bytes;
-    if (totalBytes > MAX_BATCH_PATH_BYTES || paths.length >= MAX_BATCH_FILES) return undefined;
+    if (totalBytes > MAX_BATCH_PATH_BYTES) return undefined;
     const identity = pathIdentity(candidate);
     if (seen.has(identity)) continue;
+    if (paths.length >= MAX_BATCH_FILES) return undefined;
     seen.add(identity);
     paths.push(candidate);
   }
