@@ -29,6 +29,10 @@ All notable changes to MetaClean are documented here. The project follows
   and surface opener failures in the update state instead of leaking an
   unhandled Promise rejection from Settings or About.
 
+- Windows candidate preflight was rerun after the updater fallback hardening;
+  NSIS, MSI, portable and all 113 per-user Explorer command checks passed
+  without publishing.
+
 - IPC 导入现在在创建任何后台任务前拒绝空路径，限制单路径 32 KiB、原始批次 64 MiB；审计 JSON 导出目标路径沿用同一单路径预算。
 
 - 递归目录展开现在对返回路径总量应用同一 64 MiB 预算，并将超长问题路径截断到 32 KiB，避免导入结果或错误回显放大内存与 IPC 负担。
