@@ -73,6 +73,9 @@ or history record.
   allocation-before-validation rule: Serde rejects values over 128 UTF-8 bytes
   before an owned `String` is created, while legacy empty cleanup tokens remain
   accepted.
+- Audit-report export uses bounded path/content wrappers as well: the 32 KiB
+  destination and 10 MiB JSON body are rejected before owned IPC strings are
+  allocated, then the atomic writer applies the extension and filesystem rules.
 - Startup arguments returned by the shell integration pass through the same
   batch preparation and path budgets before the first response reaches the UI.
 - Drag-and-drop payloads are validated in the UI boundary before path intake;

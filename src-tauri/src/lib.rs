@@ -9,7 +9,8 @@ mod shell_integration;
 
 use error::bounded_message;
 use models::{
-    BoundedBatchId, BoundedPaths, BoundedUpdateVersion, CleanRequest, CleanResult, ScanReport,
+    BoundedAuditPath, BoundedBatchId, BoundedPaths, BoundedReportContents, BoundedUpdateVersion,
+    CleanRequest, CleanResult, ScanReport,
 };
 use std::collections::{HashMap, HashSet};
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
@@ -32,6 +33,7 @@ const MAX_BATCH_FILES: usize = 10_000;
 const MAX_BATCH_ID_BYTES: usize = 128;
 pub(crate) const MAX_PATH_BYTES: usize = 32 * 1024;
 pub(crate) const MAX_BATCH_PATH_BYTES: usize = 64 * 1024 * 1024;
+pub(crate) const MAX_REPORT_BYTES: usize = 10 * 1024 * 1024;
 const MAX_UPDATE_VERSION_BYTES: usize = 128;
 const UPDATE_NETWORK_HELP: &str = "无法连接已签名更新源。请检查 GitHub 网络或 HTTPS_PROXY 后重试，也可从正式发布页手动下载安装包。 / Could not reach the signed update feed. Check GitHub access or HTTPS_PROXY, then retry, or download the installer from the Releases page.";
 const UPDATE_CHANGED: &str = "可用版本在确认后发生了变化，请先重新检查并查看新版本说明。 / The available release changed after confirmation. Check again and review the new release before installing.";
@@ -509,13 +511,15 @@ fn cancel_scan_batch(batch_id: BoundedBatchId) -> Result<bool, String> {
 }
 
 #[tauri::command]
-fn export_audit_report(path: String, contents: String) -> Result<(), String> {
-    validate_path_input(&path)?;
-    export_audit_report_to(std::path::Path::new(&path), &contents)
+fn export_audit_report(
+    path: BoundedAuditPath,
+    contents: BoundedReportContents,
+) -> Result<(), String> {
+    validate_path_input(path.as_str())?;
+    export_audit_report_to(std::path::Path::new(path.as_str()), contents.as_str())
 }
 
 fn export_audit_report_to(destination: &std::path::Path, contents: &str) -> Result<(), String> {
-    const MAX_REPORT_BYTES: usize = 10 * 1024 * 1024;
     if contents.len() > MAX_REPORT_BYTES {
         return Err("审计报告超过 10 MiB 上限".into());
     }
@@ -863,9 +867,12 @@ mod update_tests {
         self_update_supported_for, updater_network_error, validate_batch_id, validate_batch_size,
         validate_path_inputs, ActiveCleanBatchGuard, ActiveReadGuard, ActiveScanBatchGuard,
         BatchProgressState, CloseAction, MAX_BATCH_FILES, MAX_BATCH_ID_BYTES, MAX_BATCH_PATH_BYTES,
-        MAX_PATH_BYTES, PORTABLE_MARKER, PROGRESS_EVENT_BATCH, UPDATE_REQUEST_TIMEOUT,
+        MAX_PATH_BYTES, MAX_REPORT_BYTES, PORTABLE_MARKER, PROGRESS_EVENT_BATCH,
+        UPDATE_REQUEST_TIMEOUT,
     };
-    use crate::models::{BoundedBatchId, BoundedPaths, CleanRequest};
+    use crate::models::{
+        BoundedAuditPath, BoundedBatchId, BoundedPaths, BoundedReportContents, CleanRequest,
+    };
     use serde::Deserialize;
     use std::sync::atomic::AtomicBool;
     use std::sync::Arc;
@@ -1166,7 +1173,15 @@ mod update_tests {
     fn exports_only_bounded_json_audit_reports() {
         let directory = tempfile::tempdir().expect("create temporary directory");
         let report = directory.path().join("audit.json");
-        export_audit_report_to(&report, "{\"schemaVersion\":1}").expect("export report");
+        let report_path = BoundedAuditPath::deserialize(serde_json::Value::String(
+            report.to_string_lossy().into_owned(),
+        ))
+        .expect("bounded report path");
+        let report_contents = BoundedReportContents::deserialize(serde_json::Value::String(
+            "{\"schemaVersion\":1}".into(),
+        ))
+        .expect("bounded report contents");
+        export_audit_report(report_path, report_contents).expect("export report");
         assert_eq!(
             std::fs::read_to_string(report).expect("read report"),
             "{\"schemaVersion\":1}"
@@ -1178,6 +1193,12 @@ mod update_tests {
         )
         .is_err());
         let oversized_path = format!("{}audit.json", "x".repeat(MAX_PATH_BYTES));
-        assert!(export_audit_report(oversized_path, "{}".into()).is_err());
+        let oversized_path =
+            BoundedAuditPath::deserialize(serde_json::Value::String(oversized_path));
+        assert!(oversized_path.is_err());
+        let oversized_contents = BoundedReportContents::deserialize(serde_json::Value::String(
+            "x".repeat(MAX_REPORT_BYTES + 1),
+        ));
+        assert!(oversized_contents.is_err());
     }
 }

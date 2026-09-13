@@ -4,7 +4,7 @@ use serde::{
 };
 use std::fmt;
 
-use crate::{MAX_BATCH_FILES, MAX_BATCH_PATH_BYTES, MAX_PATH_BYTES};
+use crate::{MAX_BATCH_FILES, MAX_BATCH_PATH_BYTES, MAX_PATH_BYTES, MAX_REPORT_BYTES};
 
 #[derive(Debug, Clone)]
 pub struct BoundedString<const MAX_BYTES: usize>(String);
@@ -77,6 +77,8 @@ impl<'de, const MAX_BYTES: usize> Deserialize<'de> for BoundedString<MAX_BYTES> 
 
 pub type BoundedBatchId = BoundedString<128>;
 pub type BoundedUpdateVersion = BoundedString<128>;
+pub type BoundedAuditPath = BoundedString<MAX_PATH_BYTES>;
+pub type BoundedReportContents = BoundedString<MAX_REPORT_BYTES>;
 
 #[derive(Debug, Clone)]
 pub struct BoundedPaths(Vec<String>);

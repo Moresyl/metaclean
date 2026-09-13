@@ -37,6 +37,8 @@ All notable changes to MetaClean are documented here. The project follows
 
 - 原生批次 ID 与更新确认版本现在在 Serde 反序列化阶段即限制为 128 字节；取消任务、清理请求和一键更新不会先分配无界控制字符串。
 
+- 审计报告导出路径与内容现在也在 Serde 阶段分别限制为 32 KiB 和 10 MiB，避免报告写入前由无界 IPC 字符串占用内存。
+
 - Rust 覆盖率账本现按新增递归路径预算、UTF-8 错误路径、8 KiB 诊断和输出路径边界测试更新为 84.28%。
 
 - Intake IPC now rejects empty paths before starting worker tasks, caps each
@@ -61,6 +63,10 @@ All notable changes to MetaClean are documented here. The project follows
 - Native batch identifiers and reviewed update versions are now bounded to 128
   bytes during Serde deserialization, so cancellation, cleanup and one-click
   update commands do not first allocate unbounded control strings.
+
+- Audit-report paths and contents are now bounded during Serde deserialization
+  to 32 KiB and 10 MiB respectively, preventing unbounded IPC strings before
+  report validation and writing.
 
 - Update progress events are now schema-checked before reaching React state;
   invalid stages, negative or unsafe counters, and impossible totals are
