@@ -81,6 +81,7 @@ export default function App() {
     updateEntries((current) => current.filter((entry) => entry.id !== id));
   }, [updateEntries]);
   const clearQueue = useCallback(() => {
+    pendingMergeSkippedRef.current = 0;
     updateEntries([]);
   }, [updateEntries]);
   const addNativePaths = useCallback(async (paths: string[]) => {
