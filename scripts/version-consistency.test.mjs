@@ -48,6 +48,14 @@ test("keeps the signed Pages fallback tied to successful releases", async () => 
   assert.match(workflow, /actions\/deploy-pages@v4/u);
 });
 
+test("builds the E2E-feature binary before starting embedded WebDriver", async () => {
+  const packageMetadata = JSON.parse(await readFile(new URL("../package.json", import.meta.url), "utf8"));
+  const workflow = await readFile(new URL("../.github/workflows/ci.yml", import.meta.url), "utf8");
+  assert.equal(packageMetadata.scripts["pretest:e2e"], "pnpm test:e2e:build");
+  assert.doesNotMatch(workflow, /^\s*- run: pnpm test:e2e:build$/mu);
+  assert.match(workflow, /run: pnpm test:e2e/u);
+});
+
 test("keeps Windows release builds on the GUI subsystem", async () => {
   const mainSource = await readFile(new URL("../src-tauri/src/main.rs", import.meta.url), "utf8");
   assert.match(mainSource, /^#!\[cfg_attr\(not\(debug_assertions\), windows_subsystem = "windows"\)\]$/mu);

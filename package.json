@@ -24,6 +24,7 @@
     "test:supply-chain": "node scripts/verify-extract-zip-patch.mjs",
     "test:benchmark": "node scripts/benchmark-native.mjs",
     "test:e2e:build": "tauri build --debug --no-bundle --features e2e --config src-tauri/tauri.e2e.conf.json",
+    "pretest:e2e": "pnpm test:e2e:build",
     "test:e2e": "wdio run ./wdio.conf.mjs",
     "tauri": "tauri"
   },

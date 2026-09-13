@@ -158,7 +158,7 @@ pnpm test:benchmark                             # optional release-mode native b
 pnpm build                                      # typecheck + production bundle
 cargo fmt --manifest-path src-tauri/Cargo.toml -- --check
 cargo test --manifest-path src-tauri/Cargo.toml # Rust core tests
-pnpm test:e2e:build && pnpm test:e2e             # real desktop app E2E
+pnpm test:e2e                                    # real desktop app E2E (builds its E2E binary first)
 pnpm tauri build                                # platform installers
 ```
 

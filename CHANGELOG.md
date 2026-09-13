@@ -25,6 +25,10 @@ All notable changes to MetaClean are documented here. The project follows
 
 ### Changed
 
+- `pnpm test:e2e` now rebuilds the feature-gated desktop test binary before
+  starting embedded WebDriver. Windows candidate/preflight builds can no longer
+  leave a production-style debug binary that makes a later E2E run time out.
+
 - Finding totals in scan messages, queue sorting and audit summaries now cap at
   JavaScript's maximum safe integer, so individually valid native counts cannot
   overflow aggregate UI or JSON values.

@@ -129,7 +129,7 @@ MetaClean 是“分享前的文件隐私护栏”，不是取证查看器，也�
 - cargo test --manifest-path src-tauri/Cargo.toml
 - cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets --all-features -- -D warnings
 - cargo audit -f src-tauri/Cargo.lock --no-fetch
-- pnpm test:e2e:build and pnpm test:e2e
+- `pnpm test:e2e`（命令会先构建带 WebDriver 插件的 E2E 二进制）
 
 cargo audit --no-fetch 只表示使用本机已缓存的 advisory 数据；若 fetch 失败，必须在报告中说明网络限制，不能把它当作新鲜数据库证明。
 

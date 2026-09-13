@@ -149,7 +149,7 @@ pnpm test:benchmark                             # 可选的 release-mode 原生�
 pnpm build                                      # 类型检查 + 生产构建
 cargo fmt --manifest-path src-tauri/Cargo.toml -- --check
 cargo test --manifest-path src-tauri/Cargo.toml # Rust 内核测试
-pnpm test:e2e:build && pnpm test:e2e             # 真实桌面程序 E2E
+pnpm test:e2e                                    # 真实桌面程序 E2E（自动先构建 E2E 二进制）
 pnpm tauri build                                # 各平台安装包
 ```
 

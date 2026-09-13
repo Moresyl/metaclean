@@ -89,7 +89,6 @@ jobs:
         if: runner.os == 'macOS'
         run: cargo test macos_xattrs_are_preserved_by_default_and_private_ones_are_opt_in
         working-directory: src-tauri
-      - run: pnpm test:e2e:build
       - name: Run desktop E2E
         if: runner.os != 'Linux'
         run: pnpm test:e2e
