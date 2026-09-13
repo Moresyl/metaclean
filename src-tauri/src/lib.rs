@@ -957,6 +957,14 @@ mod update_tests {
         assert!(validate_batch_id(&"x".repeat(MAX_BATCH_ID_BYTES)).is_ok());
         let error = validate_batch_id(&"x".repeat(MAX_BATCH_ID_BYTES + 1)).unwrap_err();
         assert!(error.contains("128"));
+        assert!(BoundedBatchId::deserialize(serde_json::Value::String(
+            "x".repeat(MAX_BATCH_ID_BYTES),
+        ))
+        .is_ok());
+        assert!(BoundedBatchId::deserialize(serde_json::Value::String(
+            "x".repeat(MAX_BATCH_ID_BYTES + 1),
+        ))
+        .is_err());
     }
 
     #[test]
