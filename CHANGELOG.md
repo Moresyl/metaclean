@@ -3,6 +3,34 @@
 All notable changes to MetaClean are documented here. The project follows
 [Semantic Versioning](https://semver.org/).
 
+## [0.7.2] - 2026-09-13
+
+### Added
+
+- Native drag/drop now reports an explicit bounded error when a structurally
+  valid drop contains no processable paths after boundary filtering.
+- Release evidence records the latest regular and mixed-failure native benchmark
+  results in `VALIDATION.md`.
+
+### Fixed
+
+- Empty, non-string and oversized native drop paths no longer disappear
+  silently; hover state is cleared and the user receives an actionable message.
+- App integration regression coverage now proves the fully filtered drop does
+  not invoke `expand_paths`.
+
+### 安装
+
+- Windows x64：NSIS、MSI 与 x64 便携 ZIP；Windows x86、macOS Intel/Apple
+  Silicon 和 Linux x64 包由同一发布矩阵生成，并在公开发布前执行对应 smoke test。
+
+### English summary
+
+- MetaClean 0.7.2 fixes silent native drag/drop failures: a structurally valid
+  drop whose paths are all filtered now clears hover state and reports a bounded
+  actionable error. The release keeps the existing 113-extension intake,
+  signed updater, cross-platform package matrix, desktop E2E and checksum gates.
+
 ## [Unreleased]
 
 ### Added
@@ -893,4 +921,5 @@ All notable changes to MetaClean are documented here. The project follows
 [0.6.1]: https://github.com/Moresyl/metaclean/compare/v0.6.0...v0.6.1
 [0.7.0]: https://github.com/Moresyl/metaclean/compare/v0.6.1...v0.7.0
 [0.7.1]: https://github.com/Moresyl/metaclean/compare/v0.7.0...v0.7.1
-[Unreleased]: https://github.com/Moresyl/metaclean/compare/v0.7.1...HEAD
+[0.7.2]: https://github.com/Moresyl/metaclean/compare/v0.7.1...v0.7.2
+[Unreleased]: https://github.com/Moresyl/metaclean/compare/v0.7.2...HEAD
