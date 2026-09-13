@@ -9,23 +9,28 @@ const MAX_ISSUES = 100;
 const MAX_ISSUE_REASON_BYTES = 8 * 1024;
 /** Validate path arrays crossing the native/UI boundary before IPC reuse. */
 export function normalizePathList(value: unknown): string[] | undefined {
-  if (!Array.isArray(value)) return undefined;
-  if (value.length > MAX_RAW_BATCH_ITEMS) return undefined;
-  const paths: string[] = [];
-  const seen = new Set<string>();
-  let totalBytes = 0;
-  for (const candidate of value) {
-    if (!isBoundedText(candidate, MAX_PATH_BYTES)) return undefined;
-    const bytes = UTF8_ENCODER.encode(candidate).byteLength;
-    totalBytes += bytes;
-    if (totalBytes > MAX_BATCH_PATH_BYTES) return undefined;
-    const identity = pathIdentity(candidate);
-    if (seen.has(identity)) continue;
-    if (paths.length >= MAX_BATCH_FILES) return undefined;
-    seen.add(identity);
-    paths.push(candidate);
+  try {
+    if (!Array.isArray(value)) return undefined;
+    if (value.length > MAX_RAW_BATCH_ITEMS) return undefined;
+    const paths: string[] = [];
+    const seen = new Set<string>();
+    let totalBytes = 0;
+    for (const candidate of value) {
+      if (!isBoundedText(candidate, MAX_PATH_BYTES)) return undefined;
+      const bytes = UTF8_ENCODER.encode(candidate).byteLength;
+      totalBytes += bytes;
+      if (totalBytes > MAX_BATCH_PATH_BYTES) return undefined;
+      const identity = pathIdentity(candidate);
+      if (seen.has(identity)) continue;
+      if (paths.length >= MAX_BATCH_FILES) return undefined;
+      seen.add(identity);
+      paths.push(candidate);
+    }
+    return paths;
+  } catch {
+    // A revoked Proxy or throwing iterator is untrusted boundary data.
+    return undefined;
   }
-  return paths;
 }
 
 function normalizeIssues(value: unknown): IntakeIssue[] | undefined {

@@ -53,4 +53,10 @@ describe("native intake boundary", () => {
     expect(normalizeIntakeResult({ ...valid, issues: [{ path: "x", reason: "" }] })).toBeUndefined();
     expect(normalizeIntakeResult({ ...valid, limitReached: "false" })).toBeUndefined();
   });
+
+  it("fails closed for revoked array proxies", () => {
+    const revoked = Proxy.revocable([], {});
+    revoked.revoke();
+    expect(normalizePathList(revoked.proxy)).toBeUndefined();
+  });
 });

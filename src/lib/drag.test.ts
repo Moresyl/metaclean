@@ -22,6 +22,12 @@ describe("normalizeNativeDropEvent", () => {
     });
   });
 
+  it("fails closed when a drop path array has been revoked", () => {
+    const revoked = Proxy.revocable([], {});
+    revoked.revoke();
+    expect(normalizeNativeDropEvent({ type: "drop", paths: revoked.proxy })).toBeUndefined();
+  });
+
   it("de-duplicates paths before the unique batch limit", () => {
     const paths = [...Array.from({ length: 10_001 }, () => "C:\\same.txt"), "C:\\kept.txt"];
     expect(normalizeNativeDropEvent({ type: "drop", paths })).toEqual({

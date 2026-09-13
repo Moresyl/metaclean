@@ -68,6 +68,9 @@ All notable changes to MetaClean are documented here. The project follows
   of silently truncating the tail, keeping browser, picker and drag/drop intake
   all-or-nothing at the queue boundary.
 
+- Browser intake adapters now catch revoked proxies and throwing iterators at
+  the boundary, failing closed without interrupting the native event bridge.
+
 - Rust 覆盖率账本现按新增递归路径预算、UTF-8 错误路径、8 KiB 诊断和输出路径边界测试更新为 84.28%。
 
 - Intake IPC now rejects empty paths before starting worker tasks, caps each
