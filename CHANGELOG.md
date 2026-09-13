@@ -39,6 +39,10 @@ All notable changes to MetaClean are documented here. The project follows
 
 - 审计报告导出路径与内容现在也在 Serde 阶段分别限制为 32 KiB 和 10 MiB，避免报告写入前由无界 IPC 字符串占用内存。
 
+- Native benchmark evidence was refreshed after the IPC hardening; the current
+  release-mode Windows baseline is recorded in `VALIDATION.md` with both clean
+  and mixed-failure throughput plus tail latency.
+
 - Rust 覆盖率账本现按新增递归路径预算、UTF-8 错误路径、8 KiB 诊断和输出路径边界测试更新为 84.28%。
 
 - Intake IPC now rejects empty paths before starting worker tasks, caps each
