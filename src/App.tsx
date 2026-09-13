@@ -78,15 +78,27 @@ export default function App() {
     pendingMergeSkippedRef.current += merged.skipped;
     updateEntries(merged.entries);
   }, [updateEntries]);
+  const reportPickerError = useCallback((error: unknown) => {
+    if (!mountedRef.current) return;
+    const detail = boundedErrorMessage(error);
+    setMessage(text(`选择器返回了无效数据：${detail}`, `The picker returned invalid data: ${detail}`));
+  }, [text]);
   const addBrowserFiles = useCallback((files: FileList | null) => {
     if (!files) return;
+    let length: number;
+    try {
+      length = files.length;
+    } catch {
+      reportPickerError(new Error("浏览器选择无效 / The browser selection is invalid"));
+      return;
+    }
     const incoming = normalizeBrowserFiles(files);
-    if (files.length > 0 && incoming.length === 0) {
+    if (length > 0 && incoming.length === 0) {
       setMessage(text("浏览器选择无效或超过 10,000 个文件。", "The browser selection is invalid or exceeds 10,000 files."));
       return;
     }
     addEntries(incoming);
-  }, [addEntries, text]);
+  }, [addEntries, reportPickerError, text]);
   const removeEntry = useCallback((id: string) => {
     updateEntries((current) => current.filter((entry) => entry.id !== id));
   }, [updateEntries]);
@@ -124,11 +136,9 @@ export default function App() {
         pickerInputRef.current?.click();
         return;
       }
-      if (!mountedRef.current) return;
-      const detail = boundedErrorMessage(error);
-      setMessage(text(`选择器返回了无效数据：${detail}`, `The picker returned invalid data: ${detail}`));
+      reportPickerError(error);
     }
-  }, [addNativePaths, text]);
+  }, [addNativePaths, reportPickerError]);
   const setMode = useCallback((next: CleanMode) => { setModeState(next); writeStorage("metaclean.outputMode", next); }, []);
   const setPreserveTimestamps = useCallback((next: boolean) => { setPreserveTimestampsState(next); writeStorage("metaclean.preserveTimestamps", String(next)); }, []);
   const setPreserveOrientation = useCallback((next: boolean) => { setPreserveOrientationState(next); writeStorage("metaclean.preserveOrientation", String(next)); }, []);
@@ -511,7 +521,7 @@ export default function App() {
                   {message}
                 </div>
               ) : null}
-              <DropZone onAdd={addEntries} onAddNativePaths={addNativePaths} onOpenPicker={(directory) => void openPicker(directory)} dragActive={dragActive} compact={entries.length > 0} />
+              <DropZone onAdd={addEntries} onAddNativePaths={addNativePaths} onError={reportPickerError} onOpenPicker={(directory) => void openPicker(directory)} dragActive={dragActive} compact={entries.length > 0} />
               <FileQueue entries={entries} preserveColorProfile={preserveColorProfile} removeExtendedAttributes={removeExtendedAttributes} busy={busy} onClear={clearQueue} onRemove={removeEntry} onReveal={(path) => void reveal(path)} onNotify={setMessage} />
             </div>
               <CleanOptions mode={mode} onModeChange={setMode} preserveTimestamps={preserveTimestamps} onPreserveTimestampsChange={setPreserveTimestamps} preserveOrientation={preserveOrientation} onPreserveOrientationChange={setPreserveOrientation} preserveColorProfile={preserveColorProfile} onPreserveColorProfileChange={setPreserveColorProfile} removeExtendedAttributes={removeExtendedAttributes} onRemoveExtendedAttributesChange={setRemoveExtendedAttributes} disabled={!entries.length} scanned={scanned} hasFindings={cleanableEntries.length > 0} busy={busy} operation={activeOperation} cancelable={Boolean(activeBatchId)} cancelRequested={cancelRequested} onCancel={cancelOperation} onAction={() => void (scanned ? clean() : scan())} />

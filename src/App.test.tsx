@@ -192,6 +192,13 @@ describe("App", () => {
     expect(await screen.findByRole("status")).toHaveTextContent("浏览器选择无效或超过 10,000 个文件");
   });
 
+  it("fails closed when the root browser picker list is revoked", async () => {
+    const files = Object.defineProperty({}, "length", { get: () => { throw new Error("revoked"); } });
+    const { container } = renderApp();
+    fireEvent.change(container.querySelector("input[type=file]") as HTMLInputElement, { target: { files } });
+    expect(await screen.findByRole("status")).toHaveTextContent("选择器返回了无效数据：浏览器选择无效");
+  });
+
   it("switches all primary navigation labels to Japanese", () => {
     renderApp();
     fireEvent.click(screen.getByRole("button", { name: "设置" }));

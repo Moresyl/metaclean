@@ -158,6 +158,24 @@ describe("desktop components", () => {
     expect(input.hasAttribute("webkitdirectory")).toBe(false);
   });
 
+  it("reports fully rejected browser drops instead of silently ignoring them", () => {
+    const onError = vi.fn();
+    const { container } = wrap(<DropZone onAdd={vi.fn()} onAddNativePaths={vi.fn()} onError={onError} />);
+    const zone = container.querySelector("section")!;
+    fireEvent.drop(zone, { dataTransfer: { files: { length: 10_001 } } });
+    expect(onError).toHaveBeenCalledWith(expect.objectContaining({ message: expect.stringContaining("超过 10,000") }));
+  });
+
+  it("reports an unreadable browser file list without touching queue state", () => {
+    const onAdd = vi.fn();
+    const onError = vi.fn();
+    const files = Object.defineProperty({}, "length", { get: () => { throw new Error("revoked"); } });
+    const { container } = wrap(<DropZone onAdd={onAdd} onAddNativePaths={vi.fn()} onError={onError} />);
+    fireEvent.drop(container.querySelector("section")!, { dataTransfer: { files } });
+    expect(onError).toHaveBeenCalledWith(expect.objectContaining({ message: expect.stringContaining("浏览器选择无效") }));
+    expect(onAdd).not.toHaveBeenCalled();
+  });
+
   it("does not reopen the browser picker when native intake fails", async () => {
     openMock.mockResolvedValue(["C:\\work\\photo.jpg"]);
     const onAddNativePaths = vi.fn().mockRejectedValue(new Error("expand failed"));

@@ -26,6 +26,23 @@ export default function DropZone({ onAdd, onAddNativePaths, onError, onOpenPicke
   const hovering = dragActive || browserDrag;
   const labels = [text("图片", "Images"), text("音频", "Audio"), text("视频", "Video"), "Office", "PDF", text("文本", "Text")];
 
+  const addBrowserFiles = useCallback((files: FileList | null) => {
+    if (!files) return;
+    let length: number;
+    try {
+      length = files.length;
+    } catch {
+      onError?.(new Error("浏览器选择无效 / The browser selection is invalid"));
+      return;
+    }
+    const entries = normalizeBrowserFiles(files);
+    if (length > 0 && entries.length === 0) {
+      onError?.(new Error("浏览器选择无效或超过 10,000 个文件 / The browser selection is invalid or exceeds 10,000 files"));
+      return;
+    }
+    onAdd(entries);
+  }, [onAdd, onError]);
+
   const choose = useCallback(async (directory: boolean) => {
     let paths: string[] | null;
     try {
@@ -75,7 +92,7 @@ export default function DropZone({ onAdd, onAddNativePaths, onError, onOpenPicke
       onDrop={(event) => {
         event.preventDefault();
         setBrowserDrag(false);
-        onAdd(normalizeBrowserFiles(event.dataTransfer.files));
+        addBrowserFiles(event.dataTransfer.files);
       }}
     >
       {!compact ? (
@@ -117,7 +134,7 @@ export default function DropZone({ onAdd, onAddNativePaths, onError, onOpenPicke
           type="file"
           multiple
           onChange={(event) => {
-            onAdd(normalizeBrowserFiles(event.target.files));
+            addBrowserFiles(event.target.files);
             event.currentTarget.removeAttribute("webkitdirectory");
             event.target.value = "";
           }}
