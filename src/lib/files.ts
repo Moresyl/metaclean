@@ -148,14 +148,25 @@ export function normalizeBrowserFiles(value: unknown): FileEntry[] {
   return entries;
 }
 
-export function mergeEntries(current: FileEntry[], incoming: FileEntry[]): FileEntry[] {
-  const known = new Set(current.map((entry) => entry.path ? pathIdentity(entry.path) : entry.id));
-  return [...current, ...incoming.filter((entry) => {
+export interface MergeEntriesResult {
+  entries: FileEntry[];
+  skipped: number;
+}
+
+export function mergeEntries(current: FileEntry[], incoming: FileEntry[]): MergeEntriesResult {
+  const retained = current.slice(0, MAX_BATCH_FILES);
+  const known = new Set(retained.map((entry) => entry.path ? pathIdentity(entry.path) : entry.id));
+  const additions = incoming.filter((entry) => {
     const identity = entry.path ? pathIdentity(entry.path) : entry.id;
     if (known.has(identity)) return false;
     known.add(identity);
     return true;
-  })];
+  });
+  const available = Math.max(0, MAX_BATCH_FILES - retained.length);
+  return {
+    entries: retained.concat(additions.slice(0, available)),
+    skipped: Math.max(0, additions.length - available),
+  };
 }
 
 export function markEntryPaths(current: FileEntry[], paths: string[], status: FileEntry["status"]): FileEntry[] {

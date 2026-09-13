@@ -97,19 +97,28 @@ describe("entryFromFile", () => {
 describe("mergeEntries", () => {
   it("keeps the first entry when ids repeat", () => {
     const entry = entryFromPath("C:\\photo.png");
-    expect(mergeEntries([entry], [entry])).toHaveLength(1);
+    expect(mergeEntries([entry], [entry]).entries).toHaveLength(1);
   });
 
   it("preserves order while appending only new ids", () => {
     const first = entryFromPath("first.jpg");
     const second = entryFromPath("second.mp4");
-    expect(mergeEntries([first], [first, second])).toEqual([first, second]);
+    expect(mergeEntries([first], [first, second]).entries).toEqual([first, second]);
   });
 
   it("does not queue the same Windows file twice through path aliases", () => {
     const first = entryFromPath("C:\\Work\\Photo.PNG");
     const alias = entryFromPath("c:/work/photo.png");
-    expect(mergeEntries([], [first, alias])).toHaveLength(1);
+    expect(mergeEntries([], [first, alias]).entries).toHaveLength(1);
+  });
+
+  it("caps the accumulated queue at one native batch", () => {
+    const current = Array.from({ length: 10_000 }, (_, index) => entryFromPath(`current-${index}.txt`));
+    const incoming = [entryFromPath("new-file.txt")];
+    expect(mergeEntries(current, incoming)).toMatchObject({ skipped: 1 });
+    expect(mergeEntries(current, incoming).entries).toHaveLength(10_000);
+    expect(mergeEntries(current.slice(0, 9_999), incoming)).toMatchObject({ skipped: 0 });
+    expect(mergeEntries(current.slice(0, 9_999), incoming).entries.at(-1)?.path).toBe("new-file.txt");
   });
 });
 

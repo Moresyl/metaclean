@@ -88,6 +88,7 @@ document models. Every candidate is re-detected and re-inspected before writing.
 - Refuses symlinks and reparse points as input or destination, including paths reached through linked parent directories
 - Bounds each IPC path to 32 KiB and each raw path batch to 64 MiB before native work starts
 - De-duplicates platform path aliases while reading, keeps at most 10,000 unique files and caps raw input at 40,000 items so repeated drops do not consume the unique-file budget
+- Keeps the visible queue at the same 10,000-file ceiling as native work; additional imports are reported and left for a later batch instead of growing an unprocessable queue
 - Rejects a drag/drop batch whose aggregate path payload exceeds 64 MiB instead of silently processing only a prefix
 - Rejects browser file selections over 10,000 items instead of silently truncating the tail
 - Caps bulk path-copy output at 16 MiB UTF-8 and asks users to copy oversized lists in smaller batches

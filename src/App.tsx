@@ -41,6 +41,7 @@ export default function App() {
   const [page, setPage] = useState<Page>("clean");
   const [commandsOpen, setCommandsOpen] = useState(false);
   const [entries, setEntries] = useState<FileEntry[]>([]);
+  const entriesRef = useRef<FileEntry[]>([]);
   const [mode, setModeState] = useState<CleanMode>(() => readStorage("metaclean.outputMode") === "replace" ? "replace" : "copy");
   const [preserveTimestamps, setPreserveTimestampsState] = useState(() => readStorage("metaclean.preserveTimestamps") !== "false");
   const [preserveOrientation, setPreserveOrientationState] = useState(() => readStorage("metaclean.preserveOrientation") !== "false");
@@ -60,10 +61,18 @@ export default function App() {
   const recoveryProgressRef = useRef<{ batchId?: string; completed: number; persistedAt: number }>({ completed: 0, persistedAt: 0 });
   const [recoveryNotice] = useState(() => readActiveBatch());
   const [message, setMessage] = useState<string>();
+  const pendingMergeSkippedRef = useRef(0);
   const [queueClearPromptOpen, setQueueClearPromptOpen] = useState(false);
   const [dragActive, setDragActive] = useState(false);
   const mountedRef = useRef(true);
-  const addEntries = useCallback((incoming: FileEntry[]) => setEntries((current) => mergeEntries(current, incoming)), []);
+  entriesRef.current = entries;
+  const addEntries = useCallback((incoming: FileEntry[]) => {
+    if (!incoming.length) return;
+    const merged = mergeEntries(entriesRef.current, incoming);
+    entriesRef.current = merged.entries;
+    pendingMergeSkippedRef.current += merged.skipped;
+    setEntries(merged.entries);
+  }, []);
   const addNativePaths = useCallback(async (paths: string[]) => {
     if (!mountedRef.current || !paths.length) return;
     try {
@@ -101,6 +110,16 @@ export default function App() {
     ));
     clearActiveBatch(recoveryNotice.batchId);
   }, [recoveryNotice, text]);
+
+  useEffect(() => {
+    const skipped = pendingMergeSkippedRef.current;
+    if (!skipped) return;
+    pendingMergeSkippedRef.current = 0;
+    setMessage(text(
+      `队列最多保留 10,000 个唯一文件，${skipped} 个新文件未加入；可先处理当前队列后再继续导入。`,
+      `The queue keeps at most 10,000 unique files; ${skipped} new file(s) were not added. Process the current queue before importing more.`,
+    ));
+  }, [entries, text]);
 
   useEffect(() => {
     let active = true;

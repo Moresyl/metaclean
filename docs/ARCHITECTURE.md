@@ -89,6 +89,9 @@ or history record.
 - Browser FileList fallbacks reject a selection over 10,000 items and apply
   bounded UTF-8 file-name metadata before queue rendering, so plain-browser
   input cannot create an unbounded React queue or silently lose its tail.
+- The visible queue keeps the same 10,000-file ceiling as native work; repeated
+  imports report entries that did not fit instead of building a queue that the
+  next scan could not process.
 - Bulk path copy is capped at a 16 MiB UTF-8 clipboard payload; an oversized
   list is rejected with a visible message rather than concatenated into a
   WebView-freezing string or silently truncated.
