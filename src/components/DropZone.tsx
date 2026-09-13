@@ -25,14 +25,23 @@ export default function DropZone({ onAdd, onAddNativePaths, dragActive = false, 
   const labels = [text("图片", "Images"), text("音频", "Audio"), text("视频", "Video"), "Office", "PDF", text("文本", "Text")];
 
   async function choose(directory: boolean) {
+    let paths: string[] | null;
     try {
-      const paths = await pickPaths(directory);
-      if (paths) await onAddNativePaths(paths);
+      paths = await pickPaths(directory);
     } catch {
       // A plain browser has no Tauri dialog. Mirror the desktop folder action
       // with the native directory input so relative paths survive intake.
       inputRef.current?.toggleAttribute("webkitdirectory", directory);
       inputRef.current?.click();
+      return;
+    }
+    if (paths) {
+      try {
+        await onAddNativePaths(paths);
+      } catch {
+        // The parent owns the visible native-intake error. Never turn that
+        // failure into an unhandled rejection from a button event.
+      }
     }
   }
 

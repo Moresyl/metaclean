@@ -158,6 +158,17 @@ describe("desktop components", () => {
     expect(input.hasAttribute("webkitdirectory")).toBe(false);
   });
 
+  it("does not reopen the browser picker when native intake fails", async () => {
+    openMock.mockResolvedValue(["C:\\work\\photo.jpg"]);
+    const onAddNativePaths = vi.fn().mockRejectedValue(new Error("expand failed"));
+    const { container } = wrap(<DropZone onAdd={vi.fn()} onAddNativePaths={onAddNativePaths} />);
+    const input = container.querySelector("input[type=file]") as HTMLInputElement;
+    const click = vi.spyOn(input, "click");
+    fireEvent.click(screen.getByRole("button", { name: "选择文件" }));
+    await waitFor(() => expect(onAddNativePaths).toHaveBeenCalledWith(["C:\\work\\photo.jpg"]));
+    expect(click).not.toHaveBeenCalled();
+  });
+
   it("renders queue findings, errors and removal controls", async () => {
     const onRemove = vi.fn();
     const entries: FileEntry[] = [
