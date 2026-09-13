@@ -53,6 +53,7 @@ test("release workflow consumes validated notes and finalizes checksums", async 
   assert.doesNotMatch(workflow, /collect-updater-assets\.mjs[^\n]+"\$RELEASE_TAG"/u);
   assert.match(workflow, /smoke-macos-dmg\.sh/u);
   assert.match(workflow, /smoke-linux-deb\.sh/u);
+  assert.match(workflow, /apt-get install -y[^\n]+xvfb/u, "release validation needs a virtual display for desktop E2E");
   assert.match(workflow, /gh release create/u);
   assert.match(workflow, /^  validate:/mu, "release builds must depend on a dedicated source validation job");
   assert.match(workflow, /build:\n    needs: validate/u, "release package builds must wait for validation");
