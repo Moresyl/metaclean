@@ -33,6 +33,9 @@ All notable changes to MetaClean are documented here. The project follows
   before any platform package matrix starts, so a release cannot bypass the
   installed-WebView regression gate.
 
+- Browser folder identities now normalize slash and case aliases on Windows,
+  matching native queue de-duplication for repeated folder selections.
+
 - Finding totals in scan messages, queue sorting and audit summaries now cap at
   JavaScript's maximum safe integer, so individually valid native counts cannot
   overflow aggregate UI or JSON values.
