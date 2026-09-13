@@ -86,9 +86,9 @@ or history record.
   10,000-unique and 40,000-raw-item budgets.
 - A drag/drop payload that exceeds the aggregate 64 MiB path budget is rejected
   as a whole; the UI never silently processes only the prefix that fit.
-- Browser FileList fallbacks apply the same 10,000-item cap and bounded UTF-8
-  file-name metadata before queue rendering, so plain-browser input cannot
-  create an unbounded React queue.
+- Browser FileList fallbacks reject a selection over 10,000 items and apply
+  bounded UTF-8 file-name metadata before queue rendering, so plain-browser
+  input cannot create an unbounded React queue or silently lose its tail.
 - Native launch-path, folder-picker and directory-expansion responses are
   normalized before reuse; malformed arrays, duplicate-heavy payloads, issue
   diagnostics and counters fail closed at the UI boundary.

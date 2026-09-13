@@ -85,7 +85,7 @@ describe("entryFromFile", () => {
     const malformed = { name: "bad.txt", size: -1, lastModified: 1 };
     const oversized = Array.from({ length: 10_001 }, (_, index) => new File(["x"], `file-${index}.txt`, { lastModified: index }));
     expect(normalizeBrowserFiles([malformed, oversized[0]])).toHaveLength(1);
-    expect(normalizeBrowserFiles(oversized)).toHaveLength(10_000);
+    expect(normalizeBrowserFiles(oversized)).toEqual([]);
   });
 
   it("fails closed for broken FileList-like accessors", () => {

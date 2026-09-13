@@ -123,7 +123,11 @@ export function normalizeBrowserFiles(value: unknown): FileEntry[] {
   try {
     const rawLength = (value as { length?: unknown }).length;
     if (typeof rawLength !== "number" || !Number.isSafeInteger(rawLength) || rawLength < 0) return [];
-    length = Math.min(rawLength, MAX_BATCH_FILES);
+    // Do not silently drop the tail of a browser selection. Native picker and
+    // drag/drop intake reject an oversized batch; the browser fallback must
+    // preserve that same all-or-nothing contract.
+    if (rawLength > MAX_BATCH_FILES) return [];
+    length = rawLength;
   } catch {
     return [];
   }

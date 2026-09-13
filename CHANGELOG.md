@@ -63,6 +63,10 @@ All notable changes to MetaClean are documented here. The project follows
   whole, and hover/leave lifecycle events stay closable even when their
   irrelevant path field is malformed; no drop is silently truncated.
 
+- Browser FileList fallback now rejects selections over 10,000 items instead
+  of silently truncating the tail, keeping browser, picker and drag/drop intake
+  all-or-nothing at the queue boundary.
+
 - Rust 覆盖率账本现按新增递归路径预算、UTF-8 错误路径、8 KiB 诊断和输出路径边界测试更新为 84.28%。
 
 - Intake IPC now rejects empty paths before starting worker tasks, caps each
