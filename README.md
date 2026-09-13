@@ -87,6 +87,7 @@ document models. Every candidate is re-detected and re-inspected before writing.
 - Re-checks source bytes, modification time, readonly permissions and extended attributes before allocating output or backup, and again before replacement
 - Refuses symlinks and reparse points as input or destination, including paths reached through linked parent directories
 - Bounds each IPC path to 32 KiB and each raw path batch to 64 MiB before native work starts
+- De-duplicates platform path aliases while reading, keeps at most 10,000 unique files and caps raw input at 40,000 items so repeated drops do not consume the unique-file budget
 - Caps parser, filesystem, updater and intake diagnostics at 8 KiB with UTF-8-safe truncation before they reach IPC/UI surfaces
 - Caps input at 256 MiB, and expanded Office archives at 512 MiB
 - Malformed or unsupported files fail without touching the source
