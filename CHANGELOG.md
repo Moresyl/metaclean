@@ -43,6 +43,10 @@ All notable changes to MetaClean are documented here. The project follows
   release-mode Windows baseline is recorded in `VALIDATION.md` with both clean
   and mixed-failure throughput plus tail latency.
 
+- Final Windows preflight was rerun after the IPC changes; NSIS, MSI, portable
+  and 113-extension Explorer integration smoke evidence is recorded without
+  publishing or pushing a release.
+
 - Rust 覆盖率账本现按新增递归路径预算、UTF-8 错误路径、8 KiB 诊断和输出路径边界测试更新为 84.28%。
 
 - Intake IPC now rejects empty paths before starting worker tasks, caps each
