@@ -871,7 +871,8 @@ mod update_tests {
         UPDATE_REQUEST_TIMEOUT,
     };
     use crate::models::{
-        BoundedAuditPath, BoundedBatchId, BoundedPaths, BoundedReportContents, CleanRequest,
+        BoundedAuditPath, BoundedBatchId, BoundedPaths, BoundedReportContents,
+        BoundedUpdateVersion, CleanRequest,
     };
     use serde::Deserialize;
     use std::sync::atomic::AtomicBool;
@@ -962,6 +963,14 @@ mod update_tests {
         ))
         .is_ok());
         assert!(BoundedBatchId::deserialize(serde_json::Value::String(
+            "x".repeat(MAX_BATCH_ID_BYTES + 1),
+        ))
+        .is_err());
+        assert!(BoundedUpdateVersion::deserialize(serde_json::Value::String(
+            "x".repeat(MAX_BATCH_ID_BYTES),
+        ))
+        .is_ok());
+        assert!(BoundedUpdateVersion::deserialize(serde_json::Value::String(
             "x".repeat(MAX_BATCH_ID_BYTES + 1),
         ))
         .is_err());
