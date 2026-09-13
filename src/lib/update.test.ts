@@ -79,6 +79,13 @@ describe("checkForUpdate", () => {
     });
   });
 
+  it("omits malformed or oversized release dates", async () => {
+    const malformedDate = vi.fn().mockResolvedValue({ currentVersion: "0.3.0", version: "0.4.0", date: "not-a-date" });
+    await expect(checkForUpdate({ checker: malformedDate })).resolves.toMatchObject({ status: "available", info: { publishedAt: undefined } });
+    const oversizedDate = vi.fn().mockResolvedValue({ currentVersion: "0.3.0", version: "0.4.0", date: "2".repeat(129) });
+    await expect(checkForUpdate({ checker: oversizedDate })).resolves.toMatchObject({ status: "available", info: { publishedAt: undefined } });
+  });
+
   it("refuses prereleases, malformed stable versions, and stale updater payloads", async () => {
     const prerelease = vi.fn().mockResolvedValue({ currentVersion: "0.3.0", version: "0.4.0-beta.1" });
     await expect(checkForUpdate({ checker: prerelease })).rejects.toThrow("prerelease");
@@ -92,6 +99,14 @@ describe("checkForUpdate", () => {
     await expect(checkForUpdate({ checker: padded })).rejects.toThrow("invalid stable version");
     const stale = vi.fn().mockResolvedValue({ currentVersion: "0.4.0", version: "0.3.0" });
     await expect(checkForUpdate({ checker: stale })).resolves.toEqual({ status: "current", currentVersion: "0.4.0" });
+  });
+
+  it("rejects malformed native update metadata before dereferencing it", async () => {
+    await expect(checkForUpdate({ checker: vi.fn().mockResolvedValue({ version: 0.4 }) })).rejects.toThrow(/invalid metadata/u);
+    await expect(checkForUpdate({ checker: vi.fn().mockResolvedValue({ version: "0.4.0", close: "later" }) })).rejects.toThrow(/invalid metadata/u);
+    const malformedWithCleanup = { version: 0.4, currentVersion: "0.3.0", close: vi.fn().mockResolvedValue(undefined) };
+    await expect(checkForUpdate({ checker: vi.fn().mockResolvedValue(malformedWithCleanup) })).rejects.toThrow(/invalid metadata/u);
+    expect(malformedWithCleanup.close).toHaveBeenCalledOnce();
   });
 
   it("closes native update resources on invalid metadata and explains network failures", async () => {
@@ -123,6 +138,11 @@ describe("getInstalledVersion", () => {
     getVersionMock.mockResolvedValue("0.4.1");
     await expect(getInstalledVersion()).resolves.toBe("0.4.1");
   });
+
+  it("falls back safely when the app-version adapter returns malformed data", async () => {
+    getVersionMock.mockResolvedValue({ version: "0.4.1" });
+    await expect(getInstalledVersion()).resolves.toBe("0.0.0");
+  });
 });
 
 describe("native update commands", () => {
@@ -130,6 +150,10 @@ describe("native update commands", () => {
     const invoker = vi.fn().mockResolvedValue({ selfUpdateSupported: false, portable: true });
     await expect(getUpdateRuntime(invoker)).resolves.toEqual({ selfUpdateSupported: false, portable: true });
     expect(invoker).toHaveBeenCalledWith("get_update_runtime");
+  });
+
+  it("rejects malformed runtime capability responses", async () => {
+    await expect(getUpdateRuntime(vi.fn().mockResolvedValue({ selfUpdateSupported: "yes", portable: false }))).rejects.toThrow(/无效数据/u);
   });
 
   it("forwards progress and always removes the event listener", async () => {
@@ -169,6 +193,12 @@ describe("native update commands", () => {
     const invoker = vi.fn().mockResolvedValue(true);
     await expect(installAvailableUpdate({ expectedVersion: "0.4.0", listener, invoker })).resolves.toBe(true);
     expect(invoker).toHaveBeenCalledWith("install_update_and_restart", { expectedVersion: "0.4.0" });
+  });
+
+  it("rejects a malformed install result instead of treating a truthy value as success", async () => {
+    const listener = vi.fn().mockResolvedValue(vi.fn());
+    const invoker = vi.fn().mockResolvedValue("true");
+    await expect(installAvailableUpdate({ expectedVersion: "0.4.0", listener, invoker })).rejects.toThrow(/无效结果/u);
   });
 
   it("forwards the reviewed version through the default Tauri adapter", async () => {

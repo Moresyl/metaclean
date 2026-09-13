@@ -74,6 +74,9 @@ or history record.
 - Native launch-path, folder-picker and directory-expansion responses are
   normalized before reuse; malformed arrays, duplicate-heavy payloads, issue
   diagnostics and counters fail closed at the UI boundary.
+- Scan, cleanup, About and shell-status responses are normalized with bounded
+  paths, sizes, findings, diagnostics and nullable optional fields before they
+  can affect reconciliation, history or visible UI state.
 - Parser, filesystem, updater and intake diagnostics are normalized through an
   8 KiB UTF-8-safe cap before they are returned over IPC or rendered by the UI.
 - Scan responses contain the source path, detected format, size, category,

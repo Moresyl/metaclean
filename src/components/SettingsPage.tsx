@@ -23,6 +23,7 @@ import { useUpdate } from "../contexts/UpdateContext";
 import { useTheme } from "../contexts/ThemeContext";
 import { LOCALES, type Locale } from "../lib/locales";
 import { boundedErrorMessage } from "../lib/errors";
+import { normalizeContextMenuStatus } from "../lib/system";
 
 interface SettingsPageProps {
   mode: CleanMode;
@@ -75,8 +76,12 @@ export default function SettingsPage({
 
   useEffect(() => {
     let active = true;
-    void invoke<ContextMenuStatus>("get_context_menu_status")
-      .then((value) => { if (active) setContextMenu(value); })
+    void invoke<unknown>("get_context_menu_status")
+      .then((value) => {
+        const normalized = normalizeContextMenuStatus(value);
+        if (!normalized) throw new Error("右键菜单状态返回了无效数据 / Context-menu status was invalid");
+        if (active) setContextMenu(normalized);
+      })
       .catch((error) => {
         if (!active) return;
         const detail = boundedErrorMessage(error);
@@ -99,7 +104,8 @@ export default function SettingsPage({
     setBusy(true);
     setContextMenuError(undefined);
     try {
-      const next = await invoke<ContextMenuStatus>("set_context_menu_enabled", { enabled: !contextMenu.enabled });
+      const next = normalizeContextMenuStatus(await invoke<unknown>("set_context_menu_enabled", { enabled: !contextMenu.enabled }));
+      if (!next) throw new Error("右键菜单状态返回了无效数据 / Context-menu status was invalid");
       if (mountedRef.current) setContextMenu(next);
     } catch (error) {
       if (mountedRef.current) {

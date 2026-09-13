@@ -56,6 +56,35 @@ describe("App", () => {
     expect(screen.queryByText("notes.txt")).not.toBeInTheDocument();
   });
 
+  it("fails closed when native scan results are malformed", async () => {
+    invokeMock.mockImplementation((command?: string) => command === "get_launch_paths"
+      ? Promise.resolve(["C:\\work\\notes.txt"])
+      : command === "expand_paths" ? Promise.resolve({ files: ["C:\\work\\notes.txt"], skippedCount: 0, issues: [], limitReached: false })
+        : command === "scan_files" ? Promise.resolve([{ path: "C:\\work\\notes.txt", name: "notes.txt", format: "Text", size: -1, supported: true, findings: [] }])
+          : command === "set_close_to_tray" ? Promise.resolve(undefined) : Promise.resolve([]));
+    renderApp();
+    await screen.findByText("notes.txt");
+    fireEvent.click(screen.getByRole("button", { name: "扫描隐私痕迹" }));
+    expect(await screen.findByText("扫描失败：扫描返回了无效数据")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "扫描隐私痕迹" })).toBeEnabled();
+  });
+
+  it("fails closed when native cleanup results are malformed", async () => {
+    invokeMock.mockImplementation((command?: string) => command === "get_launch_paths"
+      ? Promise.resolve(["C:\\work\\notes.txt"])
+      : command === "expand_paths" ? Promise.resolve({ files: ["C:\\work\\notes.txt"], skippedCount: 0, issues: [], limitReached: false })
+        : command === "scan_files" ? Promise.resolve([{ path: "C:\\work\\notes.txt", name: "notes.txt", format: "Text", size: 4, supported: true, findings: [{ category: "unicode", label: "Invisible Unicode", count: 1, severity: "privacy" }] }])
+          : command === "clean_files" ? Promise.resolve([{ sourcePath: "C:\\work\\notes.txt", removed: [], success: "yes" }])
+            : command === "set_close_to_tray" ? Promise.resolve(undefined) : Promise.resolve([]));
+    renderApp();
+    await screen.findByText("notes.txt");
+    fireEvent.click(screen.getByRole("button", { name: "扫描隐私痕迹" }));
+    await screen.findByText("发现 1 项痕迹");
+    fireEvent.click(screen.getByRole("button", { name: "确认并开始清理" }));
+    expect(await screen.findByText("清理失败：清理返回了无效数据")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "确认并开始清理" })).toBeEnabled();
+  });
+
   it("cleans up a drag-drop listener that finishes registering after unmount", async () => {
     let resolveRegistration: ((unlisten: () => void) => void) | undefined;
     const unlisten = vi.fn();

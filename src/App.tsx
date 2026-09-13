@@ -19,7 +19,6 @@ import { loadHistory, persistHistory } from "./lib/history";
 import { readStorage, writeStorage } from "./lib/storage";
 import { clearActiveBatch, readActiveBatch, updateActiveBatchProgress, writeActiveBatch } from "./lib/recovery";
 import type { BatchProgress, CleanMode, FileEntry, HistoryEntry, Page } from "./types";
-import type { CleanResult, ScanReport } from "./types";
 import { useI18n } from "./lib/i18n";
 import { useTheme } from "./contexts/ThemeContext";
 import { useUpdate } from "./contexts/UpdateContext";
@@ -27,6 +26,7 @@ import { boundedErrorMessage } from "./lib/errors";
 import { normalizeBatchProgress } from "./lib/progress";
 import { normalizeNativeDropEvent } from "./lib/drag";
 import { normalizeIntakeResult, normalizePathList } from "./lib/intake";
+import { normalizeCleanResults, normalizeScanReports } from "./lib/results";
 
 const HistoryPage = lazy(() => import("./components/HistoryPage"));
 const PrivacyPage = lazy(() => import("./components/PrivacyPage"));
@@ -240,7 +240,8 @@ export default function App() {
     setCancelRequested(false);
     setBusy(true); setProgress(undefined); setMessage(undefined); setEntries((current) => markEntryPaths(current, paths, "scanning"));
     try {
-      const reports = await invoke<ScanReport[]>("scan_files", { paths, batchId });
+      const reports = normalizeScanReports(await invoke<unknown>("scan_files", { paths, batchId }));
+      if (!reports) throw new Error(text("扫描返回了无效数据", "Scanning returned invalid data"));
       if (!mountedRef.current) return;
       const requested = new Set(paths.map(pathIdentity));
       const seenReports = new Set<string>();
@@ -294,7 +295,8 @@ export default function App() {
     writeActiveBatch({ batchId, total: paths.length, completed: 0, mode, startedAt: new Date().toISOString() });
     recoveryProgressRef.current = { batchId, completed: 0, persistedAt: Date.now() };
     try {
-      const results = await invoke<CleanResult[]>("clean_files", { request: { paths, batchId, mode, preserveTimestamps, preserveOrientation, preserveColorProfile, removeExtendedAttributes } });
+      const results = normalizeCleanResults(await invoke<unknown>("clean_files", { request: { paths, batchId, mode, preserveTimestamps, preserveOrientation, preserveColorProfile, removeExtendedAttributes } }));
+      if (!results) throw new Error(text("清理返回了无效数据", "Cleanup returned invalid data"));
       if (!mountedRef.current) return;
       const requested = new Set(paths.map(pathIdentity));
       const seenResults = new Set<string>();
@@ -345,8 +347,8 @@ export default function App() {
     cancelRequestedRef.current = true;
     setCancelRequested(true);
     const command = operationKindRef.current === "scan" ? "cancel_scan_batch" : "cancel_clean_batch";
-    void invoke<boolean>(command, { batchId }).then((accepted) => {
-      if (!accepted && mountedRef.current && batchIdRef.current === batchId && operationKindRef.current === (command === "cancel_scan_batch" ? "scan" : "clean")) {
+    void invoke<unknown>(command, { batchId }).then((accepted) => {
+      if (accepted !== true && mountedRef.current && batchIdRef.current === batchId && operationKindRef.current === (command === "cancel_scan_batch" ? "scan" : "clean")) {
         cancelRequestedRef.current = false;
         setCancelRequested(false);
       }

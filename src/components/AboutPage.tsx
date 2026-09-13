@@ -28,7 +28,7 @@ import {
   REPOSITORY_URL,
   type ProjectUrl,
 } from "../lib/links";
-import { buildDiagnosticReport, type AboutInfo } from "../lib/about";
+import { buildDiagnosticReport, normalizeAboutInfo, type AboutInfo } from "../lib/about";
 import { copyText } from "../lib/window";
 import { boundedErrorMessage } from "../lib/errors";
 
@@ -64,8 +64,12 @@ export default function AboutPage() {
 
   useEffect(() => {
     let active = true;
-    void invoke<AboutInfo>("get_about_info")
-      .then((value) => { if (active) setAbout(value); })
+    void invoke<unknown>("get_about_info")
+      .then((value) => {
+        const normalized = normalizeAboutInfo(value);
+        if (!normalized) throw new Error("运行信息返回了无效数据 / Runtime information was invalid");
+        if (active) setAbout(normalized);
+      })
       .catch((reason) => {
         if (!active) return;
         if (!("__TAURI_INTERNALS__" in window)) {

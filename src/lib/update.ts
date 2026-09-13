@@ -6,6 +6,7 @@ export const RELEASES_PAGE_URL = "https://github.com/Moresyl/metaclean/releases/
 const CHECK_TIMEOUT_MS = 15_000;
 const MAX_STABLE_VERSION_BYTES = 128;
 const MAX_UPDATE_NOTES_CHARS = 64 * 1024;
+const MAX_UPDATE_DATE_CHARS = 128;
 const UPDATE_NETWORK_HELP = "无法连接已签名更新源。请检查 GitHub 网络或 HTTPS_PROXY 后重试，也可从正式发布页手动下载安装包。 / Could not reach the signed update feed. Check GitHub access or HTTPS_PROXY, then retry, or download the installer from the Releases page.";
 const UPDATE_CHANGED = "可用版本在确认后发生了变化，请先重新检查并查看新版本说明。 / The available release changed after confirmation. Check again and review the new release before installing.";
 
@@ -130,7 +131,10 @@ function updaterNetworkError(cause: unknown): Error {
 export async function getInstalledVersion(): Promise<string> {
   try {
     const { getVersion } = await import("@tauri-apps/api/app");
-    return await getVersion();
+    const version: unknown = await getVersion();
+    if (typeof version !== "string" || version.length > MAX_STABLE_VERSION_BYTES) return "0.0.0";
+    parseVersion(version);
+    return version;
   } catch {
     return "0.0.0";
   }
@@ -155,10 +159,25 @@ export async function checkForUpdate(options: {
   timeoutMs?: number;
 } = {}): Promise<UpdateCheckResult> {
   const update = await checkSignedUpdate(options.checker ?? nativeCheck, options.timeoutMs ?? CHECK_TIMEOUT_MS);
-  const currentVersion = options.currentVersion ?? update?.currentVersion ?? await getInstalledVersion();
-  if (!update) return { status: "current", currentVersion };
+  if (!update) {
+    const currentVersionValue: unknown = options.currentVersion ?? await getInstalledVersion();
+    if (typeof currentVersionValue !== "string" || currentVersionValue.length > MAX_STABLE_VERSION_BYTES) {
+      throw new Error("Update service returned an invalid current version");
+    }
+    parseVersion(currentVersionValue);
+    return { status: "current", currentVersion: currentVersionValue };
+  }
 
   try {
+    if (typeof update !== "object" || typeof update.version !== "string" || (update.close !== undefined && typeof update.close !== "function")) {
+      throw new Error("Update service returned invalid metadata");
+    }
+    const currentVersionValue: unknown = options.currentVersion ?? update.currentVersion ?? await getInstalledVersion();
+    if (typeof currentVersionValue !== "string" || currentVersionValue.length > MAX_STABLE_VERSION_BYTES) {
+      throw new Error("Update service returned an invalid current version");
+    }
+    parseVersion(currentVersionValue);
+    const currentVersion = currentVersionValue;
     const availableVersion = update.version.trim().replace(/^v/iu, "");
     if (availableVersion.length > MAX_STABLE_VERSION_BYTES) throw new Error("Update service returned an invalid stable version");
     const parsed = parseVersion(availableVersion);
@@ -178,7 +197,9 @@ export async function checkForUpdate(options: {
         notes: typeof update.body === "string" && update.body.trim() && update.body.length <= MAX_UPDATE_NOTES_CHARS
           ? update.body
           : undefined,
-        publishedAt: typeof update.date === "string" && update.date.trim() ? update.date : undefined,
+        publishedAt: typeof update.date === "string" && update.date.trim() && update.date.length <= MAX_UPDATE_DATE_CHARS && Number.isFinite(Date.parse(update.date))
+          ? update.date
+          : undefined,
         releaseUrl: releaseUrlForVersion(availableVersion),
       },
     };
@@ -194,7 +215,13 @@ export async function checkForUpdate(options: {
 
 export async function getUpdateRuntime(invoker?: InvokeLike): Promise<UpdateRuntime> {
   const invoke = invoker ?? tauriInvoke;
-  return await invoke<UpdateRuntime>("get_update_runtime");
+  const value = await invoke<unknown>("get_update_runtime");
+  if (!value || typeof value !== "object") throw new Error("更新运行环境返回了无效数据 / Update runtime was invalid");
+  const candidate = value as Partial<UpdateRuntime>;
+  if (typeof candidate.selfUpdateSupported !== "boolean" || typeof candidate.portable !== "boolean") {
+    throw new Error("更新运行环境返回了无效数据 / Update runtime was invalid");
+  }
+  return { selfUpdateSupported: candidate.selfUpdateSupported, portable: candidate.portable };
 }
 
 export async function installAvailableUpdate(options: {
@@ -216,7 +243,9 @@ export async function installAvailableUpdate(options: {
       const progress = normalizeUpdateProgress(event.payload);
       if (progress) options.onProgress?.(progress);
     });
-    return await invoke<boolean>("install_update_and_restart", { expectedVersion });
+    const installed = await invoke<unknown>("install_update_and_restart", { expectedVersion });
+    if (typeof installed !== "boolean") throw new Error("更新器返回了无效结果 / Updater returned an invalid result");
+    return installed;
   } finally {
     try {
       await unlisten?.();

@@ -1,21 +1,13 @@
 import type { IntakeIssue, IntakeResult } from "../types";
 import { pathIdentity } from "./files";
+import { MAX_BATCH_FILES, MAX_BATCH_PATH_BYTES, MAX_PATH_BYTES, UTF8_ENCODER, isBoundedText } from "./bounds";
 
-const MAX_PATH_BYTES = 32 * 1024;
-const MAX_BATCH_PATH_BYTES = 64 * 1024 * 1024;
-const MAX_BATCH_FILES = 10_000;
 const MAX_RAW_PATHS = 10_000;
 // One final budget-overflow diagnostic can be emitted after the 50,000-entry
 // walker budget is exhausted.
 const MAX_SKIPPED_COUNT = 50_001;
 const MAX_ISSUES = 100;
 const MAX_ISSUE_REASON_BYTES = 8 * 1024;
-const UTF8_ENCODER = new TextEncoder();
-
-function boundedText(value: unknown, maxBytes: number): value is string {
-  return typeof value === "string" && value.length > 0 && UTF8_ENCODER.encode(value).byteLength <= maxBytes;
-}
-
 /** Validate path arrays crossing the native/UI boundary before IPC reuse. */
 export function normalizePathList(value: unknown): string[] | undefined {
   if (!Array.isArray(value)) return undefined;
@@ -24,7 +16,7 @@ export function normalizePathList(value: unknown): string[] | undefined {
   const seen = new Set<string>();
   let totalBytes = 0;
   for (const candidate of value) {
-    if (!boundedText(candidate, MAX_PATH_BYTES)) return undefined;
+    if (!isBoundedText(candidate, MAX_PATH_BYTES)) return undefined;
     const bytes = UTF8_ENCODER.encode(candidate).byteLength;
     totalBytes += bytes;
     if (totalBytes > MAX_BATCH_PATH_BYTES || paths.length >= MAX_BATCH_FILES) return undefined;
@@ -42,7 +34,7 @@ function normalizeIssues(value: unknown): IntakeIssue[] | undefined {
   for (const item of value) {
     if (!item || typeof item !== "object") return undefined;
     const candidate = item as Partial<IntakeIssue>;
-    if (!boundedText(candidate.path, MAX_PATH_BYTES) || !boundedText(candidate.reason, MAX_ISSUE_REASON_BYTES)) return undefined;
+    if (!isBoundedText(candidate.path, MAX_PATH_BYTES) || !isBoundedText(candidate.reason, MAX_ISSUE_REASON_BYTES)) return undefined;
     issues.push({ path: candidate.path, reason: candidate.reason });
   }
   return issues;
