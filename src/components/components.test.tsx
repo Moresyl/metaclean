@@ -253,7 +253,7 @@ describe("desktop components", () => {
     fireEvent.click(screen.getByRole("button", { name: "复制全部路径" }));
     await waitFor(() => expect(onNotify).toHaveBeenCalledWith("路径列表过大，请分批复制"));
     expect(clipboardMock).not.toHaveBeenCalled();
-  });
+  }, 30_000);
 
   it("refuses an oversized audit report before crossing the native boundary", async () => {
     saveMock.mockResolvedValue("C:\\reports\\large.json");

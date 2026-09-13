@@ -7,7 +7,7 @@ import Select from "./Select";
 import ContextMenu, { useContextMenu, type MenuEntry } from "./ContextMenu";
 import type { FileEntry, Finding } from "../types";
 import { useI18n } from "../lib/i18n";
-import { actionableFindingCount, pathIdentity } from "../lib/files";
+import { actionableFindingCount, pathIdentity, sumFindingCounts } from "../lib/files";
 import { copyText } from "../lib/window";
 import { boundedErrorMessage } from "../lib/errors";
 import { MAX_CLIPBOARD_BYTES, MAX_REPORT_BYTES, UTF8_ENCODER } from "../lib/bounds";
@@ -162,7 +162,7 @@ export default function FileQueue({ entries, preserveColorProfile, removeExtende
           files: completed.length,
           succeeded: completed.filter((entry) => entry.result?.success).length,
           failed: completed.filter((entry) => entry.status === "error").length,
-          findings: completed.reduce((sum, entry) => sum + (entry.report?.findings.reduce((count, finding) => count + finding.count, 0) ?? 0), 0),
+          findings: sumFindingCounts(completed.flatMap((entry) => entry.report?.findings ?? [])),
         },
         files: completed.map((entry) => ({
           path: entry.path,

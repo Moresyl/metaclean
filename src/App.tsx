@@ -11,7 +11,7 @@ import TitleBar from "./components/TitleBar";
 import StatusBar from "./components/StatusBar";
 import TooltipHost from "./components/TooltipHost";
 import CommandPalette, { type Command } from "./components/CommandPalette";
-import { actionableFindingCount, applyScanReports, entryFromPath, markEntryPaths, mergeEntries, pathIdentity } from "./lib/files";
+import { actionableFindingCount, applyScanReports, entryFromPath, markEntryPaths, mergeEntries, pathIdentity, sumFindingCounts } from "./lib/files";
 import { installZoomLock } from "./lib/window";
 import { commandKeyLabel } from "./lib/keys";
 import { pickPaths } from "./lib/pick";
@@ -285,7 +285,7 @@ export default function App() {
         return true;
       });
       updateEntries((current) => applyScanReports(current, paths, relevant));
-      const count = relevant.reduce((total, report) => total + report.findings.reduce((sum, finding) => sum + finding.count, 0), 0);
+      const count = sumFindingCounts(relevant.flatMap((report) => report.findings));
       const missing = paths.length - relevant.length;
       setMessage(cancelRequestedRef.current
         ? text(`已取消扫描：${relevant.length} 个文件已返回结果，${missing} 个可重试。`, `Scan cancelled: ${relevant.length} file(s) returned results; ${missing} can be retried.`)

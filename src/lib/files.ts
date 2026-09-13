@@ -1,4 +1,4 @@
-import type { FileEntry, ScanReport } from "../types";
+import type { FileEntry, Finding, ScanReport } from "../types";
 import { MAX_BATCH_FILES, MAX_NAME_BYTES, MAX_PATH_BYTES, isBoundedText } from "./bounds";
 
 /* These mirror the engine's intake list. They only choose the glyph on a queue
@@ -82,13 +82,20 @@ export function actionableFindingCount(
   preserveColorProfile: boolean,
   removeExtendedAttributes = false,
 ): number {
-  return report?.findings
-    .filter((finding) => {
+  return report ? sumFindingCounts(report.findings.filter((finding) => {
       if (finding.category === "color_profile") return !preserveColorProfile;
       if (finding.category === "macos_xattr") return removeExtendedAttributes;
       return true;
-    })
-    .reduce((total, finding) => total + finding.count, 0) ?? 0;
+    })) : 0;
+}
+
+/** Keep aggregate counters reliable even when individually valid native counts add up beyond JS's safe integer range. */
+export function sumFindingCounts(findings: Finding[]): number {
+  return findings.reduce((total, finding) => {
+    const count = Number.isSafeInteger(finding.count) && finding.count >= 0 ? finding.count : 0;
+    if (total >= Number.MAX_SAFE_INTEGER - count) return Number.MAX_SAFE_INTEGER;
+    return total + count;
+  }, 0);
 }
 
 export function entryFromPath(path: string): FileEntry {

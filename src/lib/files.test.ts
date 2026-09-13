@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import type { ScanReport } from "../types";
-import { actionableFindingCount, applyScanReports, classifyFile, entryFromFile, entryFromPath, markEntryPaths, mergeEntries, normalizeBrowserFiles, pathIdentity } from "./files";
+import { actionableFindingCount, applyScanReports, classifyFile, entryFromFile, entryFromPath, markEntryPaths, mergeEntries, normalizeBrowserFiles, pathIdentity, sumFindingCounts } from "./files";
 
 describe("classifyFile", () => {
   const groups = {
@@ -205,5 +205,21 @@ describe("actionableFindingCount", () => {
 
   it("handles an unscanned file", () => {
     expect(actionableFindingCount(undefined, false)).toBe(0);
+  });
+});
+
+describe("sumFindingCounts", () => {
+  it("caps aggregate counts at the largest reliable JavaScript integer", () => {
+    expect(sumFindingCounts([
+      { category: "a", label: "a", count: Number.MAX_SAFE_INTEGER, severity: "privacy" },
+      { category: "b", label: "b", count: 1, severity: "privacy" },
+    ])).toBe(Number.MAX_SAFE_INTEGER);
+  });
+
+  it("ignores malformed aggregate counts instead of producing an unsafe total", () => {
+    expect(sumFindingCounts([
+      { category: "a", label: "a", count: -1, severity: "privacy" },
+      { category: "b", label: "b", count: Number.POSITIVE_INFINITY, severity: "privacy" },
+    ])).toBe(0);
   });
 });
