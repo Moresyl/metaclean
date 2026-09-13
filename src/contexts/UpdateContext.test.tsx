@@ -201,6 +201,24 @@ describe("UpdateProvider", () => {
     expect(installAvailableUpdateMock).not.toHaveBeenCalled();
   });
 
+  it("deduplicates concurrent release-page launches", async () => {
+    let finishOpen: (() => void) | undefined;
+    getUpdateRuntimeMock.mockResolvedValue({ selfUpdateSupported: false, portable: true });
+    checkForUpdateMock.mockResolvedValue({
+      status: "available",
+      info: { currentVersion: "0.3.0", availableVersion: "0.4.0", name: "MetaClean v0.4.0", releaseUrl: "https://github.com/Moresyl/metaclean/releases/tag/v0.4.0" },
+    });
+    openUrlMock.mockReturnValue(new Promise<void>((resolve) => { finishOpen = resolve; }));
+    render(<UpdateProvider><Probe /></UpdateProvider>);
+    fireEvent.click(screen.getByRole("button", { name: "check" }));
+    await screen.findByText("available");
+    fireEvent.click(screen.getByRole("button", { name: "install" }));
+    fireEvent.click(screen.getByRole("button", { name: "install" }));
+    await waitFor(() => expect(openUrlMock).toHaveBeenCalledTimes(1));
+    finishOpen?.();
+    await waitFor(() => expect(openUrlMock).toHaveBeenCalledTimes(1));
+  });
+
   it("remembers a dismissed version and allows the prompt to be reopened", async () => {
     checkForUpdateMock.mockResolvedValue({
       status: "available",

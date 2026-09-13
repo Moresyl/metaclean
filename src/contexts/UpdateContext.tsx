@@ -116,6 +116,8 @@ export function UpdateProvider({ children }: { children: ReactNode }) {
   const installUpdate = useCallback(async () => {
     if (!mountedRef.current || installing.current || checking.current) return;
     if (!runtime.selfUpdateSupported) {
+      installing.current = true;
+      if (mountedRef.current) setError(undefined);
       try {
         await openRelease();
       } catch (reason) {
@@ -123,6 +125,8 @@ export function UpdateProvider({ children }: { children: ReactNode }) {
         setError(boundedErrorMessage(reason));
         setProgress(undefined);
         setStatus("error");
+      } finally {
+        installing.current = false;
       }
       return;
     }
