@@ -52,6 +52,9 @@ All notable changes to MetaClean are documented here. The project follows
   repeated drag/drop paths remain compatible without creating an unbounded
   duplicate stream.
 
+- Final Windows candidate preflight was rerun on the current `6529efe` source
+  line after the streaming de-duplication change; it remains non-publishing.
+
 - Rust 覆盖率账本现按新增递归路径预算、UTF-8 错误路径、8 KiB 诊断和输出路径边界测试更新为 84.28%。
 
 - Intake IPC now rejects empty paths before starting worker tasks, caps each
