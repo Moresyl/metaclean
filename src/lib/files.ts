@@ -30,6 +30,11 @@ function isWindowsRuntime(): boolean {
   return /win(?:dows|32|64)/iu.test(`${navigator.platform} ${navigator.userAgent}`);
 }
 
+function browserPathIdentity(path: string): string {
+  if (!isWindowsRuntime()) return path;
+  return path.replaceAll("/", "\\").toLocaleLowerCase("en-US");
+}
+
 /**
  * Match the native Windows path identity used by the Rust IPC boundary while
  * keeping POSIX paths case-sensitive. The displayed path remains untouched;
@@ -123,7 +128,7 @@ function entryFromFileParts(name: string, size: number, lastModified: number, re
     // selection or drag supplies webkitRelativePath, include it so two files
     // with the same name/size/timestamp from different folders do not collapse
     // into one queue row.
-    id: `${relativePath || name}:${size}:${lastModified}`,
+    id: `${browserPathIdentity(relativePath || name)}:${size}:${lastModified}`,
     name,
     size,
     kind: classifyFile(name),

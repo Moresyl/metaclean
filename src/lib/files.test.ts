@@ -84,7 +84,7 @@ describe("entryFromFile", () => {
   it("uses a browser folder path when available", () => {
     const file = new File(["hello"], "note.txt", { lastModified: 123 });
     Object.defineProperty(file, "webkitRelativePath", { value: "folder/note.txt" });
-    expect(entryFromFile(file).id).toBe("folder/note.txt:5:123");
+    expect(entryFromFile(file).id.replaceAll("\\", "/")).toBe("folder/note.txt:5:123");
   });
 
   it("bounds browser FileList intake and skips malformed File-like values", () => {
@@ -100,6 +100,16 @@ describe("entryFromFile", () => {
     const entries = normalizeBrowserFiles([first, second]);
     expect(entries).toHaveLength(2);
     expect(entries[0].id).not.toBe(entries[1].id);
+  });
+
+  it("deduplicates browser relative-path aliases on Windows", () => {
+    const originalPlatform = navigator.platform;
+    vi.stubGlobal("navigator", { ...navigator, platform: "Win32" });
+    const first = normalizeBrowserFiles([{ name: "note.txt", size: 5, lastModified: 123, webkitRelativePath: "Folder/note.txt" }])[0];
+    const alias = normalizeBrowserFiles([{ name: "note.txt", size: 5, lastModified: 123, webkitRelativePath: "folder\\NOTE.TXT" }])[0];
+    expect(first.id).toBe(alias.id);
+    vi.stubGlobal("navigator", { ...navigator, platform: originalPlatform });
+    vi.unstubAllGlobals();
   });
 
   it("rejects an unbounded browser relative path", () => {
