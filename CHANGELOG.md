@@ -74,6 +74,13 @@ All notable changes to MetaClean are documented here. The project follows
 
 ### Added
 
+- Added reproducible NSIS and WiX installer artwork plus a release-contract test
+  covering exact bitmap dimensions, palette anchors, installer icons and the
+  NSIS uninstaller header.
+- Added the current desktop screenshot to the user guide and expanded the Pages
+  workflow to deploy the VitePress documentation without moving the signed
+  updater manifest from `/latest.json`.
+
 - Added `DESIGN.md`, a project-owned interaction and visual reference derived
   from the navigation, CTA, footer and information-grouping inspiration list
   supplied during design review, without publishing workstation paths.
@@ -92,6 +99,11 @@ All notable changes to MetaClean are documented here. The project follows
 
 ### Changed
 
+- Aligned the documentation site with the desktop application's neutral light
+  and dark palettes, compact geometry and zero-tracking typography, removing
+  the previous green-dominant gradients and blurred navigation chrome.
+- Corrected the documentation home source line from `0.7.x` to `0.8.x` and
+  added a version-derived drift check.
 - The Pages update-feed deployment now retries briefly while a newly published
   release's assets become visible, closing the release-publication race without
   allowing an unbounded workflow wait.

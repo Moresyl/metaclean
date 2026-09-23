@@ -48,6 +48,9 @@ test("keeps the signed Pages fallback tied to successful releases", async () => 
   assert.match(workflow, /sleep 5/u);
   assert.match(workflow, /latest\.json was not available after \$max_attempts attempts/u);
   assert.match(workflow, /stage-updater-feed\.mjs/u);
+  assert.match(workflow, /pnpm docs:build/u);
+  assert.match(workflow, /DOCS_BASE: \/metaclean\//u);
+  assert.match(workflow, /cp -R docs\/\.vitepress\/dist site/u);
   assert.match(workflow, /actions\/deploy-pages@v4/u);
 });
 

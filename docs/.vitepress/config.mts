@@ -1,6 +1,7 @@
 import { defineConfig } from "vitepress";
 
 export default defineConfig({
+  base: process.env.DOCS_BASE ?? "/",
   lang: "zh-CN",
   title: "MetaClean",
   description: "本地优先、可验证、失败关闭的文件隐私清理工具",

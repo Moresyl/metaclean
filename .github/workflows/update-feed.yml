@@ -1,10 +1,17 @@
-name: Update feed
+name: Documentation and update feed
 
 on:
   push:
     branches: [master]
     paths:
       - '.github/workflows/update-feed.yml'
+      - 'assets/metaclean-screenshot.png'
+      - 'docs/**'
+      - 'DESIGN.md'
+      - 'CHANGELOG.md'
+      - 'VALIDATION.md'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
       - 'scripts/generate-updater-manifest.mjs'
       - 'scripts/stage-updater-feed.mjs'
       - 'src-tauri/tauri.conf.json'
@@ -36,12 +43,20 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: 24
+      - run: corepack enable
+      - run: corepack prepare pnpm@10.32.1 --activate
+      - run: pnpm install --frozen-lockfile
+      - name: Build documentation site
+        run: pnpm docs:build
+        env:
+          DOCS_BASE: /metaclean/
       - name: Download and validate the latest signed manifest
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           tag="$(gh release view --repo "$GITHUB_REPOSITORY" --json tagName --jq .tagName)"
-          mkdir -p "$RUNNER_TEMP/update-feed" site
+          mkdir -p "$RUNNER_TEMP/update-feed"
+          cp -R docs/.vitepress/dist site
           manifest="$RUNNER_TEMP/update-feed/latest.json"
           max_attempts=12
           for attempt in $(seq 1 "$max_attempts"); do
