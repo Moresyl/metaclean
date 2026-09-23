@@ -26,6 +26,7 @@
         "installerIcon": "./icons/icon.ico",
         "uninstallerIcon": "./icons/icon.ico",
         "uninstallerHeaderImage": "./windows/installer/nsis-header.bmp",
+        "languages": ["SimpChinese", "English"],
         "installerHooks": "./windows/hooks.nsh"
       },
       "wix": {

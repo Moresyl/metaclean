@@ -77,6 +77,10 @@ All notable changes to MetaClean are documented here. The project follows
 - Added reproducible NSIS and WiX installer artwork plus a release-contract test
   covering exact bitmap dimensions, palette anchors, installer icons and the
   NSIS uninstaller header.
+- Added automatic Simplified Chinese NSIS localization with an English fallback,
+  following the Windows display language without adding a separate prompt.
+  The installer uses legible CJK typography and remembers that language for
+  uninstall, avoiding an unexpected language prompt.
 - Added the current desktop screenshot to the user guide and expanded the Pages
   workflow to deploy the VitePress documentation without moving the signed
   updater manifest from `/latest.json`.

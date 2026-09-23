@@ -69,4 +69,13 @@ test("wires the branded artwork into install and uninstall bundles", async () =>
   );
   assert.equal(wix.bannerPath, "./windows/installer/wix-banner.bmp");
   assert.equal(wix.dialogImagePath, "./windows/installer/wix-dialog.bmp");
+  assert.deepEqual(nsis.languages, ["SimpChinese", "English"], "NSIS must follow the Windows language with an English fallback");
+  assert.notEqual(nsis.displayLanguageSelector, true, "the installer must not add a separate language prompt");
+});
+
+test("keeps native installer text legible and reuses the chosen language on uninstall", async () => {
+  const hooks = await readFile(new URL("../src-tauri/windows/hooks.nsh", import.meta.url), "utf8");
+  assert.match(hooks, /SetFont "Microsoft YaHei UI" 8/);
+  assert.match(hooks, /!define MUI_WELCOMEPAGE_TITLE_3LINES/);
+  assert.match(hooks, /!macro NSIS_HOOK_POSTINSTALL\s+WriteRegStr HKCU "Software\\moresl\\MetaClean" "Installer Language" \$LANGUAGE\s+!macroend/);
 });

@@ -54,7 +54,8 @@ principles rather than visual copying:
 - Windows NSIS and WiX bundles reuse the same neutral light/dark surfaces,
   product mark and compact typography hierarchy. The native installers keep
   platform-standard controls while their welcome, progress, completion and
-  uninstall surfaces remain visibly part of the same product.
+  uninstall surfaces remain visibly part of the same product. NSIS follows a
+  Simplified Chinese Windows locale with an English fallback.
 - The VitePress documentation uses the same neutral palette, 8px maximum panel
   radius, semantic-only status colour and zero-tracking typography. It presents
   a current 1180 x 720 application capture without decorative gradients or

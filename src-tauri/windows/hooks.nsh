@@ -1,3 +1,10 @@
+SetFont "Microsoft YaHei UI" 8
+!define MUI_WELCOMEPAGE_TITLE_3LINES
+
+!macro NSIS_HOOK_POSTINSTALL
+  WriteRegStr HKCU "Software\moresl\MetaClean" "Installer Language" $LANGUAGE
+!macroend
+
 !macro NSIS_HOOK_PREUNINSTALL
   SetRegView 64
   DeleteRegKey HKCU "Software\Classes\SystemFileAssociations\.jpg\shell\MetaClean"
