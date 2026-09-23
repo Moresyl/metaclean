@@ -19,6 +19,8 @@
 !/docs/support-policy.md
 !/docs/design.md
 !/docs/changelog.md
+!/docs/public/
+!/docs/public/**
 !/docs/.vitepress/
 !/docs/.vitepress/**
 /docs/.vitepress/dist/

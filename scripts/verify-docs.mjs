@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 
 const root = fileURLToPath(new URL("..", import.meta.url));
 const read = (file) => readFile(path.join(root, file), "utf8");
-const [packageJson, tauriJson, readme, readmeZh, docsIndex, architecture, design, plan, validation, docsConfig, docsHome, customCss] = await Promise.all([
+const [packageJson, tauriJson, readme, readmeZh, docsIndex, architecture, design, plan, validation, docsConfig, docsHome, customCss, docsLogo] = await Promise.all([
   read("package.json").then(JSON.parse),
   read("src-tauri/tauri.conf.json").then(JSON.parse),
   read("README.md"),
@@ -18,6 +18,7 @@ const [packageJson, tauriJson, readme, readmeZh, docsIndex, architecture, design
   read("docs/.vitepress/config.mts"),
   read("docs/index.md"),
   read("docs/.vitepress/theme/custom.css"),
+  read("docs/public/logo.svg"),
 ]);
 
 assert.equal(tauriJson.version, packageJson.version, "package and Tauri versions drifted");
@@ -34,6 +35,8 @@ assert.match(design, /wcb\.txt/u);
 assert.match(plan, /Word 与 WPS/u);
 assert.match(docsConfig, /defineConfig/u);
 assert.match(docsConfig, /base: process\.env\.DOCS_BASE \?\? "\/"/u, "documentation must support a project Pages base path");
+assert.match(docsConfig, /logo: "\/logo\.svg"/u);
+assert.match(docsLogo, /<svg[^>]+viewBox="0 0 32 32"/u, "navigation logo must exist in VitePress's published public directory");
 assert.match(docsConfig, /search:\s*\{[\s\S]*provider: "local"[\s\S]*translations:/u);
 assert.match(docsConfig, /outline: \{ level: \[2, 3\], label: "本页导航" \}/u);
 assert.match(docsConfig, /lastUpdated: \{ text: "最后更新" \}/u);

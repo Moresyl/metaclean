@@ -373,6 +373,9 @@ All notable changes to MetaClean are documented here. The project follows
 
 ### Fixed
 
+- Restored the documentation navigation logo in the published Pages output by
+  moving it to VitePress's public directory, with a build-contract check.
+
 - Atomic copy and replacement writes no longer turn a committed output into a
   reported failure when Windows needs a post-rename read-only permission
   sync; the sync is now best effort after the commit while all other metadata
