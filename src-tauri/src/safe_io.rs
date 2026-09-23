@@ -354,7 +354,7 @@ fn prepare_temp_with_metadata(
 fn commit_temp(
     path: &Path,
     temp: tempfile::NamedTempFile,
-    source_metadata: Option<&FileMetadataSnapshot>,
+    _source_metadata: Option<&FileMetadataSnapshot>,
     require_existing_file: bool,
 ) -> Result<()> {
     if path_contains_link(path)? {
@@ -377,7 +377,7 @@ fn commit_temp(
     // effort: the replacement is already committed and returning an error
     // here would report failure while leaving the new output on disk.
     #[cfg(windows)]
-    if let Some(metadata) = source_metadata {
+    if let Some(metadata) = _source_metadata {
         let _ = fs::set_permissions(path, metadata.permissions.clone());
     }
     Ok(())

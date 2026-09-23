@@ -92,6 +92,11 @@ All notable changes to MetaClean are documented here. The project follows
 
 ### Changed
 
+- The Pages update-feed deployment now retries briefly while a newly published
+  release's assets become visible, closing the release-publication race without
+  allowing an unbounded workflow wait.
+- Release automation checks now accept both LF and CRLF workflow files, and the
+  Linux build no longer emits a platform-only unused-parameter warning.
 - `pnpm test:e2e` now rebuilds the feature-gated desktop test binary before
   starting embedded WebDriver. Windows candidate/preflight builds can no longer
   leave a production-style debug binary that makes a later E2E run time out.

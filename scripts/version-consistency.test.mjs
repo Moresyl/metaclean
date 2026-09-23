@@ -44,6 +44,9 @@ test("keeps the signed Pages fallback tied to successful releases", async () => 
   const workflow = await readFile(new URL("../.github/workflows/update-feed.yml", import.meta.url), "utf8");
   assert.match(workflow, /workflow_run:[\s\S]*workflows: \["Release"\][\s\S]*conclusion == 'success'/u);
   assert.match(workflow, /gh release download[^\n]+--pattern latest\.json/u);
+  assert.match(workflow, /max_attempts=12[\s\S]*for attempt in \$\(seq 1 "\$max_attempts"\)/u);
+  assert.match(workflow, /sleep 5/u);
+  assert.match(workflow, /latest\.json was not available after \$max_attempts attempts/u);
   assert.match(workflow, /stage-updater-feed\.mjs/u);
   assert.match(workflow, /actions\/deploy-pages@v4/u);
 });

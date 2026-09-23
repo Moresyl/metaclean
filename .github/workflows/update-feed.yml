@@ -42,7 +42,20 @@ jobs:
         run: |
           tag="$(gh release view --repo "$GITHUB_REPOSITORY" --json tagName --jq .tagName)"
           mkdir -p "$RUNNER_TEMP/update-feed" site
-          gh release download "$tag" --repo "$GITHUB_REPOSITORY" --pattern latest.json --dir "$RUNNER_TEMP/update-feed"
+          manifest="$RUNNER_TEMP/update-feed/latest.json"
+          max_attempts=12
+          for attempt in $(seq 1 "$max_attempts"); do
+            rm -f "$manifest"
+            if gh release download "$tag" --repo "$GITHUB_REPOSITORY" --pattern latest.json --dir "$RUNNER_TEMP/update-feed"; then
+              break
+            fi
+            if [ "$attempt" -eq "$max_attempts" ]; then
+              echo "::error::latest.json was not available after $max_attempts attempts"
+              exit 1
+            fi
+            echo "latest.json is not visible yet; retrying in 5 seconds ($attempt/$max_attempts)"
+            sleep 5
+          done
           node scripts/stage-updater-feed.mjs "$RUNNER_TEMP/update-feed/latest.json" "$tag" "$GITHUB_REPOSITORY" site/latest.json
           touch site/.nojekyll
       - uses: actions/configure-pages@v5

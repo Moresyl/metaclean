@@ -56,7 +56,9 @@ test("release workflow consumes validated notes and finalizes checksums", async 
   assert.match(workflow, /apt-get install -y[^\n]+xvfb/u, "release validation needs a virtual display for desktop E2E");
   assert.match(workflow, /gh release create/u);
   assert.match(workflow, /^  validate:/mu, "release builds must depend on a dedicated source validation job");
-  assert.match(workflow, /build:\n    needs: validate/u, "release package builds must wait for validation");
+  const buildDependency = /build:\r?\n    needs: validate/u;
+  assert.match(workflow, buildDependency, "release package builds must wait for validation");
+  assert.match(workflow.replace(/\r?\n/gu, "\r\n"), buildDependency, "release checks must also accept Windows line endings");
   for (const gate of [
     "pnpm test:supply-chain",
     "pnpm test:security",
