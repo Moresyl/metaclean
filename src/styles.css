@@ -14,20 +14,15 @@
  * to write once than twice.
  */
 @theme {
-  /* Four grounds, back to front: the window's content area (`canvas`), the
-     deepest pane inside it (`canvas-deep`), the chrome and cards that sit above
-     it (`surface`), and the raised state of a control (`surface-2`).
-   *
-   * Near-neutral with a trace of green in the mix, so the accent reads as the
-   * same family rather than as a sticker. Saturated chrome is most of what
-   * makes a desktop app look like a web page wearing a title bar; the colour
-   * budget is spent on the one accent and on status, where it means something. */
-  --color-canvas: #0b0f14;
-  --color-canvas-deep: #070a0e;
-  --color-surface: #121820;
-  --color-surface-2: #1a212b;
-  --color-line: #ffffff16;
-  --color-line-strong: #ffffff2e;
+  /* Four neutral grounds, back to front: the window chrome (`canvas-deep`),
+     content (`canvas`), cards (`surface`) and raised controls (`surface-2`).
+     Status colours are reserved for meaning rather than general decoration. */
+  --color-canvas: #202020;
+  --color-canvas-deep: #161616;
+  --color-surface: #2b2b2b;
+  --color-surface-2: #363636;
+  --color-line: #ffffff1a;
+  --color-line-strong: #ffffff29;
 
   /* Three inks, and which one a piece of text gets is not a matter of taste.
    *
@@ -47,24 +42,23 @@
    * beside them, a definition list whose labels outranked its paths, a dropdown
    * whose arrow was the faintest mark on the control it opens. Nothing there was
    * wrong on its own. All of it together was. */
-  --color-text: #e8edef;
-  --color-muted: #a3aeb6;
-  --color-faint: #78848d;
+  --color-text: #e8e8e8;
+  --color-muted: #a3a3a3;
+  --color-faint: #767676;
 
-  /* One accent. Mint, because the app's whole promise is "this file came back
-     clean", and because the same hue stays legible on both grounds without the
-     light palette needing to reach for a different one. */
-  --color-brand: #46d9a2;
-  --color-ok: #46d9a2;
-  --color-warn: #ffc46b;
-  --color-danger: #ff7a8a;
+  /* Brand ink stays neutral; semantic success, warning and danger colours are
+     independent so an ordinary selected control never looks like a status. */
+  --color-brand: #f4f4f4;
+  --color-ok: #46bf72;
+  --color-warn: #ff9f43;
+  --color-danger: #ff5c5c;
 
   /* The ink a filled accent carries. Its own token because the answer flips
      with the palette: an accent light enough to read against a dark window
      needs dark ink, and the darker accent a light window needs takes light ink
      — so a hard-coded value is legible in exactly one of the two. */
-  --color-on-brand: #04231a;
-  --color-on-danger: #2b0a11;
+  --color-on-brand: #161616;
+  --color-on-danger: #ffffff;
 
   --font-sans:
     'Segoe UI Variable Text', 'Segoe UI', -apple-system, BlinkMacSystemFont, system-ui,
@@ -104,15 +98,15 @@
   --text-2xs--line-height: 1.4;
   --text-xs: 0.75rem;
   --text-xs--line-height: 1.5;
-  --text-sm: 0.78125rem;
+  --text-sm: 0.8125rem;
   --text-sm--line-height: 1.6;
-  --text-base: 0.8125rem;
+  --text-base: 0.875rem;
   --text-base--line-height: 1.55;
-  --text-md: 0.875rem;
+  --text-md: 0.9375rem;
   --text-md--line-height: 1.5;
   --text-lg: 1rem;
   --text-lg--line-height: 1.4;
-  --text-xl: 1.1875rem;
+  --text-xl: 1.125rem;
   --text-xl--line-height: 1.3;
   --text-2xl: 1.375rem;
   --text-2xl--line-height: 1.25;
@@ -204,52 +198,52 @@
  */
 @media (prefers-color-scheme: light) {
   :root:not([data-theme='dark']) {
-    --color-canvas: #f4f7f6;
-    --color-canvas-deep: #e8edeb;
+    --color-canvas: #ffffff;
+    --color-canvas-deep: #f0f0f0;
     --color-surface: #ffffff;
-    --color-surface-2: #eef2f0;
-    --color-line: #0d1f2621;
-    --color-line-strong: #0d1f2638;
+    --color-surface-2: #f0f0f0;
+    --color-line: #0d0d0d1a;
+    --color-line-strong: #0d0d0d29;
 
-    --color-text: #0f181c;
-    --color-muted: #4d5a61;
-    --color-faint: #6d7a81;
+    --color-text: #292929;
+    --color-muted: #666666;
+    --color-faint: #898989;
 
-    --color-brand: #0e9e74;
-    --color-ok: #0e9e74;
-    --color-warn: #96620a;
-    --color-danger: #c72f47;
+    --color-brand: #0d0d0d;
+    --color-ok: #1e8a3e;
+    --color-warn: #b65d00;
+    --color-danger: #d9363e;
 
     --color-on-brand: #ffffff;
     --color-on-danger: #ffffff;
 
-    --shadow-panel: 0 1px 2px #0b241d1f;
-    --shadow-lift: 0 6px 16px -8px #0b241d40;
+    --shadow-panel: 0 1px 2px #00000014;
+    --shadow-lift: 0 6px 16px -8px #00000038;
   }
 }
 
 :root[data-theme='light'] {
-  --color-canvas: #f4f7f6;
-  --color-canvas-deep: #e8edeb;
+  --color-canvas: #ffffff;
+  --color-canvas-deep: #f0f0f0;
   --color-surface: #ffffff;
-  --color-surface-2: #eef2f0;
-  --color-line: #0d1f2621;
-  --color-line-strong: #0d1f2638;
+  --color-surface-2: #f0f0f0;
+  --color-line: #0d0d0d1a;
+  --color-line-strong: #0d0d0d29;
 
-  --color-text: #0f181c;
-  --color-muted: #4d5a61;
-  --color-faint: #6d7a81;
+  --color-text: #292929;
+  --color-muted: #666666;
+  --color-faint: #898989;
 
-  --color-brand: #0e9e74;
-  --color-ok: #0e9e74;
-  --color-warn: #96620a;
-  --color-danger: #c72f47;
+  --color-brand: #0d0d0d;
+  --color-ok: #1e8a3e;
+  --color-warn: #b65d00;
+  --color-danger: #d9363e;
 
   --color-on-brand: #ffffff;
   --color-on-danger: #ffffff;
 
-  --shadow-panel: 0 1px 2px #0b241d1f;
-  --shadow-lift: 0 6px 16px -8px #0b241d40;
+  --shadow-panel: 0 1px 2px #00000014;
+  --shadow-lift: 0 6px 16px -8px #00000038;
 }
 
 @layer base {
@@ -379,7 +373,7 @@
      navigation rail. All of it is chrome, so all of it sits a shade off the
      content it frames and is separated from it by a line rather than by a gap. */
   .chrome {
-    background-color: var(--color-surface);
+    background-color: var(--color-canvas-deep);
   }
 
   /* Queue rows are independent visual units. Let the webview skip painting
@@ -536,8 +530,7 @@
     background-color: var(--color-brand);
   }
 
-  /* Toward the ink, which lightens the mint in the dark palette and darkens it
-     in the light one — the direction a hover has to go in each. */
+  /* Mix toward text so the checked hover remains visible in either palette. */
   .check:checked:hover:not(:disabled) {
     border-color: color-mix(in oklab, var(--color-brand) 88%, var(--color-text));
     background-color: color-mix(in oklab, var(--color-brand) 88%, var(--color-text));

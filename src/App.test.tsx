@@ -217,6 +217,23 @@ describe("App", () => {
     expect(await screen.findByText("诊断与支持")).toBeInTheDocument();
   });
 
+  it("collapses the workspace sidebar, persists the choice, and restores it with Ctrl+B", () => {
+    renderApp();
+    const navigation = screen.getByRole("navigation", { name: "主导航" });
+    const shell = navigation.closest("aside")?.parentElement;
+    expect(shell).toHaveClass("grid-cols-[264px_minmax(0,1fr)]");
+
+    fireEvent.click(screen.getByRole("button", { name: "收起侧栏" }));
+    expect(screen.getByRole("button", { name: "展开侧栏" })).toBeInTheDocument();
+    expect(shell).toHaveClass("grid-cols-[64px_minmax(0,1fr)]");
+    expect(localStorage.getItem("metaclean.sidebarCollapsed")).toBe("true");
+
+    fireEvent.keyDown(window, { key: "b", ctrlKey: true });
+    expect(screen.getByRole("button", { name: "收起侧栏" })).toBeInTheDocument();
+    expect(shell).toHaveClass("grid-cols-[264px_minmax(0,1fr)]");
+    expect(localStorage.getItem("metaclean.sidebarCollapsed")).toBe("false");
+  });
+
   it("keeps picker commands usable after leaving the clean page", async () => {
     pickerOpenMock.mockRejectedValue(new Error("dialog unavailable"));
     const { container } = renderApp();

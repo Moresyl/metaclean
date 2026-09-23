@@ -23,18 +23,21 @@ principles rather than visual copying:
 
 | Role | Current rule |
 | --- | --- |
-| Canvas | Near-black `#0b0f14` with a light-mode counterpart; no gradient behind core content |
-| Surface | `#121820` cards and chrome, `#1a212b` raised controls |
-| Accent | Mint `#46d9a2` for the one primary action and success state |
-| Text | `#e8edef` primary, `#a3aeb6` secondary, `#78848d` placeholder/disabled |
+| Canvas | Dark `#202020` or light `#ffffff` content on a quieter `#161616` / `#f0f0f0` workspace frame |
+| Surface | Neutral `#2b2b2b` / `#ffffff` cards and `#363636` / `#f0f0f0` raised controls |
+| Brand and status | Neutral brand ink for selection; green, orange and red only for semantic status |
+| Text | `#e8e8e8` / `#292929` primary with distinct secondary and disabled levels |
 | Geometry | 8px panels, 5px controls, 1px hairlines, 28–32px control heights |
-| Type | Segoe UI Variable with CJK fallbacks; display face only for headings |
-| Motion | Short rise/pop transitions; reduced-motion mode collapses them to 1ms |
+| Type | 14px Segoe UI Variable base with Microsoft YaHei UI, PingFang SC and Noto Sans SC fallbacks |
+| Motion | 100–200ms colour, opacity and geometry transitions; reduced-motion mode collapses them to 1ms |
 
 ## Implemented patterns
 
-- `Sidebar` is the persistent navigation pattern: five primary destinations,
-  an explicit `aria-current` state and keyboard accelerators `Ctrl/Cmd+1…5`.
+- `Sidebar` is a 264px persistent workspace panel that collapses to a 64px icon
+  rail. It keeps five destinations, an explicit `aria-current` state,
+  `Ctrl/Cmd+1…5` navigation and `Ctrl/Cmd+B` collapse control.
+- `TitleBar` aligns its identity area with the sidebar, reserves its center for
+  command search and keeps native caption actions fixed to the right edge.
 - `CleanOptions` owns the one commit action. The queue toolbar remains secondary
   and groups sorting, export and clear actions without competing with cleanup.
 - `AboutPage` is the support footer pattern: runtime facts, bounded diagnostics,

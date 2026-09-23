@@ -1,6 +1,6 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { ArrowUpCircle, CircleHelp, FileCheck2, FilePlus2, FolderOpen, History, Moon, MonitorCog, ScanSearch, Settings, ShieldCheck, Sun, Trash2 } from "lucide-react";
+import { ArrowUpCircle, CircleHelp, FileCheck2, FilePlus2, FolderOpen, History, Moon, MonitorCog, PanelLeft, ScanSearch, Settings, ShieldCheck, Sun, Trash2 } from "lucide-react";
 import Sidebar from "./components/Sidebar";
 import DropZone from "./components/DropZone";
 import FileQueue from "./components/FileQueue";
@@ -40,6 +40,7 @@ export default function App() {
   const theme = useTheme();
   const [page, setPage] = useState<Page>("clean");
   const [commandsOpen, setCommandsOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsedState] = useState(() => readStorage("metaclean.sidebarCollapsed") === "true");
   const [entries, setEntries] = useState<FileEntry[]>([]);
   const entriesRef = useRef<FileEntry[]>([]);
   const [mode, setModeState] = useState<CleanMode>(() => readStorage("metaclean.outputMode") === "replace" ? "replace" : "copy");
@@ -150,6 +151,13 @@ export default function App() {
   const setPreserveColorProfile = useCallback((next: boolean) => { setPreserveColorProfileState(next); writeStorage("metaclean.preserveColorProfile", String(next)); }, []);
   const setRemoveExtendedAttributes = useCallback((next: boolean) => { setRemoveExtendedAttributesState(next); writeStorage("metaclean.removeExtendedAttributes", String(next)); }, []);
   const setCloseToTray = useCallback((next: boolean) => { setCloseToTrayState(next); writeStorage("metaclean.closeToTray", String(next)); }, []);
+  const setSidebarCollapsed = useCallback((next: boolean | ((current: boolean) => boolean)) => {
+    setSidebarCollapsedState((current) => {
+      const value = typeof next === "function" ? next(current) : next;
+      writeStorage("metaclean.sidebarCollapsed", String(value));
+      return value;
+    });
+  }, []);
   const addHistory = useCallback((entry: HistoryEntry) => setHistory((current) => persistHistory([entry, ...current])), []);
   const clearHistory = useCallback(() => setHistory(persistHistory([])), []);
 
@@ -301,6 +309,11 @@ export default function App() {
         setCommandsOpen((open) => !open);
         return;
       }
+      if (event.key.toLowerCase() === "b") {
+        event.preventDefault();
+        setSidebarCollapsed((current) => !current);
+        return;
+      }
       const destination = ({ "1": "clean", "2": "history", "3": "privacy", "4": "settings", "5": "about" } as const)[event.key];
       if (!destination) return;
       event.preventDefault();
@@ -308,7 +321,7 @@ export default function App() {
     };
     window.addEventListener("keydown", runShortcut);
     return () => window.removeEventListener("keydown", runShortcut);
-  }, []);
+  }, [setSidebarCollapsed]);
 
   const scanned = entries.length > 0 && entries.every((entry) => entry.status === "scanned" || entry.status === "clean" || (entry.status === "error" && Boolean(entry.result)));
   const cleanableEntries = entries.filter((entry) => (
@@ -484,6 +497,7 @@ export default function App() {
     { id: "theme-light", group: appearance, label: text("浅色", "Light"), icon: <Sun size={14} />, disabled: theme.mode === "light", run: () => theme.setMode("light") },
     { id: "theme-dark", group: appearance, label: text("深色", "Dark"), icon: <Moon size={14} />, disabled: theme.mode === "dark", run: () => theme.setMode("dark") },
     { id: "theme-system", group: appearance, label: text("跟随系统", "System"), icon: <MonitorCog size={14} />, disabled: theme.mode === "system", run: () => theme.setMode("system") },
+    { id: "toggle-sidebar", group: appearance, label: sidebarCollapsed ? text("展开侧栏", "Expand sidebar") : text("收起侧栏", "Collapse sidebar"), icon: <PanelLeft size={14} />, accelerator: `${modifier}B`, run: () => setSidebarCollapsed((current) => !current) },
   ];
 
   const titles: Record<Page, [string, string]> = {
@@ -511,12 +525,12 @@ export default function App() {
     {/* Three fixed bands and one that takes what is left: the title bar and the
         status strip are chrome, and chrome that resizes with the content is the
         thing that makes a window feel like a page. */}
-    <div className="app-shell grid h-screen grid-rows-[36px_minmax(0,1fr)_26px] overflow-hidden bg-canvas text-text">
-    <TitleBar closeToTray={closeToTray} onOpenCommands={() => setCommandsOpen(true)} />
-    <div className="grid min-h-0 grid-cols-[72px_minmax(0,1fr)]">
-      <Sidebar page={page} onNavigate={setPage} />
-      <main tabIndex={-1} className="flex min-h-0 flex-col overflow-hidden">
-        <header className="flex shrink-0 items-start gap-4 px-5 pt-4 pb-3.5">
+    <div className="app-shell grid h-screen grid-rows-[44px_minmax(0,1fr)_26px] overflow-hidden bg-canvas-deep text-text">
+    <TitleBar closeToTray={closeToTray} sidebarCollapsed={sidebarCollapsed} onToggleSidebar={() => setSidebarCollapsed((current) => !current)} onOpenCommands={() => setCommandsOpen(true)} />
+    <div className={`grid min-h-0 transition-[grid-template-columns] duration-200 ease-[var(--ease-out-soft)] ${sidebarCollapsed ? "grid-cols-[64px_minmax(0,1fr)]" : "grid-cols-[264px_minmax(0,1fr)]"}`}>
+      <Sidebar page={page} collapsed={sidebarCollapsed} onNavigate={setPage} />
+      <main tabIndex={-1} className="m-1 mt-0 ml-0 mb-0 flex min-h-0 flex-col overflow-hidden rounded-tl-[10px] rounded-tr-[10px] border border-b-0 border-line bg-canvas">
+        <header className="flex min-h-[60px] shrink-0 items-start gap-4 border-b border-line px-4 pt-3 pb-2.5">
           <div className="min-w-0 flex-1 grid gap-0.5">
             <h1 className="font-display truncate text-xl font-semibold">{title}</h1>
             <p className="truncate text-sm text-muted">{subtitle}</p>
@@ -535,9 +549,9 @@ export default function App() {
         </header>
         {/* Keyed on the page so switching remounts, and the new page rises into
             place instead of appearing mid-scroll where the last one left off. */}
-        <div className="animate-rise min-h-0 flex-1 px-5 pb-5" key={page}>
+        <div className="animate-rise min-h-0 flex-1 px-4 py-4" key={page}>
         <Suspense fallback={<div className="grid h-full place-items-center text-sm text-muted" role="status">{text("正在加载页面…", "Loading page…")}</div>}>
-          {page === "clean" ? <div className="grid h-full max-w-[1180px] grid-cols-[minmax(0,1fr)_296px] gap-3">
+          {page === "clean" ? <div className="grid h-full grid-cols-[minmax(0,1fr)_284px] gap-3">
             <div className="flex min-h-0 flex-col gap-3">
               {message ? (
                 <div className="shrink-0 rounded-control border border-line bg-surface px-2.5 py-2 text-sm text-muted shadow-panel" role="status" aria-live="polite">

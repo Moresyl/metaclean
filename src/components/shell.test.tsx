@@ -47,6 +47,15 @@ describe("title bar", () => {
     await waitFor(() => expect(closeMock).toHaveBeenCalled());
   });
 
+  it("exposes the sidebar toggle without stealing the draggable title area", () => {
+    const onToggleSidebar = vi.fn();
+    const { rerender } = wrap(<TitleBar closeToTray={false} onOpenCommands={vi.fn()} onToggleSidebar={onToggleSidebar} />);
+    fireEvent.click(screen.getByRole("button", { name: "收起侧栏" }));
+    expect(onToggleSidebar).toHaveBeenCalledOnce();
+    rerender(<I18nProvider><TitleBar closeToTray={false} onOpenCommands={vi.fn()} sidebarCollapsed onToggleSidebar={onToggleSidebar} /></I18nProvider>);
+    expect(screen.getByRole("button", { name: "展开侧栏" })).toBeInTheDocument();
+  });
+
   it("stays draggable and opens the palette from the command centre", async () => {
     const onOpenCommands = vi.fn();
     const { container } = wrap(<TitleBar closeToTray={false} onOpenCommands={onOpenCommands} />);

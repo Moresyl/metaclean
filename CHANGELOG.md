@@ -3,6 +3,45 @@
 All notable changes to MetaClean are documented here. The project follows
 [Semantic Versioning](https://semver.org/).
 
+## [0.8.0] - 2026-09-23
+
+### Added
+
+- Added a collapsible workspace sidebar with persistent state, accessible labels,
+  a `Ctrl/Cmd+B` shortcut and a matching command-palette action.
+- Added compact workspace and application navigation groups while preserving the
+  existing five destinations and `Ctrl/Cmd+1…5` navigation shortcuts.
+
+### Changed
+
+- Upgraded the updater transport to `rustls 0.23.45`, resolving
+  `RUSTSEC-2026-0285` before release.
+- Reworked the desktop shell around a continuous neutral canvas, a 264px sidebar
+  that collapses to 64px, a 44px title bar and compact 28–32px controls.
+- Raised the base interface type to 14px and aligned dark, light and system
+  themes around high-contrast neutral surfaces with semantic status colours.
+- Updated the fixed 1180 × 720 layout contract so the larger title bar retains
+  the same application window size and bounded content area.
+
+### Fixed
+
+- Kept native caption controls anchored to the right edge while the brand and
+  sidebar widths animate between expanded and collapsed states.
+- Removed decorative background effects from navigation and limited shell
+  motion to short colour, opacity and geometry transitions with reduced-motion
+  fallback.
+
+### 安装
+
+- Windows x64：NSIS、MSI 与 x64 便携 ZIP；Windows x86、macOS Intel/Apple
+  Silicon 和 Linux x64 包由同一发布矩阵生成，并在公开发布前执行 smoke test。
+
+### English summary
+
+- MetaClean 0.8.0 introduces a persistent collapsible workspace sidebar,
+  compact keyboard-accessible navigation and a neutral high-contrast desktop
+  shell while retaining the fixed window contract and existing privacy workflow.
+
 ## [0.7.2] - 2026-09-13
 
 ### Added
@@ -922,4 +961,5 @@ All notable changes to MetaClean are documented here. The project follows
 [0.7.0]: https://github.com/Moresyl/metaclean/compare/v0.6.1...v0.7.0
 [0.7.1]: https://github.com/Moresyl/metaclean/compare/v0.7.0...v0.7.1
 [0.7.2]: https://github.com/Moresyl/metaclean/compare/v0.7.1...v0.7.2
-[Unreleased]: https://github.com/Moresyl/metaclean/compare/v0.7.2...HEAD
+[0.8.0]: https://github.com/Moresyl/metaclean/compare/v0.7.2...v0.8.0
+[Unreleased]: https://github.com/Moresyl/metaclean/compare/v0.8.0...HEAD

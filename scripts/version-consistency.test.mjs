@@ -62,9 +62,9 @@ test("keeps Windows release builds on the GUI subsystem", async () => {
 });
 
 /** The workspace between the custom caption and persistent status bar. */
-const CONTENT_HEIGHT = 658;
-/** The caption strip the app draws itself, at the metrics Windows uses. */
-const CAPTION_HEIGHT = 36;
+const CONTENT_HEIGHT = 650;
+/** The caption strip the app draws itself, including workspace navigation. */
+const CAPTION_HEIGHT = 44;
 /** Persistent desktop status and audit context. */
 const STATUS_HEIGHT = 26;
 

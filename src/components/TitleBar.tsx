@@ -1,4 +1,4 @@
-import { Search } from "lucide-react";
+import { PanelLeftClose, PanelLeftOpen, Search } from "lucide-react";
 import ContextMenu, { useContextMenu, type MenuEntry } from "./ContextMenu";
 import { closeWindow, isWindowDragTarget, minimizeWindow, startWindowDragging } from "../lib/window";
 import { commandKeyLabel } from "../lib/keys";
@@ -11,9 +11,8 @@ import { useI18n } from "../lib/i18n";
  * bolted above the app: it cannot carry a control, it never follows the dark
  * theme reliably, and the seam between it and the navigation pane is the first
  * thing that gives a desktop app away as a web page in a frame. So the window
- * ships undecorated and this stands in its place, at the metrics the system
- * uses — a 36px bar with 46px caption buttons, the close button turning the
- * same red.
+ * ships undecorated and this stands in its place: a 44px workspace bar with
+ * 46px caption buttons and the platform-standard destructive close state.
  *
  * The identity lives in the navigation pane below, which frees the middle of
  * the bar for the one control worth putting there: the command entry.
@@ -41,9 +40,16 @@ const CAPTION =
 interface TitleBarProps {
   closeToTray: boolean;
   onOpenCommands: () => void;
+  sidebarCollapsed?: boolean;
+  onToggleSidebar?: () => void;
 }
 
-export default function TitleBar({ closeToTray, onOpenCommands }: TitleBarProps) {
+export default function TitleBar({
+  closeToTray,
+  onOpenCommands,
+  sidebarCollapsed = false,
+  onToggleSidebar,
+}: TitleBarProps) {
   const { text } = useI18n();
   const menu = useContextMenu();
   const minimize = text("最小化", "Minimize");
@@ -60,7 +66,7 @@ export default function TitleBar({ closeToTray, onOpenCommands }: TitleBarProps)
 
   return (
     <header
-      className="titlebar chrome relative z-30 flex h-9 items-stretch border-b border-line select-none"
+      className="titlebar chrome relative z-30 flex h-11 items-stretch border-b border-line select-none"
       data-tauri-drag-region
       onContextMenu={menu.open}
       onMouseDown={(event) => {
@@ -73,17 +79,28 @@ export default function TitleBar({ closeToTray, onOpenCommands }: TitleBarProps)
         }
       }}
     >
-      <div className="titlebar-brand flex flex-1 items-center gap-2 pl-2.5" data-tauri-drag-region>
+      <div
+        className={`titlebar-brand flex shrink-0 items-center gap-2 border-r border-line px-2.5 transition-[width] duration-200 ease-[var(--ease-out-soft)] ${sidebarCollapsed ? "w-16 justify-center" : "w-[264px]"}`}
+        data-tauri-drag-region
+      >
         <span
-          className="grid size-[17px] shrink-0 place-items-center rounded-[5px] bg-brand text-xs leading-none font-bold text-on-brand"
+          className="grid size-6 shrink-0 place-items-center rounded-[7px] bg-brand text-sm leading-none font-bold text-on-brand shadow-panel"
           aria-hidden="true"
         >
           M
         </span>
-        <span className="text-base font-medium">MetaClean</span>
-        <small className="hidden truncate text-xs text-muted sm:block">
-          {text("隐私净化工作台", "Privacy workspace")}
-        </small>
+        {!sidebarCollapsed ? <span className="truncate text-base font-semibold">MetaClean</span> : null}
+        {onToggleSidebar ? (
+          <button
+            className={`ml-auto grid size-7 shrink-0 place-items-center rounded-control text-muted transition-colors duration-100 hover:bg-surface hover:text-text ${sidebarCollapsed ? "absolute left-[70px]" : ""}`}
+            type="button"
+            aria-label={sidebarCollapsed ? text("展开侧栏", "Expand sidebar") : text("收起侧栏", "Collapse sidebar")}
+            data-tip={`${sidebarCollapsed ? text("展开侧栏", "Expand sidebar") : text("收起侧栏", "Collapse sidebar")} · ${commandKeyLabel()}B`}
+            onClick={onToggleSidebar}
+          >
+            {sidebarCollapsed ? <PanelLeftOpen size={16} /> : <PanelLeftClose size={16} />}
+          </button>
+        ) : null}
       </div>
 
       {/* Centred on the window rather than after the name, because it is the one
@@ -94,7 +111,7 @@ export default function TitleBar({ closeToTray, onOpenCommands }: TitleBarProps)
         // that is meant to be found — it is the only way into the palette that
         // does not require already knowing the shortcut — and a button set in
         // the ink reserved for placeholders is a button that reads as disabled.
-        className="absolute top-1/2 left-1/2 flex h-[24px] w-[min(300px,38vw)] -translate-x-1/2 -translate-y-1/2 items-center gap-2 rounded-control border border-line bg-canvas-deep pr-1.5 pl-2 text-sm text-muted transition-colors duration-100 hover:border-line-strong hover:text-text"
+        className="absolute top-1/2 left-1/2 flex h-7 w-[min(340px,38vw)] -translate-x-1/2 -translate-y-1/2 items-center gap-2 rounded-control border border-line bg-surface pr-1.5 pl-2.5 text-sm text-muted transition-colors duration-100 hover:border-line-strong hover:text-text"
         type="button"
         aria-label={commands}
         data-tip={`${commands} · ${commandKeyLabel()}K`}
@@ -105,7 +122,7 @@ export default function TitleBar({ closeToTray, onOpenCommands }: TitleBarProps)
         <kbd className="kbd">{commandKeyLabel()}K</kbd>
       </button>
 
-      <div className="flex items-stretch">
+      <div className="ml-auto flex items-stretch">
         <button
           className={`${CAPTION} hover:bg-[color-mix(in_oklab,var(--color-text)_10%,transparent)] hover:text-text`}
           type="button"

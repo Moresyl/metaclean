@@ -66,6 +66,30 @@ describe("MetaClean desktop application", () => {
     await $(".scan-button").waitForDisplayed();
   });
 
+  it("persists the collapsible sidebar across a real desktop reload", async () => {
+    await browser.tauri.execute(() => {
+      localStorage.setItem("metaclean.locale", "en");
+      localStorage.removeItem("metaclean.sidebarCollapsed");
+    });
+    await browser.refresh();
+    await $(".app-shell").waitForDisplayed();
+
+    const sidebarWidth = () => browser.tauri.execute(() =>
+      Math.round(document.querySelector(".sidebar").getBoundingClientRect().width));
+    assert.equal(await sidebarWidth(), 264);
+
+    await $("button[aria-label='Collapse sidebar']").click();
+    await browser.waitUntil(async () => await sidebarWidth() === 64);
+    assert.equal(await browser.tauri.execute(() => localStorage.getItem("metaclean.sidebarCollapsed")), "true");
+
+    await browser.refresh();
+    await $(".app-shell").waitForDisplayed();
+    assert.equal(await sidebarWidth(), 64);
+    await browser.tauri.execute(() => window.dispatchEvent(new KeyboardEvent("keydown", { key: "b", ctrlKey: true })));
+    await browser.waitUntil(async () => await sidebarWidth() === 264);
+    assert.equal(await browser.tauri.execute(() => localStorage.getItem("metaclean.sidebarCollapsed")), "false");
+  });
+
   it("exposes runtime details and support links on the About page", async () => {
     await openAboutPage();
     assert.equal(await $("a=Report a bug").isDisplayed(), true);
