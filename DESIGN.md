@@ -23,16 +23,19 @@ principles rather than visual copying:
 
 | Role | Current rule |
 | --- | --- |
-| Canvas | Dark `#202020` or light `#ffffff` content on a quieter `#161616` / `#f0f0f0` workspace frame |
-| Surface | Neutral `#2b2b2b` / `#ffffff` cards and `#363636` / `#f0f0f0` raised controls |
-| Brand and status | Neutral brand ink for selection; green, orange and red only for semantic status |
-| Text | `#e8e8e8` / `#292929` primary with distinct secondary and disabled levels |
-| Geometry | 8px panels, 5px controls, 1px hairlines, 28–32px control heights |
+| Canvas | Dark `#181818` or light `#ffffff` content beside a quieter `#0d0d0d` / `#f9f9f9` sidebar |
+| Surface | Neutral `#212121` / `#ffffff` cards and `#303030` / `#ededed` raised controls |
+| Brand and status | Neutral primary actions; blue focus and checked controls; green, orange and red for semantic status |
+| Text | `#ededed` / `#282828` primary and `#afafaf` / `#5d5d5d` secondary text |
+| Geometry | 8px panels, 6px controls, 1px hairlines, 28/32/36px button heights and 32px fields |
 | Type | 14px Segoe UI Variable base with Microsoft YaHei UI, PingFang SC and Noto Sans SC fallbacks |
 | Motion | 100–200ms colour, opacity and geometry transitions; reduced-motion mode collapses them to 1ms |
 
 ## Implemented patterns
 
+- The empty cleaning workspace has one centered file-entry area. The queue
+  appears only after importing files, so an empty queue does not duplicate the
+  initial instructions. Settings use divided rows instead of nested cards.
 - `Sidebar` is a 264px persistent workspace panel that collapses to a 64px icon
   rail. It keeps five destinations, an explicit `aria-current` state,
   `Ctrl/Cmd+1…5` navigation and `Ctrl/Cmd+B` collapse control.

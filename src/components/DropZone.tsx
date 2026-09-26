@@ -81,12 +81,12 @@ export default function DropZone({ onAdd, onAddNativePaths, onError, onOpenPicke
         // A dashed edge, because the whole shape is an invitation rather than a
         // container — and it is the one place in the window where a border is
         // doing more than separating two grounds.
-        "relative flex shrink-0 flex-col items-center rounded-panel border border-dashed",
+        "drop-zone relative flex items-center rounded-panel border border-dashed",
         "text-center transition-colors duration-150 ease-[var(--ease-out-soft)]",
-        compact ? "gap-2 px-4 py-3.5" : "gap-2.5 px-5 py-7",
+        compact ? "shrink-0 flex-wrap justify-between gap-3 px-4 py-3" : "min-h-0 flex-1 flex-col justify-center gap-5 px-5 py-8",
         hovering
           ? "border-brand bg-brand/8"
-          : "border-line-strong bg-surface hover:border-faint",
+          : compact ? "border-line-strong bg-surface hover:border-faint" : "border-transparent hover:border-line-strong",
       ].join(" ")}
       onDragEnter={() => setBrowserDrag(true)}
       onDragOver={(event) => {
@@ -104,15 +104,15 @@ export default function DropZone({ onAdd, onAddNativePaths, onError, onOpenPicke
     >
       {!compact ? (
         <div
-          className={`grid size-12 place-items-center rounded-panel transition-colors duration-150 ${hovering ? "bg-brand text-on-brand" : "bg-brand/12 text-brand"}`}
+          className={`grid size-16 place-items-center rounded-2xl transition-colors duration-150 ${hovering ? "bg-brand text-on-brand" : "bg-surface text-muted"}`}
           aria-hidden="true"
         >
-          <FilePlus2 size={24} strokeWidth={1.8} />
+          <FilePlus2 size={30} strokeWidth={1.5} />
         </div>
       ) : null}
 
-      <div className="grid gap-0.5">
-        <h2 className={compact ? "text-md font-semibold" : "text-lg font-semibold"}>
+      <div className={`grid gap-2 ${compact ? "text-left" : ""}`}>
+        <h2 className={compact ? "text-base font-medium" : "text-2xl font-semibold"}>
           {text("拖入要净化的文件", "Drop files to clean")}
         </h2>
         <p className="text-sm text-muted">
@@ -121,11 +121,11 @@ export default function DropZone({ onAdd, onAddNativePaths, onError, onOpenPicke
       </div>
 
       <div className="flex flex-wrap justify-center gap-2">
-        <Button variant="primary" onClick={() => onOpenPicker ? onOpenPicker(false) : void choose(false)}>
+        <Button variant="primary" size={compact ? "sm" : "lg"} onClick={() => onOpenPicker ? onOpenPicker(false) : void choose(false)}>
           <FilePlus2 size={14} strokeWidth={2} />
           {text("选择文件", "Choose files")}
         </Button>
-        <Button onClick={() => onOpenPicker ? onOpenPicker(true) : void choose(true)}>
+        <Button size={compact ? "sm" : "lg"} onClick={() => onOpenPicker ? onOpenPicker(true) : void choose(true)}>
           <FolderOpen size={14} strokeWidth={2} />
           {text("选择文件夹", "Choose folder")}
         </Button>
@@ -149,11 +149,11 @@ export default function DropZone({ onAdd, onAddNativePaths, onError, onOpenPicke
       ) : null}
 
       {!compact ? (
-        <div className="mt-0.5 flex flex-wrap justify-center gap-1">
+        <div className="flex flex-wrap justify-center gap-x-3 gap-y-1">
           {FORMATS.map((format, index) => (
             <span
               key={format}
-              className="rounded-[3px] bg-surface-2 px-1.5 py-px text-xs text-muted"
+              className="text-xs text-muted"
             >
               {labels[index]}
             </span>

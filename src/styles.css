@@ -17,10 +17,10 @@
   /* Four neutral grounds, back to front: the window chrome (`canvas-deep`),
      content (`canvas`), cards (`surface`) and raised controls (`surface-2`).
      Status colours are reserved for meaning rather than general decoration. */
-  --color-canvas: #202020;
-  --color-canvas-deep: #161616;
-  --color-surface: #2b2b2b;
-  --color-surface-2: #363636;
+  --color-canvas: #181818;
+  --color-canvas-deep: #0d0d0d;
+  --color-surface: #212121;
+  --color-surface-2: #303030;
   --color-line: #ffffff1a;
   --color-line-strong: #ffffff29;
 
@@ -42,9 +42,12 @@
    * beside them, a definition list whose labels outranked its paths, a dropdown
    * whose arrow was the faintest mark on the control it opens. Nothing there was
    * wrong on its own. All of it together was. */
-  --color-text: #e8e8e8;
-  --color-muted: #a3a3a3;
-  --color-faint: #767676;
+  --color-text: #ededed;
+  --color-muted: #afafaf;
+  --color-faint: #8f8f8f;
+  --color-focus: #339cff;
+  --color-control-active: #0169cc;
+  --color-on-control: #ffffff;
 
   /* Brand ink stays neutral; semantic success, warning and danger colours are
      independent so an ordinary selected control never looks like a status. */
@@ -115,7 +118,7 @@
      rounder than that. Controls sit a step tighter again. Two radii and no
      third: a window where every box has its own curve reads as a collage. */
   --radius-panel: 0.5rem;
-  --radius-control: 0.3125rem;
+  --radius-control: 0.375rem;
 
   --shadow-panel: 0 1px 2px #00000045;
   --shadow-lift: 0 6px 18px -8px #000000a6;
@@ -199,15 +202,16 @@
 @media (prefers-color-scheme: light) {
   :root:not([data-theme='dark']) {
     --color-canvas: #ffffff;
-    --color-canvas-deep: #f0f0f0;
+    --color-canvas-deep: #f9f9f9;
     --color-surface: #ffffff;
-    --color-surface-2: #f0f0f0;
+    --color-surface-2: #ededed;
     --color-line: #0d0d0d1a;
     --color-line-strong: #0d0d0d29;
 
-    --color-text: #292929;
-    --color-muted: #666666;
+    --color-text: #282828;
+    --color-muted: #5d5d5d;
     --color-faint: #898989;
+    --color-focus: #0169cc;
 
     --color-brand: #0d0d0d;
     --color-ok: #1e8a3e;
@@ -224,15 +228,16 @@
 
 :root[data-theme='light'] {
   --color-canvas: #ffffff;
-  --color-canvas-deep: #f0f0f0;
+  --color-canvas-deep: #f9f9f9;
   --color-surface: #ffffff;
-  --color-surface-2: #f0f0f0;
+  --color-surface-2: #ededed;
   --color-line: #0d0d0d1a;
   --color-line-strong: #0d0d0d29;
 
-  --color-text: #292929;
-  --color-muted: #666666;
+  --color-text: #282828;
+  --color-muted: #5d5d5d;
   --color-faint: #898989;
+  --color-focus: #0169cc;
 
   --color-brand: #0d0d0d;
   --color-ok: #1e8a3e;
@@ -290,7 +295,7 @@
   /* The browser's own selection is a saturated blue that belongs to no palette
      here, and it is the one colour a user sees that the app did not choose. */
   ::selection {
-    background-color: color-mix(in oklab, var(--color-brand) 32%, transparent);
+    background-color: color-mix(in oklab, var(--color-focus) 24%, transparent);
     color: var(--color-text);
   }
 
@@ -304,7 +309,7 @@
   }
 
   :focus-visible {
-    outline: 2px solid var(--color-brand);
+    outline: 2px solid var(--color-focus);
     outline-offset: 2px;
     border-radius: 4px;
   }
@@ -412,8 +417,7 @@
     font-size: var(--text-xs);
     line-height: var(--text-xs--line-height);
     font-weight: 600;
-    letter-spacing: 0.02em;
-    text-transform: uppercase;
+    letter-spacing: 0;
     color: var(--color-muted);
   }
 
@@ -452,17 +456,17 @@
 
   /* One shell for every control a value is chosen or typed into.
    *
-   * 28px, which is what the buttons beside them measure, because a toolbar where
+   * 32px, which is what default buttons beside them measure, because a toolbar where
    * the select is a pixel taller than the button next to it is the specific kind
    * of wrong that nobody can name and everybody sees. The caller adds nothing but
    * width — height, border, ground, ink and type all come from here, so a new
    * control cannot quietly invent its own. */
   .field {
-    height: 28px;
-    padding-inline: 8px;
+    height: 32px;
+    padding-inline: 10px;
     border: 1px solid var(--color-line-strong);
     border-radius: var(--radius-control);
-    background-color: var(--color-surface-2);
+    background-color: var(--color-surface);
     color: var(--color-text);
     font-size: var(--text-base);
     line-height: 1;
@@ -503,10 +507,10 @@
     /* `faint`, where every other control in this file uses `line-strong`.
      *
      * Not an exception to the hairline, a correction for perimeter: a `.field`
-     * is 28px tall and a couple of hundred wide, so its outline has enough run
+     * is 32px tall and a couple of hundred wide, so its outline has enough run
      * to establish itself at 18% white. A checkbox has a 64px perimeter — an
      * eighth of that — and the same value on an eighth of the length reads as
-     * an eighth of the weight. Unchecked, beside three filled mint boxes, it
+     * an eighth of the weight. Unchecked, beside three filled blue boxes, it
      * stopped reading as a control at all and started reading as a gap in the
      * list. An off checkbox still has to look like something you can press. */
     border: 1px solid var(--color-faint);
@@ -520,20 +524,20 @@
 
   /* `:not(:checked)`, because without it this rule won the cascade over the one
      below — three selectors to two, and later in the file — and repainted the
-     mint border of a checked box grey the moment the pointer touched it. */
+     blue border of a checked box grey the moment the pointer touched it. */
   .check:hover:not(:checked, :disabled) {
     border-color: var(--color-muted);
   }
 
   .check:checked {
-    border-color: var(--color-brand);
-    background-color: var(--color-brand);
+    border-color: var(--color-control-active);
+    background-color: var(--color-control-active);
   }
 
   /* Mix toward text so the checked hover remains visible in either palette. */
   .check:checked:hover:not(:disabled) {
-    border-color: color-mix(in oklab, var(--color-brand) 88%, var(--color-text));
-    background-color: color-mix(in oklab, var(--color-brand) 88%, var(--color-text));
+    border-color: color-mix(in oklab, var(--color-control-active) 88%, var(--color-text));
+    background-color: color-mix(in oklab, var(--color-control-active) 88%, var(--color-text));
   }
 
   .check:active:not(:disabled) {
@@ -566,7 +570,7 @@
     left: 50%;
     width: 4.5px;
     height: 8.5px;
-    border: solid var(--color-on-brand);
+    border: solid var(--color-on-control);
     border-width: 0 2px 2px 0;
     translate: -50% calc(-50% - 1px);
     rotate: 45deg;
@@ -647,19 +651,19 @@
   }
 
   .switch:checked {
-    border-color: var(--color-brand);
-    background-color: var(--color-brand);
+    border-color: var(--color-control-active);
+    background-color: var(--color-control-active);
   }
 
   /* 14px, not 16: the knob starts 2px inside a 30px-wide inner track and has to
      end 2px short of the other side, so the travel is 30 − 12 − 2 − 2. */
   .switch:checked::after {
     translate: 14px 0;
-    background-color: var(--color-on-brand);
+    background-color: var(--color-on-control);
   }
 
   .switch:checked:hover:not(:disabled)::after {
-    background-color: var(--color-on-brand);
+    background-color: var(--color-on-control);
   }
 
   /* The determinate bar the updater shows while it downloads. */

@@ -1,4 +1,4 @@
-import { Copy, FileWarning, ScanSearch } from "lucide-react";
+import { Check as CheckIcon, Copy, FileWarning, ScanSearch } from "lucide-react";
 import type { ReactNode } from "react";
 import Button from "./Button";
 import type { CleanMode } from "../types";
@@ -26,14 +26,14 @@ export default function CleanOptions({ mode, onModeChange, preserveTimestamps, o
   ];
 
   return (
-    <aside className="flex min-h-0 flex-col overflow-hidden rounded-panel border border-line bg-surface shadow-panel">
+    <aside className="flex min-h-0 flex-col overflow-hidden rounded-panel border border-line bg-surface">
       {/* Only the settings scroll. The rail used to be one scrolling column with
           the button pushed to its end by `mt-auto`, which works right up until
           the content is taller than the rail — and then the one action the
           screen exists for is below the fold, on the first frame, at the
           default window size. A committing button belongs to the panel's frame,
           not to its contents. */}
-      <div className="flex min-h-0 flex-1 flex-col gap-3.5 overflow-y-auto p-3.5">
+      <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-3.5">
         <div className="grid gap-1.5">
           <div className="caption">{text("清理方式", "Output mode")}</div>
           <ModeOption
@@ -133,15 +133,16 @@ function ModeOption({ selected, icon, title, detail, onClick }: { selected: bool
       className={[
         "flex items-start gap-2.5 rounded-control border p-2.5 text-left transition-colors duration-100",
         selected
-          ? "border-brand bg-brand/10 text-text"
-          : "border-line bg-surface-2/60 text-muted hover:border-line-strong hover:bg-surface-2",
+          ? "border-line-strong bg-surface-2 text-text"
+          : "border-transparent text-muted hover:border-line hover:bg-surface-2/60",
       ].join(" ")}
     >
       <span className={`mt-px shrink-0 ${selected ? "text-brand" : "text-muted"}`} aria-hidden="true">{icon}</span>
-      <span className="grid gap-0.5">
+      <span className="min-w-0 flex-1 grid gap-1">
         <strong className="text-base font-semibold text-text">{title}</strong>
         <small className="text-xs leading-snug text-muted">{detail}</small>
       </span>
+      {selected ? <CheckIcon size={14} className="mt-1 shrink-0 text-focus" aria-hidden="true" /> : null}
     </button>
   );
 }
@@ -154,7 +155,7 @@ function ModeOption({ selected, icon, title, detail, onClick }: { selected: bool
  * carries the state; the text carries the meaning, and reads first. */
 function Check({ checked, onChange, children }: { checked: boolean; onChange: (value: boolean) => void; children: ReactNode }) {
   return (
-    <label className="flex items-center gap-2.5 rounded-control px-1.5 py-1 text-base text-text transition-colors duration-100 hover:bg-surface-2">
+    <label className="flex min-h-7 items-center gap-2.5 rounded-control px-1.5 py-0.5 text-base text-text transition-colors duration-100 hover:bg-surface-2">
       <input className="check" type="checkbox" checked={checked} onChange={(event) => onChange(event.target.checked)} />
       <span>{children}</span>
     </label>

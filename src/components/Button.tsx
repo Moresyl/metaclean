@@ -3,7 +3,7 @@ import { forwardRef, type ButtonHTMLAttributes, type ReactNode } from "react";
 /**
  * The one button in the window.
  *
- * Four variants and two heights, and nothing outside this file decides what a
+ * Four variants and three heights, and nothing outside this file decides what a
  * button looks like. That is the whole point: a window with six shades of
  * "secondary" reads as six programs, and the drift starts the first time a
  * screen needs a button one pixel shorter than the last one did.
@@ -35,13 +35,12 @@ const OFF: Record<ButtonVariant, string> = {
   danger: "disabled:bg-surface-2 disabled:text-faint",
 };
 
-/* 28px, which is what `.field` measures — a toolbar where the dropdown is two
-   pixels taller than the button beside it is the specific kind of wrong nobody
-   can name and everybody sees. */
+/* Default buttons align with 32px fields; compact and primary actions use
+   the adjacent 28px and 36px steps. */
 const SIZES: Record<ButtonSize, string> = {
-  sm: "h-[24px] px-2 text-sm",
-  md: "h-[28px] px-3 text-base",
-  lg: "h-[32px] px-4 text-md",
+  sm: "h-[28px] px-2 text-sm",
+  md: "h-[32px] px-3 text-base",
+  lg: "h-[36px] px-4 text-base",
 };
 
 const VARIANTS: Record<ButtonVariant, string> = {
@@ -49,8 +48,8 @@ const VARIANTS: Record<ButtonVariant, string> = {
   // screen at a time: two would each be asking to be the answer.
   primary: "bg-brand text-on-brand enabled:hover:brightness-[1.08] enabled:active:brightness-95",
   secondary:
-    "border border-line-strong bg-surface-2 text-text enabled:hover:border-faint " +
-    "enabled:hover:bg-surface-2 enabled:hover:brightness-[1.06] enabled:active:brightness-95",
+    "border border-line-strong bg-transparent text-text enabled:hover:border-faint " +
+    "enabled:hover:bg-surface-2 enabled:active:brightness-95",
   // No box until it is pointed at — for the icon rows a card wears in its
   // header, where six outlined buttons would out-shout the list below them.
   ghost: "px-2 text-muted enabled:hover:bg-surface-2 enabled:hover:text-text",

@@ -32,11 +32,11 @@ export default function Sidebar({ page, collapsed, onNavigate }: { page: Page; c
     return (
       <button
         className={[
-          "group relative flex h-8 w-full items-center rounded-control text-left",
+          "group relative flex h-9 w-full items-center rounded-control text-left",
           "transition-colors duration-150 ease-[var(--ease-out-soft)]",
           collapsed ? "justify-center px-0" : "gap-2 px-2.5",
           active
-            ? "bg-surface text-text shadow-panel"
+            ? "bg-surface-2 text-text"
             : "text-muted hover:bg-surface/70 hover:text-text",
         ].join(" ")}
         key={target}
@@ -45,14 +45,6 @@ export default function Sidebar({ page, collapsed, onNavigate }: { page: Page; c
         data-tip={`${name} · ${commandKeyLabel()}${key}`}
         onClick={() => onNavigate(target)}
       >
-        <span
-          className={[
-            "absolute top-1/2 left-0 w-0.5 -translate-y-1/2 rounded-r-full bg-brand",
-            "transition-[height,opacity] duration-200 ease-[var(--ease-out-soft)]",
-            active ? "h-4 opacity-100" : "h-0 opacity-0",
-          ].join(" ")}
-          aria-hidden="true"
-        />
         <Icon className="shrink-0" size={16} strokeWidth={active ? 2.1 : 1.8} aria-hidden="true" />
         <span className={collapsed ? "sr-only" : "min-w-0 flex-1 truncate text-base font-medium"}>{name}</span>
         {!collapsed ? (
@@ -65,12 +57,12 @@ export default function Sidebar({ page, collapsed, onNavigate }: { page: Page; c
   };
 
   return (
-    <aside className="sidebar chrome relative flex min-w-0 flex-col border-r border-line">
+    <aside className="sidebar chrome relative flex min-w-0 flex-col">
       <nav
-        className="flex min-h-0 flex-1 flex-col gap-0.5 px-2 py-3"
+        className="flex min-h-0 flex-1 flex-col gap-1 px-3 py-5"
         aria-label={text("主导航", "Main navigation")}
       >
-        {!collapsed ? <p className="caption mb-1 px-2">{text("工作区", "Workspace")}</p> : null}
+        {!collapsed ? <p className="caption mb-2 px-2.5">{text("工作区", "Workspace")}</p> : null}
         {navigation.slice(0, 3).map(renderItem)}
         <div className="flex-1" />
         {!collapsed ? <p className="caption mb-1 border-t border-line px-2 pt-3">{text("应用", "Application")}</p> : <div className="mx-2 my-2 border-t border-line" />}

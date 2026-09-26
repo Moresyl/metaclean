@@ -72,6 +72,15 @@ All notable changes to MetaClean are documented here. The project follows
 
 ## [Unreleased]
 
+### Interface refinement
+
+- Refined dark and light surface contrast, secondary text, blue focus and
+  checked states, and consistent 28/32/36px button sizes.
+- Simplified the empty workspace, sidebar and title bar; show the file queue
+  only after intake and keep cleanup actions pinned below the options.
+- Replaced boxed preference rows with quieter dividers and refreshed the
+  shared desktop capture used by both READMEs and the user guide.
+
 ### Added
 
 - Added reproducible NSIS and WiX installer artwork plus a release-contract test

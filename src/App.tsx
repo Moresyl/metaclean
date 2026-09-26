@@ -529,10 +529,10 @@ export default function App() {
     <TitleBar closeToTray={closeToTray} sidebarCollapsed={sidebarCollapsed} onToggleSidebar={() => setSidebarCollapsed((current) => !current)} onOpenCommands={() => setCommandsOpen(true)} />
     <div className={`grid min-h-0 transition-[grid-template-columns] duration-200 ease-[var(--ease-out-soft)] ${sidebarCollapsed ? "grid-cols-[64px_minmax(0,1fr)]" : "grid-cols-[264px_minmax(0,1fr)]"}`}>
       <Sidebar page={page} collapsed={sidebarCollapsed} onNavigate={setPage} />
-      <main tabIndex={-1} className="m-1 mt-0 ml-0 mb-0 flex min-h-0 flex-col overflow-hidden rounded-tl-[10px] rounded-tr-[10px] border border-b-0 border-line bg-canvas">
-        <header className="flex min-h-[60px] shrink-0 items-start gap-4 border-b border-line px-4 pt-3 pb-2.5">
+      <main tabIndex={-1} className="flex min-h-0 min-w-0 flex-col overflow-hidden bg-canvas">
+        <header className="flex shrink-0 items-start gap-4 px-7 pt-6 pb-5">
           <div className="min-w-0 flex-1 grid gap-0.5">
-            <h1 className="font-display truncate text-xl font-semibold">{title}</h1>
+            <h1 className="font-display truncate text-2xl font-semibold">{title}</h1>
             <p className="truncate text-sm text-muted">{subtitle}</p>
           </div>
           {update.status === "available" ? (
@@ -549,9 +549,9 @@ export default function App() {
         </header>
         {/* Keyed on the page so switching remounts, and the new page rises into
             place instead of appearing mid-scroll where the last one left off. */}
-        <div className="animate-rise min-h-0 flex-1 px-4 py-4" key={page}>
+        <div className="animate-rise min-h-0 flex-1 px-7 pb-6" key={page}>
         <Suspense fallback={<div className="grid h-full place-items-center text-sm text-muted" role="status">{text("正在加载页面…", "Loading page…")}</div>}>
-          {page === "clean" ? <div className="grid h-full grid-cols-[minmax(0,1fr)_284px] gap-3">
+          {page === "clean" ? <div className="grid h-full grid-cols-[minmax(0,1fr)_280px] gap-6">
             <div className="flex min-h-0 flex-col gap-3">
               {message ? (
                 <div className="shrink-0 rounded-control border border-line bg-surface px-2.5 py-2 text-sm text-muted shadow-panel" role="status" aria-live="polite">
@@ -559,7 +559,7 @@ export default function App() {
                 </div>
               ) : null}
               <DropZone onAdd={addEntries} onAddNativePaths={addNativePaths} onError={reportPickerError} onOpenPicker={(directory) => void openPicker(directory)} dragActive={dragActive} compact={entries.length > 0} />
-              <FileQueue entries={entries} preserveColorProfile={preserveColorProfile} removeExtendedAttributes={removeExtendedAttributes} busy={busy} onClear={clearQueue} onRemove={removeEntry} onReveal={(path) => void reveal(path)} onNotify={setMessage} />
+              {entries.length > 0 ? <FileQueue entries={entries} preserveColorProfile={preserveColorProfile} removeExtendedAttributes={removeExtendedAttributes} busy={busy} onClear={clearQueue} onRemove={removeEntry} onReveal={(path) => void reveal(path)} onNotify={setMessage} /> : null}
             </div>
               <CleanOptions mode={mode} onModeChange={setMode} preserveTimestamps={preserveTimestamps} onPreserveTimestampsChange={setPreserveTimestamps} preserveOrientation={preserveOrientation} onPreserveOrientationChange={setPreserveOrientation} preserveColorProfile={preserveColorProfile} onPreserveColorProfileChange={setPreserveColorProfile} removeExtendedAttributes={removeExtendedAttributes} onRemoveExtendedAttributesChange={setRemoveExtendedAttributes} disabled={!entries.length} scanned={scanned} hasFindings={cleanableEntries.length > 0} busy={busy} operation={activeOperation} cancelable={Boolean(activeBatchId)} cancelRequested={cancelRequested} onCancel={cancelOperation} onAction={() => void (scanned ? clean() : scan())} />
           </div> : page === "history" ? <HistoryPage entries={history} onClear={clearHistory} /> : page === "privacy" ? <PrivacyPage /> : page === "about" ? <AboutPage /> : <SettingsPage mode={mode} onModeChange={setMode} preserveTimestamps={preserveTimestamps} onPreserveTimestampsChange={setPreserveTimestamps} preserveOrientation={preserveOrientation} onPreserveOrientationChange={setPreserveOrientation} preserveColorProfile={preserveColorProfile} onPreserveColorProfileChange={setPreserveColorProfile} removeExtendedAttributes={removeExtendedAttributes} onRemoveExtendedAttributesChange={setRemoveExtendedAttributes} closeToTray={closeToTray} onCloseToTrayChange={setCloseToTray} />}

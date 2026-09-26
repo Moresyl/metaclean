@@ -66,7 +66,7 @@ export default function TitleBar({
 
   return (
     <header
-      className="titlebar chrome relative z-30 flex h-11 items-stretch border-b border-line select-none"
+      className="titlebar relative z-30 flex h-11 items-stretch bg-canvas select-none"
       data-tauri-drag-region
       onContextMenu={menu.open}
       onMouseDown={(event) => {
@@ -80,14 +80,16 @@ export default function TitleBar({
       }}
     >
       <div
-        className={`titlebar-brand flex shrink-0 items-center gap-2 border-r border-line px-2.5 transition-[width] duration-200 ease-[var(--ease-out-soft)] ${sidebarCollapsed ? "w-16 justify-center" : "w-[264px]"}`}
+        className={`titlebar-brand chrome flex shrink-0 items-center gap-2 px-5 transition-[width] duration-200 ease-[var(--ease-out-soft)] ${sidebarCollapsed ? "w-16 justify-center" : "w-[264px]"}`}
         data-tauri-drag-region
       >
         <span
-          className="grid size-6 shrink-0 place-items-center rounded-[7px] bg-brand text-sm leading-none font-bold text-on-brand shadow-panel"
+          className="grid size-6 shrink-0 place-items-center text-text"
           aria-hidden="true"
         >
-          M
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+            <path d="M4 20V4l8 8 8-8v16" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
         </span>
         {!sidebarCollapsed ? <span className="truncate text-base font-semibold">MetaClean</span> : null}
         {onToggleSidebar ? (
@@ -111,7 +113,7 @@ export default function TitleBar({
         // that is meant to be found — it is the only way into the palette that
         // does not require already knowing the shortcut — and a button set in
         // the ink reserved for placeholders is a button that reads as disabled.
-        className="absolute top-1/2 left-1/2 flex h-7 w-[min(340px,38vw)] -translate-x-1/2 -translate-y-1/2 items-center gap-2 rounded-control border border-line bg-surface pr-1.5 pl-2.5 text-sm text-muted transition-colors duration-100 hover:border-line-strong hover:text-text"
+        className="absolute top-1/2 left-1/2 flex h-7 w-[min(300px,32vw)] -translate-x-1/2 -translate-y-1/2 items-center gap-2 rounded-control bg-surface pr-1.5 pl-2.5 text-sm text-muted transition-colors duration-100 hover:bg-surface-2 hover:text-text"
         type="button"
         aria-label={commands}
         data-tip={`${commands} · ${commandKeyLabel()}K`}

@@ -37,6 +37,8 @@ describe("App", () => {
   it("starts with scanning disabled", () => {
     renderApp();
     expect(screen.getByRole("button", { name: "扫描隐私痕迹" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "选择文件" })).toBeEnabled();
+    expect(screen.queryByRole("heading", { name: "待处理文件" })).not.toBeInTheDocument();
   });
 
   it("fails closed when the native launch-path response is malformed", async () => {
@@ -512,7 +514,9 @@ describe("App", () => {
     fireEvent.click(screen.getByRole("button", { name: "清空" }));
     fireEvent.click(screen.getByRole("button", { name: /^清空队列$/ }));
     expect(screen.queryByText("notes.md")).not.toBeInTheDocument();
-    expect(screen.getByText("添加文件后，将在这里展示扫描状态")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "选择文件" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "扫描隐私痕迹" })).toBeDisabled();
+    expect(screen.queryByRole("heading", { name: "待处理文件" })).not.toBeInTheDocument();
   });
 
   it("requires confirmation before deleting persisted processing history", async () => {

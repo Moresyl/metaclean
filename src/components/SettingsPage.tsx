@@ -43,12 +43,12 @@ interface SettingsPageProps {
 type SettingsSection = "appearance" | "cleaning" | "system" | "safety";
 
 /** One row of the settings list: a card with its own hairline. */
-const ITEM = "grid gap-2.5 rounded-panel border border-line bg-surface p-3.5 shadow-panel";
+const ITEM = "grid gap-4 border-b border-line px-1 py-5";
 /** The same card, but the whole of it is the switch's hit target — and the
  *  control on the right of it is now actually a switch rather than a checkbox
  *  wearing this comment. See `.switch` in `styles.css` for why the distance
  *  between the label and the control decides which of the two is correct. */
-const TOGGLE = "flex cursor-pointer items-center gap-3 rounded-panel border border-line bg-surface p-3.5 shadow-panel transition-colors duration-100 hover:border-line-strong";
+const TOGGLE = "flex cursor-pointer items-center gap-4 border-b border-line px-1 py-5 transition-colors duration-100 hover:bg-surface/60";
 
 export default function SettingsPage({
   mode,
@@ -139,7 +139,7 @@ export default function SettingsPage({
        those two within a glance of each other — at 900 the language dropdown
        sat half a metre from the word 界面语言 with nothing in between, which is
        a table of contents, not a form. */
-    <section className="grid h-full max-w-[680px] grid-rows-[auto_minmax(0,1fr)] gap-3.5">
+    <section className="grid h-full max-w-[760px] grid-rows-[auto_minmax(0,1fr)] gap-5">
       {/* Segments in a recessed track, not a second rail down the side. Four
           categories is a switch, and a switch belongs on one line above the
           thing it switches — a 176px column held four short labels and 500px of
@@ -151,7 +151,7 @@ export default function SettingsPage({
           stretched the full 900px with four segments huddled at one end of
           it — a switch drawn as if it were a table. */}
       <nav
-        className="settings-nav flex shrink-0 items-center gap-1 justify-self-start rounded-panel border border-line bg-canvas-deep p-1"
+        className="settings-nav flex shrink-0 items-center gap-1 justify-self-start rounded-panel bg-surface p-1"
         aria-label={text("设置分类", "Settings categories")}
       >
         {sections.map(([id, icon, label]) => {
@@ -166,7 +166,7 @@ export default function SettingsPage({
                 "flex h-[28px] items-center gap-1.5 rounded-control px-2.5 text-base whitespace-nowrap",
                 "transition-colors duration-100",
                 selected
-                  ? "cursor-default bg-surface font-medium text-text shadow-panel"
+                  ? "cursor-default bg-surface-2 font-medium text-text"
                   : "text-muted hover:bg-surface/55 hover:text-text",
               ].join(" ")}
             >
@@ -182,7 +182,7 @@ export default function SettingsPage({
         })}
       </nav>
 
-      <div className="settings-list grid min-h-0 auto-rows-max gap-2.5 overflow-y-auto pr-0.5 pb-1">
+      <div className="settings-list grid min-h-0 auto-rows-max overflow-y-auto pr-2 pb-1">
         {section === "appearance" ? <>
           <PanelHead
             title={text("外观与语言", "Appearance and language")}
@@ -212,7 +212,7 @@ export default function SettingsPage({
                 window did. Stretched across the card each tile was 300px of
                 empty ground around one 17px glyph, which reads as three panels
                 rather than as one control with three positions. */}
-            <div className="theme-choices grid max-w-[340px] grid-cols-3 gap-2">
+            <div className="theme-choices grid max-w-[420px] grid-cols-3 gap-3">
               <Tile selected={theme.mode === "system"} onClick={() => theme.setMode("system")}>
                 <Monitor size={17} strokeWidth={1.8} />{text("跟随系统", "System")}
               </Tile>
@@ -410,10 +410,10 @@ function Tile({ selected, onClick, children }: { selected: boolean; onClick: () 
       aria-pressed={selected}
       onClick={onClick}
       className={[
-        "grid h-[62px] place-items-center content-center gap-1 rounded-control border text-sm transition-colors duration-100",
+        "grid h-[84px] place-items-center content-center gap-2 rounded-panel border text-sm transition-colors duration-100",
         selected
-          ? "border-brand bg-brand/10 font-medium text-brand"
-          : "border-line bg-surface-2/60 text-muted hover:border-line-strong hover:bg-surface-2 hover:text-text",
+          ? "border-focus bg-focus/8 font-medium text-text"
+          : "border-line bg-surface text-muted hover:border-line-strong hover:bg-surface-2 hover:text-text",
       ].join(" ")}
     >
       {children}
