@@ -1,7 +1,7 @@
 {
   "name": "metaclean",
   "private": true,
-  "version": "0.8.0",
+  "version": "0.8.1",
   "description": "Native, local-first file privacy cleaner with verified safe-copy and replacement workflows",
   "author": "Moresyl <85490079+Moresyl@users.noreply.github.com>",
   "license": "MIT",

@@ -3,6 +3,32 @@
 All notable changes to MetaClean are documented here. The project follows
 [Semantic Versioning](https://semver.org/).
 
+## [0.8.1] - 2026-09-26
+
+### Added
+
+- Unified Windows NSIS/WiX installer artwork with the desktop palette, including
+  uninstall headers, product icons and deterministic bitmap validation.
+- Added automatic Simplified Chinese NSIS text with readable CJK typography and
+  remembered language during uninstall.
+
+### Changed
+
+- Refined dark/light surface hierarchy, blue focus and checked states, and
+  28/32/36px buttons. Simplified navigation, title bar and preference rows.
+- Show the file queue only after intake; retain one centered empty-state entry
+  point and keep cleanup actions pinned beneath the options.
+- Refreshed the real desktop screenshot shared by both READMEs and the user
+  guide, and aligned documentation styling with the application.
+
+### Fixed
+
+- Included the documentation navigation logo in the generated site and retained
+  the signed updater feed while deploying the full documentation.
+- Added bounded retries for release-manifest propagation before Pages deploys.
+- Removed a non-Windows unused-variable warning in atomic-write code without
+  changing replacement or permission-preservation behavior.
+
 ## [0.8.0] - 2026-09-23
 
 ### Added
@@ -72,27 +98,7 @@ All notable changes to MetaClean are documented here. The project follows
 
 ## [Unreleased]
 
-### Interface refinement
-
-- Refined dark and light surface contrast, secondary text, blue focus and
-  checked states, and consistent 28/32/36px button sizes.
-- Simplified the empty workspace, sidebar and title bar; show the file queue
-  only after intake and keep cleanup actions pinned below the options.
-- Replaced boxed preference rows with quieter dividers and refreshed the
-  shared desktop capture used by both READMEs and the user guide.
-
 ### Added
-
-- Added reproducible NSIS and WiX installer artwork plus a release-contract test
-  covering exact bitmap dimensions, palette anchors, installer icons and the
-  NSIS uninstaller header.
-- Added automatic Simplified Chinese NSIS localization with an English fallback,
-  following the Windows display language without adding a separate prompt.
-  The installer uses legible CJK typography and remembers that language for
-  uninstall, avoiding an unexpected language prompt.
-- Added the current desktop screenshot to the user guide and expanded the Pages
-  workflow to deploy the VitePress documentation without moving the signed
-  updater manifest from `/latest.json`.
 
 - Added `DESIGN.md`, a project-owned interaction and visual reference derived
   from the navigation, CTA, footer and information-grouping inspiration list
@@ -112,16 +118,6 @@ All notable changes to MetaClean are documented here. The project follows
 
 ### Changed
 
-- Aligned the documentation site with the desktop application's neutral light
-  and dark palettes, compact geometry and zero-tracking typography, removing
-  the previous green-dominant gradients and blurred navigation chrome.
-- Corrected the documentation home source line from `0.7.x` to `0.8.x` and
-  added a version-derived drift check.
-- The Pages update-feed deployment now retries briefly while a newly published
-  release's assets become visible, closing the release-publication race without
-  allowing an unbounded workflow wait.
-- Release automation checks now accept both LF and CRLF workflow files, and the
-  Linux build no longer emits a platform-only unused-parameter warning.
 - `pnpm test:e2e` now rebuilds the feature-gated desktop test binary before
   starting embedded WebDriver. Windows candidate/preflight builds can no longer
   leave a production-style debug binary that makes a later E2E run time out.
@@ -995,4 +991,5 @@ All notable changes to MetaClean are documented here. The project follows
 [0.7.1]: https://github.com/Moresyl/metaclean/compare/v0.7.0...v0.7.1
 [0.7.2]: https://github.com/Moresyl/metaclean/compare/v0.7.1...v0.7.2
 [0.8.0]: https://github.com/Moresyl/metaclean/compare/v0.7.2...v0.8.0
-[Unreleased]: https://github.com/Moresyl/metaclean/compare/v0.8.0...HEAD
+[0.8.1]: https://github.com/Moresyl/metaclean/compare/v0.8.0...v0.8.1
+[Unreleased]: https://github.com/Moresyl/metaclean/compare/v0.8.1...HEAD
