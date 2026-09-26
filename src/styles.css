@@ -17,9 +17,9 @@
   /* Four neutral grounds, back to front: the window chrome (`canvas-deep`),
      content (`canvas`), cards (`surface`) and raised controls (`surface-2`).
      Status colours are reserved for meaning rather than general decoration. */
-  --color-canvas: #181818;
-  --color-canvas-deep: #0d0d0d;
-  --color-surface: #212121;
+  --color-canvas: #212121;
+  --color-canvas-deep: #181818;
+  --color-surface: #282828;
   --color-surface-2: #303030;
   --color-line: #ffffff1a;
   --color-line-strong: #ffffff29;
@@ -70,6 +70,8 @@
     'Segoe UI Variable Display', 'Segoe UI Variable Text', 'Segoe UI', system-ui,
     'Microsoft YaHei UI', 'PingFang SC', sans-serif;
   --font-mono: 'Cascadia Code', 'JetBrains Mono', ui-monospace, Consolas, Menlo, monospace;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 550;
 
   /* Eight sizes, each with a job, and nothing between them.
    *
@@ -117,10 +119,10 @@
   /* A window corner is 8px, so nothing framed by one has any business being
      rounder than that. Controls sit a step tighter again. Two radii and no
      third: a window where every box has its own curve reads as a collage. */
-  --radius-panel: 0.5rem;
-  --radius-control: 0.375rem;
+  --radius-panel: 0.75rem;
+  --radius-control: 0.5rem;
 
-  --shadow-panel: 0 1px 2px #00000045;
+  --shadow-panel: 0 1px 2px #0000000a;
   --shadow-lift: 0 6px 18px -8px #000000a6;
 
   --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
@@ -284,6 +286,10 @@
     -webkit-user-select: none;
     overflow: hidden;
     overscroll-behavior: none;
+  }
+
+  :root:lang(zh), :root:lang(ja), :root:lang(ko) {
+    --font-weight-semibold: 500;
   }
 
   .selectable {

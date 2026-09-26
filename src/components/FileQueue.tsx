@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { ArrowDownWideNarrow, ArrowUpNarrowWide, ChevronRight, Copy, FileDown, FileImage, FileSearch, FileText, FileType2, FileVideo2, FolderOpen, Music2, Tag, Trash2, X } from "lucide-react";
+import { ArrowDownWideNarrow, ArrowUpNarrowWide, ChevronRight, Copy, FileDown, FileImage, FileSearch, FileText, FileType2, FileVideo2, FolderOpen, Music2, Search, Tag, Trash2, X } from "lucide-react";
 import Button, { IconButton } from "./Button";
 import ConfirmDialog from "./ConfirmDialog";
 import Select from "./Select";
@@ -11,6 +11,7 @@ import { actionableFindingCount, pathIdentity, sumFindingCounts } from "../lib/f
 import { copyText } from "../lib/window";
 import { boundedErrorMessage } from "../lib/errors";
 import { MAX_CLIPBOARD_BYTES, MAX_REPORT_BYTES, UTF8_ENCODER } from "../lib/bounds";
+import { QUEUE_MESSAGES } from "../lib/queue-messages";
 
 interface FileQueueProps { entries: FileEntry[]; preserveColorProfile: boolean; removeExtendedAttributes: boolean; busy?: boolean; onRemove: (id: string) => void; onClear: () => void; onReveal: (path: string) => void; onNotify: (message: string) => void }
 
@@ -55,6 +56,9 @@ export default function FileQueue({ entries, preserveColorProfile, removeExtende
   const { locale, text } = useI18n();
   const [sortKey, setSortKey] = useState<SortKey>("name");
   const [descending, setDescending] = useState(false);
+  const [query, setQuery] = useState("");
+  const [filter, setFilter] = useState("all");
+  const labels = QUEUE_MESSAGES[locale];
   /** One row at a time: the window is short, and a list of open panels is a
    *  list nobody can scan. */
   const [expanded, setExpanded] = useState<string>();
@@ -84,6 +88,19 @@ export default function FileQueue({ entries, preserveColorProfile, removeExtende
       : leftValue - Number(rightValue);
     return comparison === 0 ? left.index - right.index : descending ? -comparison : comparison;
   }).map(({ entry }) => entry), [descending, entries, locale, preserveColorProfile, removeExtendedAttributes, sortKey]);
+  const visibleEntries = useMemo(() => {
+    const needle = query.trim().normalize("NFKC").toLocaleLowerCase(locale).replaceAll("\\", "/");
+    return sortedEntries.filter((entry) => {
+      const failed = entry.status === "error" || Boolean(entry.report?.error || entry.result?.error) || entry.result?.success === false;
+      if (filter === "error" && !failed) return false;
+      if (filter === "findings" && (failed || entry.status === "clean" || !actionableFindingCount(entry.report, preserveColorProfile, removeExtendedAttributes))) return false;
+      if (!needle) return true;
+      return [entry.name, entry.path, entry.result?.outputPath, entry.result?.backupPath].some((value) =>
+        value?.normalize("NFKC").toLocaleLowerCase(locale).replaceAll("\\", "/").includes(needle));
+    });
+  }, [sortedEntries, query, filter, locale, preserveColorProfile, removeExtendedAttributes]);
+  const filtered = Boolean(query.trim() || filter !== "all");
+  const resetFilters = () => { setQuery(""); setFilter("all"); };
   const findingLabel = (category: string, fallback: string) => ({
     unicode: text("不可见 Unicode 字符", "Invisible Unicode"),
     unicode_space: text("异常空白字符", "Unusual whitespace"),
@@ -221,11 +238,11 @@ export default function FileQueue({ entries, preserveColorProfile, removeExtende
 
   return (
     <>
-    <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-panel border border-line bg-surface shadow-panel">
+    <section className="file-queue flex min-h-0 flex-1 flex-col overflow-hidden rounded-panel border border-line bg-canvas">
       <header className="flex h-[42px] shrink-0 items-center gap-2 border-b border-line px-2.5">
         <h2 className="text-base font-semibold">{queueLabel}</h2>
         <span className="rounded-[3px] bg-surface-2 px-1.5 py-px text-xs text-muted tabular-nums">
-          {entries.length} {text("个文件", "file(s)")}
+          {filtered ? `${visibleEntries.length} / ${entries.length}` : entries.length} {text("个文件", "file(s)")}
         </span>
         <span className="flex-1" />
 
@@ -289,6 +306,25 @@ export default function FileQueue({ entries, preserveColorProfile, removeExtende
         </Button>
       </header>
 
+      {entries.length > 0 ? <div className="grid shrink-0 gap-2 border-b border-line p-3">
+        <div className="flex min-w-0 items-center gap-2">
+          <label className="flex min-w-0 flex-1 items-center gap-2 rounded-control bg-surface px-2.5 focus-within:ring-1 focus-within:ring-focus">
+            <Search size={14} className="shrink-0 text-muted" aria-hidden="true" />
+            <input type="search" value={query} maxLength={512} aria-label={labels[0]} placeholder={labels[0]}
+              className="h-8 min-w-0 flex-1 bg-transparent text-sm outline-none"
+              onChange={(event) => setQuery(event.target.value)}
+              onKeyDown={(event) => { if (event.key === "Escape") { event.stopPropagation(); resetFilters(); } }} />
+          </label>
+          <Select aria-label={labels[6]} className="min-w-[128px] text-sm" value={filter} onChange={(event) => setFilter(event.target.value)}>
+            <option value="all">{labels[1]}</option>
+            <option value="findings">{labels[2]}</option>
+            <option value="error">{labels[3]}</option>
+          </Select>
+          {filtered ? <IconButton aria-label={labels[7]} onClick={resetFilters}><X size={14} /></IconButton> : null}
+        </div>
+        {filtered ? <p className="text-xs text-muted" role="status">{labels[5]}</p> : null}
+      </div> : null}
+
       {entries.length === 0 ? (
         /* An empty panel is still a designed panel.
            A 22px glyph and a sentence, both in the dimmest ink the palette has,
@@ -304,9 +340,15 @@ export default function FileQueue({ entries, preserveColorProfile, removeExtende
             {text("添加文件后，将在这里展示扫描状态", "Add files to see scan status here")}
           </span>
         </div>
+      ) : visibleEntries.length === 0 ? (
+        <div className="grid flex-1 content-center justify-items-center gap-3 p-6 text-sm text-muted" role="status">
+          <Search size={22} aria-hidden="true" />
+          <p>{labels[4]}</p>
+          <Button size="sm" onClick={resetFilters}>{labels[7]}</Button>
+        </div>
       ) : (
         <div className="min-h-0 flex-1 overflow-y-auto p-1.5">
-          {sortedEntries.map((entry) => {
+          {visibleEntries.map((entry) => {
             const Icon = icons[entry.kind];
             const findingCount = actionableFindingCount(entry.report, preserveColorProfile, removeExtendedAttributes);
             const sourceSize = entry.result?.sourceSize ?? entry.report?.size ?? entry.size;

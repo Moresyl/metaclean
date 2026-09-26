@@ -423,6 +423,60 @@ describe("desktop components", () => {
     expect(onReveal).toHaveBeenCalledWith("alpha.cleaned.jpg");
   });
 
+  it("searches normalized names and output paths without narrowing batch copy", async () => {
+    const entries: FileEntry[] = [
+      { id: "a", name: "Ａlpha.txt", path: "C:\\Input\\alpha.txt", kind: "text", status: "ready" },
+      { id: "b", name: "beta.txt", path: "C:\\Input\\beta.txt", kind: "text", status: "clean", result: { sourcePath: "C:\\Input\\beta.txt", outputPath: "C:\\Output\\beta.cleaned.txt", success: true, removed: [] } },
+    ];
+    wrap(<FileQueue entries={entries} preserveColorProfile removeExtendedAttributes={false} onRemove={vi.fn()} onClear={vi.fn()} onReveal={vi.fn()} onNotify={vi.fn()} />);
+    const search = screen.getByRole("searchbox");
+    fireEvent.change(search, { target: { value: " alpha " } });
+    expect(screen.getByText("Ａlpha.txt")).toBeInTheDocument();
+    expect(screen.queryByText("beta.txt")).not.toBeInTheDocument();
+    fireEvent.change(search, { target: { value: "c:/output/BETA" } });
+    expect(screen.getByText("beta.txt")).toBeInTheDocument();
+    expect(screen.queryByText("Ａlpha.txt")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "复制全部路径" }));
+    await waitFor(() => expect(clipboardMock).toHaveBeenCalledWith("C:\\Input\\alpha.txt\r\nC:\\Input\\beta.txt\r\nC:\\Output\\beta.cleaned.txt"));
+    fireEvent.keyDown(search, { key: "Escape" });
+    expect(search).toHaveValue("");
+    expect(screen.getByText("Ａlpha.txt")).toBeInTheDocument();
+  });
+
+  it("filters actionable findings using fidelity settings and excludes cleaned or failed files", () => {
+    const report = { path: "a.jpg", name: "a.jpg", format: "JPEG", size: 20, supported: true, findings: [{ category: "color_profile", label: "ICC", count: 1, severity: "informational" as const }] };
+    const entries: FileEntry[] = [
+      { id: "a", name: "a.jpg", kind: "image", status: "scanned", report },
+      { id: "b", name: "b.jpg", kind: "image", status: "clean", report },
+      { id: "c", name: "c.jpg", kind: "image", status: "error", report },
+    ];
+    const props = { entries, removeExtendedAttributes: false, onRemove: vi.fn(), onClear: vi.fn(), onReveal: vi.fn(), onNotify: vi.fn() };
+    const { rerender } = wrap(<FileQueue {...props} preserveColorProfile />);
+    fireEvent.change(screen.getByRole("combobox", { name: "筛选文件" }), { target: { value: "findings" } });
+    expect(screen.getByText("没有匹配的文件")).toBeInTheDocument();
+    rerender(<I18nProvider><FileQueue {...props} preserveColorProfile={false} /></I18nProvider>);
+    fireEvent.change(screen.getByRole("combobox", { name: "筛选文件" }), { target: { value: "findings" } });
+    expect(screen.getByText("a.jpg")).toBeInTheDocument();
+    expect(screen.queryByText("b.jpg")).not.toBeInTheDocument();
+    expect(screen.queryByText("c.jpg")).not.toBeInTheDocument();
+    fireEvent.change(screen.getByRole("combobox", { name: "筛选文件" }), { target: { value: "error" } });
+    expect(screen.getByText("c.jpg")).toBeInTheDocument();
+    expect(screen.queryByText("a.jpg")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "清除筛选" }));
+    expect(screen.getByText("a.jpg")).toBeInTheDocument();
+  });
+
+  it("finds failures reported by the backend and resets an empty search", () => {
+    const entries: FileEntry[] = [{ id: "a", name: "locked.txt", kind: "text", status: "scanned", result: { sourcePath: "locked.txt", success: false, removed: [], error: "locked" } }];
+    wrap(<FileQueue entries={entries} preserveColorProfile removeExtendedAttributes={false} onRemove={vi.fn()} onClear={vi.fn()} onReveal={vi.fn()} onNotify={vi.fn()} />);
+    fireEvent.change(screen.getByRole("combobox", { name: "筛选文件" }), { target: { value: "error" } });
+    expect(screen.getByText("locked.txt")).toBeInTheDocument();
+    fireEvent.change(screen.getByRole("searchbox"), { target: { value: "missing" } });
+    expect(screen.getByText("没有匹配的文件")).toBeInTheDocument();
+    fireEvent.click(screen.getAllByRole("button", { name: "清除筛选" })[1]);
+    expect(screen.getByText("locked.txt")).toBeInTheDocument();
+  });
+
   it("switches cleanup mode and exposes every action state", () => {
     const onMode = vi.fn();
     const onAction = vi.fn();

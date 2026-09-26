@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { LOCALES, SOURCE_STRINGS, hasStaticTranslation, htmlLanguage, initialLocale, isLocale, textDirection, translate, type Locale } from "./locales";
+import { QUEUE_MESSAGES } from "./queue-messages";
 
 /**
  * Every published locale except the two the source strings are written in.
@@ -9,6 +10,13 @@ import { LOCALES, SOURCE_STRINGS, hasStaticTranslation, htmlLanguage, initialLoc
 const TRANSLATED: Locale[] = LOCALES.map(({ code }) => code).filter((code) => code !== "zh" && code !== "en");
 
 describe("locales", () => {
+  it("localizes queue search, filters and action scope in every published language", () => {
+    for (const { code } of LOCALES) {
+      expect(QUEUE_MESSAGES[code]).toHaveLength(8);
+      expect(QUEUE_MESSAGES[code].every((message) => message.trim().length > 0)).toBe(true);
+      if (code !== "en") expect(QUEUE_MESSAGES[code].every((message, index) => message !== QUEUE_MESSAGES.en[index])).toBe(true);
+    }
+  });
   it("accepts only published locale codes", () => {
     expect(isLocale("zh-TW")).toBe(true);
     expect(isLocale("ko")).toBe(true);

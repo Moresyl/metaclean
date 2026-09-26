@@ -1,4 +1,4 @@
-import { FilePlus2, FolderOpen } from "lucide-react";
+import { FilePlus2, FolderOpen, Image, Music2, Video, FileType2, FileText, Type } from "lucide-react";
 import { useCallback, useRef, useState } from "react";
 import Button from "./Button";
 import type { FileEntry } from "../types";
@@ -18,6 +18,7 @@ interface DropZoneProps {
 }
 
 const FORMATS = ["Images", "Audio", "Video", "Office", "PDF", "Text"];
+const FORMAT_ICONS = [Image, Music2, Video, FileType2, FileText, Type];
 
 export default function DropZone({ onAdd, onAddNativePaths, onError, onOpenPicker, dragActive = false, compact = false }: DropZoneProps) {
   const { text } = useI18n();
@@ -81,12 +82,12 @@ export default function DropZone({ onAdd, onAddNativePaths, onError, onOpenPicke
         // A dashed edge, because the whole shape is an invitation rather than a
         // container — and it is the one place in the window where a border is
         // doing more than separating two grounds.
-        "drop-zone relative flex items-center rounded-panel border border-dashed",
+        "drop-zone relative flex items-center border",
         "text-center transition-colors duration-150 ease-[var(--ease-out-soft)]",
-        compact ? "shrink-0 flex-wrap justify-between gap-3 px-4 py-3" : "min-h-0 flex-1 flex-col justify-center gap-5 px-5 py-8",
+        compact ? "shrink-0 flex-wrap justify-between gap-3 rounded-panel px-4 py-3" : "min-h-0 flex-1 flex-col justify-center gap-6 rounded-[24px] px-6 py-8",
         hovering
           ? "border-brand bg-brand/8"
-          : compact ? "border-line-strong bg-surface hover:border-faint" : "border-transparent hover:border-line-strong",
+          : compact ? "border-line bg-surface/40 hover:border-line-strong" : "border-line bg-surface/30 hover:border-line-strong",
       ].join(" ")}
       onDragEnter={() => setBrowserDrag(true)}
       onDragOver={(event) => {
@@ -104,15 +105,15 @@ export default function DropZone({ onAdd, onAddNativePaths, onError, onOpenPicke
     >
       {!compact ? (
         <div
-          className={`grid size-16 place-items-center rounded-2xl transition-colors duration-150 ${hovering ? "bg-brand text-on-brand" : "bg-surface text-muted"}`}
+          className={`grid size-14 place-items-center rounded-2xl border border-line transition-colors duration-150 ${hovering ? "bg-brand text-on-brand" : "bg-canvas text-text"}`}
           aria-hidden="true"
         >
-          <FilePlus2 size={30} strokeWidth={1.5} />
+          <FilePlus2 size={26} strokeWidth={1.4} />
         </div>
       ) : null}
 
       <div className={`grid gap-2 ${compact ? "text-left" : ""}`}>
-        <h2 className={compact ? "text-base font-medium" : "text-2xl font-semibold"}>
+        <h2 className={compact ? "text-base font-medium" : "text-[26px] leading-snug font-semibold"}>
           {text("拖入要净化的文件", "Drop files to clean")}
         </h2>
         <p className="text-sm text-muted">
@@ -149,15 +150,18 @@ export default function DropZone({ onAdd, onAddNativePaths, onError, onOpenPicke
       ) : null}
 
       {!compact ? (
-        <div className="flex flex-wrap justify-center gap-x-3 gap-y-1">
-          {FORMATS.map((format, index) => (
+        <div className="mt-3 flex flex-wrap justify-center gap-x-5 gap-y-3 border-t border-line pt-5">
+          {FORMATS.map((format, index) => {
+            const Icon = FORMAT_ICONS[index];
+            return (
             <span
               key={format}
-              className="text-xs text-muted"
+              className="grid justify-items-center gap-2 text-xs text-muted"
             >
+              <Icon size={17} strokeWidth={1.5} aria-hidden="true" />
               {labels[index]}
             </span>
-          ))}
+          ); })}
         </div>
       ) : null}
     </section>

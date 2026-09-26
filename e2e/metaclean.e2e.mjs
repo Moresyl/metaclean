@@ -1,5 +1,8 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 /**
  * Counted from the source list rather than written down, so the switcher is
@@ -43,11 +46,49 @@ async function openAboutPage() {
 }
 
 describe("MetaClean desktop application", () => {
+  it("searches a native intake and creates a verified safe copy through the UI", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "metaclean-ui-test-"));
+    const source = join(directory, "sample.txt");
+    const original = "Share\u200b this safely.\n";
+    try {
+      await writeFile(source, original);
+      await browser.tauri.execute(() => window.dispatchEvent(new KeyboardEvent("keydown", { key: "1", ctrlKey: true })));
+      await $(".drop-zone").waitForDisplayed();
+      await $(".clean-options button[aria-pressed]").click();
+      await browser.tauri.execute(({ core }, path) => core.invoke("plugin:event|emit_to", {
+        target: { kind: "Webview", label: "main" }, event: "tauri://drag-drop", payload: { paths: [path], position: { x: 400, y: 300 } },
+      }), source);
+      await $(".file-item").waitForDisplayed();
+      await $("input[type=search]").setValue("not-a-match");
+      await browser.waitUntil(async () => (await $$(".file-item")).length === 0);
+      await $("input[type=search]").setValue("SAMPLE");
+      await $(".file-item").waitForDisplayed();
+      await $(".scan-button").click();
+      await browser.waitUntil(async () => (await $(".scan-button").getText()).includes("Confirm"));
+      await $(".scan-button").click();
+      await browser.waitUntil(async () => !(await $(".scan-button").isEnabled()));
+      await browser.waitUntil(async () => {
+        try { return !(await readFile(join(directory, "sample.cleaned.txt"), "utf8")).includes("\u200b"); }
+        catch { return false; }
+      });
+      assert.equal(await readFile(source, "utf8"), original);
+      // Keep subsequent shell tests independent of this synthetic queue.
+      await browser.refresh();
+      await $(".app-shell").waitForDisplayed();
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+      await browser.refresh();
+      await $(".app-shell").waitForDisplayed();
+    }
+  });
   before(async () => {
     const [mainWindow] = await browser.getWindowHandles();
     assert.ok(mainWindow, "the desktop application must expose its main window");
     await browser.switchToWindow(mainWindow);
     const shell = await $(".app-shell");
+    await shell.waitForDisplayed();
+    await browser.tauri.execute(() => localStorage.setItem("metaclean.locale", "en"));
+    await browser.refresh();
     await shell.waitForDisplayed();
   });
 

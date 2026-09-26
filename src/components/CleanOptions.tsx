@@ -26,14 +26,14 @@ export default function CleanOptions({ mode, onModeChange, preserveTimestamps, o
   ];
 
   return (
-    <aside className="flex min-h-0 flex-col overflow-hidden rounded-panel border border-line bg-surface">
+    <aside className="clean-options flex min-h-0 flex-col overflow-hidden border-s border-line ps-5">
       {/* Only the settings scroll. The rail used to be one scrolling column with
           the button pushed to its end by `mt-auto`, which works right up until
           the content is taller than the rail — and then the one action the
           screen exists for is below the fold, on the first frame, at the
           default window size. A committing button belongs to the panel's frame,
           not to its contents. */}
-      <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-3.5">
+      <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto pb-3">
         <div className="grid gap-1.5">
           <div className="caption">{text("清理方式", "Output mode")}</div>
           <ModeOption
@@ -82,13 +82,13 @@ export default function CleanOptions({ mode, onModeChange, preserveTimestamps, o
          * prose it simply takes the lines it needs, in any locale. */}
         <div className="grid gap-1.5">
           <div className="caption">{text("将检测", "Scans for")}</div>
-          <p className="text-sm text-muted">{scans.join(" · ")}</p>
+          <p className="text-xs leading-relaxed text-muted">{scans.join(" · ")}</p>
         </div>
       </div>
 
       {/* Seated on the rail's frame, above a hairline, so it holds still while
           the list above it scrolls and while it changes length between locales. */}
-      <div className="grid shrink-0 gap-1.5 border-t border-line bg-surface p-3.5">
+      <div className="grid shrink-0 gap-2 border-t border-line pt-4">
         <Button
           variant="primary"
           size="lg"
@@ -131,9 +131,9 @@ function ModeOption({ selected, icon, title, detail, onClick }: { selected: bool
       aria-pressed={selected}
       onClick={onClick}
       className={[
-        "flex items-start gap-2.5 rounded-control border p-2.5 text-left transition-colors duration-100",
+        "flex items-start gap-2.5 rounded-panel border p-2.5 text-left transition-colors duration-100",
         selected
-          ? "border-line-strong bg-surface-2 text-text"
+          ? "border-line bg-surface text-text"
           : "border-transparent text-muted hover:border-line hover:bg-surface-2/60",
       ].join(" ")}
     >

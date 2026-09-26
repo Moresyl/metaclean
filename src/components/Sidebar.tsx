@@ -32,11 +32,11 @@ export default function Sidebar({ page, collapsed, onNavigate }: { page: Page; c
     return (
       <button
         className={[
-          "group relative flex h-9 w-full items-center rounded-control text-left",
+          "group relative flex h-10 w-full items-center rounded-control text-left",
           "transition-colors duration-150 ease-[var(--ease-out-soft)]",
           collapsed ? "justify-center px-0" : "gap-2 px-2.5",
           active
-            ? "bg-surface-2 text-text"
+            ? "bg-surface-2/70 text-text"
             : "text-muted hover:bg-surface/70 hover:text-text",
         ].join(" ")}
         key={target}
