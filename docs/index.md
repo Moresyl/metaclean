@@ -19,7 +19,7 @@ description: 面向用户、贡献者和发布维护者的 MetaClean 事实文�
       <span class="proof-label">CURRENT SOURCE LINE</span>
       <span class="proof-status"><i aria-hidden="true"></i> 可审计</span>
     </div>
-    <strong translate="no">0.8.x</strong>
+    <strong translate="no">0.9.x</strong>
     <span>当前代码线 · 本地优先 · 失败关闭</span>
     <div class="proof-metrics" aria-label="当前能力摘要">
       <div><b>113</b><span>格式入口</span></div>
@@ -85,6 +85,6 @@ description: 面向用户、贡献者和发布维护者的 MetaClean 事实文�
     <a href="./security">安全报告</a>
     <a href="./release">贡献与发布</a>
   </nav>
-  <span class="site-footer-meta">0.8.x · 事实优先 · MIT</span>
+  <span class="site-footer-meta">0.9.x · 事实优先 · MIT</span>
 </div>
 </div>

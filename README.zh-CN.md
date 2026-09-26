@@ -16,7 +16,7 @@
 
 [English](README.md) · **简体中文**
 
-<img src="assets/metaclean-screenshot.png" alt="MetaClean 桌面界面" width="820">
+<img src="assets/metaclean-screenshot.png" alt="MetaClean 中文桌面工作区" width="940">
 
 </div>
 
@@ -24,7 +24,7 @@
 
 照片里藏着 GPS 坐标。Word 文档里留着你的姓名、单位，以及那些你以为已经删干净的修订记录。PDF 会把每一版旧草稿的元数据一并带上。从大模型里复制出来的文字，则夹带着看不见的 Unicode 字符。
 
-MetaClean 把这些统统找出来并清除——全过程只在你自己的电脑上完成。
+MetaClean 对支持的格式逐项扫描并清理这些痕迹，全过程只在你自己的电脑上完成。
 
 ## 为什么用它
 
@@ -43,6 +43,31 @@ MetaClean 把这些统统找出来并清除——全过程只在你自己的电�
 | Windows | x64 `.exe`（NSIS）/`.msi`/便携 ZIP · x86 `.exe`（NSIS）/便携 ZIP |
 | macOS | `.dmg` —— Apple Silicon 与 Intel 双架构 |
 | Linux | `.deb` · `.rpm` · `.AppImage` |
+
+## 界面与操作演示
+
+导入文件、查看只读扫描结果、搜索队列，再生成安全副本。下面的 GIF 使用
+专门创建的示例文件，完整调用真实桌面清理引擎；播放两轮后停止，下方也有静态截图。
+
+![中文界面：导入、扫描、搜索与清理](assets/metaclean-workflow-zh.gif)
+
+| 清理前检查扫描结果 | 浅色主题与偏好设置 |
+| --- | --- |
+| ![中文扫描结果](assets/metaclean-scan-zh.png) | ![中文外观设置](assets/metaclean-settings-zh.png) |
+
+<details>
+<summary>查看浅色工作区</summary>
+
+![中文浅色工作区与清理结果](assets/metaclean-light-zh.png)
+
+</details>
+
+- 支持搜索文件名、原始路径、输出路径和备份路径。
+- 可筛选待清理项或失败项，按 Escape 清除筛选。
+- 筛选仅改变显示范围；扫描、清理、复制全部路径和导出报告仍面向整个队列。
+
+欢迎通过 [Issues](https://github.com/Moresyl/metaclean/issues) 反馈问题，阅读
+[架构说明](docs/ARCHITECTURE.md)，或按[贡献指南](CONTRIBUTING.md) 参与改进。
 
 ## 清理范围
 

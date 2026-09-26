@@ -54,6 +54,23 @@ const screenshot = await readFile(path.join(root, "assets", "metaclean-screensho
 assert.equal(screenshot.toString("hex", 0, 8), "89504e470d0a1a0a", "documentation screenshot must be a PNG");
 assert.equal(screenshot.readUInt32BE(16), 1180, "documentation screenshot must use the desktop window width");
 assert.equal(screenshot.readUInt32BE(20), 720, "documentation screenshot must use the desktop window height");
+assert.match(readme, /assets\/metaclean-home-en\.png/u, "English README must use an English native capture");
+assert.doesNotMatch(readme, /assets\/metaclean-screenshot\.png|assets\/metaclean-[a-z]+-zh\./u, "English README must not embed Chinese screenshots");
+assert.doesNotMatch(readmeZh, /assets\/metaclean-[a-z]+-en\./u, "Chinese README must not embed English screenshots");
+for (const [locale, contents] of [["en", readme], ["zh", readmeZh]]) {
+  for (const stage of ["home", "intake", "scan", "search", "clean", "settings", "light"]) {
+    const capture = await readFile(path.join(root, "assets", `metaclean-${stage}-${locale}.png`));
+    assert.equal(capture.toString("hex", 0, 8), "89504e470d0a1a0a");
+    assert.equal(capture.readUInt32BE(16), 1180);
+    assert.equal(capture.readUInt32BE(20), 720);
+  }
+  assert.ok(contents.includes(`assets/metaclean-workflow-${locale}.gif`), "README must link its localized workflow");
+  const animation = await readFile(path.join(root, "assets", `metaclean-workflow-${locale}.gif`));
+  assert.equal(animation.toString("ascii", 0, 6), "GIF89a");
+  assert.equal(animation.readUInt16LE(6), 944);
+  assert.equal(animation.readUInt16LE(8), 576);
+  assert.ok(animation.length < 2_000_000, "README animation must remain lightweight");
+}
 assert.match(docsConfig, /notFound:\s*\{[\s\S]*title: "页面不存在"[\s\S]*回到文档中心/u, "documentation 404 must expose a localized recovery path");
 assert.match(customCss, /\.NotFound/u, "documentation 404 must have product styling");
 assert.match(customCss, /img\[alt="MetaClean 桌面工作区"\]/u, "current product screenshot must have a stable document treatment");
@@ -65,7 +82,7 @@ assert.match(customCss, /@media \(min-width: 761px\) and \(max-width: 1100px\)/u
 assert.doesNotMatch(customCss, /@media \(max-width: 1100px\) \{ \.hero-grid \{ grid-template-columns: 1fr/u, "documentation hero must not collapse at the sidebar viewport boundary");
 assert.match(docsHome, /<b>84\.28%<\/b>/u, "documentation home coverage must match the current validation evidence");
 assert.match(validation, /84\.28% Rust line coverage/u, "documentation validation must expose the current coverage evidence");
-assert.match(validation, /Frontend: 397 tests\. Statements 89\.61%, branches 84\.80%, functions 91\.96%, lines 93\.42%/u, "frontend coverage evidence must match the latest full run");
+assert.match(validation, /Frontend: 401 tests\. Statements 89\.57%, branches 84\.87%, functions 91\.79%, lines 93\.39%/u, "frontend coverage evidence must match the latest full run");
 assert.match(design, /264px persistent workspace panel that collapses to a 64px icon/u, "design reference must document both sidebar states");
 assert.match(design, /`Ctrl\/Cmd\+B` collapse control/u, "design reference must document the sidebar shortcut");
 assert.equal(packageJson.scripts["docs:dev"], "vitepress dev docs");

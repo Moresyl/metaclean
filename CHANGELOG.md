@@ -3,6 +3,33 @@
 All notable changes to MetaClean are documented here. The project follows
 [Semantic Versioning](https://semver.org/).
 
+## [0.9.0] - 2026-09-26
+
+### Added
+
+- Added queue search across names, source, output and backup paths with Unicode
+  normalization, case-insensitive matching and interchangeable path separators.
+- Added actionable-finding and failure filters, result counts, an empty-result
+  recovery action and Escape reset. Search and filter copy covers all 32 locales;
+  visible scope guidance makes clear that batch actions still use the full queue.
+- Added localized English/Chinese native screenshots and finite-loop workflow
+  GIFs. An opt-in capture script exercises real scan, search and safe-copy cleanup
+  using disposable synthetic files and verifies original/output contents.
+
+### Changed
+
+- Refined the neutral surface hierarchy, heading weights, 40px navigation rows,
+  rounded intake panel, file-type glyphs and divider-based cleanup preferences.
+- Aligned documentation with the application palette and added localized scan,
+  settings and light-theme galleries, plus contribution entry points.
+
+### Fixed
+
+- Kept English cleanup preferences visible without scrolling at the default
+  window size and prevented queue filter labels from being clipped.
+- Made desktop tests establish their own interface language before testing
+  English controls, independent of a previous capture session.
+
 ## [0.8.1] - 2026-09-26
 
 ### Added
@@ -992,4 +1019,5 @@ All notable changes to MetaClean are documented here. The project follows
 [0.7.2]: https://github.com/Moresyl/metaclean/compare/v0.7.1...v0.7.2
 [0.8.0]: https://github.com/Moresyl/metaclean/compare/v0.7.2...v0.8.0
 [0.8.1]: https://github.com/Moresyl/metaclean/compare/v0.8.0...v0.8.1
-[Unreleased]: https://github.com/Moresyl/metaclean/compare/v0.8.1...HEAD
+[0.9.0]: https://github.com/Moresyl/metaclean/compare/v0.8.1...v0.9.0
+[Unreleased]: https://github.com/Moresyl/metaclean/compare/v0.9.0...HEAD

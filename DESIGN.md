@@ -23,11 +23,11 @@ principles rather than visual copying:
 
 | Role | Current rule |
 | --- | --- |
-| Canvas | Dark `#181818` or light `#ffffff` content beside a quieter `#0d0d0d` / `#f9f9f9` sidebar |
-| Surface | Neutral `#212121` / `#ffffff` cards and `#303030` / `#ededed` raised controls |
+| Canvas | Dark `#212121` or light `#ffffff` content beside a quieter `#181818` / `#f9f9f9` sidebar |
+| Surface | Neutral `#282828` / `#ffffff` cards and `#303030` / `#ededed` raised controls |
 | Brand and status | Neutral primary actions; blue focus and checked controls; green, orange and red for semantic status |
 | Text | `#ededed` / `#282828` primary and `#afafaf` / `#5d5d5d` secondary text |
-| Geometry | 8px panels, 6px controls, 1px hairlines, 28/32/36px button heights and 32px fields |
+| Geometry | 12px panels, 8px controls, a 24px intake surface, 1px hairlines, 28/32/36px buttons and 32px fields |
 | Type | 14px Segoe UI Variable base with Microsoft YaHei UI, PingFang SC and Noto Sans SC fallbacks |
 | Motion | 100–200ms colour, opacity and geometry transitions; reduced-motion mode collapses them to 1ms |
 
@@ -36,6 +36,10 @@ principles rather than visual copying:
 - The empty cleaning workspace has one centered file-entry area. The queue
   appears only after importing files, so an empty queue does not duplicate the
   initial instructions. Settings use divided rows instead of nested cards.
+- Cleanup preferences sit behind one vertical divider, without an outer card.
+  A 26px intake heading, 18px page titles and lighter CJK heading weights keep
+  the hierarchy readable without oversized bold text. File-type glyphs explain
+  intake scope. Queue search and filters expose their batch-action scope.
 - `Sidebar` is a 264px persistent workspace panel that collapses to a 64px icon
   rail. It keeps five destinations, an explicit `aria-current` state,
   `Ctrl/Cmd+1…5` navigation and `Ctrl/Cmd+B` collapse control.
@@ -59,10 +63,20 @@ principles rather than visual copying:
   platform-standard controls while their welcome, progress, completion and
   uninstall surfaces remain visibly part of the same product. NSIS follows a
   Simplified Chinese Windows locale with an English fallback.
-- The VitePress documentation uses the same neutral palette, 8px maximum panel
+- The VitePress documentation uses the same neutral palette, 12px panel
   radius, semantic-only status colour and zero-tracking typography. It presents
   a current 1180 x 720 application capture without decorative gradients or
   blurred chrome.
+
+## Native documentation captures
+
+Run `pnpm test:e2e:build`, then `pnpm docs:capture` to capture English and Chinese
+workflows at 1180 × 720. The opt-in capture uses synthetic files in a new temporary
+directory, drives native intake and cleanup, checks that the original Unicode
+traces survive while cleaned copies omit them, restores saved preferences and
+removes its temporary files. It never processes user documents. With Pillow
+installed, `python scripts/build-doc-gifs.py` generates finite-loop GIFs from
+those unmodified captures. Each README uses only its matching language.
 
 ## Guardrails
 

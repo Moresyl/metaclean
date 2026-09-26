@@ -16,7 +16,7 @@ Local file processing · Signed in-app updates · No ExifTool, Python or Perl ·
 
 **English** · [简体中文](README.zh-CN.md)
 
-<img src="assets/metaclean-screenshot.png" alt="MetaClean desktop interface" width="820">
+<img src="assets/metaclean-home-en.png" alt="MetaClean English desktop workspace" width="940">
 
 </div>
 
@@ -24,7 +24,7 @@ Local file processing · Signed in-app updates · No ExifTool, Python or Perl ·
 
 Photos carry GPS coordinates. Word documents carry your name, your employer, and every tracked change you thought you had removed. PDFs keep the metadata of earlier drafts. Text pasted out of an LLM carries invisible Unicode.
 
-MetaClean finds all of it and removes it — entirely on your own machine.
+MetaClean scans supported formats for these traces and removes them locally.
 
 ## Why
 
@@ -43,6 +43,33 @@ Grab the latest package from [GitHub Releases](https://github.com/Moresyl/metacl
 | Windows | x64 `.exe` (NSIS) / `.msi` / portable ZIP · x86 `.exe` (NSIS) / portable ZIP |
 | macOS | `.dmg` — Apple Silicon and Intel |
 | Linux | `.deb` · `.rpm` · `.AppImage` |
+
+## A closer look
+
+Import files, inspect the read-only scan, search the queue, then create clean
+copies. This recording uses synthetic sample files and the real desktop engine.
+The animation plays twice; static screenshots below show the same workflow.
+
+![Import, scan, search and clean in English](assets/metaclean-workflow-en.gif)
+
+| Inspect before writing | Preferences, in light mode |
+| --- | --- |
+| ![English scan results](assets/metaclean-scan-en.png) | ![English appearance settings](assets/metaclean-settings-en.png) |
+
+<details>
+<summary>View the light workspace</summary>
+
+![English light workspace after cleanup](assets/metaclean-light-en.png)
+
+</details>
+
+- Search file names, source paths, generated output paths and backup paths.
+- Filter to actionable findings or failed files, then clear filters with Escape.
+- Filtering only changes the view: scanning, cleanup, copy-all and audit export
+  continue to apply to the full queue.
+
+Contributions are welcome: [report an issue](https://github.com/Moresyl/metaclean/issues),
+read the [architecture](docs/ARCHITECTURE.md), or follow the [contribution guide](CONTRIBUTING.md).
 
 ## What it removes
 
