@@ -45,8 +45,11 @@ install/upgrade/manual-downgrade sequences, version/launch checks, truncated-pac
 rejection with the old executable intact, and final uninstall in
 [run 36471560641](https://github.com/Moresyl/metaclean/actions/runs/36471560641).
 The x86 package was tested on a 64-bit Windows host, not a native 32-bit OS.
-Application-triggered updates, user-data migration and interrupted-update recovery
-are not covered by this installer test.
+An additional [run 36472802532](https://github.com/Moresyl/metaclean/actions/runs/36472802532)
+verified preservation of synthetic preferences and history/fingerprints through
+the same sequence in both installed WebViews, including applied dark theme.
+Application-triggered updates, arbitrary historical schema migrations and
+interrupted-update recovery remain outside this evidence.
 
 ## Product boundaries and remaining qualification
 

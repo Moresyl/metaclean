@@ -245,13 +245,27 @@ An experimental storage-preservation check in runs `36472009034` and
 the requested WebView CDP endpoint (`fetch failed`). No storage-preservation
 conclusion follows from those runs. The workflow's explicit `verify_storage`
 option retains this strict experimental check; default installer evidence marks
-`storageVerified` false. The endpoint connection issue remains unresolved.
+`storageVerified` false when this optional check is disabled.
+
+The endpoint issue was resolved using an app-specific HKLM WebView2 debugging
+policy on the disposable runner, removed during cleanup. Recent WebView2 runtimes
+ignore environment overrides in elevated hosts; see the
+[Microsoft explanation](https://github.com/MicrosoftEdge/WebView2Feedback/issues/5645).
+[Run 36472802532](https://github.com/Moresyl/metaclean/actions/runs/36472802532)
+passed with `verify_storage=true` on both architectures. The real installed
+0.11.0 application received synthetic localStorage values for locale, theme,
+output mode and a history entry with source/output fingerprints. Exact values
+survived the damaged-package rejection, upgrade to 0.11.1 and downgrade to 0.11.0;
+the WebView DOM also confirmed that the dark theme was applied on every launch.
+Both downloaded artifacts record `storageVerified: true` for all three versions.
+This proves preservation of these synthetic values across this release pair,
+not arbitrary historical schema migration or every user-data condition.
 
 `scripts/verify-windows-upgrade.ps1` refuses non-hosted environments and existing
 MetaClean installations/processes. The local preexisting 0.9.0 MSI installation
 was not modified. This verifies x64/x86 NSIS installer transitions and launchability;
-it does not yet verify application-triggered signed updates, persisted user-data
-migration, interrupted installation recovery, MSI transitions or other platforms.
+it does not yet verify application-triggered signed updates, arbitrary historical
+user-data migration, interrupted installation recovery, MSI transitions or other platforms.
 
 ## Remaining external release gates
 
