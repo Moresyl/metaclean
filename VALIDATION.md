@@ -16,6 +16,30 @@ This file records evidence, not intent. A row is complete only when the named ar
 | M3: Windows release | Complete for v0.3.0 | The successful v0.3.0 release matrix published launch-smoked x64 NSIS/MSI, x86 NSIS and architecture-labelled x64/x86 portable ZIPs. Local installation/extraction proof also kept each package active for six seconds with the `MetaClean` title before clean uninstall/removal. |
 | M3: macOS/Linux release | Complete for unsigned v0.3.0 artifacts | The successful v0.3.0 matrix copied and launch-smoked both Intel and Apple Silicon DMGs, then installed and launch-smoked the Linux DEB before publishing DEB/RPM/AppImage assets. Apple signing/notarization secrets remain unavailable, so Gatekeeper qualification is an external gate rather than a completed claim. |
 
+## Rust dependency warning triage (0.11.4 candidate)
+
+Reviewed on 2026-09-29 using the current lockfile, official crates.io metadata,
+the official RustSec database and `cargo tree --target all --invert PACKAGE`.
+`cargo audit` reports zero vulnerability entries and seven informational warnings
+after the single-package update below. Informational does not mean harmless.
+
+| Dependency / advisory | Classification | Evidence and required follow-up |
+|---|---|---|
+| `chacha20` 0.10.1, yanked | Upgradable; candidate updated to 0.10.2 | `metaclean → lopdf 0.44.0 → rand 0.10.2 → chacha20`. Official registry marks 0.10.1 yanked and 0.10.2 available. The upstream changelog fixes an SSE4.1 intrinsic in the SSE2 RNG/legacy backend. Only this package and checksum changed; no claim of a newly discovered application exploit. |
+| `glib` 0.18.5, [RUSTSEC-2024-0429](https://rustsec.org/advisories/RUSTSEC-2024-0429.html) | Requires upstream-compatible dependency migration | Linux Tauri/Wry/GTK/WebKit chains require the 0.18 generation. The advisory fixes `VariantStrIter` in >=0.20, a different compatible-version range; adding a newer parallel GLib cannot repair the existing copy. Keep the warning visible and re-evaluate with framework upgrades. Absence of a direct application call is not proof of unreachability. |
+| `proc-macro-error` 1.0.4, [RUSTSEC-2024-0370](https://rustsec.org/advisories/RUSTSEC-2024-0370.html) | Allowed but tracked maintenance warning | Linux `glib-macros` and `gtk3-macros` build dependencies. No patched release is listed; follow the framework's macro migration. This is a build-time maintenance concern, not evidence of a runtime exploit. |
+| `unic-char-property` 0.9.0, [RUSTSEC-2025-0081](https://rustsec.org/advisories/RUSTSEC-2025-0081.html) | Allowed but tracked maintenance warning | Tauri utilities → `urlpattern 0.3.0` → `unic-ucd-ident`. Requires the upstream Unicode dependency migration; no patched release is listed. |
+| `unic-char-range` 0.9.0, [RUSTSEC-2025-0075](https://rustsec.org/advisories/RUSTSEC-2025-0075.html) | Allowed but tracked maintenance warning | Same `urlpattern` Unicode chain; no patched release is listed. |
+| `unic-common` 0.9.0, [RUSTSEC-2025-0080](https://rustsec.org/advisories/RUSTSEC-2025-0080.html) | Allowed but tracked maintenance warning | Same chain through `unic-ucd-version`; no patched release is listed. |
+| `unic-ucd-ident` 0.9.0, [RUSTSEC-2025-0100](https://rustsec.org/advisories/RUSTSEC-2025-0100.html) | Allowed but tracked maintenance warning | `urlpattern` dependency; no patched release is listed. |
+| `unic-ucd-version` 0.9.0, [RUSTSEC-2025-0098](https://rustsec.org/advisories/RUSTSEC-2025-0098.html) | Allowed but tracked maintenance warning | Same Unicode chain; no patched release is listed. |
+
+The existing CI continues to run the official audit without ignored advisory IDs.
+Review this table when dependencies or advisories change and before each release.
+The registry metadata and upstream patch are available at
+[crates.io](https://crates.io/crates/chacha20/0.10.2) and
+[RustCrypto change 580](https://github.com/RustCrypto/stream-ciphers/pull/580).
+
 ## Isolated storage failure qualification
 
 - [Hosted Linux run 36493274324](https://github.com/Moresyl/metaclean/actions/runs/36493274324)

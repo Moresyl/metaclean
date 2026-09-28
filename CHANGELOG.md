@@ -3,6 +3,23 @@
 All notable changes to MetaClean are documented here. The project follows
 [Semantic Versioning](https://semver.org/).
 
+## [0.11.4] - 2026-09-29
+
+### Changed
+
+- Update the indirect `chacha20` dependency from the yanked 0.10.1 release to
+  0.10.2. The upstream patch corrects an SSE4.1 intrinsic used in the SSE2 RNG
+  backend; the dependency enters through `lopdf` and `rand`.
+- Classify remaining Rust audit warnings by dependency chain and remediation
+  constraints instead of presenting a successful audit exit as a clean bill of health.
+
+### Tests
+
+- Add six public desktop memory measurements for 64/256 MiB text inputs with
+  complete source/output/history integrity checks and explicit sampling limits.
+- Verify real ENOSPC and EROFS failures on an isolated Linux tmpfs: both output
+  modes fail without source changes, partial output, backup or temporary residue.
+
 ## [0.11.3] - 2026-09-29
 
 ### Fixed
