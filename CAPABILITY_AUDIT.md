@@ -52,7 +52,12 @@ the same sequence in both installed WebViews, including applied dark theme.
 also passed the real application's update button, public signed download,
 installation, automatic restart and storage checks for both Windows architectures.
 Arbitrary historical schema migrations and interrupted-update recovery remain
-outside this evidence.
+outside this evidence. Public x64 MSI packages separately passed installation,
+upgrade, manual downgrade, registration/version/launch checks and removal in
+[run 36475350834](https://github.com/Moresyl/metaclean/actions/runs/36475350834).
+[Run 36475617820](https://github.com/Moresyl/metaclean/actions/runs/36475617820)
+also damaged the installed executable and verified that MSI repair restored its
+exact SHA-256, registration and launchability before downgrade and removal.
 
 Public Linux DEBs also passed package-manager installation, upgrade, manual
 downgrade, launch checks and removal on Ubuntu 22.04 amd64 in

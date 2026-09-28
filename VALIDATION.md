@@ -276,8 +276,34 @@ installer-only runs. No update endpoint or package signature check was mocked.
 MetaClean installations/processes. The local preexisting 0.9.0 MSI installation
 was not modified. This verifies x64/x86 NSIS installer transitions and launchability;
 the application-triggered signed-update path is additionally covered by run
-36473320724. Arbitrary historical user-data migration, interrupted installation
-recovery, MSI transitions and other platforms remain unverified.
+36473320724. Arbitrary historical user-data migration and interrupted installation
+recovery remain unverified. Separate
+MSI, Linux and macOS package-transition evidence follows below.
+
+## Published Windows MSI upgrade — 2026-09-29
+
+[Run 36475350834](https://github.com/Moresyl/metaclean/actions/runs/36475350834)
+passed on a disposable Windows runner using the public x64 MSI packages and
+published SHA-256 manifests. Installation of 0.11.0, upgrade to 0.11.1 and manual
+downgrade to 0.11.0 each produced exactly one MSI registration with the expected
+version, matching executable version and live MetaClean window after six seconds.
+Final uninstall removed both the application executable and registration.
+Downloaded JSON records the expected distinct product codes and their return to
+the original value on downgrade; verbose installer logs accompany the artifact.
+
+[Run 36475617820](https://github.com/Moresyl/metaclean/actions/runs/36475617820)
+repeated that sequence and added repair after upgrade. It overwrote only the
+test installation's executable with four invalid bytes, then ran the public
+0.11.1 MSI with `/fa`. Repair restored the executable's exact original SHA-256,
+preserved the sole expected product registration and launched a live window for
+six seconds. The downloaded current-version entry records `repairVerified: true`;
+subsequent downgrade and removal passed. This demonstrates recovery from that
+executable-file corruption, not interrupted installation or filesystem failure.
+
+The test refuses non-hosted environments and preexisting installations/processes.
+It does not cover MSI/NSIS cross-installer migration, user-data preservation or
+power loss during installation. The local preexisting 0.9.0 installation was not
+modified.
 
 ## Published Linux DEB upgrade — 2026-09-29
 
