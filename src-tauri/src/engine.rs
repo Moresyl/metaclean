@@ -2056,6 +2056,72 @@ mod tests {
         assert!(!dir.path().join("read-only.txt.bak").exists());
     }
 
+    #[cfg(target_os = "linux")]
+    #[test]
+    #[ignore = "requires an isolated hosted-runner full or read-only filesystem"]
+    fn fails_safely_on_external_storage_failure() {
+        assert_eq!(
+            std::env::var("RUNNER_ENVIRONMENT").unwrap(),
+            "github-hosted"
+        );
+        let root = PathBuf::from(std::env::var_os("RUNNER_TEMP").unwrap())
+            .canonicalize()
+            .unwrap();
+        let directory = PathBuf::from(std::env::var_os("METACLEAN_STORAGE_SAMPLE_DIR").unwrap())
+            .canonicalize()
+            .unwrap();
+        assert!(directory.starts_with(&root) && directory != root);
+        let failure = std::env::var("METACLEAN_STORAGE_FAILURE").unwrap();
+        let expected_errno = match failure.as_str() {
+            "full" => libc::ENOSPC,
+            "readonly" => libc::EROFS,
+            _ => panic!("unsupported storage failure"),
+        };
+        let probe = directory.join("write-probe");
+        assert!(!probe.exists());
+        let error = fs::write(&probe, [0; 4096]).unwrap_err();
+        assert_eq!(error.raw_os_error(), Some(expected_errno));
+        if probe.exists() {
+            fs::remove_file(&probe).unwrap();
+        }
+        let entries = || {
+            let mut names: Vec<_> = fs::read_dir(&directory)
+                .unwrap()
+                .map(|entry| entry.unwrap().file_name())
+                .collect();
+            names.sort();
+            names
+        };
+        let names = entries();
+        let source = directory.join("sample.txt");
+        assert!(!fs::metadata(&source).unwrap().permissions().readonly());
+        let original = fs::read(&source).unwrap();
+        let report = scan_file(&source);
+        assert!(report.supported, "{:?}", report.error);
+        assert!(!report.findings.is_empty());
+        for mode in [OutputMode::Copy, OutputMode::Replace] {
+            let result = clean_file_with_options(&source, &mode, true, true, true, false);
+            assert!(!result.success);
+            assert!(result.error.as_ref().is_some_and(|error| !error.is_empty()));
+            assert!(result.output_path.is_none());
+            assert!(result.backup_path.is_none());
+            assert!(result.integrity.is_none());
+            assert_eq!(fs::read(&source).unwrap(), original);
+            assert_eq!(entries(), names, "no temporary files or partial outputs");
+        }
+        println!(
+            "{}",
+            serde_json::json!({
+                "scenario": failure,
+                "errno": expected_errno,
+                "sourceSha256": format!("{:x}", Sha256::digest(&original)),
+                "sourcePreserved": true,
+                "noExtraFiles": true,
+                "verifiedModes": ["copy", "replace"]
+            })
+        );
+    }
+
     #[test]
     fn rejects_unknown_binary() {
         let dir = tempfile::tempdir().unwrap();

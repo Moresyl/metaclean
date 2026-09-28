@@ -1,0 +1,42 @@
+name: Verify isolated storage failures
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  storage:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - run: corepack enable
+      - run: corepack prepare pnpm@10.32.1 --activate
+      - run: rustup default stable
+      - uses: actions/cache@v5
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            src-tauri/target
+          key: rust-e2e-${{ runner.os }}-${{ hashFiles('src-tauri/Cargo.lock') }}
+          restore-keys: rust-e2e-${{ runner.os }}-
+      - name: Install Linux system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential libssl-dev libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - name: Verify actual ENOSPC and EROFS failures
+        run: bash scripts/verify-storage-failure.sh
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: storage-failure-evidence
+          path: ${{ runner.temp }}/metaclean-storage-evidence
+          if-no-files-found: error
