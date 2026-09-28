@@ -1,7 +1,8 @@
 param(
   [Parameter(Mandatory = $true)][string]$PreviousVersion,
   [Parameter(Mandatory = $true)][string]$CurrentVersion,
-  [Parameter(Mandatory = $true)][string]$AssetDirectory
+  [Parameter(Mandatory = $true)][string]$AssetDirectory,
+  [Parameter(Mandatory = $true)][ValidateSet('x64', 'x86')][string]$Architecture
 )
 
 $ErrorActionPreference = "Stop"
@@ -28,7 +29,7 @@ $process = $null
 $results = @()
 try {
   foreach ($version in @($PreviousVersion, $CurrentVersion, $PreviousVersion)) {
-    $installer = Join-Path $AssetDirectory "$version/MetaClean_${version}_x64-setup.exe"
+    $installer = Join-Path $AssetDirectory "$version/MetaClean_${version}_${Architecture}-setup.exe"
     $manifest = Get-Content -LiteralPath (Join-Path $AssetDirectory "$version/SHASUMS256.txt")
     $entry = @($manifest | Where-Object { $_ -match "^[a-f0-9]{64}  $([regex]::Escape([IO.Path]::GetFileName($installer)))$" })
     if ($entry.Count -ne 1 -or (Get-FileHash -LiteralPath $installer -Algorithm SHA256).Hash -ne $entry[0].Substring(0,64)) {
@@ -67,7 +68,7 @@ try {
       Stop-Process -Id $process.Id -Force
       $process.WaitForExit()
       $process = $null
-      $results += [pscustomobject]@{ case = 'truncated-installer'; rejected = $true; previousHashUnchanged = $true; previousLaunchPassed = $true }
+      $results += [pscustomobject]@{ architecture = $Architecture; case = 'truncated-installer'; rejected = $true; previousHashUnchanged = $true; previousLaunchPassed = $true }
       Write-Output 'Truncated installer rejected; previous executable, registration and launch preserved'
     }
     $install = Start-Process -FilePath $installer -ArgumentList @("/S", "/D=$installRoot") -PassThru -Wait -WindowStyle Hidden
@@ -83,7 +84,7 @@ try {
     Stop-Process -Id $process.Id -Force
     $process.WaitForExit()
     $process = $null
-    $results += [pscustomobject]@{ version = $version; executableVersion = $fileVersion; launchPassed = $true }
+    $results += [pscustomobject]@{ architecture = $Architecture; version = $version; executableVersion = $fileVersion; launchPassed = $true }
     Write-Output "Installed and launched $version successfully"
   }
 } finally {
