@@ -89,6 +89,9 @@ describe("MetaClean desktop application", () => {
       await $('button[aria-label="Details"]').click();
       await $(".file-detail summary").click();
       assert.ok((await $(".file-detail details").getText()).includes(expectedIntegrity.outputSha256));
+      if (process.env.METACLEAN_E2E_SCREENSHOT) {
+        await browser.saveScreenshot(process.env.METACLEAN_E2E_SCREENSHOT);
+      }
       // Keep subsequent shell tests independent of this synthetic queue.
       await browser.refresh();
       await $(".app-shell").waitForDisplayed();

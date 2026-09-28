@@ -3,6 +3,29 @@
 All notable changes to MetaClean are documented here. The project follows
 [Semantic Versioning](https://semver.org/).
 
+## [0.10.0] - 2026-09-28
+
+### Added
+
+- Successful cleanup results include SHA-256 fingerprints of validated source
+  bytes and committed output bytes, with a collapsible detail panel, persistent
+  history and additive integrity fields in the version-1 JSON audit report.
+- Native desktop regression independently hashes the actual source and output
+  files and checks the persisted report and visible detail panel.
+
+### Changed
+
+- Validate fingerprint pairs at the IPC and history boundaries; older results
+  without fingerprints remain readable. Failed operations do not claim hashes.
+- Document that fingerprints describe cleanup-time bytes, exclude filesystem
+  attributes and are neither digital signatures nor proof of complete removal.
+
+### Fixed
+
+- Preserve consecutive unresolved parent segments in Windows relative paths so
+  distinct files are not merged in intake or assigned each other's scan state.
+  Frontend and native path identity use the same parent-boundary rule.
+
 ## [0.9.0] - 2026-09-26
 
 ### Added

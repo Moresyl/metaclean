@@ -1,6 +1,6 @@
 # MetaClean validation status
 
-Last audited: 2026-09-26
+Last audited: 2026-09-28
 
 This file records evidence, not intent. A row is complete only when the named artifact or runtime check exists.
 
@@ -17,6 +17,26 @@ This file records evidence, not intent. A row is complete only when the named ar
 | M3: macOS/Linux release | Complete for unsigned v0.3.0 artifacts | The successful v0.3.0 matrix copied and launch-smoked both Intel and Apple Silicon DMGs, then installed and launch-smoked the Linux DEB before publishing DEB/RPM/AppImage assets. Apple signing/notarization secrets remain unavailable, so Gatekeeper qualification is an external gate rather than a completed claim. |
 
 ## Automated quality gates
+
+- v0.10.0 candidate: frontend 415 tests pass; native library 208 pass and three
+  explicitly gated tests remain ignored. Rust line coverage is 84.32% using the
+  CI exclusion set. Strict Clippy, formatting, production build and 40 release
+  automation tests pass. Two Windows desktop runs each pass all 14 scenarios;
+  the added scenario independently hashes actual source/output bytes and checks
+  persisted history and expanded details. Native visual inspection confirms the
+  collapsible checksum section fits inside the scrolling queue.
+- Candidate performance with SHA-256 enabled: 128 files / 25,014,272 bytes clean
+  at 204.71 files/s, first result 2.38 ms and p95 9.75 ms. Mixed batch: 96 valid
+  and 32 failed inputs, 259.68 files/s, first result 3.28 ms and p95 9.84 ms.
+  These workstation measurements are not hardware-independent guarantees.
+- npm audit reports no known vulnerabilities. Cargo audit passed against the
+  freshly fetched official advisory database at
+  `ef03605143a913024f864d2edf476adad5720c93`; eight upstream warnings remain,
+  including maintenance, GLib soundness and a yanked transitive version.
+  The initial database update failed over the network; a fresh Git clone and
+  `cargo audit --db ... --no-fetch` completed the same lockfile audit.
+- v0.10.0 public artifacts remain pending the release workflow; v0.9.0 is the
+  latest verified public release at this audit checkpoint.
 
 - v0.9.0 native workflow evidence (2026-09-26): all 14 desktop E2E scenarios passed, including real file intake, search, scan and safe-copy cleanup with original-content verification. Both localized capture scenarios passed and generated seven native screenshots per language plus two finite-loop GIFs. English and Chinese default cleanup preferences fit the fixed window without scrolling; documentation checks enforce language-specific image references, dimensions and GIF size budgets.
 
