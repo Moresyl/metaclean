@@ -15,16 +15,18 @@ const expected = {
   }]),
 };
 let target;
+let diagnostic;
 for (let attempt = 0; attempt < 30; attempt++) {
   try {
     const response = await fetch("http://127.0.0.1:9222/json/list", { signal: AbortSignal.timeout(1000) });
     const targets = await response.json();
+    diagnostic = targets.map(({ type, url }) => ({ type, url }));
     target = targets.find((item) => item.type === "page" && /tauri\.localhost|tauri:\/\//u.test(item.url));
     if (target) break;
-  } catch { /* WebView may still be starting. */ }
+  } catch (error) { diagnostic = error.message; }
   await delay(500);
 }
-assert.ok(target?.webSocketDebuggerUrl, "Released application did not expose its isolated WebView");
+assert.ok(target?.webSocketDebuggerUrl, `Released application did not expose its isolated WebView: ${JSON.stringify(diagnostic)}`);
 const socket = new WebSocket(target.webSocketDebuggerUrl);
 await new Promise((resolve, reject) => {
   socket.addEventListener("open", resolve, { once: true });
