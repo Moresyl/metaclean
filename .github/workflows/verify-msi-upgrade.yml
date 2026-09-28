@@ -1,0 +1,36 @@
+name: Verify published MSI upgrade
+
+on:
+  workflow_dispatch:
+    inputs:
+      previous:
+        description: Previous stable version without v
+        required: true
+        type: string
+      current:
+        description: Current stable version without v
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  upgrade:
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - name: Verify public MSI transitions
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PREVIOUS_VERSION: ${{ inputs.previous }}
+          CURRENT_VERSION: ${{ inputs.current }}
+        run: ./scripts/verify-msi-upgrade.ps1 -PreviousVersion $env:PREVIOUS_VERSION -CurrentVersion $env:CURRENT_VERSION
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: msi-upgrade-evidence
+          path: ${{ runner.temp }}/metaclean-msi-upgrade/
+          if-no-files-found: error
