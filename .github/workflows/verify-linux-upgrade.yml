@@ -1,0 +1,36 @@
+name: Verify published Linux upgrade
+
+on:
+  workflow_dispatch:
+    inputs:
+      previous:
+        description: Previous stable version without v
+        required: true
+        type: string
+      current:
+        description: Current stable version without v
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  upgrade:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install display test dependency
+        run: sudo apt-get update && sudo apt-get install -y xvfb
+      - name: Verify public DEB upgrade and downgrade
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PREVIOUS_VERSION: ${{ inputs.previous }}
+          CURRENT_VERSION: ${{ inputs.current }}
+        run: bash scripts/verify-linux-upgrade.sh
+      - uses: actions/upload-artifact@v6
+        with:
+          name: linux-upgrade-evidence
+          path: ${{ runner.temp }}/metaclean-linux-upgrade.tsv
+          if-no-files-found: error
