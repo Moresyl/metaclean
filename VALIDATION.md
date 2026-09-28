@@ -18,6 +18,18 @@ This file records evidence, not intent. A row is complete only when the named ar
 
 ## Automated quality gates
 
+- v0.11.2 [candidate CI](https://github.com/Moresyl/metaclean/actions/runs/36477273684)
+  passed all quality gates and Windows/macOS/Linux desktop E2E. Frontend: 418 tests,
+  statements 89.62%, branches 85.09%, functions 91.92%, lines 93.40%. Windows native:
+  225 passed, five explicitly gated tests ignored; Rust lines 92.27% with the CI
+  exclusion expression. A separate local Windows desktop run also passed 15 cases.
+- v0.11.2 [release pipeline](https://github.com/Moresyl/metaclean/actions/runs/36479381902)
+  passed Linux source revalidation, all five platform builds and applicable package
+  smoke checks before final publication. Linux: 218 native tests passed, five ignored,
+  92.23% Rust line coverage, 15 desktop cases and ten independent FFmpeg PCM checks.
+  Platform-specific tests account for the Windows/Linux test-count difference.
+  Cargo audit completed with the eight previously documented upstream warnings.
+
 - v0.10.0 candidate: frontend 415 tests pass; native library 208 pass and three
   explicitly gated tests remain ignored. Rust line coverage is 84.32% using the
   CI exclusion set. Strict Clippy, formatting, production build and 40 release
@@ -374,8 +386,22 @@ finding fields for 108,921 three-character/random cases plus empty, single and
 two-character inputs. Permanent regressions cover original-neighbor semantics,
 nested directional embeddings/overrides and malformed flag-tag sequences. The
 optimization does not alter the 256 MiB input limit or Unicode preservation policy.
-These implementation measurements precede release of the optimization; v0.11.1
-remains the baseline published version.
+The optimization is included in v0.11.2; v0.11.1 is the measured baseline.
+
+## Published v0.11.2 verification — 2026-09-29
+
+The [stable release](https://github.com/Moresyl/metaclean/releases/tag/v0.11.2)
+was published at 2026-09-28 20:48:36 UTC from
+`ae197feac7c90cd8a5b106657265abbe1fc071fe`, with 20 nonempty assets and neither
+draft nor prerelease status. Independent
+[run 36481920205](https://github.com/Moresyl/metaclean/actions/runs/36481920205)
+downloaded the public assets, verified all 19 SHA-256-listed files, validated
+all five updater signatures against the tagged public key, and rejected modified
+package bytes. The release and Pages `latest.json` endpoints both returned 0.11.2
+with exactly matching download URLs and signatures for all five platforms; the
+[feed deployment](https://github.com/Moresyl/metaclean/actions/runs/36481821010)
+also completed successfully. Earlier 0.11.0/0.11.1 installed-update qualification
+does not automatically establish the same transition evidence for 0.11.2.
 
 ## Remaining external release gates
 

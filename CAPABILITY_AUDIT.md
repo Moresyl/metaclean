@@ -1,7 +1,7 @@
 # MetaClean capability audit
 
-Audited on 2026-09-29 for the published v0.11.1 release at
-`b0a9bd5bda8b11921b1290069e1738ba6b416db1`.
+Audited on 2026-09-29 for the published v0.11.2 release at
+`ae197feac7c90cd8a5b106657265abbe1fc071fe`.
 
 This ledger describes implemented behavior, its evidence and its limits.
 Extension counts and passing tests do not establish universal format support,
@@ -23,17 +23,23 @@ application. Detailed run evidence is recorded in `VALIDATION.md`.
 
 ## Release evidence
 
-- [Candidate CI](https://github.com/Moresyl/metaclean/actions/runs/36465554165)
+- [Candidate CI](https://github.com/Moresyl/metaclean/actions/runs/36477273684)
   passed the main quality gates and desktop tests on all three operating systems.
-- [Release pipeline](https://github.com/Moresyl/metaclean/actions/runs/36467341453)
+- [Release pipeline](https://github.com/Moresyl/metaclean/actions/runs/36479381902)
   passed source validation, five platform builds, package checks and finalization.
-- [Independent public-asset verification](https://github.com/Moresyl/metaclean/actions/runs/36469907196)
+- [Independent public-asset verification](https://github.com/Moresyl/metaclean/actions/runs/36481920205)
   checked downloaded bytes and signatures against the tagged public key.
-- [Published v0.11.1](https://github.com/Moresyl/metaclean/releases/tag/v0.11.1)
+- [Published v0.11.2](https://github.com/Moresyl/metaclean/releases/tag/v0.11.2)
   contains 20 assets, including the checksum manifest. The public Pages update
   feed was checked against the release's five platform URLs and signatures.
 
 The VML note-shape fix verified with WPS 2019 is included in v0.11.1.
+
+The v0.11.2 text cleaner preserves contextual Unicode behavior while avoiding a
+complete character array. Three isolated synthetic 64/256 MiB runs observed about
+43% lower peak working set, with source/output byte and hash checks passing.
+Detailed measurements and workload limits are recorded in `VALIDATION.md`; this
+does not establish a universal memory or throughput improvement across formats.
 
 Six isolated native benchmark processes also passed on Windows 11; their small
 text batches observed up to 14.63 MiB peak working set. The sampling method and
