@@ -68,6 +68,24 @@ describe("entryFromPath", () => {
     expect(pathIdentity("//Server/Share/Photo.PNG")).toBe("//Server/Share/Photo.PNG");
     vi.unstubAllGlobals();
   });
+
+  it.each([
+    ["..\\..\\Photo.PNG", "..\\..\\photo.png"],
+    ["..\\folder\\..\\..\\Photo.PNG", "..\\..\\photo.png"],
+    ["folder\\..\\..\\Photo.PNG", "..\\photo.png"],
+    ["C:\\..\\..\\Photo.PNG", "c:\\photo.png"],
+    ["\\\\server\\share\\..\\..\\Photo.PNG", "\\\\server\\share\\photo.png"],
+  ])("preserves the parent boundary of %s", (path, expected) => {
+    expect(pathIdentity(path)).toBe(expected);
+  });
+
+  it("keeps files at distinct relative depths through queue intake and scan reconciliation", () => {
+    const paths = ["..\\..\\photo.png", "photo.png"];
+    const { entries } = mergeEntries([], paths.map(entryFromPath));
+    expect(entries).toHaveLength(2);
+    const scanned = markEntryPaths(entries, [paths[0]], "scanning");
+    expect(scanned.map((entry) => entry.status)).toEqual(["scanning", "ready"]);
+  });
 });
 
 describe("entryFromFile", () => {

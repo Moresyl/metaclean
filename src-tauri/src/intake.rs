@@ -144,7 +144,7 @@ pub(crate) fn path_identity(path: &str) -> String {
     for part in canonical.trim_start_matches('\\').split('\\') {
         match part {
             "" | "." => {}
-            ".." if parts.len() > minimum => {
+            ".." if parts.len() > minimum && parts.last() != Some(&"..") => {
                 parts.pop();
             }
             ".." if !absolute => parts.push(part),
@@ -321,6 +321,17 @@ mod tests {
             r"c:\work\photo.png"
         );
         assert_eq!(path_identity(r"..\Photo.PNG"), r"..\photo.png");
+        assert_eq!(path_identity(r"..\..\Photo.PNG"), r"..\..\photo.png");
+        assert_eq!(
+            path_identity(r"..\folder\..\..\Photo.PNG"),
+            r"..\..\photo.png"
+        );
+        assert_eq!(path_identity(r"folder\..\..\Photo.PNG"), r"..\photo.png");
+        assert_eq!(path_identity(r"C:\..\..\Photo.PNG"), r"c:\photo.png");
+        assert_eq!(
+            path_identity(r"\\server\share\..\..\Photo.PNG"),
+            r"\\server\share\photo.png"
+        );
     }
 
     #[test]
