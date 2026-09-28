@@ -435,6 +435,26 @@ These additional runs do not assert MSI/DEB/DMG user-data preservation, Linux/ma
 self-update, native Intel Mac execution, Gatekeeper acceptance or interrupted
 installation recovery.
 
+## Released cleanup interruption regression — 2026-09-29
+
+The new hosted-only `verify-crash-recovery.yml` workflow tested the public v0.11.2
+x64 portable package using 64 synthetic 8 MiB text files. It invoked real native
+drag-and-drop intake, clicked the real scan/confirm controls, observed an active
+count-only recovery marker and at least one committed output, then forcibly
+terminated the owned application process tree before the batch finished.
+
+[Run 36483534933](https://github.com/Moresyl/metaclean/actions/runs/36483534933)
+and the diagnostic [run 36483828672](https://github.com/Moresyl/metaclean/actions/runs/36483828672)
+both failed the restart-notice assertion. Before restart, all source hashes and
+the complete committed-output hashes passed. The second run's downloaded
+`recover.json` confirmed an empty queue, retained English locale and no recovery
+notice; `before-crash.json` showed the marker existed during cleanup. This
+reproduces a missing-notice defect under forced termination. The WebView-only
+marker is not sufficient evidence of durable crash recovery. A native durable
+recovery record and an equivalent end-to-end passing regression remain required;
+no such fix is included in v0.11.2. These failed runs do not qualify power-loss or
+installer-interruption recovery.
+
 ## Remaining external release gates
 
 1. Test representative documents in genuine Microsoft Word and newer WPS builds, including layout, complex objects and supported OpenDocument interoperability. The limited WPS 2019 OOXML semantic round trip above and prior LibreOffice 26.2.5 samples do not close that broader qualification.

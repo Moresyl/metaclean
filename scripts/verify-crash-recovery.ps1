@@ -62,6 +62,7 @@ try {
     if ($output.Length -ne $bytes.Length - 3 -or (Get-FileHash -LiteralPath $output.FullName).Hash -ne $cleanHash) { throw 'Committed output is incomplete or corrupt' }
   }
   $snapshot = @(Get-ChildItem -LiteralPath $fixtures -File | ForEach-Object { "$($_.Name):$((Get-FileHash -LiteralPath $_.FullName).Hash)" } | Sort-Object)
+  [pscustomobject]@{ sourceFiles = $sources.Count; committedOutputs = $outputs.Count; otherFiles = $snapshot.Count - $sources.Count - $outputs.Count; sourceHashesPreserved = $true; committedOutputHashesVerified = $true } | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $evidence 'integrity-after-crash.json') -Encoding utf8
   foreach ($mode in @('recover', 'cleared')) {
     $process = Start-Process -FilePath $application -PassThru -WindowStyle Hidden
     node (Join-Path $PSScriptRoot 'verify-crash-recovery.mjs') $mode $fixtures $evidence

@@ -87,6 +87,12 @@ checks, with the same scope limitations.
 
 ## Product boundaries and remaining qualification
 
+Forced termination of the public v0.11.2 application reproduced a missing
+recovery notice in two hosted runs, despite intact source files and committed
+outputs. The WebView-only marker did not provide the expected restart prompt;
+see the failed-run evidence in `VALIDATION.md`. Durable recovery notification
+remains an open product defect, not a completed capability.
+
 Inspection exposes categories and counts, not raw identity, location or comment
 values. Raw-value forensic inspection, statistical text rewriting, pixel-domain
 watermark removal, generic archive rewriting and unknown binary formats are
