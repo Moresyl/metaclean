@@ -41,7 +41,7 @@ This file records evidence, not intent. A row is complete only when the named ar
   public key and rejected deliberately tampered package bytes. Pages run
   `36451199277` succeeded and its updater URLs/signatures match the release feed.
 
-## Ogg audio development validation
+## v0.11.0 candidate validation
 
 - The Opus/Vorbis kernel and product extension intake integration are implemented.
   This work is not part of the published v0.10.0 release.
@@ -54,7 +54,8 @@ This file records evidence, not intent. A row is complete only when the named ar
 - Native library: 219 tests pass, four explicitly gated tests are ignored by
   default. Eleven focused Ogg tests cover comment framing, channel mappings,
   page checksums/sequencing, cross-page comments, mixed codec chains, unchanged
-  setup/audio bytes and malformed headers. Strict Clippy passes.
+  setup/audio bytes and malformed headers. Strict Clippy passes. Core Rust line
+  coverage is 84.96% with the CI exclusion set; the Ogg module reaches 98.35%.
 - `pnpm test:audio` independently generates and decodes ten synthetic fixtures
   using FFmpeg: mono, stereo, 5.1, 150,000-character comments and chained streams
   for each codec. All ten pass locally with FFmpeg 7.1: unchanged source files,

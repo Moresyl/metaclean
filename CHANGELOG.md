@@ -3,6 +3,34 @@
 All notable changes to MetaClean are documented here. The project follows
 [Semantic Versioning](https://semver.org/).
 
+## [0.11.0] - 2026-09-29
+
+### Added
+
+- Native Ogg Opus and Vorbis comment cleanup for `.opus`, `.ogg` and `.oga`,
+  including cross-page comments and chained streams. The shared intake,
+  classification and Windows Explorer manifests now cover 116 extensions.
+- Repeatable FFmpeg validation of ten mono, stereo, surround, long-comment and
+  chained-stream fixtures, checking identical decoded PCM before and after cleanup.
+  Linux CI and release validation run this independent decoder check.
+- Public release verification checks every downloaded asset against SHA-256,
+  verifies all five updater package signatures and rejects tampered bytes.
+
+### Changed
+
+- Keep Ogg packet/page sizes, lacing, granule positions, codec setup and encoded
+  audio unchanged while clearing vendor/comment data and recomputing page CRCs.
+  Preserve validated numeric R128/ReplayGain playback tags.
+- Refuse unknown Ogg codecs, malformed page/header structures, oversized comments,
+  invalid or duplicate gain values and unrecognized Opus binary extensions.
+
+### Fixed
+
+- Synchronize format counts and audio scope across all 32 interface locales;
+  correct stale Persian scope counts and strengthen localized-count regression.
+- Add desktop coverage for importing, safely copying and reinspecting all three
+  Ogg extensions, and synchronize NSIS/MSI context-menu cleanup.
+
 ## [0.10.0] - 2026-09-28
 
 ### Added
