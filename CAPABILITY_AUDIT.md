@@ -90,8 +90,12 @@ checks, with the same scope limitations.
 Forced termination of the public v0.11.2 application reproduced a missing
 recovery notice in two hosted runs, despite intact source files and committed
 outputs. The WebView-only marker did not provide the expected restart prompt;
-see the failed-run evidence in `VALIDATION.md`. Durable recovery notification
-remains an open product defect, not a completed capability.
+see the failed-run evidence in `VALIDATION.md`. The v0.11.3 candidate's native
+path-free record passed the same real interruption and two-restart scenario in
+[run 36486936517](https://github.com/Moresyl/metaclean/actions/runs/36486936517),
+with all source and committed-output hashes preserved. This fixes the reproduced
+candidate behavior; public-package verification remains pending. It does not
+qualify power loss or installer interruption.
 
 Inspection exposes categories and counts, not raw identity, location or comment
 values. Raw-value forensic inspection, statistical text rewriting, pixel-domain

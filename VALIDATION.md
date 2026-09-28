@@ -451,9 +451,42 @@ the complete committed-output hashes passed. The second run's downloaded
 notice; `before-crash.json` showed the marker existed during cleanup. This
 reproduces a missing-notice defect under forced termination. The WebView-only
 marker is not sufficient evidence of durable crash recovery. A native durable
-recovery record and an equivalent end-to-end passing regression remain required;
+recovery record and an equivalent end-to-end passing regression were required;
 no such fix is included in v0.11.2. These failed runs do not qualify power-loss or
 installer-interruption recovery.
+
+## Native interruption recovery candidate — 2026-09-29
+
+The v0.11.3 candidate at `659dabc7243ca72368fcc722bea55dbacbd3fb50` passed
+[run 36486936517](https://github.com/Moresyl/metaclean/actions/runs/36486936517).
+It built the normal release executable without desktop test plugins and repeated
+the same real 64-file cleanup interruption. All 64 source hashes and both committed
+output hashes matched the independent expected bytes. No extra fixture files
+remained. The first restart showed the native interruption notice despite a null
+WebView marker; its empty queue and disabled action required explicit re-import.
+The second restart did not repeat the notice. Neither restart changed any fixture.
+The evidence identifies candidate executable SHA-256
+`f3d76c7f122b558db3ab65ed0b468bafe28f6efb0a29875be4fa2f2ed9d628b7`.
+
+An earlier candidate attempt, run 36485641334, failed to establish its debug
+connection before any cleanup. The diagnostic rerun explicitly supplied the
+WebView debug argument and allowed a longer startup window; it does not establish
+which startup condition caused the earlier connection failure.
+
+The native fix writes and flushes a path-free record before modifying files,
+locks it for the batch lifetime, and removes it on normal completion. Startup
+consumes only abandoned records and never resumes operations. Its
+[CI run 36485613074](https://github.com/Moresyl/metaclean/actions/runs/36485613074)
+passed 424 frontend tests, 230 Windows native tests (5 ignored), and 15 desktop
+tests on each of Windows, Linux and macOS. Rust line coverage was 92.25% with the
+documented CI exclusions; `recovery.rs` reached 90.98%. npm audit reported no known
+vulnerabilities after the development-toolchain `ip-address` 10.5.1 pin; the eight
+previously documented upstream Rust warnings remain. Local strict Clippy and the
+rebuilt Windows desktop suite also passed.
+
+This is candidate evidence, not yet a public v0.11.3 package claim. The forced
+termination scenario is Windows x64 safe-copy cleanup; it does not qualify
+power loss, interrupted installation or all operating systems and output modes.
 
 ## Remaining external release gates
 
