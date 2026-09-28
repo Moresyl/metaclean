@@ -1,4 +1,4 @@
-param([Parameter(Mandatory = $true)][string]$Version)
+param([Parameter(Mandatory = $true)][string]$Version, [switch]$Candidate)
 $ErrorActionPreference = 'Stop'
 if ($env:RUNNER_ENVIRONMENT -ne 'github-hosted' -or -not $env:RUNNER_TEMP) { throw 'Requires a disposable GitHub-hosted runner' }
 if ($Version -notmatch '^\d+\.\d+\.\d+$') { throw 'Invalid stable version' }
@@ -7,6 +7,14 @@ $root = Join-Path $env:RUNNER_TEMP "metaclean-crash-$PID"
 $evidence = Join-Path $env:RUNNER_TEMP 'metaclean-crash-evidence'
 if ((Test-Path -LiteralPath $root) -or (Test-Path -LiteralPath $evidence)) { throw 'Test directory already exists' }
 New-Item -ItemType Directory -Path $root, $evidence | Out-Null
+$install = Join-Path $root 'portable'
+if ($Candidate) {
+  $builtApplication = Join-Path $PSScriptRoot '../src-tauri/target/release/metaclean.exe'
+  if (-not (Test-Path -LiteralPath $builtApplication -PathType Leaf)) { throw 'Candidate release executable missing' }
+  New-Item -ItemType Directory -Path $install | Out-Null
+  Copy-Item -LiteralPath $builtApplication -Destination (Join-Path $install 'MetaClean.exe')
+  New-Item -ItemType File -Path (Join-Path $install 'metaclean-portable.marker') | Out-Null
+} else {
 $release = gh release view "v$Version" --json isDraft,isPrerelease | ConvertFrom-Json
 if ($LASTEXITCODE -ne 0 -or $release.isDraft -or $release.isPrerelease) { throw 'Expected a published stable release' }
 $filename = "MetaClean_${Version}_x64_portable.zip"
@@ -16,11 +24,12 @@ $archive = Join-Path $root $filename
 $manifest = Get-Content -LiteralPath (Join-Path $root 'SHASUMS256.txt')
 $entry = @($manifest | Where-Object { $_ -match "^[a-f0-9]{64}  $([regex]::Escape($filename))$" })
 if ($entry.Count -ne 1 -or (Get-FileHash -LiteralPath $archive).Hash -ne $entry[0].Substring(0, 64)) { throw 'Public package checksum mismatch' }
-$install = Join-Path $root 'portable'
 Expand-Archive -LiteralPath $archive -DestinationPath $install
+}
 $application = Join-Path $install 'MetaClean.exe'
 if ((Get-Item -LiteralPath $application).VersionInfo.ProductVersion -ne $Version) { throw 'Executable version mismatch' }
 if (-not (Test-Path -LiteralPath (Join-Path $install 'metaclean-portable.marker'))) { throw 'Portable marker missing' }
+[pscustomobject]@{ version = $Version; candidate = [bool]$Candidate; revision = $env:GITHUB_SHA; executableSha256 = (Get-FileHash -LiteralPath $application).Hash } | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $evidence 'application.json') -Encoding utf8
 $fixtures = Join-Path $root 'fixtures'
 New-Item -ItemType Directory -Path $fixtures | Out-Null
 $bytes = [byte[]]::new(8 * 1024 * 1024)

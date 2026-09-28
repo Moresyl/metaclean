@@ -1,4 +1,4 @@
-name: Verify published cleanup crash recovery
+name: Verify cleanup crash recovery
 
 on:
   workflow_dispatch:
@@ -7,6 +7,10 @@ on:
         description: Published stable version without v
         required: true
         type: string
+      candidate:
+        description: Build this revision instead of downloading the published version
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -14,18 +18,38 @@ permissions:
 jobs:
   recovery:
     runs-on: windows-latest
-    timeout-minutes: 15
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
         with:
           node-version: 24
+      - if: inputs.candidate
+        run: corepack enable
+      - if: inputs.candidate
+        run: corepack prepare pnpm@10.32.1 --activate
+      - if: inputs.candidate
+        run: rustup default stable
+      - uses: actions/cache@v5
+        if: inputs.candidate
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            src-tauri/target
+          key: rust-crash-${{ runner.os }}-${{ hashFiles('src-tauri/Cargo.lock') }}
+          restore-keys: rust-ci-${{ runner.os }}-
+      - if: inputs.candidate
+        run: pnpm install --frozen-lockfile
+      - if: inputs.candidate
+        run: pnpm tauri build --no-bundle
       - name: Interrupt real cleanup and verify restart
         shell: pwsh
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RELEASE_VERSION: ${{ inputs.version }}
-        run: ./scripts/verify-crash-recovery.ps1 -Version $env:RELEASE_VERSION
+          BUILD_CANDIDATE: ${{ inputs.candidate }}
+        run: ./scripts/verify-crash-recovery.ps1 -Version $env:RELEASE_VERSION -Candidate:($env:BUILD_CANDIDATE -eq 'true')
       - uses: actions/upload-artifact@v6
         if: always()
         with:

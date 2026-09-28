@@ -61,6 +61,8 @@ export default function App() {
   const cancelRequestedRef = useRef(false);
   const recoveryProgressRef = useRef<{ batchId?: string; completed: number; persistedAt: number }>({ completed: 0, persistedAt: 0 });
   const [recoveryNotice] = useState(() => readActiveBatch());
+  const [nativeRecoveryNotice, setNativeRecoveryNotice] = useState(false);
+  const recoveryRequestRef = useRef<Promise<unknown> | undefined>(undefined);
   const [message, setMessage] = useState<string>();
   const pendingMergeSkippedRef = useRef(0);
   const [queueClearPromptOpen, setQueueClearPromptOpen] = useState(false);
@@ -162,13 +164,25 @@ export default function App() {
   const clearHistory = useCallback(() => setHistory(persistHistory([])), []);
 
   useEffect(() => {
-    if (!recoveryNotice) return;
-    setMessage(text(
+    let current = true;
+    recoveryRequestRef.current ??= invoke<unknown>("take_interrupted_cleanup");
+    void recoveryRequestRef.current.then((interrupted) => {
+      if (current) setNativeRecoveryNotice(interrupted === true);
+    }).catch(() => { /* Keep the local marker fallback if native storage is unavailable. */ });
+    return () => { current = false; };
+  }, []);
+
+  useEffect(() => {
+    if (!recoveryNotice && !nativeRecoveryNotice) return;
+    setMessage(recoveryNotice ? text(
       `上次清理可能在 ${recoveryNotice.completed}/${recoveryNotice.total} 个文件后被中断；为安全起见不会自动恢复文件操作，请重新导入并扫描。`,
       `The previous cleanup may have stopped after ${recoveryNotice.completed}/${recoveryNotice.total} file(s); file operations are not resumed automatically. Re-import and scan to continue safely.`,
+    ) : text(
+      "上次清理可能被中断；为安全起见不会自动恢复文件操作，请重新导入并扫描。",
+      "The previous cleanup may have been interrupted; file operations are not resumed automatically. Re-import and scan to continue safely.",
     ));
-    clearActiveBatch(recoveryNotice.batchId);
-  }, [recoveryNotice, text]);
+    if (recoveryNotice) clearActiveBatch(recoveryNotice.batchId);
+  }, [recoveryNotice, nativeRecoveryNotice, text]);
 
   useEffect(() => {
     const skipped = pendingMergeSkippedRef.current;

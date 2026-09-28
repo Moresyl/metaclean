@@ -4,6 +4,7 @@ mod engine;
 mod error;
 mod intake;
 mod models;
+mod recovery;
 mod safe_io;
 mod shell_integration;
 
@@ -424,6 +425,18 @@ async fn expand_paths(paths: BoundedPaths) -> Result<intake::IntakeResult, Strin
 }
 
 #[tauri::command]
+async fn take_interrupted_cleanup(app: tauri::AppHandle) -> Result<bool, String> {
+    let directory = app
+        .path()
+        .app_local_data_dir()
+        .map_err(|_| "恢复记录目录不可用")?;
+    tauri::async_runtime::spawn_blocking(move || recovery::take_interrupted(&directory))
+        .await
+        .map_err(|_| "读取恢复记录的任务异常结束".to_owned())?
+        .map_err(|_| "无法读取清理恢复记录".to_owned())
+}
+
+#[tauri::command]
 async fn clean_files(
     app: tauri::AppHandle,
     request: CleanRequest,
@@ -435,8 +448,14 @@ async fn clean_files(
     let cancellation = Arc::new(AtomicBool::new(false));
     let active_batch = ActiveCleanBatchGuard::register(&batch_id, cancellation.clone())?;
     let progress_batch_id = batch_id.clone();
+    let recovery_directory = app
+        .path()
+        .app_local_data_dir()
+        .map_err(|_| "恢复记录目录不可用")?;
     let result = tauri::async_runtime::spawn_blocking(move || {
         let _active_batch = active_batch;
+        let journal = recovery::CleanupJournal::begin(&recovery_directory)
+            .map_err(|_| "无法保存清理恢复记录，文件尚未修改。 / Could not save the cleanup recovery record; no files were changed.".to_owned())?;
         let mut progress = BatchProgressState::new();
         let mut results = Vec::with_capacity(total);
         for path in &paths {
@@ -469,10 +488,11 @@ async fn clean_files(
                 let _ = app.emit("batch-progress", event);
             }
         }
-        results
+        let _ = journal.finish();
+        Ok(results)
     })
     .await
-    .map_err(|error| bounded_message(format!("清理任务异常结束：{error}")));
+    .map_err(|error| bounded_message(format!("清理任务异常结束：{error}")))?;
     result
 }
 
@@ -804,6 +824,7 @@ pub fn run() {
             scan_files,
             expand_paths,
             clean_files,
+            take_interrupted_cleanup,
             cancel_clean_batch,
             cancel_scan_batch,
             export_audit_report,

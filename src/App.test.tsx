@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { StrictMode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import App from "./App";
 import { I18nProvider } from "./lib/i18n";
@@ -566,6 +567,32 @@ describe("App", () => {
     renderApp();
     expect(await screen.findByRole("status")).toHaveTextContent("上次清理可能在 2/4 个文件后被中断");
     await waitFor(() => expect(localStorage.getItem(ACTIVE_BATCH_STORAGE_KEY)).toBeNull());
+  });
+
+  it("shows durable recovery without restoring paths or starting file operations", async () => {
+    const fallback = invokeMock.getMockImplementation()!;
+    invokeMock.mockImplementation((command: string) => command === "take_interrupted_cleanup" ? Promise.resolve(true) : fallback(command));
+    renderApp();
+    expect(await screen.findByRole("status")).toHaveTextContent("上次清理可能被中断");
+    expect(screen.getByRole("button", { name: "扫描隐私痕迹" })).toBeDisabled();
+    expect(invokeMock.mock.calls.some(([command]) => command === "scan_files" || command === "clean_files")).toBe(false);
+    expect(localStorage.getItem(ACTIVE_BATCH_STORAGE_KEY)).toBeNull();
+  });
+
+  it.each([false, "true", null, { interrupted: true }])("does not accept a malformed or absent native recovery flag: %j", async (value) => {
+    const fallback = invokeMock.getMockImplementation()!;
+    invokeMock.mockImplementation((command: string) => command === "take_interrupted_cleanup" ? Promise.resolve(value) : fallback(command));
+    renderApp();
+    await waitFor(() => expect(invokeMock).toHaveBeenCalledWith("take_interrupted_cleanup"));
+    expect(screen.queryByText(/上次清理可能/)).not.toBeInTheDocument();
+  });
+
+  it("consumes native recovery once under StrictMode effect replay", async () => {
+    const fallback = invokeMock.getMockImplementation()!;
+    invokeMock.mockImplementation((command: string) => command === "take_interrupted_cleanup" ? Promise.resolve(true) : fallback(command));
+    render(<StrictMode><ThemeProvider initialMode="light"><I18nProvider><UpdateProvider><App /></UpdateProvider></I18nProvider></ThemeProvider></StrictMode>);
+    expect(await screen.findByRole("status")).toHaveTextContent("上次清理可能被中断");
+    expect(invokeMock.mock.calls.filter(([command]) => command === "take_interrupted_cleanup")).toHaveLength(1);
   });
 
   it("does not let duplicate or foreign scan reports hide a missing path", async () => {

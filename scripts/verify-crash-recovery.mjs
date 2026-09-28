@@ -76,7 +76,7 @@ try {
     }
   } else {
     await delay(1000);
-    const state = await evaluate(`({ marker: localStorage.getItem('metaclean.activeBatch'), locale: localStorage.getItem('metaclean.locale'), visibleText: document.body.innerText.slice(0, 4000), message: document.body.innerText.includes('The previous cleanup may have stopped after'), safeNotice: document.body.innerText.includes('file operations are not resumed automatically'), entries: document.querySelectorAll('.file-item').length, actionDisabled: document.querySelector('.scan-button')?.disabled })`);
+    const state = await evaluate(`({ marker: localStorage.getItem('metaclean.activeBatch'), locale: localStorage.getItem('metaclean.locale'), visibleText: document.body.innerText.slice(0, 4000), message: /The previous cleanup may have (?:stopped after|been interrupted)/.test(document.body.innerText), safeNotice: document.body.innerText.includes('file operations are not resumed automatically'), entries: document.querySelectorAll('.file-item').length, actionDisabled: document.querySelector('.scan-button')?.disabled })`);
     await writeFile(path.join(evidenceDirectory, `${mode}.json`), JSON.stringify(state, null, 2));
     assert.equal(state.marker, null, "Restart did not clear the recovery marker");
     assert.equal(state.entries, 0, "Restart unexpectedly resumed the queue");
