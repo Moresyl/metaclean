@@ -3,6 +3,29 @@
 All notable changes to MetaClean are documented here. The project follows
 [Semantic Versioning](https://semver.org/).
 
+## [0.11.3] - 2026-09-29
+
+### Fixed
+
+- Persist a path-free native record before cleanup to fix missing restart notices
+  reproduced when v0.11.2 was forcibly terminated during a partially completed batch.
+  Consume abandoned records once without restoring paths or resuming file operations.
+- Hold file locks across each active batch so concurrent instances do not consume
+  one another's records. Refuse cleanup if its recovery record cannot be saved.
+- Consume the native recovery response once under React StrictMode effect replay.
+
+### Security
+
+- Pin the development-only indirect `ip-address` dependency to 10.5.1 for address
+  classification fixes in the desktop testing toolchain.
+
+### Tests
+
+- Add hosted candidate/public-package crash regression with 64 real synthetic text
+  inputs, partial-cleanup termination, source/output hashes and two restart checks.
+- Cover active and abandoned records, damaged records, unavailable directories,
+  linked paths on Unix and strict frontend recovery-response validation.
+
 ## [0.11.2] - 2026-09-29
 
 ### Changed

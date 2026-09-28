@@ -56,6 +56,7 @@ or history record.
 | Application workflow | `src/App.tsx` | Scan/confirm/clean state machine, cancellation and recovery notice |
 | Queue reconciliation | `src/lib/files.ts` | Classification, de-duplication and native-result matching |
 | Persisted state | `src/lib/history.ts`, `storage.ts`, `recovery.ts` | Bounded history, safe settings and path-free crash markers |
+| Cleanup interruption | `src-tauri/src/recovery.rs` | Flush a path-free native marker before cleanup; file locks isolate active batches; consume abandoned markers once without resuming operations |
 | Release gates | `.github/workflows/`, `scripts/` | Package validation, smoke tests, signatures, checksums and feeds |
 
 ## IPC and state boundaries
