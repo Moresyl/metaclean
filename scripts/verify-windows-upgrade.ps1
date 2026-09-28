@@ -27,6 +27,8 @@ if (Test-Path -LiteralPath $installRoot) { throw "Test installation directory al
 $application = Join-Path $installRoot "MetaClean.exe"
 $process = $null
 $results = @()
+$originalBrowserArguments = $env:WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS
+$env:WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS = '--remote-debugging-port=9222'
 try {
   foreach ($version in @($PreviousVersion, $CurrentVersion, $PreviousVersion)) {
     $installer = Join-Path $AssetDirectory "$version/MetaClean_${version}_${Architecture}-setup.exe"
@@ -65,6 +67,8 @@ try {
       Start-Sleep -Seconds 6
       $process.Refresh()
       if ($process.HasExited -or $process.MainWindowTitle -ne 'MetaClean') { throw 'Previous installation cannot launch after rejection' }
+      node (Join-Path $PSScriptRoot 'verify-upgrade-storage.mjs') verify
+      if ($LASTEXITCODE -ne 0) { throw 'User data changed after damaged installer rejection' }
       Stop-Process -Id $process.Id -Force
       $process.WaitForExit()
       $process = $null
@@ -81,13 +85,17 @@ try {
     Start-Sleep -Seconds 6
     $process.Refresh()
     if ($process.HasExited -or $process.MainWindowTitle -ne "MetaClean") { throw "Installed $version failed to launch" }
+    $storageMode = if ($results.Count -eq 0) { 'seed' } else { 'verify' }
+    node (Join-Path $PSScriptRoot 'verify-upgrade-storage.mjs') $storageMode
+    if ($LASTEXITCODE -ne 0) { throw "User data verification failed for $version" }
     Stop-Process -Id $process.Id -Force
     $process.WaitForExit()
     $process = $null
-    $results += [pscustomobject]@{ architecture = $Architecture; version = $version; executableVersion = $fileVersion; launchPassed = $true }
+    $results += [pscustomobject]@{ architecture = $Architecture; version = $version; executableVersion = $fileVersion; launchPassed = $true; storageVerified = $true }
     Write-Output "Installed and launched $version successfully"
   }
 } finally {
+  $env:WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS = $originalBrowserArguments
   if ($null -ne $process -and -not $process.HasExited) { Stop-Process -Id $process.Id -Force; $process.WaitForExit() }
   $uninstallers = @(Get-ChildItem -LiteralPath $installRoot -File -Filter '*uninstall*.exe' -ErrorAction SilentlyContinue)
   if ($uninstallers.Count -eq 1) {
