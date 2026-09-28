@@ -3,6 +3,24 @@
 All notable changes to MetaClean are documented here. The project follows
 [Semantic Versioning](https://semver.org/).
 
+## [0.11.1] - 2026-09-29
+
+### Fixed
+
+- Remove VML note shapes alongside Office comment parts so spreadsheet readers
+  do not reconstruct empty comments after cleanup. Preserve controls and ordinary
+  drawings sharing the same VML part; reject malformed or ambiguous note shapes.
+- Inspect VML parts for residual notes and strengthen external Office validation
+  with source-preservation and cleaned-output reinspection assertions.
+
+### Changed
+
+- Validate synthetic DOCX/XLSX/PPTX open-save-reopen cycles in WPS Office 2019
+  11.8.6.11825, including document tables, spreadsheet formulas and slide text.
+- Replace the public research comparison with an evidence-based capability audit,
+  synchronize the roadmap with verified releases and strengthen documentation
+  version/format-count consistency checks.
+
 ## [0.11.0] - 2026-09-29
 
 ### Added
