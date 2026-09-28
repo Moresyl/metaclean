@@ -10,7 +10,7 @@ This file records evidence, not intent. A row is complete only when the named ar
 |---|---|---|
 | M0: PDF structural rewrite | Complete | `drops_metadata_bytes_from_incremental_history` proves old Info metadata bytes are absent after full `lopdf` serialization. |
 | M0: image/media format decision | Complete | The shared 116-extension allowlist covers native still-image, RAW, audio, video, document, PDF and text/markup cleaners. TIFF/RAW, HEIF/AVIF/CR3, AVI, Matroska/WebM and ASF families use offset-preserving strategies; WAV C2PA and ID3-prefixed FLAC are covered by malformed-input and residual-trace tests. |
-| M0: Office package integrity | Partial | Real DOCX/XLSX/PPTX/ODT samples were cleaned and successfully opened/exported by LibreOffice 26.2.5. Current Word and WPS executables are unavailable on this machine, so those two applications remain unverified. |
+| M0: Office package integrity | Partial | Real DOCX/XLSX/PPTX/ODT samples were cleaned and successfully opened/exported by LibreOffice 26.2.5. WPS Office 2019 (11.8.6.11825) DOCX/XLSX/PPTX sample round trips pass with the post-v0.11.0 VML fix described below. Microsoft Word, newer WPS versions and complex document fidelity remain unverified. |
 | M1: desktop MVP | Complete | The fixed 1180 × 720 workspace provides a persistent 264px sidebar that collapses to a 64px accessible icon rail, five compact navigation destinations, command palette, native menus, local status bar, per-file reports and value-free JSON audit export. The 44px caption, 26px status bar, neutral light/dark themes, safe-copy/replace, backups, atomic writes, fidelity controls, signed update handling and 32 complete locales are implemented and tested. |
 | M2: Office/PDF/shell integration | Complete | DOCX/XLSX/PPTX/ODT/EPUB and PDF cleaners, deep PDF JPEG cleanup, embedded markup data-URI cleanup, 116-extension Windows Explorer integration and launch-path handling are covered by unit and manifest-consistency tests. |
 | M3: Windows release | Complete for v0.3.0 | The successful v0.3.0 release matrix published launch-smoked x64 NSIS/MSI, x86 NSIS and architecture-labelled x64/x86 portable ZIPs. Local installation/extraction proof also kept each package active for six seconds with the `MetaClean` title before clean uninstall/removal. |
@@ -149,7 +149,34 @@ This file records evidence, not intent. A row is complete only when the named ar
 - Successful five-platform workflow: `https://github.com/Moresyl/metaclean/actions/runs/32048902129` (attempt 3).
 - All ten named platform packages return HTTP 200. The published 954-byte `SHASUMS256.txt` contains exactly ten valid SHA-256 entries, one for every platform package.
 
+## WPS interoperability regression — 2026-09-29
+
+- Registry discovery located WPS Office 2019 enhanced edition 11.8.6.11825 in
+  a custom installation directory. The earlier claim that WPS was unavailable
+  was based on incomplete executable discovery and is corrected here.
+- Three original synthetic fixtures were generated using the installed WPS
+  Writer, Spreadsheet and Presentation COM interfaces. No user documents or
+  existing application sessions were used. WPS's Writer COM name reports
+  `Microsoft Word`; this compatibility string is **not** evidence of a genuine
+  Microsoft Word test.
+- The published v0.11.0 cleaner removed XLSX comment XML but left its VML note
+  shape. WPS reconstructed one empty comment when opening that output. The
+  post-release fix removes only VML shapes whose Excel `ClientData` identifies
+  a `Note`, retaining shared controls and ordinary drawings byte for byte.
+- After the fix, all three cleaned samples opened, saved and reopened in WPS.
+  DOCX retained its paragraph and 2-by-2 table with no comments; XLSX retained
+  its label, `SUM(B1:B2)` formula and calculated value 20 with no comments;
+  PPTX retained both slides and their text. SHA-256 comparisons confirm all
+  original fixtures were unchanged. A separate synthetic ODT also passed the
+  native external-fixture test; it was not tested in WPS.
+- Nineteen Office unit tests and the full native suite (222 passed, four gated
+  tests ignored) passed. Regression cases cover mixed note/control VML,
+  namespace aliases, escaped attribute values, residual detection and malformed
+  structures. This evidence concerns the post-v0.11.0 fix, not the already
+  published v0.11.0 binary. These are semantic sample checks, not visual layout
+  certification or proof of compatibility with every WPS version or document.
+
 ## Remaining external release gates
 
-1. Open cleaned DOCX/XLSX/PPTX/ODT samples in current Word and WPS builds. LibreOffice 26.2.5 validation is complete.
+1. Test representative documents in genuine Microsoft Word and newer WPS builds, including layout, complex objects and supported OpenDocument interoperability. The limited WPS 2019 OOXML semantic round trip above and prior LibreOffice 26.2.5 samples do not close that broader qualification.
 2. Provide Apple Developer signing/notarization credentials and verify both DMGs with Gatekeeper.

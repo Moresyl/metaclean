@@ -1989,6 +1989,7 @@ mod tests {
         );
         for name in ["sample.docx", "sample.xlsx", "sample.pptx", "sample.odt"] {
             let source = root.join(name);
+            let original = fs::read(&source).unwrap();
             let report = scan_file(&source);
             assert!(report.supported, "{}: {:?}", name, report.error);
             assert!(
@@ -2004,6 +2005,14 @@ mod tests {
                 "{}: output was not written",
                 output.display()
             );
+            assert_eq!(
+                fs::read(&source).unwrap(),
+                original,
+                "{name}: source changed"
+            );
+            let report = scan_file(&output);
+            assert!(report.supported, "{name}: {:?}", report.error);
+            assert!(report.findings.is_empty(), "{name}: residual findings");
         }
     }
 }

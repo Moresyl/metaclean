@@ -478,6 +478,101 @@ fn strip_odf_private_xml(xml: &str) -> Result<(String, usize, usize)> {
     Ok((output, annotations, revisions))
 }
 
+fn strip_vml_notes(xml: &str) -> Result<(String, usize)> {
+    let mut reader = NsReader::from_str(xml);
+    reader.config_mut().check_end_names = true;
+    let mut depth = 0usize;
+    let mut shape: Option<(usize, usize, bool)> = None;
+    let mut removed = 0usize;
+    let mut copied_until = 0usize;
+    let mut output = String::with_capacity(xml.len());
+    loop {
+        let position = reader.buffer_position() as usize;
+        let (namespace, event) = reader
+            .read_resolved_event()
+            .map_err(|error| CleanError::InvalidFormat(format!("VML XML 结构无效：{error}")))?;
+        match &event {
+            Event::Start(start) | Event::Empty(start) => {
+                if matches!(namespace, ResolveResult::Unknown(_)) {
+                    return Err(CleanError::InvalidFormat(
+                        "VML XML 使用了未声明的命名空间前缀".into(),
+                    ));
+                }
+                let is_shape = namespace_matches(&namespace, b"urn:schemas-microsoft-com:vml")
+                    && start.local_name().as_ref() == b"shape";
+                let is_client_data =
+                    namespace_matches(&namespace, b"urn:schemas-microsoft-com:office:excel")
+                        && start.local_name().as_ref() == b"ClientData";
+                if is_shape && matches!(event, Event::Start(_)) {
+                    if shape.is_some() {
+                        return Err(CleanError::InvalidFormat("VML shape 不可嵌套".into()));
+                    }
+                    shape = Some((position, depth + 1, false));
+                }
+                if is_client_data {
+                    for attribute in start.attributes() {
+                        let attribute = attribute.map_err(|error| {
+                            CleanError::InvalidFormat(format!("VML 属性无效：{error}"))
+                        })?;
+                        if attribute.key.as_ref() == b"ObjectType" {
+                            let value = attribute
+                                .decoded_and_normalized_value(
+                                    quick_xml::XmlVersion::Implicit1_0,
+                                    reader.decoder(),
+                                )
+                                .map_err(|error| {
+                                    CleanError::InvalidFormat(format!("VML 属性值无效：{error}"))
+                                })?;
+                            if value == "Note" {
+                                let Some((_, shape_depth, note)) = shape.as_mut() else {
+                                    return Err(CleanError::InvalidFormat(
+                                        "VML 批注缺少所属 shape".into(),
+                                    ));
+                                };
+                                if depth != *shape_depth {
+                                    return Err(CleanError::InvalidFormat(
+                                        "VML 批注必须直接属于 shape".into(),
+                                    ));
+                                }
+                                *note = true;
+                            }
+                        }
+                    }
+                }
+                if matches!(event, Event::Start(_)) {
+                    depth += 1;
+                }
+            }
+            Event::End(_) => {
+                if let Some((start, shape_depth, note)) = shape {
+                    if depth == shape_depth {
+                        if note {
+                            output.push_str(&xml[copied_until..start]);
+                            copied_until = reader.buffer_position() as usize;
+                            removed += 1;
+                        }
+                        shape = None;
+                    }
+                }
+                depth = depth
+                    .checked_sub(1)
+                    .ok_or_else(|| CleanError::InvalidFormat("VML XML 闭合标签无效".into()))?;
+            }
+            Event::Eof => break,
+            _ => {}
+        }
+    }
+    if depth != 0 {
+        return Err(CleanError::InvalidFormat("VML XML 元素未正确闭合".into()));
+    }
+    output.push_str(&xml[copied_until..]);
+    Ok((output, removed))
+}
+
+fn is_vml_part(name: &str) -> bool {
+    name.ends_with(".vml")
+}
+
 fn is_comment_part(name: &str) -> bool {
     let lower = name.to_ascii_lowercase();
     lower.starts_with("word/comments")
@@ -494,6 +589,7 @@ fn is_comment_part(name: &str) -> bool {
 fn requires_xml_rewrite(name: &str) -> bool {
     let lower = name.to_ascii_lowercase();
     is_package_document(&lower)
+        || is_vml_part(&lower)
         || lower.starts_with("docprops/")
         || lower.ends_with("settings.xml")
         || lower == "meta.xml"
@@ -634,7 +730,7 @@ pub fn inspect(data: &[u8], extension: &str) -> Result<Vec<Finding>> {
             publication += 1;
             continue;
         }
-        if !lower.ends_with(".xml") && !is_package_document(&lower) {
+        if !lower.ends_with(".xml") && !is_package_document(&lower) && !is_vml_part(&lower) {
             continue;
         }
         if file.size() > MAX_XML_BYTES {
@@ -649,6 +745,10 @@ pub fn inspect(data: &[u8], extension: &str) -> Result<Vec<Finding>> {
             Err(error) => return Err(error),
         };
         validate_xml(&xml, &name)?;
+        if is_vml_part(&lower) {
+            comments += strip_vml_notes(&xml)?.1;
+            continue;
+        }
         if is_package_document(&lower) {
             publication += strip_epub_metadata(&xml).1;
             continue;
@@ -707,8 +807,10 @@ pub fn clean(data: &[u8], extension: &str) -> Result<(Vec<u8>, Vec<Finding>)> {
         if expanded > MAX_UNCOMPRESSED {
             return Err(CleanError::InvalidFormat("Office 文件解压后过大".into()));
         }
-        let rewrite =
-            lower.ends_with(".xml") || lower.ends_with(".rels") || is_package_document(&lower);
+        let rewrite = lower.ends_with(".xml")
+            || lower.ends_with(".rels")
+            || is_package_document(&lower)
+            || is_vml_part(&lower);
         writer.start_file(&name, if name == "mimetype" { stored } else { deflated })?;
         if !rewrite {
             let expected = file.size();
@@ -728,6 +830,9 @@ pub fn clean(data: &[u8], extension: &str) -> Result<(Vec<u8>, Vec<Finding>)> {
         let xml = read_utf8_bounded(&mut file, MAX_XML_BYTES, &format!("文档 XML：{name}"))?;
         validate_xml(&xml, &name)?;
         let mut cleaned = xml;
+        if is_vml_part(&lower) {
+            cleaned = strip_vml_notes(&cleaned)?.0;
+        }
         if is_package_document(&lower) {
             cleaned = strip_epub_metadata(&cleaned).0;
         }
@@ -756,6 +861,71 @@ mod tests {
 
     fn stored_options() -> SimpleFileOptions {
         SimpleFileOptions::default().compression_method(zip::CompressionMethod::Stored)
+    }
+
+    #[test]
+    fn removes_vml_notes_without_touching_shared_controls() {
+        let header = r#"<xml xmlns:v="urn:schemas-microsoft-com:vml" xmlns:x="urn:schemas-microsoft-com:office:excel">"#;
+        let control = r#"<v:shape id='button'><v:textbox>Keep button</v:textbox><x:ClientData ObjectType='Button'/></v:shape>"#;
+        let drawing = r#"<v:shape id='drawing'><v:textbox>Keep drawing</v:textbox></v:shape>"#;
+        let note = r#"<v:shape id='note'><v:textbox>Private note</v:textbox><x:ClientData ObjectType='N&#111;te'><x:Row>0</x:Row></x:ClientData></v:shape>"#;
+        let source = format!("{header}{control}{note}{drawing}{note}</xml>");
+        let expected = format!("{header}{control}{drawing}</xml>");
+        assert_eq!(strip_vml_notes(&source).unwrap(), (expected.clone(), 2));
+        assert_eq!(strip_vml_notes(&expected).unwrap(), (expected.clone(), 0));
+
+        let mut writer = ZipWriter::new(Cursor::new(Vec::new()));
+        for (name, bytes) in [
+            ("[Content_Types].xml", "<Types/>"),
+            ("xl/workbook.xml", "<workbook/>"),
+            ("xl/drawings/vmlDrawing1.vml", source.as_str()),
+            ("xl/worksheets/sheet1.xml", "<worksheet/>"),
+        ] {
+            writer.start_file(name, stored_options()).unwrap();
+            writer.write_all(bytes.as_bytes()).unwrap();
+        }
+        let data = writer.finish().unwrap().into_inner();
+        assert_eq!(inspect(&data, "xlsx").unwrap()[0].count, 2);
+        let (cleaned, _) = clean(&data, "xlsx").unwrap();
+        assert!(inspect(&cleaned, "xlsx").unwrap().is_empty());
+        let mut archive = read_archive(&cleaned).unwrap();
+        let mut actual = String::new();
+        archive
+            .by_name("xl/drawings/vmlDrawing1.vml")
+            .unwrap()
+            .read_to_string(&mut actual)
+            .unwrap();
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn vml_notes_resolve_namespaces_and_preserve_unrelated_elements() {
+        let source = r#"<xml xmlns:s="urn:schemas-microsoft-com:vm&#108;" xmlns:e="urn:schemas-microsoft-com:office:excel" xmlns:f="urn:other"><s:shape><e:ClientData ObjectType="Note"/></s:shape><f:shape><f:ClientData ObjectType="Note"/></f:shape><s:shape><f:ClientData ObjectType="Note"/></s:shape></xml>"#;
+        let (cleaned, count) = strip_vml_notes(source).unwrap();
+        assert_eq!(count, 1);
+        assert!(cleaned.contains("<f:shape>"));
+        assert!(cleaned.contains("<s:shape><f:ClientData"));
+        assert_eq!(strip_vml_notes(&cleaned).unwrap().1, 0);
+    }
+
+    #[test]
+    fn rejects_malformed_vml_instead_of_losing_shapes() {
+        let header = r#"<xml xmlns:v="urn:schemas-microsoft-com:vml" xmlns:x="urn:schemas-microsoft-com:office:excel">"#;
+        for invalid in [
+            "<v:shape>",
+            "<v:shape></xml>",
+            "<unknown:shape/></xml>",
+            "<v:shape><v:shape></v:shape></v:shape></xml>",
+            "<x:ClientData ObjectType='Note'/></xml>",
+            "<v:shape><v:textbox><x:ClientData ObjectType='Note'/></v:textbox></v:shape></xml>",
+            "<v:shape><x:ClientData ObjectType='Note' ObjectType='Button'/></v:shape></xml>",
+            "<v:shape><x:ClientData ObjectType='&unknown;'/></v:shape></xml>",
+        ] {
+            assert!(
+                strip_vml_notes(&format!("{header}{invalid}")).is_err(),
+                "{invalid}"
+            );
+        }
     }
 
     #[test]
