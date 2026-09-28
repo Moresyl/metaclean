@@ -233,9 +233,16 @@ seconds. The subsequent valid upgrade, manual downgrade and uninstall all passed
 This establishes rejection of that truncated package before replacement; it does
 not simulate process termination or power loss during installation.
 
+[Matrix run 36471560641](https://github.com/Moresyl/metaclean/actions/runs/36471560641)
+repeated the complete sequence independently for both x64 and x86 NSIS packages.
+Both jobs passed; downloaded architecture-labelled evidence records the three
+version/launch results and the truncated-installer rejection with the previous
+executable hash unchanged. The x86 package ran under the hosted 64-bit Windows
+compatibility environment; this is not a native 32-bit Windows OS qualification.
+
 `scripts/verify-windows-upgrade.ps1` refuses non-hosted environments and existing
 MetaClean installations/processes. The local preexisting 0.9.0 MSI installation
-was not modified. This verifies x64 NSIS installer transitions and launchability;
+was not modified. This verifies x64/x86 NSIS installer transitions and launchability;
 it does not yet verify application-triggered signed updates, persisted user-data
 migration, interrupted installation recovery, MSI transitions or other platforms.
 
