@@ -16,6 +16,22 @@ This file records evidence, not intent. A row is complete only when the named ar
 | M3: Windows release | Complete for v0.3.0 | The successful v0.3.0 release matrix published launch-smoked x64 NSIS/MSI, x86 NSIS and architecture-labelled x64/x86 portable ZIPs. Local installation/extraction proof also kept each package active for six seconds with the `MetaClean` title before clean uninstall/removal. |
 | M3: macOS/Linux release | Complete for unsigned v0.3.0 artifacts | The successful v0.3.0 matrix copied and launch-smoked both Intel and Apple Silicon DMGs, then installed and launch-smoked the Linux DEB before publishing DEB/RPM/AppImage assets. Apple signing/notarization secrets remain unavailable, so Gatekeeper qualification is an external gate rather than a completed claim. |
 
+## Isolated storage failure qualification
+
+- [Hosted Linux run 36493274324](https://github.com/Moresyl/metaclean/actions/runs/36493274324)
+  passed on test commit `d4f007e`, without changing production cleanup code.
+  A disposable 16 MiB tmpfs was filled until a write probe returned `ENOSPC`
+  (errno 28), then emptied and remounted read-only; the same probe returned
+  `EROFS` (errno 30) while the source file retained writable permission bits.
+- Scanning remained successful. Both copy and replace cleanup modes failed with
+  an error, without claiming an output, backup or integrity result. Source bytes
+  remained identical and directory snapshots showed no temporary files, partial
+  outputs or backup fragments. The uploaded evidence includes mount details,
+  native test output and source SHA-256.
+- This qualifies two actual filesystem failure paths using a synthetic text
+  fixture. It does not simulate physical media failures, slow disks, power loss,
+  or exhaustion occurring after a replacement backup has already been committed.
+
 ## Automated quality gates
 
 - v0.11.2 [candidate CI](https://github.com/Moresyl/metaclean/actions/runs/36477273684)
