@@ -1,0 +1,40 @@
+name: Verify published macOS replacement
+
+on:
+  workflow_dispatch:
+    inputs:
+      previous:
+        description: Previous stable version without v
+        required: true
+        type: string
+      current:
+        description: Current stable version without v
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  replacement:
+    name: Replace (${{ matrix.architecture }})
+    strategy:
+      fail-fast: false
+      matrix:
+        architecture: [aarch64, x64]
+    runs-on: macos-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - name: Verify public DMG replacement and rollback
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PREVIOUS_VERSION: ${{ inputs.previous }}
+          CURRENT_VERSION: ${{ inputs.current }}
+          PACKAGE_ARCHITECTURE: ${{ matrix.architecture }}
+        run: bash scripts/verify-macos-upgrade.sh
+      - uses: actions/upload-artifact@v6
+        with:
+          name: macos-replacement-evidence-${{ matrix.architecture }}
+          path: ${{ runner.temp }}/metaclean-macos-upgrade.tsv
+          if-no-files-found: error
