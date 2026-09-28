@@ -279,8 +279,6 @@ the application-triggered signed-update path is additionally covered by run
 36473320724. Arbitrary historical user-data migration, interrupted installation
 recovery, MSI transitions and other platforms remain unverified.
 
-## Remaining external release gates
-
 ## Published Linux DEB upgrade — 2026-09-29
 
 [Run 36473955463](https://github.com/Moresyl/metaclean/actions/runs/36473955463)
@@ -296,7 +294,7 @@ package name; it was corrected to the published `meta-clean` identity. This
 verification covers DEB transitions and process liveness, not WebView data
 preservation, AppImage self-update, RPM transitions or interrupted installation.
 
-## Remaining external release gates (continued)
+## Remaining external release gates
 
 1. Test representative documents in genuine Microsoft Word and newer WPS builds, including layout, complex objects and supported OpenDocument interoperability. The limited WPS 2019 OOXML semantic round trip above and prior LibreOffice 26.2.5 samples do not close that broader qualification.
 2. Provide Apple Developer signing/notarization credentials and verify both DMGs with Gatekeeper.
