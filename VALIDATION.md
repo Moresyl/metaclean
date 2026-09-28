@@ -41,10 +41,14 @@ This file records evidence, not intent. A row is complete only when the named ar
   public key and rejected deliberately tampered package bytes. Pages run
   `36451199277` succeeded and its updater URLs/signatures match the release feed.
 
-## v0.11.0 candidate validation
+## v0.11.0 release validation
 
 - The Opus/Vorbis kernel and product extension intake integration are implemented.
-  This work is not part of the published v0.10.0 release.
+  Release `v0.11.0` at `67b6947f94c5cdd20ea44c04bf772b0ce1c71505` was published
+  on 2026-09-28 at 17:59:11 UTC with 20 public assets. Candidate CI
+  `36457229373` passed the main checks and all three desktop platforms. Release
+  run `36459432379` passed source validation, all five platform builds, applicable
+  installer/portable/application smoke tests and finalization.
 - Frontend: 418 tests pass, line coverage 93.40% and branch coverage 85.09%.
   Production/documentation builds, format manifests, CSP, supply-chain and all
   40 release checks pass. Two Windows desktop runs each pass 15 scenarios,
@@ -66,8 +70,14 @@ This file records evidence, not intent. A row is complete only when the named ar
 - The decoder test resets output timestamps for chained-stream PCM comparison;
   this does not alter samples. Codec setup/audio payloads are preserved rather
   than fully decoded by the cleaner. Unsupported Ogg codecs and malformed
-  structures are refused. Linux CI and release validation include this check;
-  remote results for this new gate are not yet available.
+  structures are refused. Linux CI and release validation both passed this check;
+  inspected Linux CI logs record all ten PCM comparisons and 15 desktop scenarios.
+- Independent public-download verification `36462092583` passed: all 19 assets
+  listed in the checksum manifest matched SHA-256, all five updater packages
+  verified against the tagged public key, and modified bytes failed signature
+  verification. Pages run `36462010031` succeeded; a direct request to the public
+  updater feed returned version `0.11.0` and the same five URLs/signatures as the
+  release manifest.
 
 - v0.9.0 native workflow evidence (2026-09-26): all 14 desktop E2E scenarios passed, including real file intake, search, scan and safe-copy cleanup with original-content verification. Both localized capture scenarios passed and generated seven native screenshots per language plus two finite-loop GIFs. English and Chinese default cleanup preferences fit the fixed window without scrolling; documentation checks enforce language-specific image references, dimensions and GIF size budgets.
 
