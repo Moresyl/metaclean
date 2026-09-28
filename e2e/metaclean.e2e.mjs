@@ -46,6 +46,21 @@ async function openAboutPage() {
   await $("a=Report a bug").waitForDisplayed();
 }
 
+async function dropNativePaths(paths) {
+  await $(".drop-zone").waitForDisplayed();
+  // Rendering can precede asynchronous native listener registration. Verify
+  // the real hover response before sending the one-shot drop event.
+  await browser.waitUntil(async () => {
+    await browser.tauri.execute(({ core }, paths) => core.invoke("plugin:event|emit_to", {
+      target: { kind: "Webview", label: "main" }, event: "tauri://drag-enter", payload: { paths, position: { x: 400, y: 300 } },
+    }), paths);
+    return (await $(".drop-zone").getAttribute("class")).split(/\s+/u).includes("border-brand");
+  }, { timeoutMsg: "Native drag-enter did not activate the visible drop zone" });
+  await browser.tauri.execute(({ core }, paths) => core.invoke("plugin:event|emit_to", {
+    target: { kind: "Webview", label: "main" }, event: "tauri://drag-drop", payload: { paths, position: { x: 400, y: 300 } },
+  }), paths);
+}
+
 describe("MetaClean desktop application", () => {
   it("searches a native intake and creates a verified safe copy through the UI", async () => {
     const directory = await mkdtemp(join(tmpdir(), "metaclean-ui-test-"));
@@ -56,9 +71,7 @@ describe("MetaClean desktop application", () => {
       await browser.tauri.execute(() => window.dispatchEvent(new KeyboardEvent("keydown", { key: "1", ctrlKey: true })));
       await $(".drop-zone").waitForDisplayed();
       await $(".clean-options button[aria-pressed]").click();
-      await browser.tauri.execute(({ core }, path) => core.invoke("plugin:event|emit_to", {
-        target: { kind: "Webview", label: "main" }, event: "tauri://drag-drop", payload: { paths: [path], position: { x: 400, y: 300 } },
-      }), source);
+      await dropNativePaths([source]);
       await $(".file-item").waitForDisplayed();
       await $("input[type=search]").setValue("not-a-match");
       await browser.waitUntil(async () => (await $$(".file-item")).length === 0);
@@ -113,9 +126,7 @@ describe("MetaClean desktop application", () => {
       await browser.tauri.execute(() => localStorage.setItem("metaclean.outputMode", "copy"));
       await browser.refresh();
       await $(".drop-zone").waitForDisplayed();
-      await browser.tauri.execute(({ core }, paths) => core.invoke("plugin:event|emit_to", {
-        target: { kind: "Webview", label: "main" }, event: "tauri://drag-drop", payload: { paths, position: { x: 400, y: 300 } },
-      }), sources);
+      await dropNativePaths(sources);
       await browser.waitUntil(async () => (await $$(".file-item")).length === 3);
       await $(".scan-button").click();
       await browser.waitUntil(async () => (await $(".scan-button").getText()).includes("Confirm"));
