@@ -54,6 +54,16 @@ installation, automatic restart and storage checks for both Windows architecture
 Arbitrary historical schema migrations and interrupted-update recovery remain
 outside this evidence.
 
+Public Linux DEBs also passed package-manager installation, upgrade, manual
+downgrade, launch checks and removal on Ubuntu 22.04 amd64 in
+[run 36473955463](https://github.com/Moresyl/metaclean/actions/runs/36473955463).
+Public macOS ARM and Intel DMGs passed isolated manual bundle replacement,
+rollback, identity/architecture checks and launch checks in
+[run 36474805222](https://github.com/Moresyl/metaclean/actions/runs/36474805222).
+Both macOS jobs used ARM hosts; Intel execution used compatibility support.
+These checks do not establish Linux/macOS application-triggered updates,
+data preservation or Apple Gatekeeper acceptance.
+
 ## Product boundaries and remaining qualification
 
 Inspection exposes categories and counts, not raw identity, location or comment

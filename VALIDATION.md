@@ -294,6 +294,24 @@ package name; it was corrected to the published `meta-clean` identity. This
 verification covers DEB transitions and process liveness, not WebView data
 preservation, AppImage self-update, RPM transitions or interrupted installation.
 
+## Published macOS DMG replacement — 2026-09-29
+
+[Run 36474805222](https://github.com/Moresyl/metaclean/actions/runs/36474805222)
+passed independently for the public aarch64 and x64 DMGs. Both jobs checked
+release status and published SHA-256 values, copied each application into an
+owned temporary directory, then replaced 0.11.0 with 0.11.1 and manually rolled
+back to 0.11.0. Each step checked the installed bundle version, identifier
+`com.moresl.metaclean`, exact executable architecture and six-second process
+liveness. Final removal deleted the temporary application; mounted images were
+detached. Both downloaded evidence artifacts record all three matching versions.
+
+The runner image was macOS 26 ARM64 for both jobs. The x64 package therefore
+passed through the host's Intel compatibility environment, not on native Intel
+hardware. This is manual bundle replacement evidence, not application-triggered
+update, WebView data preservation, interrupted replacement recovery, Gatekeeper
+acceptance or Apple signing/notarization verification. No existing `/Applications`
+installation was replaced.
+
 ## Remaining external release gates
 
 1. Test representative documents in genuine Microsoft Word and newer WPS builds, including layout, complex objects and supported OpenDocument interoperability. The limited WPS 2019 OOXML semantic round trip above and prior LibreOffice 26.2.5 samples do not close that broader qualification.
