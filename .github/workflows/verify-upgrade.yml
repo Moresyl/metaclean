@@ -1,0 +1,48 @@
+name: Verify published Windows upgrade
+
+on:
+  workflow_dispatch:
+    inputs:
+      previous:
+        description: Previous stable version without v
+        required: true
+        type: string
+      current:
+        description: Current stable version without v
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  upgrade:
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - name: Download public installers and checksum manifests
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PREVIOUS_VERSION: ${{ inputs.previous }}
+          CURRENT_VERSION: ${{ inputs.current }}
+        run: |
+          foreach ($version in @($env:PREVIOUS_VERSION, $env:CURRENT_VERSION)) {
+            if ($version -notmatch '^\d+\.\d+\.\d+$') { throw 'Invalid stable version' }
+            $release = gh release view "v$version" --json isDraft,isPrerelease | ConvertFrom-Json
+            if ($LASTEXITCODE -ne 0 -or $release.isDraft -or $release.isPrerelease) { throw 'Expected published stable release' }
+            gh release download "v$version" --dir "$env:RUNNER_TEMP/assets/$version" --pattern "MetaClean_${version}_x64-setup.exe" --pattern SHASUMS256.txt
+            if ($LASTEXITCODE -ne 0) { throw 'Public download failed' }
+          }
+      - name: Verify install upgrade downgrade and removal
+        shell: pwsh
+        env:
+          PREVIOUS_VERSION: ${{ inputs.previous }}
+          CURRENT_VERSION: ${{ inputs.current }}
+        run: ./scripts/verify-windows-upgrade.ps1 -PreviousVersion $env:PREVIOUS_VERSION -CurrentVersion $env:CURRENT_VERSION -AssetDirectory "$env:RUNNER_TEMP/assets"
+      - uses: actions/upload-artifact@v6
+        with:
+          name: windows-upgrade-evidence
+          path: ${{ runner.temp }}/metaclean-upgrade-results.json
+          if-no-files-found: error
