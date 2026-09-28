@@ -7,6 +7,7 @@ pub mod jxl;
 pub mod media;
 pub mod mkv;
 pub mod office;
+pub mod ogg;
 pub mod pdf;
 pub mod text;
 pub mod tiff;

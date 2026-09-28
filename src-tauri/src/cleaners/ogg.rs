@@ -1,0 +1,371 @@
+//! Remove Opus comment packets without repaginating or changing audio bytes.
+
+use std::{collections::HashMap, ops::Range};
+
+use crate::{
+    error::{CleanError, Result},
+    models::{Finding, FindingSeverity},
+};
+
+const MAX_HEADER: usize = 16 * 1024 * 1024;
+
+fn invalid() -> CleanError {
+    CleanError::InvalidFormat("Invalid or unsupported Ogg Opus structure".into())
+}
+
+fn word(data: &[u8], offset: usize) -> Result<u32> {
+    Ok(u32::from_le_bytes(
+        data.get(offset..offset + 4)
+            .ok_or_else(invalid)?
+            .try_into()
+            .unwrap(),
+    ))
+}
+
+fn crc(page: &[u8]) -> u32 {
+    let mut value = 0u32;
+    for (index, byte) in page.iter().enumerate() {
+        value ^= u32::from(if (22..26).contains(&index) { 0 } else { *byte }) << 24;
+        for _ in 0..8 {
+            value = if value & 0x8000_0000 != 0 {
+                (value << 1) ^ 0x04c1_1db7
+            } else {
+                value << 1
+            };
+        }
+    }
+    value
+}
+
+#[derive(Default)]
+struct Stream {
+    sequence: u32,
+    packets: usize,
+    continued: bool,
+    ended: bool,
+    header: Vec<u8>,
+    fragments: Vec<Range<usize>>,
+    packet_size: usize,
+}
+
+struct Layout {
+    pages: Vec<Range<usize>>,
+    comments: Vec<Vec<Range<usize>>>,
+    count: usize,
+}
+
+fn identification(packet: &[u8]) -> Result<()> {
+    if packet.len() < 19 || !packet.starts_with(b"OpusHead") || packet[8] != 1 || packet[9] == 0 {
+        return Err(invalid());
+    }
+    let channels = usize::from(packet[9]);
+    match packet[18] {
+        0 if channels <= 2 && packet.len() == 19 => Ok(()),
+        1 | 255 if packet.len() == 21 + channels => {
+            let streams = u16::from(packet[19]);
+            let coupled = u16::from(packet[20]);
+            if streams == 0
+                || coupled > streams
+                || streams + coupled > 255
+                || packet[21..]
+                    .iter()
+                    .any(|value| *value != 255 && u16::from(*value) >= streams + coupled)
+            {
+                return Err(invalid());
+            }
+            Ok(())
+        }
+        _ => Err(invalid()),
+    }
+}
+
+fn comment_count(packet: &[u8]) -> Result<usize> {
+    if !packet.starts_with(b"OpusTags") {
+        return Err(invalid());
+    }
+    let vendor_size = word(packet, 8)? as usize;
+    let mut offset = 12usize
+        .checked_add(vendor_size)
+        .filter(|end| *end <= packet.len())
+        .ok_or_else(invalid)?;
+    let comments = word(packet, offset)? as usize;
+    offset += 4;
+    if comments > (packet.len() - offset) / 4 {
+        return Err(invalid());
+    }
+    for _ in 0..comments {
+        let size = word(packet, offset)? as usize;
+        offset = offset
+            .checked_add(4)
+            .and_then(|start| start.checked_add(size))
+            .filter(|end| *end <= packet.len())
+            .ok_or_else(invalid)?;
+    }
+    // An odd extension marker requests preservation of unspecified binary data.
+    // Refuse it until its semantics can be validated rather than erasing it.
+    if packet.get(offset).is_some_and(|byte| byte & 1 != 0) {
+        return Err(invalid());
+    }
+    // Zero padding carries no private data; disposable padding is cleared.
+    Ok(usize::from(vendor_size > 0)
+        + comments
+        + usize::from(packet[offset..].iter().any(|byte| *byte != 0)))
+}
+
+fn layout(data: &[u8]) -> Result<Layout> {
+    let mut streams: HashMap<u32, Stream> = HashMap::new();
+    let mut result = Layout {
+        pages: Vec::new(),
+        comments: Vec::new(),
+        count: 0,
+    };
+    let mut offset = 0usize;
+    while offset < data.len() {
+        let header = data.get(offset..offset + 27).ok_or_else(invalid)?;
+        if &header[..4] != b"OggS" || header[4] != 0 || header[5] & !7 != 0 {
+            return Err(invalid());
+        }
+        let flags = header[5];
+        let serial = word(header, 14)?;
+        let sequence = word(header, 18)?;
+        let lacing_end = offset + 27 + usize::from(header[26]);
+        let lacing = data.get(offset + 27..lacing_end).ok_or_else(invalid)?;
+        let length = lacing.iter().map(|byte| usize::from(*byte)).sum::<usize>();
+        let end = lacing_end
+            .checked_add(length)
+            .filter(|end| *end <= data.len())
+            .ok_or_else(invalid)?;
+        if crc(&data[offset..end]) != word(header, 22)? {
+            return Err(invalid());
+        }
+        if flags & 2 != 0 {
+            if sequence != 0
+                || flags & 1 != 0
+                || streams.contains_key(&serial)
+                || streams.len() >= 64
+            {
+                return Err(invalid());
+            }
+            streams.insert(serial, Stream::default());
+        }
+        let stream = streams.get_mut(&serial).ok_or_else(invalid)?;
+        if stream.ended || stream.sequence != sequence || stream.continued != (flags & 1 != 0) {
+            return Err(invalid());
+        }
+        stream.sequence = sequence.wrapping_add(1);
+        let mut cursor = lacing_end;
+        for (index, segment) in lacing.iter().enumerate() {
+            let next = cursor + usize::from(*segment);
+            stream.packet_size += usize::from(*segment);
+            if stream.packets < 2 {
+                if stream.packet_size > MAX_HEADER {
+                    return Err(invalid());
+                }
+                stream.header.extend_from_slice(&data[cursor..next]);
+                stream.fragments.push(cursor..next);
+            }
+            stream.continued = *segment == 255;
+            if !stream.continued {
+                if stream.packets < 2 {
+                    if index + 1 != lacing.len() || header[6..14] != [0; 8] {
+                        return Err(invalid());
+                    }
+                    if stream.packets == 0 {
+                        if flags & 2 == 0 {
+                            return Err(invalid());
+                        }
+                        identification(&stream.header)?;
+                    } else {
+                        result.count += comment_count(&stream.header)?;
+                        result.comments.push(std::mem::take(&mut stream.fragments));
+                    }
+                    stream.header.clear();
+                    stream.fragments.clear();
+                } else if stream.packet_size == 0 {
+                    return Err(invalid());
+                }
+                stream.packets += 1;
+                stream.packet_size = 0;
+            }
+            cursor = next;
+        }
+        if flags & 2 != 0 && stream.packets != 1 {
+            return Err(invalid());
+        }
+        stream.ended = flags & 4 != 0;
+        if stream.ended && (stream.continued || stream.packets < 3) {
+            return Err(invalid());
+        }
+        result.pages.push(offset..end);
+        offset = end;
+    }
+    if streams.is_empty() || streams.values().any(|stream| !stream.ended) {
+        return Err(invalid());
+    }
+    Ok(result)
+}
+
+fn findings(count: usize) -> Vec<Finding> {
+    if count == 0 {
+        return Vec::new();
+    }
+    vec![Finding {
+        category: "audio_metadata".into(),
+        label: "Opus comments and encoder metadata".into(),
+        count,
+        severity: FindingSeverity::Privacy,
+    }]
+}
+
+pub fn inspect(data: &[u8]) -> Result<Vec<Finding>> {
+    Ok(findings(layout(data)?.count))
+}
+
+pub fn clean(data: &[u8]) -> Result<(Vec<u8>, Vec<Finding>)> {
+    let parsed = layout(data)?;
+    let mut output = data.to_vec();
+    for fragments in parsed.comments {
+        let mut position = 0;
+        for fragment in fragments {
+            for byte in &mut output[fragment] {
+                *byte = b"OpusTags".get(position).copied().unwrap_or(0);
+                position += 1;
+            }
+        }
+    }
+    for page in parsed.pages {
+        let checksum = crc(&output[page.clone()]);
+        output[page.start + 22..page.start + 26].copy_from_slice(&checksum.to_le_bytes());
+    }
+    Ok((output, findings(parsed.count)))
+}
+
+#[cfg(test)]
+pub(crate) mod tests {
+    use super::*;
+
+    fn page(sequence: u32, flags: u8, lacing: &[u8], payload: &[u8]) -> Vec<u8> {
+        let mut page = b"OggS\0".to_vec();
+        page.push(flags);
+        page.extend_from_slice(&0u64.to_le_bytes());
+        page.extend_from_slice(&1u32.to_le_bytes());
+        page.extend_from_slice(&sequence.to_le_bytes());
+        page.extend_from_slice(&[0; 4]);
+        page.push(lacing.len() as u8);
+        page.extend_from_slice(lacing);
+        page.extend_from_slice(payload);
+        let checksum = crc(&page);
+        page[22..26].copy_from_slice(&checksum.to_le_bytes());
+        page
+    }
+
+    pub(crate) fn fixture(split: bool) -> Vec<u8> {
+        let mut head = b"OpusHead\x01\x01".to_vec();
+        head.extend_from_slice(&[0; 9]);
+        let mut tags = b"OpusTags".to_vec();
+        tags.extend_from_slice(&300u32.to_le_bytes());
+        tags.extend_from_slice(&[b'v'; 300]);
+        tags.extend_from_slice(&1u32.to_le_bytes());
+        tags.extend_from_slice(&12u32.to_le_bytes());
+        tags.extend_from_slice(b"ARTIST=Alice");
+        let mut data = page(0, 2, &[19], &head);
+        if split {
+            data.extend(page(1, 0, &[255], &tags[..255]));
+            data.extend(page(2, 1, &[(tags.len() - 255) as u8], &tags[255..]));
+        } else {
+            data.extend(page(1, 0, &[255, (tags.len() - 255) as u8], &tags));
+        }
+        data.extend(page(
+            if split { 3 } else { 2 },
+            4,
+            &[3],
+            &[0xf8, 0xff, 0xfe],
+        ));
+        data
+    }
+
+    #[test]
+    fn removes_comments_across_pages_without_changing_audio_or_offsets() {
+        for split in [false, true] {
+            let data = fixture(split);
+            assert_eq!(inspect(&data).unwrap()[0].count, 2);
+            let (cleaned, removed) = clean(&data).unwrap();
+            assert_eq!(removed[0].count, 2);
+            assert_eq!(data.len(), cleaned.len());
+            assert_eq!(&data[data.len() - 31..], &cleaned[cleaned.len() - 31..]);
+            assert!(!cleaned.windows(5).any(|bytes| bytes == b"Alice"));
+            assert!(inspect(&cleaned).unwrap().is_empty());
+            assert_eq!(clean(&cleaned).unwrap().0, cleaned);
+        }
+    }
+
+    #[test]
+    fn refuses_truncated_corrupted_or_reordered_pages() {
+        let data = fixture(true);
+        for end in 0..data.len() {
+            assert!(inspect(&data[..end]).is_err());
+        }
+        for offset in 0..data.len() {
+            let mut corrupt = data.clone();
+            corrupt[offset] ^= 1;
+            assert!(inspect(&corrupt).is_err());
+        }
+        let mut wrong_sequence = data.clone();
+        let first = layout(&data).unwrap().pages[1].clone();
+        wrong_sequence[first.start + 18] = 7;
+        let checksum = crc(&wrong_sequence[first.clone()]);
+        wrong_sequence[first.start + 22..first.start + 26].copy_from_slice(&checksum.to_le_bytes());
+        assert!(clean(&wrong_sequence).is_err());
+    }
+
+    #[test]
+    fn bounds_comment_lengths_and_refuses_preserved_extensions() {
+        let mut tags = b"OpusTags".to_vec();
+        tags.extend_from_slice(&0u32.to_le_bytes());
+        tags.extend_from_slice(&0u32.to_le_bytes());
+        assert_eq!(comment_count(&tags).unwrap(), 0);
+        tags.extend_from_slice(&[0, 2, 3]);
+        assert_eq!(comment_count(&tags).unwrap(), 1);
+        tags[16] = 1;
+        assert!(comment_count(&tags).is_err());
+        tags.truncate(16);
+        tags[8..12].copy_from_slice(&u32::MAX.to_le_bytes());
+        assert!(comment_count(&tags).is_err());
+        tags[8..12].fill(0);
+        tags[12..16].copy_from_slice(&u32::MAX.to_le_bytes());
+        assert!(comment_count(&tags).is_err());
+    }
+
+    #[test]
+    fn validates_channel_mapping_and_identification() {
+        let mut head = b"OpusHead\x01\x02".to_vec();
+        head.extend_from_slice(&[0; 9]);
+        assert!(identification(&head).is_ok());
+        head[18] = 255;
+        head.extend_from_slice(&[1, 1, 0, 1]);
+        assert!(identification(&head).is_ok());
+        head[22] = 2;
+        assert!(identification(&head).is_err());
+        head[22] = 255;
+        assert!(identification(&head).is_ok());
+        head[19] = 0;
+        assert!(identification(&head).is_err());
+        head[8] = 2;
+        assert!(identification(&head).is_err());
+    }
+
+    #[test]
+    fn cleans_chained_streams_and_refuses_duplicate_serials() {
+        let first = fixture(false);
+        let mut second = first.clone();
+        for range in layout(&first).unwrap().pages {
+            second[range.start + 14..range.start + 18].copy_from_slice(&2u32.to_le_bytes());
+            let checksum = crc(&second[range.clone()]);
+            second[range.start + 22..range.start + 26].copy_from_slice(&checksum.to_le_bytes());
+        }
+        let chained = [first.clone(), second].concat();
+        assert_eq!(inspect(&chained).unwrap()[0].count, 4);
+        assert!(inspect(&clean(&chained).unwrap().0).unwrap().is_empty());
+        assert!(clean(&[first.clone(), first].concat()).is_err());
+    }
+}

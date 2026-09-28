@@ -7,7 +7,9 @@ use std::sync::Mutex;
 use std::fs;
 
 use crate::{
-    cleaners::{asf, avi, bmp, heif, image, jxl, media, mkv, office, pdf, tiff, video, web_text},
+    cleaners::{
+        asf, avi, bmp, heif, image, jxl, media, mkv, office, ogg, pdf, tiff, video, web_text,
+    },
     error::{bounded_message, display_path, CleanError, Result},
     models::{CleanResult, ContentIntegrity, Finding, FindingSeverity, OutputMode, ScanReport},
     safe_io::{
@@ -33,6 +35,7 @@ enum Format {
     Mp3,
     Wav,
     Flac,
+    Opus,
     Aiff,
     IsoMedia,
     Avi,
@@ -326,6 +329,9 @@ pub fn has_supported_extension(path: &Path) -> bool {
 }
 
 fn detect(path: &Path, data: &[u8]) -> Format {
+    if data.starts_with(b"OggS") {
+        return Format::Opus;
+    }
     if data.starts_with(&[0xff, 0xd8, 0xff]) {
         return Format::Jpeg;
     }
@@ -417,6 +423,7 @@ fn format_name(format: Format) -> &'static str {
         Format::Mp3 => "MP3",
         Format::Wav => "WAV",
         Format::Flac => "FLAC",
+        Format::Opus => "Ogg Opus",
         Format::Aiff => "AIFF",
         Format::IsoMedia => "MP4 / QuickTime",
         Format::Avi => "AVI",
@@ -453,6 +460,7 @@ fn inspect_data(path: &Path, format: Format, data: &[u8]) -> Result<Vec<Finding>
         Format::Mp3 => media::inspect_mp3(data),
         Format::Wav => media::inspect_wav(data),
         Format::Flac => media::inspect_flac(data),
+        Format::Opus => ogg::inspect(data),
         Format::Aiff => media::inspect_aiff(data),
         Format::IsoMedia => video::inspect(data),
         Format::Avi => avi::inspect(data),
@@ -497,6 +505,7 @@ fn clean_data(
         Format::Mp3 => media::clean_mp3(data),
         Format::Wav => media::clean_wav(data),
         Format::Flac => media::clean_flac(data),
+        Format::Opus => ogg::clean(data),
         Format::Aiff => media::clean_aiff(data),
         Format::IsoMedia => video::clean(data),
         Format::Avi => avi::clean(data),
@@ -1087,6 +1096,7 @@ mod tests {
             ("recording.mp3", mp3),
             ("recording.wav", wav),
             ("recording.flac", flac),
+            ("recording.opus", ogg::tests::fixture(true)),
             ("recording.aiff", aiff),
             ("movie.mp4", video),
             ("movie.avi", avi),
