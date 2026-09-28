@@ -9,3 +9,5 @@ overrides:
   js-yaml: 4.3.2
   vitepress>vite: 6.4.3
   ip-address: 10.5.1
+  undici@6.28.0: 6.28.1
+  undici@7.29.0: 7.29.1

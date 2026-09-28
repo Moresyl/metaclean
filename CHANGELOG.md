@@ -3,6 +3,15 @@
 All notable changes to MetaClean are documented here. The project follows
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Security
+
+- Update development-only `undici` dependencies to 6.28.1 and 7.29.1 for
+  GHSA-3wwx-pv8p-q78v, which covers a WebSocket decompression error that can
+  terminate the Node.js process. These dependencies belong to the desktop
+  testing and DOM test environment, not the shipped application runtime.
+
 ## [0.11.4] - 2026-09-29
 
 ### Changed

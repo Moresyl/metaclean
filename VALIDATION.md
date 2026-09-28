@@ -60,6 +60,21 @@ native older-CPU/32-bit-OS compatibility, arbitrary user-data migration, physica
 power-loss recovery, interrupted installation or Apple Gatekeeper approval.
 The 0.11.3 memory measurements below were not repeated for 0.11.4.
 
+## Post-release development toolchain audit — 2026-09-29
+
+[Documentation-commit CI 36498203678](https://github.com/Moresyl/metaclean/actions/runs/36498203678)
+failed the official npm audit after v0.11.4 publication. The updated
+[GHSA-3wwx-pv8p-q78v advisory](https://github.com/advisories/GHSA-3wwx-pv8p-q78v)
+identified `undici` 6.28.0 and 7.29.0 in the WebdriverIO/Cheerio and jsdom test
+dependency chains. Earlier successful audit runs remain historical observations,
+not guarantees against subsequently updated advisory data.
+
+The workspace now overrides those two versions to the published fixes 6.28.1
+and 7.29.1. The official npm audit reports no known vulnerabilities after a
+frozen-lockfile installation. `pnpm why --prod undici` returns no production
+dependency path. This is development-toolchain maintenance; it does not replace
+the published v0.11.4 binaries or move their tag.
+
 ## Rust dependency warning triage (0.11.4)
 
 Reviewed on 2026-09-29 using the current lockfile, official crates.io metadata,
