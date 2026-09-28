@@ -49,7 +49,9 @@ $sources | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $evidence 'sourc
 $policy = 'HKLM:\Software\Policies\Microsoft\Edge\WebView2\AdditionalBrowserArguments'
 $policyCreated = $false
 $process = $null
+$previousBrowserArguments = $env:WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS
 try {
+  $env:WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS = '--remote-debugging-port=9222'
   if (Get-ItemProperty -LiteralPath $policy -Name 'MetaClean.exe' -ErrorAction SilentlyContinue) { throw 'Existing WebView debug policy found' }
   New-Item -Path $policy -Force | Out-Null
   New-ItemProperty -LiteralPath $policy -Name 'MetaClean.exe' -Value '--remote-debugging-port=9222' -PropertyType String | Out-Null
@@ -86,7 +88,14 @@ try {
   }
   [pscustomobject]@{ version = $Version; sourceFiles = $sources.Count; committedOutputs = $outputs.Count; otherFiles = $snapshot.Count - $sources.Count - $outputs.Count; sourceHashesPreserved = $true; committedOutputHashesVerified = $true; noAutomaticResume = $true; noticeClearedOnSecondRestart = $true } | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $evidence 'results.json') -Encoding utf8
   Write-Output 'Real cleanup interruption, source/output integrity and two restarts passed'
+} catch {
+  if ($null -ne $process) {
+    $process.Refresh()
+    [pscustomobject]@{ id = $process.Id; exited = $process.HasExited; exitCode = $(if ($process.HasExited) { $process.ExitCode } else { $null }); title = $process.MainWindowTitle; message = $_.Exception.Message } | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $evidence 'failure-process.json') -Encoding utf8
+  }
+  throw
 } finally {
+  $env:WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS = $previousBrowserArguments
   if ($null -ne $process -and -not $process.HasExited) { taskkill.exe /PID $process.Id /T /F | Out-Null }
   if ($policyCreated) { Remove-ItemProperty -LiteralPath $policy -Name 'MetaClean.exe' }
 }

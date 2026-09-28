@@ -8,14 +8,18 @@ const [mode, fixtureDirectory, evidenceDirectory] = process.argv.slice(2);
 assert.ok(["start", "recover", "cleared"].includes(mode));
 const paths = JSON.parse(await readFile(path.join(evidenceDirectory, "sources.json"), "utf8"));
 let target;
-for (let attempt = 0; attempt < 60; attempt++) {
+let lastTargets = [];
+let lastConnectionError;
+for (let attempt = 0; attempt < 120; attempt++) {
   try {
     const response = await fetch("http://127.0.0.1:9222/json/list", { signal: AbortSignal.timeout(1000) });
-    target = (await response.json()).find(item => item.type === "page" && /tauri\.localhost|tauri:\/\//u.test(item.url));
+    lastTargets = await response.json();
+    target = lastTargets.find(item => item.type === "page" && /tauri\.localhost|tauri:\/\//u.test(item.url));
     if (target) break;
-  } catch { /* The released WebView may still be starting. */ }
+  } catch (error) { lastConnectionError = String(error).slice(0, 1000); }
   await delay(250);
 }
+await writeFile(path.join(evidenceDirectory, `${mode}-connection.json`), JSON.stringify({ targets: lastTargets.map(({ type, url }) => ({ type, url })), error: lastConnectionError }, null, 2));
 assert.ok(target?.webSocketDebuggerUrl, "Released WebView debug endpoint unavailable");
 const socket = new WebSocket(target.webSocketDebuggerUrl);
 await new Promise((resolve, reject) => {
