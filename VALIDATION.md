@@ -75,6 +75,22 @@ frozen-lockfile installation. `pnpm why --prod undici` returns no production
 dependency path. This is development-toolchain maintenance; it does not replace
 the published v0.11.4 binaries or move their tag.
 
+## Native documentation captures — 2026-09-29
+
+Refreshed the 15 published PNG captures and two workflow GIFs using the rebuilt
+v0.11.4 Windows desktop at source `291b80e`, with the E2E driver enabled.
+Both English and Chinese capture scenarios passed real intake, scan, search,
+cleanup and settings flows using disposable synthetic files. Captures assert
+1180 × 720 dimensions and no horizontal overflow; source text still contains
+the synthetic markers while cleaned copies do not. The capture restores prior
+application storage and removes only its own temporary fixtures.
+
+The screenshots were visually reviewed, including light/dark appearance,
+localized controls and the current version label. The two five-frame animations
+are generated from these unmodified captures and use the existing finite-loop
+timing. These are development-build UI captures, not a claim of new public-binary
+performance or additional external-application compatibility.
+
 ## Rust dependency warning triage (0.11.4)
 
 Reviewed on 2026-09-29 using the current lockfile, official crates.io metadata,
