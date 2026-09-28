@@ -1,6 +1,6 @@
 # MetaClean validation status
 
-Last audited: 2026-09-28
+Last audited: 2026-09-29
 
 This file records evidence, not intent. A row is complete only when the named artifact or runtime check exists.
 
@@ -35,8 +35,32 @@ This file records evidence, not intent. A row is complete only when the named ar
   including maintenance, GLib soundness and a yanked transitive version.
   The initial database update failed over the network; a fresh Git clone and
   `cargo audit --db ... --no-fetch` completed the same lockfile audit.
-- v0.10.0 public artifacts remain pending the release workflow; v0.9.0 is the
-  latest verified public release at this audit checkpoint.
+- v0.10.0 was published by successful release run `36448742163`. Independent
+  verification run `36452434323` downloaded public artifacts, checked 19 asset
+  SHA-256 hashes, verified all five updater package signatures against the tagged
+  public key and rejected deliberately tampered package bytes. Pages run
+  `36451199277` succeeded and its updater URLs/signatures match the release feed.
+
+## Ogg audio development validation
+
+- The Opus/Vorbis kernel is implemented; product extension intake integration is
+  still pending. This work is not part of the published v0.10.0 release.
+- Native library: 219 tests pass, four explicitly gated tests are ignored by
+  default. Eleven focused Ogg tests cover comment framing, channel mappings,
+  page checksums/sequencing, cross-page comments, mixed codec chains, unchanged
+  setup/audio bytes and malformed headers. Strict Clippy passes.
+- `pnpm test:audio` independently generates and decodes ten synthetic fixtures
+  using FFmpeg: mono, stereo, 5.1, 150,000-character comments and chained streams
+  for each codec. All ten pass locally with FFmpeg 7.1: unchanged source files,
+  successful clean reinspection, removed artist/title, retained numeric playback
+  gain tags, equal file length and identical decoded PCM SHA-256. The command
+  requires FFmpeg with libopus/libvorbis on PATH, or `METACLEAN_FFMPEG` set to its
+  executable. FFmpeg is a test tool, not an application runtime dependency.
+- The decoder test resets output timestamps for chained-stream PCM comparison;
+  this does not alter samples. Codec setup/audio payloads are preserved rather
+  than fully decoded by the cleaner. Unsupported Ogg codecs and malformed
+  structures are refused. Linux CI and release validation include this check;
+  remote results for this new gate are not yet available.
 
 - v0.9.0 native workflow evidence (2026-09-26): all 14 desktop E2E scenarios passed, including real file intake, search, scan and safe-copy cleanup with original-content verification. Both localized capture scenarios passed and generated seven native screenshots per language plus two finite-loop GIFs. English and Chinese default cleanup preferences fit the fixed window without scrolling; documentation checks enforce language-specific image references, dimensions and GIF size budgets.
 

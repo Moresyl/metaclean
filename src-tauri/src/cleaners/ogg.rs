@@ -1,4 +1,4 @@
-//! Remove Opus comment packets without repaginating or changing audio bytes.
+//! Remove Ogg audio comments without repaginating or changing audio bytes.
 
 use std::{collections::HashMap, ops::Range};
 
@@ -10,7 +10,7 @@ use crate::{
 const MAX_HEADER: usize = 16 * 1024 * 1024;
 
 fn invalid() -> CleanError {
-    CleanError::InvalidFormat("Invalid or unsupported Ogg Opus structure".into())
+    CleanError::InvalidFormat("Invalid or unsupported Ogg audio structure".into())
 }
 
 fn word(data: &[u8], offset: usize) -> Result<u32> {
@@ -39,6 +39,7 @@ fn crc(page: &[u8]) -> u32 {
 
 #[derive(Default)]
 struct Stream {
+    codec: Option<Codec>,
     sequence: u32,
     packets: usize,
     continued: bool,
@@ -46,6 +47,44 @@ struct Stream {
     header: Vec<u8>,
     fragments: Vec<Range<usize>>,
     packet_size: usize,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Codec {
+    Opus,
+    Vorbis,
+}
+
+impl Stream {
+    fn header_count(&self) -> usize {
+        if self.codec == Some(Codec::Vorbis) {
+            3
+        } else {
+            2
+        }
+    }
+}
+
+fn identify_codec(packet: &[u8]) -> Result<Codec> {
+    if packet.starts_with(b"OpusHead") {
+        identification(packet)?;
+        return Ok(Codec::Opus);
+    }
+    if packet.len() != 30 || !packet.starts_with(b"\x01vorbis") {
+        return Err(invalid());
+    }
+    let small_block = packet[28] & 15;
+    let large_block = packet[28] >> 4;
+    if word(packet, 7)? != 0
+        || packet[11] == 0
+        || word(packet, 12)? == 0
+        || !(6..=13).contains(&small_block)
+        || !(small_block..=13).contains(&large_block)
+        || packet[29] != 1
+    {
+        return Err(invalid());
+    }
+    Ok(Codec::Vorbis)
 }
 
 struct Layout {
@@ -80,12 +119,65 @@ fn identification(packet: &[u8]) -> Result<()> {
     }
 }
 
-fn clean_comments(packet: &[u8]) -> Result<(Vec<u8>, usize)> {
-    if !packet.starts_with(b"OpusTags") {
+fn playback_gain(name: &[u8], value: &[u8], vorbis: bool) -> Result<bool> {
+    let r128 = !vorbis
+        && (name.eq_ignore_ascii_case(b"R128_TRACK_GAIN")
+            || name.eq_ignore_ascii_case(b"R128_ALBUM_GAIN"));
+    let replay_gain = vorbis
+        && (name.eq_ignore_ascii_case(b"REPLAYGAIN_TRACK_GAIN")
+            || name.eq_ignore_ascii_case(b"REPLAYGAIN_ALBUM_GAIN")
+            || name.eq_ignore_ascii_case(b"REPLAYGAIN_REFERENCE_LOUDNESS"));
+    let replay_peak = vorbis
+        && (name.eq_ignore_ascii_case(b"REPLAYGAIN_TRACK_PEAK")
+            || name.eq_ignore_ascii_case(b"REPLAYGAIN_ALBUM_PEAK"));
+    if !r128 && !replay_gain && !replay_peak {
+        return Ok(false);
+    }
+    let number = if replay_gain {
+        value.strip_suffix(b" dB").unwrap_or(value)
+    } else {
+        value
+    };
+    let digits = if matches!(number.first(), Some(b'+' | b'-')) {
+        &number[1..]
+    } else {
+        number
+    };
+    let valid = if r128 {
+        value.len() <= 6
+            && !digits.is_empty()
+            && digits.iter().all(u8::is_ascii_digit)
+            && std::str::from_utf8(number)
+                .ok()
+                .and_then(|value| value.parse::<i16>().ok())
+                .is_some()
+    } else {
+        value.len() <= 32
+            && digits.iter().any(u8::is_ascii_digit)
+            && digits
+                .iter()
+                .all(|byte| byte.is_ascii_digit() || *byte == b'.')
+            && std::str::from_utf8(number)
+                .ok()
+                .and_then(|value| value.parse::<f64>().ok())
+                .is_some_and(|value| value.is_finite() && (!replay_peak || value >= 0.0))
+    };
+    if !valid {
         return Err(invalid());
     }
-    let vendor_size = word(packet, 8)? as usize;
-    let mut offset = 12usize
+    Ok(true)
+}
+
+fn clean_comments(packet: &[u8]) -> Result<(Vec<u8>, usize)> {
+    let (prefix, vorbis): (&[u8], bool) = if packet.starts_with(b"OpusTags") {
+        (b"OpusTags", false)
+    } else if packet.starts_with(b"\x03vorbis") {
+        (b"\x03vorbis", true)
+    } else {
+        return Err(invalid());
+    };
+    let vendor_size = word(packet, prefix.len())? as usize;
+    let mut offset = (prefix.len() + 4)
         .checked_add(vendor_size)
         .filter(|end| *end <= packet.len())
         .ok_or_else(invalid)?;
@@ -107,27 +199,9 @@ fn clean_comments(packet: &[u8]) -> Result<(Vec<u8>, usize)> {
         let comment = &packet[start..offset];
         if let Some(separator) = comment.iter().position(|byte| *byte == b'=') {
             let name = &comment[..separator];
-            if name.eq_ignore_ascii_case(b"R128_TRACK_GAIN")
-                || name.eq_ignore_ascii_case(b"R128_ALBUM_GAIN")
-            {
+            if playback_gain(name, &comment[separator + 1..], vorbis)? {
                 let normalized = name.to_ascii_uppercase();
                 if gain_names.contains(&normalized) {
-                    return Err(invalid());
-                }
-                let value = &comment[separator + 1..];
-                let digits = if matches!(value.first(), Some(b'+' | b'-')) {
-                    &value[1..]
-                } else {
-                    value
-                };
-                if value.len() > 6
-                    || digits.is_empty()
-                    || !digits.iter().all(u8::is_ascii_digit)
-                    || std::str::from_utf8(value)
-                        .ok()
-                        .and_then(|value| value.parse::<i16>().ok())
-                        .is_none()
-                {
                     return Err(invalid());
                 }
                 gain_names.push(normalized);
@@ -137,18 +211,30 @@ fn clean_comments(packet: &[u8]) -> Result<(Vec<u8>, usize)> {
     }
     // An odd extension marker requests preservation of unspecified binary data.
     // Refuse it until its semantics can be validated rather than erasing it.
-    if packet.get(offset).is_some_and(|byte| byte & 1 != 0) {
+    if vorbis {
+        if packet.get(offset).is_none_or(|byte| byte & 1 == 0) {
+            return Err(invalid());
+        }
+    } else if packet.get(offset).is_some_and(|byte| byte & 1 != 0) {
         return Err(invalid());
     }
     // Zero padding carries no private data; disposable padding is cleared.
-    let count = usize::from(vendor_size > 0) + comments - retained.len()
-        + usize::from(packet[offset..].iter().any(|byte| *byte != 0));
-    let mut cleaned = b"OpusTags".to_vec();
+    let padding_has_data = if vorbis {
+        packet[offset] & !1 != 0 || packet[offset + 1..].iter().any(|byte| *byte != 0)
+    } else {
+        packet[offset..].iter().any(|byte| *byte != 0)
+    };
+    let count =
+        usize::from(vendor_size > 0) + comments - retained.len() + usize::from(padding_has_data);
+    let mut cleaned = prefix.to_vec();
     cleaned.extend_from_slice(&0u32.to_le_bytes());
     cleaned.extend_from_slice(&(retained.len() as u32).to_le_bytes());
     for comment in retained {
         cleaned.extend_from_slice(&(comment.len() as u32).to_le_bytes());
         cleaned.extend_from_slice(comment);
+    }
+    if vorbis {
+        cleaned.push(1);
     }
     cleaned.resize(packet.len(), 0);
     Ok((cleaned, count))
@@ -198,8 +284,16 @@ fn layout(data: &[u8]) -> Result<Layout> {
         let mut cursor = lacing_end;
         for (index, segment) in lacing.iter().enumerate() {
             let next = cursor + usize::from(*segment);
+            if stream.codec == Some(Codec::Vorbis)
+                && stream.packets >= 3
+                && stream.packet_size == 0
+                && next > cursor
+                && data[cursor] & 1 != 0
+            {
+                return Err(invalid());
+            }
             stream.packet_size += usize::from(*segment);
-            if stream.packets < 2 {
+            if stream.packets < stream.header_count() {
                 if stream.packet_size > MAX_HEADER {
                     return Err(invalid());
                 }
@@ -208,25 +302,40 @@ fn layout(data: &[u8]) -> Result<Layout> {
             }
             stream.continued = *segment == 255;
             if !stream.continued {
-                if stream.packets < 2 {
-                    if index + 1 != lacing.len() || header[6..14] != [0; 8] {
+                if stream.packets < stream.header_count() {
+                    let comment_can_share_page =
+                        stream.codec == Some(Codec::Vorbis) && stream.packets == 1;
+                    if (!comment_can_share_page && index + 1 != lacing.len())
+                        || header[6..14] != [0; 8]
+                    {
                         return Err(invalid());
                     }
                     if stream.packets == 0 {
                         if flags & 2 == 0 {
                             return Err(invalid());
                         }
-                        identification(&stream.header)?;
-                    } else {
+                        stream.codec = Some(identify_codec(&stream.header)?);
+                    } else if stream.packets == 1 {
+                        let expected: &[u8] = if stream.codec == Some(Codec::Vorbis) {
+                            b"\x03vorbis"
+                        } else {
+                            b"OpusTags"
+                        };
+                        if !stream.header.starts_with(expected) {
+                            return Err(invalid());
+                        }
                         let (cleaned, count) = clean_comments(&stream.header)?;
                         result.count += count;
                         result
                             .comments
                             .push((std::mem::take(&mut stream.fragments), cleaned));
+                    } else if !stream.header.starts_with(b"\x05vorbis") || stream.header.len() <= 7
+                    {
+                        return Err(invalid());
                     }
                     stream.header.clear();
                     stream.fragments.clear();
-                } else if stream.packet_size == 0 {
+                } else if stream.packet_size == 0 && stream.codec == Some(Codec::Opus) {
                     return Err(invalid());
                 }
                 stream.packets += 1;
@@ -238,7 +347,7 @@ fn layout(data: &[u8]) -> Result<Layout> {
             return Err(invalid());
         }
         stream.ended = flags & 4 != 0;
-        if stream.ended && (stream.continued || stream.packets < 3) {
+        if stream.ended && (stream.continued || stream.packets <= stream.header_count()) {
             return Err(invalid());
         }
         result.pages.push(offset..end);
@@ -256,7 +365,7 @@ fn findings(count: usize) -> Vec<Finding> {
     }
     vec![Finding {
         category: "audio_metadata".into(),
-        label: "Opus comments and encoder metadata".into(),
+        label: "Ogg audio comments and encoder metadata".into(),
         count,
         severity: FindingSeverity::Privacy,
     }]
@@ -366,6 +475,145 @@ pub(crate) mod tests {
             &[0xf8, 0xff, 0xfe],
         ));
         data
+    }
+
+    pub(crate) fn vorbis_fixture(split: bool) -> Vec<u8> {
+        let mut head = b"\x01vorbis".to_vec();
+        head.extend_from_slice(&0u32.to_le_bytes());
+        head.push(2);
+        head.extend_from_slice(&48000u32.to_le_bytes());
+        head.extend_from_slice(&[0; 12]);
+        head.extend_from_slice(&[0xb8, 1]);
+        let mut comments = b"\x03vorbis".to_vec();
+        comments.extend_from_slice(&300u32.to_le_bytes());
+        comments.extend_from_slice(&[b'v'; 300]);
+        comments.extend_from_slice(&1u32.to_le_bytes());
+        comments.extend_from_slice(&12u32.to_le_bytes());
+        comments.extend_from_slice(b"ARTIST=Alice");
+        comments.push(1);
+        // Structural fixture; real codec setup is covered by external decoder tests.
+        let setup = b"\x05vorbis\x01";
+        let mut data = page(0, 2, &[30], &head);
+        let tail = (comments.len() - 255) as u8;
+        if split {
+            data.extend(page(1, 0, &[255], &comments[..255]));
+            data.extend(page(2, 1, &[tail, 8], &[&comments[255..], setup].concat()));
+        } else {
+            data.extend(page(
+                1,
+                0,
+                &[255, tail, 8],
+                &[comments.as_slice(), setup].concat(),
+            ));
+        }
+        data.extend(page(if split { 3 } else { 2 }, 4, &[2], &[0, 42]));
+        data
+    }
+
+    #[test]
+    fn clears_vorbis_comments_sharing_pages_with_unchanged_setup() {
+        for split in [false, true] {
+            let original = vorbis_fixture(split);
+            let (cleaned, findings) = clean(&original).unwrap();
+            assert_eq!(findings[0].count, 2);
+            assert_eq!(original.len(), cleaned.len());
+            let layout = layout(&original).unwrap();
+            let comment_ranges = &layout.comments[0].0;
+            for index in 0..original.len() {
+                let checksum = layout
+                    .pages
+                    .iter()
+                    .any(|page| (page.start + 22..page.start + 26).contains(&index));
+                if !checksum && !comment_ranges.iter().any(|range| range.contains(&index)) {
+                    assert_eq!(original[index], cleaned[index]);
+                }
+            }
+            assert!(inspect(&cleaned).unwrap().is_empty());
+            assert_eq!(clean(&cleaned).unwrap().0, cleaned);
+        }
+    }
+
+    #[test]
+    fn validates_vorbis_identification_and_comment_framing() {
+        let original = vorbis_fixture(false);
+        let head = &original[28..58];
+        assert!(identify_codec(head).is_ok());
+        for (offset, value) in [(7, 1), (11, 0), (28, 0xb5), (28, 0x8b), (29, 0)] {
+            let mut bad = head.to_vec();
+            bad[offset] = value;
+            assert!(identify_codec(&bad).is_err());
+        }
+        let mut packet = b"\x03vorbis".to_vec();
+        packet.extend_from_slice(&[0; 8]);
+        assert!(clean_comments(&packet).is_err());
+        packet.push(0);
+        assert!(clean_comments(&packet).is_err());
+        packet[15] = 1;
+        assert_eq!(clean_comments(&packet).unwrap(), (packet.clone(), 0));
+        packet.extend_from_slice(b"hidden");
+        let (cleaned, count) = clean_comments(&packet).unwrap();
+        assert_eq!(count, 1);
+        assert!(cleaned[16..].iter().all(|byte| *byte == 0));
+    }
+
+    #[test]
+    fn preserves_bounded_numeric_vorbis_replaygain() {
+        for (name, value) in [
+            ("REPLAYGAIN_TRACK_GAIN", "-5.25 dB"),
+            ("replaygain_album_gain", "+0.0"),
+            ("REPLAYGAIN_TRACK_PEAK", "1.23"),
+            ("REPLAYGAIN_ALBUM_PEAK", "0"),
+            ("REPLAYGAIN_REFERENCE_LOUDNESS", "89.0 dB"),
+        ] {
+            let gain = format!("{name}={value}");
+            let opus = tags(&["ARTIST=Alice", &gain]);
+            let mut packet = b"\x03vorbis".to_vec();
+            packet.extend_from_slice(&opus[8..]);
+            packet.push(1);
+            let (cleaned, count) = clean_comments(&packet).unwrap();
+            assert_eq!(count, 1);
+            assert!(cleaned
+                .windows(gain.len())
+                .any(|bytes| bytes == gain.as_bytes()));
+            assert_eq!(clean_comments(&cleaned).unwrap(), (cleaned, 0));
+        }
+        for value in ["NaN", "inf", "-1", "1.2.3", "1e4", "", "Alice", "1 private"] {
+            assert!(playback_gain(b"REPLAYGAIN_TRACK_PEAK", value.as_bytes(), true).is_err());
+        }
+    }
+
+    #[test]
+    fn refuses_vorbis_header_mismatches_even_with_valid_page_checksums() {
+        let original = vorbis_fixture(false);
+        let pages = layout(&original).unwrap().pages;
+        let setup_start = pages[1].end - 8;
+        let comment_start = pages[1].start + 30;
+        let audio_start = pages[2].start + 28;
+        for (offset, byte) in [(setup_start, 3), (comment_start, 5), (audio_start, 1)] {
+            let mut corrupt = original.clone();
+            corrupt[offset] = byte;
+            let page = pages.iter().find(|page| page.contains(&offset)).unwrap();
+            let checksum = crc(&corrupt[page.clone()]);
+            corrupt[page.start + 22..page.start + 26].copy_from_slice(&checksum.to_le_bytes());
+            assert!(inspect(&corrupt).is_err());
+            assert!(clean(&corrupt).is_err());
+        }
+    }
+
+    #[test]
+    fn cleans_mixed_codec_chains_without_changing_either_audio_stream() {
+        let first = fixture(false);
+        let mut second = vorbis_fixture(true);
+        for range in layout(&second).unwrap().pages {
+            second[range.start + 14..range.start + 18].copy_from_slice(&2u32.to_le_bytes());
+            let checksum = crc(&second[range.clone()]);
+            second[range.start + 22..range.start + 26].copy_from_slice(&checksum.to_le_bytes());
+        }
+        let expected = [clean(&first).unwrap().0, clean(&second).unwrap().0].concat();
+        let (cleaned, findings) = clean(&[first, second].concat()).unwrap();
+        assert_eq!(findings[0].count, 4);
+        assert_eq!(cleaned, expected);
+        assert!(inspect(&cleaned).unwrap().is_empty());
     }
 
     #[test]

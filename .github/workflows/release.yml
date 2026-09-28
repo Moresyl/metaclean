@@ -36,7 +36,7 @@ jobs:
       - name: Install Linux system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential curl wget file libssl-dev libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev xvfb
+          sudo apt-get install -y build-essential curl wget file libssl-dev libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev xvfb ffmpeg
       - uses: actions/cache@v5
         with:
           path: |
@@ -61,6 +61,8 @@ jobs:
         working-directory: src-tauri
       - run: cargo test --locked
         working-directory: src-tauri
+      - name: Verify Ogg playback against FFmpeg
+        run: pnpm test:audio
       - run: cargo install cargo-llvm-cov --locked
       - run: cargo llvm-cov --locked --ignore-filename-regex '(lib|main|models|shell_integration)\.rs$' --fail-under-lines 80
         working-directory: src-tauri

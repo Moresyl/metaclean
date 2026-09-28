@@ -83,8 +83,11 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential libssl-dev libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev xvfb
+          sudo apt-get install -y build-essential libssl-dev libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev xvfb ffmpeg
       - run: pnpm install --frozen-lockfile
+      - name: Verify Ogg playback against FFmpeg
+        if: runner.os == 'Linux'
+        run: pnpm test:audio
       - name: Verify macOS extended-attribute preservation
         if: runner.os == 'macOS'
         run: cargo test macos_xattrs_are_preserved_by_default_and_private_ones_are_opt_in

@@ -35,7 +35,7 @@ enum Format {
     Mp3,
     Wav,
     Flac,
-    Opus,
+    Ogg,
     Aiff,
     IsoMedia,
     Avi,
@@ -330,7 +330,7 @@ pub fn has_supported_extension(path: &Path) -> bool {
 
 fn detect(path: &Path, data: &[u8]) -> Format {
     if data.starts_with(b"OggS") {
-        return Format::Opus;
+        return Format::Ogg;
     }
     if data.starts_with(&[0xff, 0xd8, 0xff]) {
         return Format::Jpeg;
@@ -423,7 +423,7 @@ fn format_name(format: Format) -> &'static str {
         Format::Mp3 => "MP3",
         Format::Wav => "WAV",
         Format::Flac => "FLAC",
-        Format::Opus => "Ogg Opus",
+        Format::Ogg => "Ogg audio",
         Format::Aiff => "AIFF",
         Format::IsoMedia => "MP4 / QuickTime",
         Format::Avi => "AVI",
@@ -460,7 +460,7 @@ fn inspect_data(path: &Path, format: Format, data: &[u8]) -> Result<Vec<Finding>
         Format::Mp3 => media::inspect_mp3(data),
         Format::Wav => media::inspect_wav(data),
         Format::Flac => media::inspect_flac(data),
-        Format::Opus => ogg::inspect(data),
+        Format::Ogg => ogg::inspect(data),
         Format::Aiff => media::inspect_aiff(data),
         Format::IsoMedia => video::inspect(data),
         Format::Avi => avi::inspect(data),
@@ -505,7 +505,7 @@ fn clean_data(
         Format::Mp3 => media::clean_mp3(data),
         Format::Wav => media::clean_wav(data),
         Format::Flac => media::clean_flac(data),
-        Format::Opus => ogg::clean(data),
+        Format::Ogg => ogg::clean(data),
         Format::Aiff => media::clean_aiff(data),
         Format::IsoMedia => video::clean(data),
         Format::Avi => avi::clean(data),
@@ -1097,6 +1097,7 @@ mod tests {
             ("recording.wav", wav),
             ("recording.flac", flac),
             ("recording.opus", ogg::tests::fixture(true)),
+            ("recording.ogg", ogg::tests::vorbis_fixture(true)),
             ("recording.aiff", aiff),
             ("movie.mp4", video),
             ("movie.avi", avi),
@@ -1821,10 +1822,15 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "requires METACLEAN_AUDIO_SAMPLE_DIR with an encoded sample.opus fixture"]
-    fn cleans_external_opus_sample_without_changing_source() {
+    #[ignore = "requires METACLEAN_AUDIO_SAMPLE_DIR with an encoded sample.opus or sample.ogg fixture"]
+    fn cleans_external_ogg_sample_without_changing_source() {
         let directory = std::env::var_os("METACLEAN_AUDIO_SAMPLE_DIR").expect("sample directory");
-        let source = PathBuf::from(directory).join("sample.opus");
+        let directory = PathBuf::from(directory);
+        let source = if directory.join("sample.opus").exists() {
+            directory.join("sample.opus")
+        } else {
+            directory.join("sample.ogg")
+        };
         let before = fs::read(&source).unwrap();
         let report = scan_file(&source);
         assert!(report.supported, "{:?}", report.error);
