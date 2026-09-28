@@ -338,6 +338,45 @@ update, WebView data preservation, interrupted replacement recovery, Gatekeeper
 acceptance or Apple signing/notarization verification. No existing `/Applications`
 installation was replaced.
 
+## Large-text native qualification — 2026-09-29
+
+The explicit ignored test `engine::tests::benchmark_large_text_budget_boundary`
+creates 64 MiB and exactly 256 MiB UTF-8 files, each containing one removable
+zero-width character. It runs the real scan and copy-clean paths, streams an
+independent source hash comparison, checks every output byte and verifies both
+audit hashes. A 256 MiB + 1 byte input must fail scanning and cleaning without
+creating any output or changing its length. Fixtures live only in a temporary
+directory. This benchmark is included in `pnpm test:benchmark`.
+
+On the same Windows 11 / i7-12700 machine as the earlier native memory study,
+three fresh release-test processes per implementation produced these observations:
+
+| Observation | Published 0.11.1 text algorithm | Streaming context and span-copy implementation |
+| --- | --- | --- |
+| Peak working set observed, entire process | 1,887,068,160–1,887,178,752 bytes | 1,080,926,208–1,080,942,592 bytes |
+| Sampled peak private memory | 2,289,094,656–2,289,115,136 bytes | 1,078,112,256–1,078,124,544 bytes |
+| 64 MiB scan | 672.23–689.05 ms | 486.51–498.69 ms |
+| 64 MiB copy-clean | 878.47–890.62 ms | 709.99–742.34 ms |
+| 256 MiB scan | 4,387.39–4,840.48 ms | 2,529.23–2,606.20 ms |
+| 256 MiB copy-clean | 6,107.56–6,268.48 ms | 4,696.38–5,053.39 ms |
+
+The working-set observation fell by approximately 43% for this fixture sequence.
+The monitor requested five-millisecond sampling and used the OS peak-working-set
+counter; private bytes are sampled, and the unobserved final interval means these
+are not strict upper bounds. Measurements include fixture generation, hashing
+and verification, but exclude compilation, the monitor and desktop WebView. The
+baseline and final measurements ran without concurrent local test/build tasks.
+They do not qualify slow storage, cold caches, concurrent large scans, arbitrary
+Unicode mixtures, every file format or complete application memory usage.
+
+A separate deterministic differential harness compared old and new outputs and
+finding fields for 108,921 three-character/random cases plus empty, single and
+two-character inputs. Permanent regressions cover original-neighbor semantics,
+nested directional embeddings/overrides and malformed flag-tag sequences. The
+optimization does not alter the 256 MiB input limit or Unicode preservation policy.
+These implementation measurements precede release of the optimization; v0.11.1
+remains the baseline published version.
+
 ## Remaining external release gates
 
 1. Test representative documents in genuine Microsoft Word and newer WPS builds, including layout, complex objects and supported OpenDocument interoperability. The limited WPS 2019 OOXML semantic round trip above and prior LibreOffice 26.2.5 samples do not close that broader qualification.

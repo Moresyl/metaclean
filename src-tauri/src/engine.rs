@@ -1574,6 +1574,92 @@ mod tests {
 
     #[test]
     #[ignore = "explicit local performance benchmark"]
+    fn benchmark_large_text_budget_boundary() {
+        use crate::safe_io;
+        use std::io::{Read, Write};
+
+        let directory = tempfile::tempdir().expect("create large fixture directory");
+        let hash_file = |path: &Path| {
+            let mut file = fs::File::open(path).unwrap();
+            let mut digest = Sha256::new();
+            let mut buffer = vec![0; 1024 * 1024];
+            loop {
+                let read = file.read(&mut buffer).unwrap();
+                if read == 0 {
+                    break;
+                }
+                digest.update(&buffer[..read]);
+            }
+            format!("{:x}", digest.finalize())
+        };
+        for size in [64 * 1024 * 1024, safe_io::MAX_INPUT_BYTES] {
+            let source = directory.path().join(format!("large-{size}.txt"));
+            let block = vec![b'a'; 1024 * 1024];
+            let mut file = fs::File::create(&source).unwrap();
+            for index in 0..size / block.len() as u64 {
+                if index == 0 {
+                    file.write_all("\u{200b}".as_bytes()).unwrap();
+                    file.write_all(&block[3..]).unwrap();
+                } else {
+                    file.write_all(&block).unwrap();
+                }
+            }
+            drop(file);
+            let source_hash = hash_file(&source);
+            let started = Instant::now();
+            let report = scan_file(&source);
+            let scan_ms = started.elapsed().as_secs_f64() * 1000.0;
+            assert!(report.supported, "{:?}", report.error);
+            assert_eq!(
+                report.findings.iter().map(|item| item.count).sum::<usize>(),
+                1
+            );
+            let started = Instant::now();
+            let result =
+                clean_file_with_options(&source, &OutputMode::Copy, true, true, true, false);
+            let clean_ms = started.elapsed().as_secs_f64() * 1000.0;
+            assert!(result.success, "{:?}", result.error);
+            assert_eq!(result.source_size, Some(size));
+            assert_eq!(result.output_size, Some(size - 3));
+            assert_eq!(hash_file(&source), source_hash);
+            let output = Path::new(result.output_path.as_ref().unwrap());
+            let integrity = result.integrity.as_ref().unwrap();
+            assert_eq!(integrity.source_sha256, source_hash);
+            assert_eq!(integrity.output_sha256, hash_file(output));
+            let mut file = fs::File::open(output).unwrap();
+            let mut buffer = vec![0; 1024 * 1024];
+            loop {
+                let read = file.read(&mut buffer).unwrap();
+                if read == 0 {
+                    break;
+                }
+                assert!(buffer[..read].iter().all(|byte| *byte == b'a'));
+            }
+            eprintln!("METACLEAN_BENCH_LARGE {{\"payload_bytes\":{size},\"scan_ms\":{scan_ms:.2},\"clean_ms\":{clean_ms:.2},\"source_unchanged\":true,\"output_verified\":true}}");
+        }
+        let oversized = directory.path().join("oversized.txt");
+        fs::File::create(&oversized)
+            .unwrap()
+            .set_len(safe_io::MAX_INPUT_BYTES + 1)
+            .unwrap();
+        let entries_before = fs::read_dir(directory.path()).unwrap().count();
+        assert!(!scan_file(&oversized).supported);
+        let result =
+            clean_file_with_options(&oversized, &OutputMode::Copy, true, true, true, false);
+        assert!(!result.success);
+        assert!(result.output_path.is_none());
+        assert_eq!(
+            fs::metadata(&oversized).unwrap().len(),
+            safe_io::MAX_INPUT_BYTES + 1
+        );
+        assert_eq!(
+            fs::read_dir(directory.path()).unwrap().count(),
+            entries_before
+        );
+    }
+
+    #[test]
+    #[ignore = "explicit local performance benchmark"]
     fn benchmark_real_batch_engine_paths() {
         const FILES: usize = 128;
         let directory = tempfile::tempdir().expect("create benchmark directory");

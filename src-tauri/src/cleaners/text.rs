@@ -104,30 +104,32 @@ fn cjk_variation(chars: &[char], index: usize) -> bool {
     matches!(chars[index - 1] as u32, 0x3400..=0x4DBF | 0x4E00..=0x9FFF | 0xF900..=0xFAFF | 0x20000..=0x323AF)
 }
 
-fn paired_control_indices(chars: &[char]) -> Vec<bool> {
-    let mut preserved = vec![false; chars.len()];
-
-    let mut flag = 0;
-    while flag < chars.len() {
-        if chars[flag] as u32 != 0x1F3F4 {
-            flag += 1;
-            continue;
-        }
-        let mut end = flag + 1;
-        while end < chars.len() && matches!(chars[end] as u32, 0xE0020..=0xE007E) {
-            end += 1;
-        }
-        if end > flag + 1 && end < chars.len() && chars[end] as u32 == 0xE007F {
-            preserved[flag + 1..=end].fill(true);
-            flag = end + 1;
-        } else {
-            flag += 1;
-        }
+fn paired_control_indices(value: &str) -> Vec<bool> {
+    if !value.chars().any(|character| {
+        matches!(
+            character as u32,
+            0x1F3F4 | 0x202A | 0x202B | 0x202D | 0x202E
+        )
+    }) {
+        return Vec::new();
     }
-
+    let mut preserved = vec![false; value.chars().count()];
+    let mut flag = None;
     let mut embeddings: Vec<(u32, usize)> = Vec::new();
-    for (index, character) in chars.iter().enumerate() {
-        match *character as u32 {
+    for (index, character) in value.chars().enumerate() {
+        match character as u32 {
+            0x1F3F4 => flag = Some(index),
+            0xE0020..=0xE007E => {}
+            0xE007F => {
+                if let Some(start) = flag.take() {
+                    if index > start + 1 {
+                        preserved[start + 1..=index].fill(true);
+                    }
+                }
+            }
+            _ => flag = None,
+        }
+        match character as u32 {
             code @ (0x202A | 0x202B | 0x202D | 0x202E) => embeddings.push((code, index)),
             0x202C => {
                 if let Some((opener, start)) = embeddings.pop() {
@@ -143,23 +145,49 @@ fn paired_control_indices(chars: &[char]) -> Vec<bool> {
     preserved
 }
 
-fn preserve_invisible(chars: &[char], index: usize, paired: &[bool]) -> bool {
+fn preserve_invisible(chars: &[char], index: usize, paired: bool) -> bool {
     let code = chars[index] as u32;
-    paired[index]
+    paired
         || matches!(code, 0x061C | 0x200E | 0x200F | 0x2066..=0x2069)
         || emoji_glue(chars, index)
         || script_glue(chars, index)
         || cjk_variation(chars, index)
 }
 
-fn findings_for(chars: &[char], paired: &[bool]) -> Vec<Finding> {
+// Keep only the original neighbors. Removing a character must not change the
+// context used to classify the following character.
+fn classified_characters<'a>(
+    value: &'a str,
+    paired: &'a [bool],
+) -> impl Iterator<Item = (usize, char, bool)> + 'a {
+    let mut characters = value.char_indices().enumerate().peekable();
+    let mut previous = None;
+    std::iter::from_fn(move || {
+        let (index, (offset, character)) = characters.next()?;
+        let next = characters.peek().map(|(_, (_, character))| *character);
+        let window = [previous.unwrap_or('\0'), character, next.unwrap_or('\0')];
+        let start = usize::from(previous.is_none());
+        let end = if next.is_some() { 3 } else { 2 };
+        let remove = !character.is_ascii()
+            && is_invisible(character as u32)
+            && !preserve_invisible(
+                &window[start..end],
+                1 - start,
+                paired.get(index).copied().unwrap_or(false),
+            );
+        previous = Some(character);
+        Some((offset, character, remove))
+    })
+}
+
+fn findings_for(value: &str, paired: &[bool]) -> Vec<Finding> {
     let mut invisible = 0;
     let mut spaces = 0;
-    for (index, character) in chars.iter().enumerate() {
-        let code = *character as u32;
-        if is_invisible(code) && !preserve_invisible(chars, index, paired) {
+    for (_, character, remove) in classified_characters(value, paired) {
+        let code = character as u32;
+        if remove {
             invisible += 1;
-        } else if space_replacement(code) {
+        } else if !character.is_ascii() && space_replacement(code) {
             spaces += 1;
         }
     }
@@ -187,26 +215,24 @@ pub fn clean_cow(value: &str) -> (Cow<'_, str>, Vec<Finding>) {
     if value.is_ascii() {
         return (Cow::Borrowed(value), Vec::new());
     }
-    let chars: Vec<char> = value.chars().collect();
-    let paired = paired_control_indices(&chars);
-    let findings = findings_for(&chars, &paired);
+    let paired = paired_control_indices(value);
+    let findings = findings_for(value, &paired);
     if findings.is_empty() {
         return (Cow::Borrowed(value), findings);
     }
-    let output = chars
-        .iter()
-        .enumerate()
-        .filter_map(|(index, character)| {
-            let code = *character as u32;
-            if is_invisible(code) && !preserve_invisible(&chars, index, &paired) {
-                None
-            } else if space_replacement(code) {
-                Some(' ')
-            } else {
-                Some(*character)
+    let mut output = String::with_capacity(value.len());
+    let mut copied_until = 0;
+    for (offset, character, remove) in classified_characters(value, &paired) {
+        let replace_space = !character.is_ascii() && space_replacement(character as u32);
+        if remove || replace_space {
+            output.push_str(&value[copied_until..offset]);
+            if replace_space {
+                output.push(' ');
             }
-        })
-        .collect();
+            copied_until = offset + character.len_utf8();
+        }
+    }
+    output.push_str(&value[copied_until..]);
     (Cow::Owned(output), findings)
 }
 
@@ -311,5 +337,49 @@ mod tests {
         }
         assert_eq!(clean("a\u{e0067}b").0, "ab");
         assert_eq!(clean("a\u{202e}b").0, "ab");
+    }
+
+    #[test]
+    fn preserves_original_neighbors_when_removing_adjacent_controls() {
+        assert_eq!(clean("❤\u{200b}\u{fe0f}").0, "❤");
+        assert_eq!(clean("一\u{200b}\u{e0100}").0, "一");
+        assert_eq!(clean("\u{180f}\u{1820}").0, "\u{1820}");
+        assert_eq!(clean("\u{1820}\u{180f}").0, "\u{1820}");
+        assert_eq!(clean("❤\u{fe0f}").0, "❤\u{fe0f}");
+        assert_eq!(clean("\u{fe0f}❤").0, "❤");
+    }
+
+    #[test]
+    fn pairs_nested_embeddings_without_preserving_overrides_or_orphans() {
+        let source = "\u{202a}a\u{202e}b\u{202c}c\u{202c}\u{202c}";
+        let (output, findings) = clean(source);
+        assert_eq!(output, "\u{202a}abc\u{202c}");
+        assert_eq!(findings[0].count, 3);
+        assert_eq!(clean("\u{202a}a\u{202b}b\u{202c}").0, "a\u{202b}b\u{202c}");
+    }
+
+    #[test]
+    fn rejects_incomplete_flag_tags_and_keeps_later_complete_flags() {
+        let flag = "\u{1f3f4}";
+        let tag = "\u{e0067}";
+        let end = "\u{e007f}";
+        for source in [
+            format!("{flag}{end}"),
+            format!("{flag}{tag}"),
+            format!("{flag}{tag}a{end}"),
+        ] {
+            let expected = if source.contains('a') {
+                format!("{flag}a")
+            } else {
+                flag.to_owned()
+            };
+            assert_eq!(clean(&source).0, expected);
+        }
+        let source = format!("{flag}{tag}{flag}{tag}{end}");
+        assert_eq!(clean(&source).0, format!("{flag}{flag}{tag}{end}"));
+        assert!(matches!(
+            clean_cow(&format!("{flag}{tag}{end}")).0,
+            Cow::Borrowed(_)
+        ));
     }
 }
