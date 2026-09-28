@@ -35,6 +35,11 @@ application. Detailed run evidence is recorded in `VALIDATION.md`.
 
 The VML note-shape fix verified with WPS 2019 is included in v0.11.1.
 
+Six isolated native benchmark processes also passed on Windows 11; their small
+text batches observed up to 14.63 MiB peak working set. The sampling method and
+scope are recorded in `VALIDATION.md`. This does not establish a memory upper
+bound or cover the desktop WebView, large documents or slow storage.
+
 ## Product boundaries and remaining qualification
 
 Inspection exposes categories and counts, not raw identity, location or comment

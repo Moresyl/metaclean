@@ -189,6 +189,30 @@ The fix described below shipped in v0.11.1 at
   published v0.11.0 binary. These are semantic sample checks, not visual layout
   certification or proof of compatibility with every WPS version or document.
 
+## Native batch memory observations — 2026-09-29
+
+The v0.11.1 native release test executable was built before measurement, then
+each existing benchmark was invoked in three separate processes with `--exact
+--ignored --nocapture --test-threads=1`. The monitor read Windows
+`Process.PeakWorkingSet64` and `PrivateMemorySize64` while each child was alive,
+requesting 5 ms waits between samples. Each process produced 23–53 observations.
+All six runs passed their success/failure-count and output-allocation assertions.
+
+| Fixture batch | Clean throughput across three runs | Highest observed peak working set | Highest sampled private bytes |
+| --- | --- | --- | --- |
+| 128 valid files, 25,014,272 payload bytes | 211.27–218.45 files/s | 14.63 MiB | 9.93 MiB |
+| 96 valid + 16 unsupported + 16 missing, 19,005,440 payload bytes | 273.77–279.47 results/s | 14.20 MiB | 9.71 MiB |
+
+The host was Windows 11 x64 build 26200 with an Intel Core i7-12700. Working-set
+figures are maxima of the OS lifetime-peak counter observed before process exit;
+private-byte figures are sampled maxima. Requested polling intervals are not
+guaranteed scheduling intervals, and the final unobserved interval may contain
+a higher peak. These are observations, **not upper bounds**. The child includes
+fixture setup, native scanning/cleanup and test teardown, but excludes Cargo,
+the monitor and the desktop WebView. Source fixtures are freshly created local
+temporary text files; this is not a cold-cache, slow-device, large-document or
+full-application memory qualification. Those broader measurements remain open.
+
 ## Remaining external release gates
 
 1. Test representative documents in genuine Microsoft Word and newer WPS builds, including layout, complex objects and supported OpenDocument interoperability. The limited WPS 2019 OOXML semantic round trip above and prior LibreOffice 26.2.5 samples do not close that broader qualification.
