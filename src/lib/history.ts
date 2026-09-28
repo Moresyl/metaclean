@@ -1,5 +1,6 @@
 import type { CleanResult, Finding, HistoryEntry } from "../types";
 import { pathIdentity } from "./files";
+import { isContentIntegrity } from "./results";
 import { readStorage, removeStorage, writeStorage } from "./storage";
 import { MAX_DIAGNOSTIC_BYTES, MAX_LABEL_BYTES, MAX_PATH_BYTES, isBoundedText } from "./bounds";
 
@@ -44,6 +45,7 @@ function isCleanResult(value: unknown): value is CleanResult {
     && isOptionalError(result.error)
     && isOptionalSize(result.sourceSize)
     && isOptionalSize(result.outputSize)
+    && (result.integrity === undefined || (result.success && isContentIntegrity(result.integrity)))
     && Array.isArray(result.removed)
     && result.removed.every(isFinding);
 }

@@ -34,6 +34,7 @@ export interface CleanResult {
   backupPath?: string;
   sourceSize?: number;
   outputSize?: number;
+  integrity?: ContentIntegrity;
   removed: Finding[];
   success: boolean;
   error?: string;
@@ -52,6 +53,11 @@ export interface ContextMenuStatus {
   available: boolean;
   enabled: boolean;
   detail: string;
+}
+
+export interface ContentIntegrity {
+  sourceSha256: string;
+  outputSha256: string;
 }
 
 export interface IntakeIssue {

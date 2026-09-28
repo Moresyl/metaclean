@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -72,6 +73,22 @@ describe("MetaClean desktop application", () => {
         catch { return false; }
       });
       assert.equal(await readFile(source, "utf8"), original);
+      const expectedIntegrity = {
+        sourceSha256: createHash("sha256").update(original).digest("hex"),
+        outputSha256: createHash("sha256").update(await readFile(join(directory, "sample.cleaned.txt"))).digest("hex"),
+      };
+      await browser.waitUntil(async () => browser.tauri.execute((_, path) => {
+        const history = JSON.parse(localStorage.getItem("metaclean.history") ?? "[]");
+        return history.some((entry) => entry.results.some((result) => result.sourcePath === path && result.integrity));
+      }, source));
+      const integrity = await browser.tauri.execute((_, path) => {
+        const history = JSON.parse(localStorage.getItem("metaclean.history") ?? "[]");
+        return history.flatMap((entry) => entry.results).find((result) => result.sourcePath === path).integrity;
+      }, source);
+      assert.deepEqual(integrity, expectedIntegrity);
+      await $('button[aria-label="Details"]').click();
+      await $(".file-detail summary").click();
+      assert.ok((await $(".file-detail details").getText()).includes(expectedIntegrity.outputSha256));
       // Keep subsequent shell tests independent of this synthetic queue.
       await browser.refresh();
       await $(".app-shell").waitForDisplayed();

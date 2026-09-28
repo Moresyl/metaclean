@@ -4,6 +4,20 @@ import { normalizeCleanResults, normalizeScanReports } from "./results";
 const finding = { category: "unicode", label: "Invisible Unicode", count: 1, severity: "privacy" as const };
 
 describe("native result boundaries", () => {
+  it("preserves valid byte fingerprints while stripping unrelated fields", () => {
+    const integrity = { sourceSha256: "a".repeat(64), outputSha256: "b".repeat(64) };
+    const result = { sourcePath: "note.txt", success: true, removed: [], integrity: { ...integrity, secret: "discard" } };
+    expect(normalizeCleanResults([result])?.[0].integrity).toEqual(integrity);
+    expect(normalizeCleanResults([{ ...result, success: false }])).toBeUndefined();
+  });
+
+  it.each([null, {}, "bad", { sourceSha256: "a".repeat(63), outputSha256: "b".repeat(64) },
+    { sourceSha256: "g".repeat(64), outputSha256: "b".repeat(64) },
+    { sourceSha256: "a".repeat(64), outputSha256: "b".repeat(65) },
+  ])("rejects malformed byte fingerprints: %s", (integrity) => {
+    expect(normalizeCleanResults([{ sourcePath: "note.txt", success: true, removed: [], integrity }])).toBeUndefined();
+  });
+
   it("accepts complete scan and cleanup responses", () => {
     const scan = { path: "C:\\work\\note.txt", name: "note.txt", format: "Text", size: 4, supported: true, findings: [finding], error: null };
     const clean = { sourcePath: scan.path, outputPath: "C:\\work\\note.cleaned.txt", backupPath: null, sourceSize: 4, outputSize: 3, removed: [finding], success: true, error: null };

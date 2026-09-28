@@ -265,7 +265,16 @@ pub struct CleanResult {
     pub backup_path: Option<String>,
     pub source_size: Option<u64>,
     pub output_size: Option<u64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub integrity: Option<ContentIntegrity>,
     pub removed: Vec<Finding>,
     pub success: bool,
     pub error: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ContentIntegrity {
+    pub source_sha256: String,
+    pub output_sha256: String,
 }

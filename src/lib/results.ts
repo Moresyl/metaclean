@@ -1,4 +1,4 @@
-import type { CleanResult, Finding, ScanReport } from "../types";
+import type { CleanResult, ContentIntegrity, Finding, ScanReport } from "../types";
 import {
   MAX_BATCH_FILES,
   MAX_DIAGNOSTIC_BYTES,
@@ -10,6 +10,13 @@ import {
 
 const MAX_FINDINGS = 10_000;
 const MAX_TOTAL_FINDINGS = 100_000;
+
+export function isContentIntegrity(value: unknown): value is ContentIntegrity {
+  if (!value || typeof value !== "object") return false;
+  const candidate = value as Partial<ContentIntegrity>;
+  return typeof candidate.sourceSha256 === "string" && /^[a-f0-9]{64}$/u.test(candidate.sourceSha256)
+    && typeof candidate.outputSha256 === "string" && /^[a-f0-9]{64}$/u.test(candidate.outputSha256);
+}
 
 function isSafeSize(value: unknown): value is number {
   return typeof value === "number" && Number.isSafeInteger(value) && value >= 0;
@@ -85,6 +92,7 @@ function isCleanResult(value: unknown): value is CleanResult {
     && isOptionalPath(candidate.backupPath)
     && isOptionalSize(candidate.sourceSize)
     && isOptionalSize(candidate.outputSize)
+    && (candidate.integrity === undefined || (candidate.success === true && isContentIntegrity(candidate.integrity)))
     && isFindingList(candidate.removed)
     && typeof candidate.success === "boolean"
     && isOptionalDiagnostic(candidate.error);
@@ -97,6 +105,10 @@ function normalizedCleanResult(value: CleanResult): CleanResult {
     backupPath: optionalString(value.backupPath),
     sourceSize: typeof value.sourceSize === "number" ? value.sourceSize : undefined,
     outputSize: typeof value.outputSize === "number" ? value.outputSize : undefined,
+    ...(value.integrity ? { integrity: {
+      sourceSha256: value.integrity.sourceSha256,
+      outputSha256: value.integrity.outputSha256,
+    } } : {}),
     removed: value.removed.map((finding) => ({
       category: finding.category,
       label: finding.label,

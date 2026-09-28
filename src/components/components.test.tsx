@@ -357,12 +357,20 @@ describe("desktop components", () => {
       { id: "1", name: "photo.jpg", path: "C:\\private\\photo.jpg", kind: "image", status: "scanned", report: { path: "C:\\private\\photo.jpg", name: "photo.jpg", format: "JPEG", size: 12, supported: true, findings: [{ category: "image_metadata", label: "EXIF", count: 2, severity: "privacy" }] } },
     ];
     const onNotify = vi.fn();
+    const integrity = { sourceSha256: "a".repeat(64), outputSha256: "b".repeat(64) };
+    entries[0].result = { sourcePath: entries[0].path!, outputPath: "photo.cleaned.jpg", success: true, removed: [], integrity };
+    entries[0].status = "clean";
     wrap(<FileQueue entries={entries} preserveColorProfile removeExtendedAttributes={false} onRemove={vi.fn()} onClear={vi.fn()} onReveal={vi.fn()} onNotify={onNotify} />);
+    fireEvent.click(screen.getByRole("button", { name: "详细信息" }));
+    expect(screen.getByText("SHA-256")).toBeInTheDocument();
+    expect(screen.getByText(integrity.sourceSha256)).toBeInTheDocument();
+    expect(screen.getByText(integrity.outputSha256)).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "导出审计报告" }));
     await waitFor(() => expect(invokeMock).toHaveBeenCalledWith("export_audit_report", expect.objectContaining({ path: "C:\\reports\\metaclean-audit.json" })));
     const contents = JSON.parse(invokeMock.mock.calls[0][1].contents as string);
     expect(contents).toMatchObject({ schemaVersion: 1, product: "MetaClean", version: "0.6.1", summary: { files: 1, findings: 2 } });
     expect(contents.files[0]).not.toHaveProperty("value");
+    expect(contents.files[0].integrity).toEqual(integrity);
     expect(onNotify).toHaveBeenCalledWith(expect.stringContaining("审计报告已导出"));
   });
 

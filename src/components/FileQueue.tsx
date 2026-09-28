@@ -187,6 +187,7 @@ export default function FileQueue({ entries, preserveColorProfile, removeExtende
           format: entry.report?.format,
           sourceSize: entry.result?.sourceSize ?? entry.report?.size ?? entry.size,
           outputSize: entry.result?.outputSize,
+          ...(entry.result?.integrity ? { integrity: entry.result.integrity } : {}),
           outputPath: entry.result?.outputPath,
           backupPath: entry.result?.backupPath,
           status: entry.status,
@@ -496,6 +497,21 @@ export default function FileQueue({ entries, preserveColorProfile, removeExtende
                       {outputPath ? <Field label={text("输出", "Output")} selectable>{outputPath}</Field> : null}
                       {entry.result?.backupPath ? <Field label={text("备份", "Backup")} selectable>{entry.result.backupPath}</Field> : null}
                     </dl>
+                    {entry.result?.integrity ? (
+                      <details className="rounded-md border border-line px-2.5 py-2 text-xs">
+                        <summary className="cursor-pointer text-muted">SHA-256</summary>
+                        <dl className="mt-2 grid gap-1.5 font-mono text-[11px]" dir="ltr">
+                          <div className="min-w-0">
+                            <dt className="break-all text-muted">{entry.path ?? entry.name}</dt>
+                            <dd className="selectable break-all text-text">{entry.result.integrity.sourceSha256}</dd>
+                          </div>
+                          <div className="min-w-0">
+                            <dt className="break-all text-muted">{text("输出", "Output")} · {outputPath}</dt>
+                            <dd className="selectable break-all text-text">{entry.result.integrity.outputSha256}</dd>
+                          </div>
+                        </dl>
+                      </details>
+                    ) : null}
                     {findings.length ? (
                       <ul className="grid gap-px overflow-hidden rounded-control border border-line">
                         {findings.map((finding) => {

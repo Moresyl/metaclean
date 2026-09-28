@@ -1,3 +1,4 @@
+use sha2::{Digest, Sha256};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::Mutex;
@@ -8,7 +9,7 @@ use std::fs;
 use crate::{
     cleaners::{asf, avi, bmp, heif, image, jxl, media, mkv, office, pdf, tiff, video, web_text},
     error::{bounded_message, display_path, CleanError, Result},
-    models::{CleanResult, Finding, FindingSeverity, OutputMode, ScanReport},
+    models::{CleanResult, ContentIntegrity, Finding, FindingSeverity, OutputMode, ScanReport},
     safe_io::{
         atomic_create_unique_with_metadata, atomic_replace_if_unchanged, backup_path, cleaned_path,
         ensure_source_unchanged, privacy_extended_attribute_count, read_validated_input,
@@ -658,6 +659,7 @@ fn cleaner_failure_result(path: &Path) -> CleanResult {
         backup_path: None,
         source_size: None,
         output_size: None,
+        integrity: None,
         removed: Vec::new(),
         success: false,
         error: Some("内部清理器发生异常，已安全隔离该文件；请检查输出与备份状态".into()),
@@ -703,6 +705,7 @@ pub fn clean_file_with_options(
         backup_path: None,
         source_size: None,
         output_size: None,
+        integrity: None,
         removed: Vec::new(),
         success: false,
         error: Some(error),
@@ -800,6 +803,7 @@ pub fn clean_file_with_options(
             backup_path: backup.as_deref().map(display_path),
             source_size: Some(data.len() as u64),
             output_size: None,
+            integrity: None,
             removed,
             success: false,
             error: Some(bounded_message(error)),
@@ -811,6 +815,12 @@ pub fn clean_file_with_options(
         backup_path: backup.as_deref().map(display_path),
         source_size: Some(data.len() as u64),
         output_size: Some(cleaned.len() as u64),
+        // Bind the report to the validated source and committed candidate bytes,
+        // never to a later read of paths that may already have changed.
+        integrity: Some(ContentIntegrity {
+            source_sha256: format!("{:x}", Sha256::digest(&data)),
+            output_sha256: format!("{:x}", Sha256::digest(&cleaned)),
+        }),
         removed,
         success: true,
         error: None,
@@ -938,6 +948,7 @@ mod tests {
         assert!(!result.success);
         assert!(result.output_path.is_none());
         assert!(result.backup_path.is_none());
+        assert!(result.integrity.is_none());
         let error = result.error.unwrap();
         assert!(error.contains("安全隔离"));
         assert!(!error.contains("secret parser state"));
@@ -1457,6 +1468,15 @@ mod tests {
         assert!(result.success);
         assert_eq!(result.source_size, Some(5));
         assert_eq!(result.output_size, Some(2));
+        let integrity = result.integrity.as_ref().unwrap();
+        assert_eq!(
+            integrity.source_sha256,
+            "8df62aef5f92e4c30c0c938497f55f60078c361a476e7e0448485194ad79f884"
+        );
+        assert_eq!(
+            integrity.output_sha256,
+            "fb8e20fc2e4c3f248c60c39bd652f3c1347298bb977b8b4d5903b85055620603"
+        );
         assert_eq!(
             fs::read_to_string(result.output_path.unwrap()).unwrap(),
             "ab"
@@ -1841,6 +1861,18 @@ mod tests {
         let result =
             clean_file_with_options(&source, &OutputMode::Replace, true, true, true, false);
         assert!(result.success);
+        let integrity = result.integrity.as_ref().unwrap();
+        assert_eq!(
+            integrity.source_sha256,
+            format!(
+                "{:x}",
+                Sha256::digest(fs::read(result.backup_path.as_ref().unwrap()).unwrap())
+            )
+        );
+        assert_eq!(
+            integrity.output_sha256,
+            format!("{:x}", Sha256::digest(fs::read(&source).unwrap()))
+        );
         assert_eq!(fs::read_to_string(&source).unwrap(), "ab");
         assert_eq!(
             fs::read_to_string(result.backup_path.unwrap()).unwrap(),

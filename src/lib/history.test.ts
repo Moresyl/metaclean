@@ -10,6 +10,17 @@ const entry = (id: string): HistoryEntry => ({
 });
 
 describe("history persistence", () => {
+  it("round-trips byte fingerprints and rejects malformed stored fingerprints", () => {
+    const valid = entry("digest");
+    valid.results[0].integrity = { sourceSha256: "a".repeat(64), outputSha256: "b".repeat(64) };
+    persistHistory([valid]);
+    expect(loadHistory()).toEqual([valid]);
+    localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify([{ ...valid,
+      results: [{ ...valid.results[0], integrity: { sourceSha256: "bad" } }],
+    }]));
+    expect(loadHistory()).toEqual([]);
+  });
+
   it("loads only structurally valid history entries", () => {
     localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify([
       entry("valid"),
