@@ -1,7 +1,7 @@
 # MetaClean capability audit
 
-Audited on 2026-09-29 for the published v0.11.3 release at
-`f8b95987d4ffce164e5ca26d3bd4acc73822437a`.
+Audited on 2026-09-29 for the published v0.11.4 release at
+`5748de3e7eeb8a876a934d0bd7b928361bb33c5d`.
 
 This ledger describes implemented behavior, its evidence and its limits.
 Extension counts and passing tests do not establish universal format support,
@@ -23,17 +23,22 @@ application. Detailed run evidence is recorded in `VALIDATION.md`.
 
 ## Release evidence
 
-- [Candidate CI](https://github.com/Moresyl/metaclean/actions/runs/36486908322)
+- [Candidate CI](https://github.com/Moresyl/metaclean/actions/runs/36494120243)
   passed the main quality gates and desktop tests on all three operating systems.
-- [Release pipeline](https://github.com/Moresyl/metaclean/actions/runs/36488240740)
+- [Release pipeline](https://github.com/Moresyl/metaclean/actions/runs/36495605281)
   passed source validation, five platform builds, package checks and finalization.
-- [Independent public-asset verification](https://github.com/Moresyl/metaclean/actions/runs/36490447072)
+- [Independent public-asset verification](https://github.com/Moresyl/metaclean/actions/runs/36497748414)
   checked downloaded bytes and signatures against the tagged public key.
-- [Published v0.11.3](https://github.com/Moresyl/metaclean/releases/tag/v0.11.3)
+- [Published v0.11.4](https://github.com/Moresyl/metaclean/releases/tag/v0.11.4)
   contains 20 assets, including the checksum manifest. The public Pages update
   feed was checked against the release's five platform URLs and signatures.
 
 The VML note-shape fix verified with WPS 2019 is included in v0.11.1.
+
+v0.11.4 updates the yanked indirect `chacha20` release to 0.10.2. Seven remaining
+Rust warnings are classified in `VALIDATION.md`. Its public crash regression and
+the 0.11.3 → 0.11.4 → 0.11.3 NSIS/MSI/DEB/DMG transition checks all passed within
+the recorded hosted-machine and synthetic-state limits.
 
 The v0.11.2 text cleaner preserves contextual Unicode behavior while avoiding a
 complete character array. Three isolated synthetic 64/256 MiB runs observed about
