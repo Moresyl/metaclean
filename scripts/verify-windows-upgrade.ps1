@@ -30,7 +30,19 @@ $process = $null
 $results = @()
 $originalBrowserArguments = $env:WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS
 if ($VerifyStorage) { $env:WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS = '--remote-debugging-port=9222' }
+$debugPolicy = 'HKLM:\Software\Policies\Microsoft\Edge\WebView2\AdditionalBrowserArguments'
+$debugPolicyCreated = $false
 try {
+  if ($VerifyStorage) {
+    # Elevated hosts ignore environment overrides in recent WebView2 runtimes.
+    # This app-specific machine policy is restricted to the disposable runner.
+    if (Get-ItemProperty -LiteralPath $debugPolicy -Name 'MetaClean.exe' -ErrorAction SilentlyContinue) {
+      throw 'Refusing to overwrite an existing WebView debug policy'
+    }
+    New-Item -Path $debugPolicy -Force | Out-Null
+    New-ItemProperty -LiteralPath $debugPolicy -Name 'MetaClean.exe' -Value '--remote-debugging-port=9222' -PropertyType String | Out-Null
+    $debugPolicyCreated = $true
+  }
   foreach ($version in @($PreviousVersion, $CurrentVersion, $PreviousVersion)) {
     $installer = Join-Path $AssetDirectory "$version/MetaClean_${version}_${Architecture}-setup.exe"
     $manifest = Get-Content -LiteralPath (Join-Path $AssetDirectory "$version/SHASUMS256.txt")
@@ -101,6 +113,7 @@ try {
   }
 } finally {
   $env:WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS = $originalBrowserArguments
+  if ($debugPolicyCreated) { Remove-ItemProperty -LiteralPath $debugPolicy -Name 'MetaClean.exe' }
   if ($null -ne $process -and -not $process.HasExited) { Stop-Process -Id $process.Id -Force; $process.WaitForExit() }
   $uninstallers = @(Get-ChildItem -LiteralPath $installRoot -File -Filter '*uninstall*.exe' -ErrorAction SilentlyContinue)
   if ($uninstallers.Count -eq 1) {
