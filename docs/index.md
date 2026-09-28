@@ -22,7 +22,7 @@ description: 面向用户、贡献者和发布维护者的 MetaClean 事实文�
     <strong translate="no">0.10.x</strong>
     <span>当前代码线 · 本地优先 · 失败关闭</span>
     <div class="proof-metrics" aria-label="当前能力摘要">
-      <div><b>113</b><span>格式入口</span></div>
+      <div><b>116</b><span>格式入口</span></div>
       <div><b>32</b><span>界面语言</span></div>
       <div><b>84.28%</b><span>Rust 行覆盖率</span></div>
     </div>

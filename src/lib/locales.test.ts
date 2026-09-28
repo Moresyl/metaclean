@@ -57,9 +57,12 @@ describe("locales", () => {
   });
 
   it("keeps the supported-scope count current in every locale", () => {
-    const scope = SOURCE_STRINGS.find((source) => source.startsWith("113 extensions: metadata in "))!;
+    const scope = SOURCE_STRINGS.find((source) => source.startsWith("116 extensions: metadata in "))!;
     for (const locale of TRANSLATED) {
-      expect(translate(locale, "", scope), locale).not.toMatch(/105|16 UTF/u);
+      const translated = translate(locale, "", scope).replace(/[۰-۹]/gu, (digit) => String("۰۱۲۳۴۵۶۷۸۹".indexOf(digit)));
+      expect(translated, locale).toContain("116");
+      expect(translated, locale).toContain("Ogg Opus/Vorbis");
+      expect(translated, locale).not.toMatch(/105|113|16 UTF/u);
     }
   });
 

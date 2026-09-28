@@ -92,6 +92,9 @@ pub const SUPPORTED_EXTENSIONS: &[&str] = &[
     "mp3",
     "wav",
     "flac",
+    "opus",
+    "ogg",
+    "oga",
     "aif",
     "aiff",
     "aifc",
@@ -1098,6 +1101,7 @@ mod tests {
             ("recording.flac", flac),
             ("recording.opus", ogg::tests::fixture(true)),
             ("recording.ogg", ogg::tests::vorbis_fixture(true)),
+            ("recording.oga", ogg::tests::vorbis_fixture(false)),
             ("recording.aiff", aiff),
             ("movie.mp4", video),
             ("movie.avi", avi),
@@ -1285,7 +1289,7 @@ mod tests {
 
     #[test]
     fn recognizes_every_supported_intake_extension() {
-        assert_eq!(SUPPORTED_EXTENSIONS.len(), 113);
+        assert_eq!(SUPPORTED_EXTENSIONS.len(), 116);
         for extension in SUPPORTED_EXTENSIONS {
             assert!(has_supported_extension(Path::new(&format!(
                 "file.{extension}"

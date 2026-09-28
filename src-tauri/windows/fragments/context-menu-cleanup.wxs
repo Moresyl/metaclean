@@ -117,6 +117,9 @@
         <RemoveRegistryKey Id="RemoveMetaCleanContext110" Root="HKCU" Key="Software\Classes\SystemFileAssociations\.cfg\shell\MetaClean" Action="removeOnUninstall" />
         <RemoveRegistryKey Id="RemoveMetaCleanContext111" Root="HKCU" Key="Software\Classes\SystemFileAssociations\.toml\shell\MetaClean" Action="removeOnUninstall" />
         <RemoveRegistryKey Id="RemoveMetaCleanContext112" Root="HKCU" Key="Software\Classes\SystemFileAssociations\.properties\shell\MetaClean" Action="removeOnUninstall" />
+        <RemoveRegistryKey Id="RemoveMetaCleanContext113" Root="HKCU" Key="Software\Classes\SystemFileAssociations\.opus\shell\MetaClean" Action="removeOnUninstall" />
+        <RemoveRegistryKey Id="RemoveMetaCleanContext114" Root="HKCU" Key="Software\Classes\SystemFileAssociations\.ogg\shell\MetaClean" Action="removeOnUninstall" />
+        <RemoveRegistryKey Id="RemoveMetaCleanContext115" Root="HKCU" Key="Software\Classes\SystemFileAssociations\.oga\shell\MetaClean" Action="removeOnUninstall" />
         <RemoveRegistryKey Id="RemoveMetaCleanInstallState" Root="HKCU" Key="Software\moresl\MetaClean" Action="removeOnUninstall" />
         <RemoveRegistryKey Id="RemoveMetaCleanCleanupState" Root="HKCU" Key="Software\MetaClean" Action="removeOnUninstall" />
       </Component>

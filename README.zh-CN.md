@@ -71,7 +71,7 @@ MetaClean 对支持的格式逐项扫描并清理这些痕迹，全过程只在�
 
 ## 清理范围
 
-113 种扩展名，全部由原生 Rust 代码处理，不依赖 ExifTool。图片和媒体清理不重新编码内容载荷；PDF、Office 与 UTF-8/带 BOM 的 UTF-16 文本按各自结构安全重写并在写入前复检。
+116 种扩展名，全部由原生 Rust 代码处理，不依赖 ExifTool。图片和媒体清理不重新编码内容载荷；PDF、Office 与 UTF-8/带 BOM 的 UTF-16 文本按各自结构安全重写并在写入前复检。
 
 | 格式 | 扩展名 | 清理内容 |
 | --- | --- | --- |
@@ -85,6 +85,7 @@ MetaClean 对支持的格式逐项扫描并清理这些痕迹，全过程只在�
 | 相机 RAW | `.cr2` `.cr3` `.crw` `.nef` `.nrw` `.arw` `.srf` `.sr2` `.orf` `.rw2` `.rwl` `.dng` `.pef` `.srw` `.raf` `.3fr` `.erf` `.mef` `.mos` `.iiq` `.kdc` `.dcr` `.k25` | 同样的原地目录压缩，另外处理 MakerNote 与 GPS 目录。富士的内嵌 JPEG 预览图、佳能 CR3 的条目数据都在原位清理，传感器数据从不重写 |
 | HEIF 与 AVIF | `.heic` `.heif` `.heics` `.heifs` `.hif` `.avif` `.avifs` | 按条目粒度清空 EXIF、XMP、C2PA 条目，完整保留定位图像所需的条目表 |
 | 音频 | `.mp3` `.wav` `.flac` | ID3/APEv2、RIFF INFO/XMP/BWF/iXML/C2PA、FLAC Vorbis 评论、封面、XMP 与前置 ID3/C2PA |
+| Ogg 音频 | `.opus` `.ogg` `.oga` | Opus/Vorbis 编码器和注释标签（含嵌入封面）；保留编码音频、页面位置及通过校验的播放增益数值 |
 | AIFF | `.aif` `.aiff` `.aifc` | 原生名称、作者、版权、注释与评论块，以及 ID3、XMP、C2PA；不重新编码音频采样 |
 | ISO 媒体 | `.mp4` `.mov` `.m4v` `.m4a` `.3g2` `.3gp` `.3gp2` `.3gpp` `.f4a` `.f4b` `.f4p` `.f4v` `.lrv` `.m4b` `.m4p` `.mqv` `.qt` | ISO BMFF/QuickTime 用户数据、XMP、作者与位置原子，不移动媒体字节 |
 | AVI | `.avi` | 元数据块被改名为 RIFF 自带的 `JUNK` 填充标记并清零，无论 `idx1` 索引采用哪种偏移基准都不会错位 |
@@ -94,7 +95,7 @@ MetaClean 对支持的格式逐项扫描并清理这些痕迹，全过程只在�
 | PDF | `.pdf` | 移除 Info 字典、XMP 与内嵌 JPEG 图片中的元数据，再完整重序列化，丢弃残留在增量更新历史里的元数据 |
 | 文本与标记 | `.txt` `.md` `.markdown` `.html` `.htm` `.xhtml` `.svg` `.xml` `.json` `.csv` `.tsv` `.yaml` `.yml` `.log` `.srt` `.vtt` `.css` `.scss` `.less` `.ini` `.conf` `.cfg` `.toml` `.properties` | 不可见 Unicode、Markdown Front Matter、HTML/XHTML/SVG 的作者与生成器信息，以及内嵌 Data URI 图片中的元数据 |
 
-对于依赖绝对位置的 TIFF/RAW、HEIF/AVIF、JPEG XL、AVI、Matroska/WebM 和 ASF/WMV，MetaClean 不移动媒体载荷：元数据会被原地压缩、清零或改写成格式定义的填充元素。JPEG/PNG/WebP/GIF/WAV/FLAC/AIFF/ISO 媒体则通过结构化重建保留内容载荷，PDF、Office 和文本按其文档模型重写；所有路径都会在写入前重新识别并复检候选结果。
+对于依赖绝对位置的 TIFF/RAW、HEIF/AVIF、JPEG XL、AVI、Matroska/WebM 和 ASF/WMV，MetaClean 不移动媒体载荷：元数据会被原地压缩、清零或改写成格式定义的填充元素。Ogg Opus/Vorbis 以等长清理包替换注释，保留页面位置与音频字节。JPEG/PNG/WebP/GIF/WAV/FLAC/AIFF/ISO 媒体则通过结构化重建保留内容载荷，PDF、Office 和文本按其文档模型重写；所有路径都会在写入前重新识别并复检候选结果。
 
 **明确不做的事：** 统计型文本水印、像素域水印、旧版二进制 Office 文件（`.doc` / `.xls` / `.ppt`）以及未知二进制格式。遇到这些，MetaClean 会直接拒绝，而不是冒险改坏你的文件。
 
@@ -138,7 +139,7 @@ MetaClean 使用一条刻意收窄的处理链：导入阶段拒绝符号链接�
 - 五个页面：**文件净化**、**处理记录**、**隐私说明**、**设置**、**关于**
 - 固定 1180 × 720 企业工作台，使用紧凑图标导航与持续可见的“仅本地”状态栏
 - 可导出带版本的本地 JSON 审计报告，记录逐文件发现项与处理结果，但不包含原始元数据值
-- 可选的 Windows 资源管理器右键菜单，覆盖全部 113 种受支持扩展名（Windows 11 上位于**显示更多选项**中）
+- 可选的 Windows 资源管理器右键菜单，覆盖全部 116 种受支持扩展名（Windows 11 上位于**显示更多选项**中）
 - 关闭窗口默认彻底退出；也可在设置中改为驻留系统托盘，再从托盘菜单重新打开或退出
 - 关于页面集中提供版本/运行环境、可复制诊断信息、JSON 导出、问题/建议/正式版本入口，以及源代码与许可证链接
 - 队列行直接提供复制路径，同时保留完整右键菜单；更新弹窗和命令面板会锁定键盘焦点，关闭后回到触发它们的控件

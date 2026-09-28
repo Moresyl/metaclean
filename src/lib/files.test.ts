@@ -10,7 +10,7 @@ describe("classifyFile", () => {
       "cr2", "cr3", "crw", "nef", "nrw", "arw", "srf", "sr2", "orf", "rw2", "rwl",
       "dng", "pef", "srw", "raf", "3fr", "erf", "mef", "mos", "iiq", "kdc", "dcr", "k25",
     ],
-    audio: ["mp3", "wav", "flac", "aif", "aiff", "aifc", "wma", "m4a", "f4a", "f4b", "m4b", "m4p", "mka"],
+    audio: ["mp3", "wav", "flac", "opus", "ogg", "oga", "aif", "aiff", "aifc", "wma", "m4a", "f4a", "f4b", "m4b", "m4p", "mka"],
     video: [
       "mp4", "mov", "m4v", "3g2", "3gp", "3gp2", "3gpp", "f4p", "f4v", "lrv", "mqv", "qt",
       "avi", "asf", "wmv", "mkv", "mks", "mk3d", "webm",
@@ -23,12 +23,12 @@ describe("classifyFile", () => {
     extensions.map((extension) => [`sample.${extension.toUpperCase()}`, kind] as const),
   );
 
-  /* The engine's SUPPORTED_EXTENSIONS is the same 113 entries. A row that shows
+  /* The engine's SUPPORTED_EXTENSIONS is the same 116 entries. A row that shows
      a generic glyph for a file the engine happily cleans is the visible half of
      the two lists drifting apart. */
-  it("covers every one of the engine's 113 supported extensions", () => {
-    expect(supportedCases).toHaveLength(113);
-    expect(new Set(supportedCases.map(([name]) => name)).size).toBe(113);
+  it("covers every one of the engine's 116 supported extensions", () => {
+    expect(supportedCases).toHaveLength(116);
+    expect(new Set(supportedCases.map(([name]) => name)).size).toBe(116);
   });
 
   it.each(supportedCases)("classifies %s case-insensitively", (name, expected) => {

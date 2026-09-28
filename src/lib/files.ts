@@ -12,7 +12,7 @@ const IMAGE_EXTENSIONS = new Set([
   "cr2", "cr3", "crw", "nef", "nrw", "arw", "srf", "sr2", "orf", "rw2", "rwl",
   "dng", "pef", "srw", "raf", "3fr", "erf", "mef", "mos", "iiq", "kdc", "dcr", "k25",
 ]);
-const AUDIO_EXTENSIONS = new Set(["mp3", "wav", "flac", "aif", "aiff", "aifc", "wma", "m4a", "f4a", "f4b", "m4b", "m4p", "mka"]);
+const AUDIO_EXTENSIONS = new Set(["mp3", "wav", "flac", "opus", "ogg", "oga", "aif", "aiff", "aifc", "wma", "m4a", "f4a", "f4b", "m4b", "m4p", "mka"]);
 const VIDEO_EXTENSIONS = new Set([
   "mp4", "mov", "m4v", "3g2", "3gp", "3gp2", "3gpp", "f4p", "f4v", "lrv", "mqv", "qt",
   "avi", "asf", "wmv", "mkv", "mks", "mk3d", "webm",

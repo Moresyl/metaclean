@@ -120,5 +120,8 @@ SetFont "Microsoft YaHei UI" 8
   DeleteRegKey HKCU "Software\Classes\SystemFileAssociations\.otp\shell\MetaClean"
   DeleteRegKey HKCU "Software\Classes\SystemFileAssociations\.otg\shell\MetaClean"
   DeleteRegKey HKCU "Software\Classes\SystemFileAssociations\.jxl\shell\MetaClean"
+  DeleteRegKey HKCU "Software\Classes\SystemFileAssociations\.opus\shell\MetaClean"
+  DeleteRegKey HKCU "Software\Classes\SystemFileAssociations\.ogg\shell\MetaClean"
+  DeleteRegKey HKCU "Software\Classes\SystemFileAssociations\.oga\shell\MetaClean"
   DeleteRegKey HKCU "Software\moresl\MetaClean"
 !macroend

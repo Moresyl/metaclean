@@ -101,6 +101,48 @@ describe("MetaClean desktop application", () => {
       await $(".app-shell").waitForDisplayed();
     }
   });
+  it("imports and safely cleans all three Ogg audio extensions through the UI", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "metaclean-ogg-ui-test-"));
+    // Original synthetic mono Opus silence with one ARTIST comment and valid Ogg CRCs.
+    const original = Buffer.from("T2dnUwACAAAAAAAAAAABAAAAAAAAAIRs2SQBE09wdXNIZWFkAQEAAIC7AAAAAABPZ2dTAAAAAAAAAAAAAAEAAAABAAAA+62rbgEgT3B1c1RhZ3MAAAAAAQAAAAwAAABBUlRJU1Q9QWxpY2VPZ2dTAATAAwAAAAAAAAEAAAACAAAAKZOw3QED+P/+", "base64");
+    const extensions = ["opus", "ogg", "oga"];
+    const sources = extensions.map((extension) => join(directory, `sample.${extension}`));
+    const outputs = extensions.map((extension) => join(directory, `sample.cleaned.${extension}`));
+    try {
+      await Promise.all(sources.map((source) => writeFile(source, original)));
+      await browser.tauri.execute(() => localStorage.setItem("metaclean.outputMode", "copy"));
+      await browser.refresh();
+      await $(".drop-zone").waitForDisplayed();
+      await browser.tauri.execute(({ core }, paths) => core.invoke("plugin:event|emit_to", {
+        target: { kind: "Webview", label: "main" }, event: "tauri://drag-drop", payload: { paths, position: { x: 400, y: 300 } },
+      }), sources);
+      await browser.waitUntil(async () => (await $$(".file-item")).length === 3);
+      await $(".scan-button").click();
+      await browser.waitUntil(async () => (await $(".scan-button").getText()).includes("Confirm"));
+      await $(".scan-button").click();
+      await browser.waitUntil(async () => {
+        try { await Promise.all(outputs.map((output) => readFile(output))); return true; }
+        catch { return false; }
+      });
+      for (let index = 0; index < sources.length; index++) {
+        assert.deepEqual(await readFile(sources[index]), original);
+        const cleaned = await readFile(outputs[index]);
+        assert.equal(cleaned.length, original.length);
+        assert.ok(!cleaned.includes(Buffer.from("ARTIST=Alice")));
+        assert.deepEqual(cleaned.subarray(-31), original.subarray(-31));
+      }
+      const reports = await browser.tauri.execute(({ core }, paths) => core.invoke("scan_files", { paths }), outputs);
+      assert.equal(reports.length, 3);
+      for (const report of reports) {
+        assert.equal(report.supported, true);
+        assert.deepEqual(report.findings, []);
+      }
+    } finally {
+      await browser.refresh();
+      await $(".app-shell").waitForDisplayed();
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
   before(async () => {
     const [mainWindow] = await browser.getWindowHandles();
     assert.ok(mainWindow, "the desktop application must expose its main window");

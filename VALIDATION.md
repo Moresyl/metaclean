@@ -9,10 +9,10 @@ This file records evidence, not intent. A row is complete only when the named ar
 | Gate | Status | Evidence |
 |---|---|---|
 | M0: PDF structural rewrite | Complete | `drops_metadata_bytes_from_incremental_history` proves old Info metadata bytes are absent after full `lopdf` serialization. |
-| M0: image/media format decision | Complete | The shared 113-extension allowlist covers native still-image, RAW, audio, video, document, PDF and text/markup cleaners. TIFF/RAW, HEIF/AVIF/CR3, AVI, Matroska/WebM and ASF families use offset-preserving strategies; WAV C2PA and ID3-prefixed FLAC are covered by malformed-input and residual-trace tests. |
+| M0: image/media format decision | Complete | The shared 116-extension allowlist covers native still-image, RAW, audio, video, document, PDF and text/markup cleaners. TIFF/RAW, HEIF/AVIF/CR3, AVI, Matroska/WebM and ASF families use offset-preserving strategies; WAV C2PA and ID3-prefixed FLAC are covered by malformed-input and residual-trace tests. |
 | M0: Office package integrity | Partial | Real DOCX/XLSX/PPTX/ODT samples were cleaned and successfully opened/exported by LibreOffice 26.2.5. Current Word and WPS executables are unavailable on this machine, so those two applications remain unverified. |
 | M1: desktop MVP | Complete | The fixed 1180 × 720 workspace provides a persistent 264px sidebar that collapses to a 64px accessible icon rail, five compact navigation destinations, command palette, native menus, local status bar, per-file reports and value-free JSON audit export. The 44px caption, 26px status bar, neutral light/dark themes, safe-copy/replace, backups, atomic writes, fidelity controls, signed update handling and 32 complete locales are implemented and tested. |
-| M2: Office/PDF/shell integration | Complete | DOCX/XLSX/PPTX/ODT/EPUB and PDF cleaners, deep PDF JPEG cleanup, embedded markup data-URI cleanup, 113-extension Windows Explorer integration and launch-path handling are covered by unit and manifest-consistency tests. |
+| M2: Office/PDF/shell integration | Complete | DOCX/XLSX/PPTX/ODT/EPUB and PDF cleaners, deep PDF JPEG cleanup, embedded markup data-URI cleanup, 116-extension Windows Explorer integration and launch-path handling are covered by unit and manifest-consistency tests. |
 | M3: Windows release | Complete for v0.3.0 | The successful v0.3.0 release matrix published launch-smoked x64 NSIS/MSI, x86 NSIS and architecture-labelled x64/x86 portable ZIPs. Local installation/extraction proof also kept each package active for six seconds with the `MetaClean` title before clean uninstall/removal. |
 | M3: macOS/Linux release | Complete for unsigned v0.3.0 artifacts | The successful v0.3.0 matrix copied and launch-smoked both Intel and Apple Silicon DMGs, then installed and launch-smoked the Linux DEB before publishing DEB/RPM/AppImage assets. Apple signing/notarization secrets remain unavailable, so Gatekeeper qualification is an external gate rather than a completed claim. |
 
@@ -43,8 +43,14 @@ This file records evidence, not intent. A row is complete only when the named ar
 
 ## Ogg audio development validation
 
-- The Opus/Vorbis kernel is implemented; product extension intake integration is
-  still pending. This work is not part of the published v0.10.0 release.
+- The Opus/Vorbis kernel and product extension intake integration are implemented.
+  This work is not part of the published v0.10.0 release.
+- Frontend: 418 tests pass, line coverage 93.40% and branch coverage 85.09%.
+  Production/documentation builds, format manifests, CSP, supply-chain and all
+  40 release checks pass. Two Windows desktop runs each pass 15 scenarios,
+  including importing all three Ogg extensions, cleaning copies and native
+  reinspection. A real HKCU Explorer command round trip validates all 116
+  extensions and removes the test keys cleanly.
 - Native library: 219 tests pass, four explicitly gated tests are ignored by
   default. Eleven focused Ogg tests cover comment framing, channel mappings,
   page checksums/sequencing, cross-page comments, mixed codec chains, unchanged
@@ -72,7 +78,7 @@ This file records evidence, not intent. A row is complete only when the named ar
 - Batch path copying includes every available source, generated output and backup path in display order, with platform-aware de-duplication.
 - Documentation visual QA: local VitePress rendering at the 1024px browser viewport keeps the hero proof card beside the title despite the persistent sidebar; the mobile breakpoint alone collapses it to one column, and `pnpm test:docs` guards the breakpoint contract.
 - Documentation 404: VitePress `themeConfig.notFound` provides a localized recovery page with safe local-processing copy and a return-to-docs action; the generated preview contains the configured 404 metadata and `pnpm test:docs` verifies the recovery contract.
-- Localized catalogs carry the current 113-extension/24-text-format scope directly; the locale tests verify every published language without runtime number rewriting.
+- Localized catalogs carry the current 116-extension/24-text-format scope directly; the locale tests verify every published language without runtime number rewriting.
 - Frontend history persistence rejects local payloads over 2,000,000 characters and any entry over the native 10,000-result batch bound before parsing or rendering; path, error and label fields also have explicit length limits, and retained history keeps only complete batches within a 10,000-result render budget overall.
 - History persistence also bounds the serialized snapshot before writing: an oversized newest batch stays available for the current session without replacing an older recoverable snapshot.
 - History cards and result rows use native `content-visibility` containment so the bounded audit surface remains responsive while preserving the full accessible DOM.
@@ -89,7 +95,7 @@ This file records evidence, not intent. A row is complete only when the named ar
 - Cleanup candidates are re-detected and re-inspected before output-path allocation, backup creation or writes. JPEG/PNG/WebP tests cover both ICC preservation and explicit removal, while an engine regression rejects residual traces and format changes.
 - On macOS, every extended attribute is copied by default. Opt-in removal filters only six known provenance/download keys; CI runs a real filesystem round trip proving a private key is removed while a custom key survives.
 - CI fails below 80% for all frontend coverage dimensions and below 80% Rust core line coverage.
-- `pnpm test:formats` proves the 113-extension Rust intake list, frontend classification, NSIS cleanup, MSI cleanup, both READMEs and support policy are complete, duplicate-free and identical.
+- `pnpm test:formats` proves the 116-extension Rust intake list, frontend classification, NSIS cleanup, MSI cleanup, both READMEs and support policy are complete, duplicate-free and identical.
 - `pnpm test:security` proves production has a non-null local-only WebView CSP, rejects `unsafe-eval`, wildcard sources and unbounded HTTP(S) connections, and limits opener access to the official release URL plus reveal-in-folder.
 - Rust guarded-write tests cover byte, modification-time and permission races; the guarded-write path also compares readonly permissions and extended attributes before a copy/backup is allocated or a replacement is committed.
 - `pnpm test:release` runs 37 checks proving version metadata, the 1180 × 720 caption/status layout, the camelCase updater version argument, bounded release notes and tag-specific bilingual notes stay synchronized; package/updater collection, signatures, AppImage zsync, GUI subsystem, `latest.json` and SHA-256 manifests are validated before publication.
@@ -104,7 +110,7 @@ This file records evidence, not intent. A row is complete only when the named ar
 - Windows preflight rerun of `scripts/preflight-windows.ps1` on 2026-09-23 against the `0.8.0` source candidate rebuilt the NSIS/MSI pair and x64 portable ZIP, repeated all three six-second launch/cleanup checks, and installed/validated/removed all 113 per-user Explorer context-menu commands with no residual MetaClean keys; the gate completed without publishing or pushing.
 - Branded Windows installer candidate verification on 2026-09-23 rebuilt NSIS and MSI with deterministic 24-bit artwork. The generated NSIS source binds its welcome/finish rail, installer header, uninstall header and both icons; the generated WiX source binds its banner and dialog bitmap. NSIS install/launch/uninstall, x64 portable launch/cleanup and all 113 Explorer command round trips passed. The MSI administrative image extracted a 26,769,408-byte executable successfully; its destructive install/uninstall smoke intentionally stopped because a separate MetaClean 0.8.0 MSI is already registered at `C:\Program Files\MetaClean`, and the gate refuses to replace an existing user installation.
 - The localized NSIS candidate was rebuilt and opened on Windows: Simplified Chinese welcome text remained readable with the branded rail, and the uninstall confirmation displayed the branded header without a language-selection prompt. A temporary silent install recorded language `2052`; its GUI and silent uninstall removed the temporary executable and uninstall registration. The repeatable six-second NSIS launch/uninstall smoke and all 40 release-contract tests passed.
-- Current debug binary shell integration smoke: `--install-context-menu` created all 113 HKCU Explorer command keys from the native allowlist; `--remove-context-menu` removed all 113 and left zero `MetaClean` keys. This was a local HKCU round trip only and did not alter machine-wide classes.
+- Current debug binary shell integration smoke: `--install-context-menu` created all 116 HKCU Explorer command keys from the native allowlist; `--remove-context-menu` removed all 116 and left zero `MetaClean` keys. This was a local HKCU round trip only and did not alter machine-wide classes.
 - `scripts/preflight-windows.ps1` is the repeatable non-publishing Windows candidate gate: it builds the debug NSIS/MSI pair, packages x64 portable output, then invokes NSIS, MSI, portable and per-user Explorer context-menu smoke checks. It never pushes, tags or creates a release; MSI and context-menu smoke refuse to replace existing MetaClean state, and MSI preserves its logs when a validation step fails.
 
 ## v0.6.0 release candidate evidence

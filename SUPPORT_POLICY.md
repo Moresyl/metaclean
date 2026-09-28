@@ -39,6 +39,7 @@ file**, so the offsets that were true before the clean are still true after it.
 
 | Family | Extensions | How the offsets are kept honest |
 | --- | --- | --- |
+| Ogg audio | `.opus`, `.ogg`, `.oga` | Opus/Vorbis vendor strings and comments are removed within equal-sized packets, with valid numeric R128 or ReplayGain tags retained for playback. Page lacing, granule positions, codec setup and audio bytes remain unchanged; page checksums are recalculated. Chained streams are supported. Unknown codecs, malformed headers, oversized comments and unrecognized Opus binary extensions fail closed. The cleaner validates container structure without decoding the audio. |
 | TIFF | `.tif`, `.tiff` | Directory entries are deleted by compacting the IFD in place and rewriting the next-directory pointer behind them, so a directory only ever shrinks and the file never shifts. Sub-IFD, Exif, GPS and Interop pointer graphs are walked to a bounded depth; a pointer removed at one level has the directory it named cleaned too, rather than being orphaned. |
 | Camera RAW | `.cr2`, `.crw`, `.nef`, `.nrw`, `.arw`, `.srf`, `.sr2`, `.orf`, `.rw2`, `.rwl`, `.dng`, `.pef`, `.srw`, `.3fr`, `.erf`, `.mef`, `.mos`, `.iiq`, `.kdc`, `.dcr`, `.k25` | A raw negative from every major vendor is a TIFF wearing a private magic word, so the same in-place walker covers them. Because nothing moves, strip, tile, MakerNote-relative and embedded-preview offsets stay valid — which is precisely the reason it is safe to strip a negative rather than refuse it. |
 | Fujifilm RAF | `.raf` | A RAF is not a TIFF but a fixed header naming three byte ranges, one of which is a JPEG preview carrying a complete EXIF block — GPS, serial number, timestamps, the lot. Refusing the format would leave the worst of the leak in place. The preview is cleaned as an ordinary JPEG, written back at its original offset and zero-padded to its original extent, so only the length field changes and the sensor data is never read or rewritten. |
@@ -94,10 +95,10 @@ These fail closed. MetaClean does not accept them, and does not pretend to.
 
 ## Current supported scope
 
-The authoritative allowlist contains 113 extensions and is shared by the Rust
+The authoritative allowlist contains 116 extensions and is shared by the Rust
 engine, frontend classification and Windows shell integration. It covers 18
 still-image extensions across JPEG, PNG, WebP, JPEG XL, GIF, BMP, TIFF, HEIF and AVIF;
-23 camera raw formats; 13 audio extensions across MP3, WAV, FLAC, AIFF, WMA and the
+23 camera raw formats; 16 audio extensions across MP3, WAV, FLAC, Ogg Opus/Vorbis, AIFF, WMA and the
 MPEG-4 audio brands; 19 video containers across MP4/QuickTime, AVI, ASF/WMV and
 Matroska/WebM; DOCX, XLSX, PPTX, 11 OpenDocument formats and EPUB; PDF; and 24
 UTF-8/UTF-16 text, markup and configuration extensions. CI rejects any mismatch between those

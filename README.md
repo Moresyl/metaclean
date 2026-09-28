@@ -73,7 +73,7 @@ read the [architecture](docs/ARCHITECTURE.md), or follow the [contribution guide
 
 ## What it removes
 
-113 extensions, handled by native Rust code with no ExifTool. Image and media cleaners preserve encoded payloads; PDF, Office and UTF-8/BOM-marked UTF-16 text use format-aware rewrites whose candidates are re-inspected before writing.
+116 extensions, handled by native Rust code with no ExifTool. Image and media cleaners preserve encoded payloads; PDF, Office and UTF-8/BOM-marked UTF-16 text use format-aware rewrites whose candidates are re-inspected before writing.
 
 | Format | Extensions | Cleaned |
 | --- | --- | --- |
@@ -87,6 +87,7 @@ read the [architecture](docs/ARCHITECTURE.md), or follow the [contribution guide
 | Camera RAW | `.cr2` `.cr3` `.crw` `.nef` `.nrw` `.arw` `.srf` `.sr2` `.orf` `.rw2` `.rwl` `.dng` `.pef` `.srw` `.raf` `.3fr` `.erf` `.mef` `.mos` `.iiq` `.kdc` `.dcr` `.k25` | The same in-place directory compaction, plus MakerNote and GPS directories. Fujifilm's embedded JPEG preview and Canon's CR3 item payloads are cleaned where they lie; sensor data is never rewritten |
 | HEIF & AVIF | `.heic` `.heif` `.heics` `.heifs` `.hif` `.avif` `.avifs` | EXIF, XMP and C2PA items zeroed at item granularity, leaving the item table that locates the picture intact |
 | Audio | `.mp3` `.wav` `.flac` | ID3/APEv2, RIFF INFO/XMP/BWF/iXML/C2PA, FLAC Vorbis comments, pictures, XMP and prefixed ID3/C2PA |
+| Ogg audio | `.opus` `.ogg` `.oga` | Opus/Vorbis vendor and comment tags, including embedded artwork; preserves encoded audio, page offsets and validated numeric playback-gain tags |
 | AIFF | `.aif` `.aiff` `.aifc` | Native name, author, copyright, annotation and comment chunks plus ID3, XMP and C2PA, without re-encoding samples |
 | ISO media | `.mp4` `.mov` `.m4v` `.m4a` `.3g2` `.3gp` `.3gp2` `.3gpp` `.f4a` `.f4b` `.f4p` `.f4v` `.lrv` `.m4b` `.m4p` `.mqv` `.qt` | ISO BMFF/QuickTime user data, XMP, author and location atoms without moving media bytes |
 | AVI | `.avi` | Metadata chunks renamed to RIFF's own `JUNK` padding tag and blanked, so the `idx1` index keeps its meaning under either offset convention |
@@ -99,7 +100,8 @@ read the [architecture](docs/ARCHITECTURE.md), or follow the [contribution guide
 For TIFF/RAW, HEIF/AVIF, JPEG XL, AVI, Matroska/WebM and ASF/WMV containers that
 depend on absolute positions, MetaClean does not move the media payload:
 metadata is compacted in place, zeroed or replaced by a format-defined padding
-element. JPEG/PNG/WebP/GIF/WAV/FLAC/AIFF/ISO media use structural reconstruction
+element. Ogg Opus/Vorbis comments are replaced with equal-sized sanitized packets,
+preserving page offsets and audio bytes. JPEG/PNG/WebP/GIF/WAV/FLAC/AIFF/ISO media use structural reconstruction
 that preserves their content payload, while PDF, Office and text follow their
 document models. Every candidate is re-detected and re-inspected before writing.
 
@@ -145,7 +147,7 @@ for the evidence-backed comparison with other local cleaners.
 
 - Drag in files or folders, or recursively import a folder from the native picker
 - Five panes: **Clean**, **History**, **Privacy**, **Settings**, and **About**
-- Optional Windows File Explorer command across all 113 supported extensions — on Windows 11 it lives under **Show more options**
+- Optional Windows File Explorer command across all 116 supported extensions — on Windows 11 it lives under **Show more options**
 - Closing the window exits MetaClean by default; Settings can instead keep it in the system tray, where the tray menu can reopen or exit it
 - About provides version/runtime facts, copyable diagnostics, JSON export, issue/feature/release links and the source/license entry points
 - Queue rows expose direct path copying as well as the full context menu, and update/command dialogs keep keyboard focus contained until dismissed

@@ -29,7 +29,7 @@ cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets --all-features -
 pwsh -NoLogo -NoProfile -File .\scripts\preflight-windows.ps1
 ```
 
-它会依次验证 Debug NSIS、MSI、x64 便携包和 113 个扩展名的当前用户右键菜单安装/清理。MSI 与右键菜单脚本都会拒绝覆盖已有 MetaClean 状态。
+它会依次验证 Debug NSIS、MSI、x64 便携包和 116 个扩展名的当前用户右键菜单安装/清理。MSI 与右键菜单脚本都会拒绝覆盖已有 MetaClean 状态。
 
 ## 自动发布门禁
 
