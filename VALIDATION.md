@@ -281,5 +281,22 @@ recovery, MSI transitions and other platforms remain unverified.
 
 ## Remaining external release gates
 
+## Published Linux DEB upgrade — 2026-09-29
+
+[Run 36473955463](https://github.com/Moresyl/metaclean/actions/runs/36473955463)
+passed on Ubuntu 22.04 amd64: public DEB checksum and package identity checks,
+0.11.0 installation, in-place upgrade to 0.11.1, explicit package-manager
+downgrade to 0.11.0 and removal. Each version matched `dpkg-query` and stayed
+alive for the eight-second Xvfb smoke window. Final removal left neither the
+executable nor an installed package registration. The `linux-upgrade-evidence`
+artifact records the three observed versions and timeout statuses.
+
+The first run stopped before installation because the new test used an incorrect
+package name; it was corrected to the published `meta-clean` identity. This
+verification covers DEB transitions and process liveness, not WebView data
+preservation, AppImage self-update, RPM transitions or interrupted installation.
+
+## Remaining external release gates (continued)
+
 1. Test representative documents in genuine Microsoft Word and newer WPS builds, including layout, complex objects and supported OpenDocument interoperability. The limited WPS 2019 OOXML semantic round trip above and prior LibreOffice 26.2.5 samples do not close that broader qualification.
 2. Provide Apple Developer signing/notarization credentials and verify both DMGs with Gatekeeper.
