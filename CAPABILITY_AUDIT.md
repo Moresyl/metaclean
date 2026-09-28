@@ -40,6 +40,12 @@ text batches observed up to 14.63 MiB peak working set. The sampling method and
 scope are recorded in `VALIDATION.md`. This does not establish a memory upper
 bound or cover the desktop WebView, large documents or slow storage.
 
+Public Windows x64 NSIS installers passed an isolated 0.11.0 → 0.11.1 → 0.11.0
+install/upgrade/manual-downgrade sequence, version and launch checks, and final
+uninstall in [run 36470788811](https://github.com/Moresyl/metaclean/actions/runs/36470788811).
+Application-triggered updates, user-data migration and interrupted-update recovery
+are not covered by this installer test.
+
 ## Product boundaries and remaining qualification
 
 Inspection exposes categories and counts, not raw identity, location or comment

@@ -213,6 +213,23 @@ the monitor and the desktop WebView. Source fixtures are freshly created local
 temporary text files; this is not a cold-cache, slow-device, large-document or
 full-application memory qualification. Those broader measurements remain open.
 
+## Published Windows installer upgrade — 2026-09-29
+
+[Verification run 36470788811](https://github.com/Moresyl/metaclean/actions/runs/36470788811)
+passed on a disposable GitHub-hosted Windows runner. The workflow downloaded
+the public x64 NSIS installers and checksum manifests, checked each installer
+hash, then installed 0.11.0, upgraded in place to 0.11.1 and manually downgraded
+in place to 0.11.0. Each step verified the executable version, single matching
+uninstall registration and a live MetaClean window after six seconds. Final
+uninstall removed the executable and registration. The downloadable
+`windows-upgrade-evidence` artifact records all three observed versions.
+
+`scripts/verify-windows-upgrade.ps1` refuses non-hosted environments and existing
+MetaClean installations/processes. The local preexisting 0.9.0 MSI installation
+was not modified. This verifies x64 NSIS installer transitions and launchability;
+it does not yet verify application-triggered signed updates, persisted user-data
+migration, interrupted installation recovery, MSI transitions or other platforms.
+
 ## Remaining external release gates
 
 1. Test representative documents in genuine Microsoft Word and newer WPS builds, including layout, complex objects and supported OpenDocument interoperability. The limited WPS 2019 OOXML semantic round trip above and prior LibreOffice 26.2.5 samples do not close that broader qualification.
