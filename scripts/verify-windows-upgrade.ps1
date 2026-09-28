@@ -34,6 +34,42 @@ try {
     if ($entry.Count -ne 1 -or (Get-FileHash -LiteralPath $installer -Algorithm SHA256).Hash -ne $entry[0].Substring(0,64)) {
       throw "Public installer checksum mismatch for $version"
     }
+    if ($version -eq $CurrentVersion) {
+      $originalHash = (Get-FileHash -LiteralPath $application -Algorithm SHA256).Hash
+      $damagedInstaller = Join-Path $env:RUNNER_TEMP "metaclean-truncated-$PID.exe"
+      $bytes = [IO.File]::ReadAllBytes($installer)
+      [IO.File]::WriteAllBytes($damagedInstaller, $bytes[0..([int]($bytes.Length / 2) - 1)])
+      $damagedProcess = $null
+      $rejected = $false
+      try {
+        try {
+          $damagedProcess = Start-Process -FilePath $damagedInstaller -ArgumentList @('/S', "/D=$installRoot") -PassThru -WindowStyle Hidden
+        } catch [System.ComponentModel.Win32Exception] {
+          # Only an invalid executable is evidence of rejection; other launch errors fail the test.
+          if ($_.Exception.NativeErrorCode -notin @(193, 216)) { throw }
+          $rejected = $true
+        }
+        if ($null -ne $damagedProcess) {
+          if (-not $damagedProcess.WaitForExit(30000)) { throw 'Damaged installer did not terminate within 30 seconds' }
+          $rejected = $damagedProcess.ExitCode -ne 0
+        }
+      } finally {
+        if ($null -ne $damagedProcess -and -not $damagedProcess.HasExited) { Stop-Process -Id $damagedProcess.Id -Force; $damagedProcess.WaitForExit() }
+      }
+      if (-not $rejected) { throw 'Damaged installer was not rejected' }
+      if ((Get-FileHash -LiteralPath $application -Algorithm SHA256).Hash -ne $originalHash) { throw 'Failed installer changed the installed executable' }
+      $registration = @(Get-ItemProperty $registryPaths -ErrorAction SilentlyContinue | Where-Object { $_.DisplayName -eq 'MetaClean' })
+      if ($registration.Count -ne 1 -or $registration[0].DisplayVersion -ne $PreviousVersion) { throw 'Failed installer changed registration' }
+      $process = Start-Process -FilePath $application -PassThru -WindowStyle Hidden
+      Start-Sleep -Seconds 6
+      $process.Refresh()
+      if ($process.HasExited -or $process.MainWindowTitle -ne 'MetaClean') { throw 'Previous installation cannot launch after rejection' }
+      Stop-Process -Id $process.Id -Force
+      $process.WaitForExit()
+      $process = $null
+      $results += [pscustomobject]@{ case = 'truncated-installer'; rejected = $true; previousHashUnchanged = $true; previousLaunchPassed = $true }
+      Write-Output 'Truncated installer rejected; previous executable, registration and launch preserved'
+    }
     $install = Start-Process -FilePath $installer -ArgumentList @("/S", "/D=$installRoot") -PassThru -Wait -WindowStyle Hidden
     if ($install.ExitCode -ne 0) { throw "Installation of $version failed: $($install.ExitCode)" }
     $fileVersion = (Get-Item -LiteralPath $application).VersionInfo.ProductVersion
