@@ -66,7 +66,29 @@ try {
     Stop-Process -Id $process.Id -Force
     $process.WaitForExit()
     $process = $null
-    $results += [pscustomobject]@{ step = $step; version = $version; executableVersion = $fileVersion; productCode = $entries[0].PSChildName; launchPassed = $true }
+    $repairVerified = $false
+    if ($version -eq $CurrentVersion) {
+      $originalHash = (Get-FileHash -LiteralPath $application -Algorithm SHA256).Hash
+      # Deliberately damage only this disposable runner's test installation.
+      [IO.File]::WriteAllBytes($application, [byte[]]@(0, 1, 2, 3))
+      if ((Get-FileHash -LiteralPath $application -Algorithm SHA256).Hash -eq $originalHash) { throw 'Damage fixture was not applied' }
+      $repairLog = Join-Path $evidence 'repair.log'
+      $repair = Start-Process -FilePath 'msiexec.exe' -ArgumentList @('/fa', "`"$installer`"", '/qn', '/norestart', '/L*v', "`"$repairLog`"") -PassThru -Wait -WindowStyle Hidden
+      if ($repair.ExitCode -ne 0) { throw "MSI repair failed: $($repair.ExitCode)" }
+      if ((Get-FileHash -LiteralPath $application -Algorithm SHA256).Hash -ne $originalHash) { throw 'MSI repair did not restore executable bytes' }
+      $repaired = @(Get-ItemProperty $registryPaths -ErrorAction SilentlyContinue | Where-Object { $_.DisplayName -eq 'MetaClean' })
+      if ($repaired.Count -ne 1 -or $repaired[0].PSChildName -ne $entries[0].PSChildName -or $repaired[0].DisplayVersion -ne $version) { throw 'MSI repair changed package registration' }
+      $process = Start-Process -FilePath $application -PassThru -WindowStyle Hidden
+      Start-Sleep -Seconds 6
+      $process.Refresh()
+      if ($process.HasExited -or $process.MainWindowTitle -ne 'MetaClean') { throw 'Repaired application failed to launch' }
+      Stop-Process -Id $process.Id -Force
+      $process.WaitForExit()
+      $process = $null
+      $repairVerified = $true
+      Write-Output 'MSI repair restored the exact executable hash, registration and launch'
+    }
+    $results += [pscustomobject]@{ step = $step; version = $version; executableVersion = $fileVersion; productCode = $entries[0].PSChildName; launchPassed = $true; repairVerified = $repairVerified }
     $results | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath (Join-Path $evidence 'results.json') -Encoding utf8
     Write-Output "MSI installed and launched $version"
   }
