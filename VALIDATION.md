@@ -400,8 +400,21 @@ all five updater signatures against the tagged public key, and rejected modified
 package bytes. The release and Pages `latest.json` endpoints both returned 0.11.2
 with exactly matching download URLs and signatures for all five platforms; the
 [feed deployment](https://github.com/Moresyl/metaclean/actions/runs/36481821010)
-also completed successfully. Earlier 0.11.0/0.11.1 installed-update qualification
-does not automatically establish the same transition evidence for 0.11.2.
+also completed successfully.
+
+The subsequent [installed-update run 36482289761](https://github.com/Moresyl/metaclean/actions/runs/36482289761)
+passed independently for Windows x64 and x86 NSIS packages. The installed 0.11.1
+application clicked its real update button for 0.11.2, downloaded the public signed
+update and automatically restarted. Both jobs verified exact synthetic locale,
+theme, output-mode and history/fingerprint values in the restarted WebView, then
+manually downgraded to 0.11.1 with those values retained and uninstalled cleanly.
+Before upgrade, rejection of a truncated 0.11.2 installer preserved the old
+executable hash, registration and launchability. Downloaded artifacts record the
+three observed versions and `storageVerified: true` throughout; logs independently
+confirm application-triggered update and restart on both architectures. The x86
+package ran on 64-bit Windows. This qualifies this NSIS version pair and synthetic
+data, not arbitrary historical migrations, power-loss recovery, MSI transitions
+or Linux/macOS application-triggered updates to 0.11.2.
 
 ## Remaining external release gates
 

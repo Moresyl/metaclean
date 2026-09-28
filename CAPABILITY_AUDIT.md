@@ -57,6 +57,10 @@ the same sequence in both installed WebViews, including applied dark theme.
 [Run 36473320724](https://github.com/Moresyl/metaclean/actions/runs/36473320724)
 also passed the real application's update button, public signed download,
 installation, automatic restart and storage checks for both Windows architectures.
+[Run 36482289761](https://github.com/Moresyl/metaclean/actions/runs/36482289761)
+repeated the real application-triggered update from 0.11.1 to 0.11.2 on x64 and
+x86, including preserved synthetic data, damaged-installer rejection, manual
+downgrade and uninstall.
 Arbitrary historical schema migrations and interrupted-update recovery remain
 outside this evidence. Public x64 MSI packages separately passed installation,
 upgrade, manual downgrade, registration/version/launch checks and removal in
@@ -83,7 +87,7 @@ watermark removal, generic archive rewriting and unknown binary formats are
 outside the current contract in `SUPPORT_POLICY.md`.
 
 Microsoft Word/newer-WPS interoperability, Apple signing/notarization, complete installed
-application update/rollback recovery, slow-device behavior and peak-memory
-measurements remain open. They must not be described as completed merely because
+application update/rollback recovery, slow-device behavior and full-application
+peak-memory qualification remain open. They must not be described as completed merely because
 unit tests or release packaging passed. The roadmap in `docs/PLAN.md` tracks these
 items separately from the completed release.
