@@ -413,8 +413,27 @@ executable hash, registration and launchability. Downloaded artifacts record the
 three observed versions and `storageVerified: true` throughout; logs independently
 confirm application-triggered update and restart on both architectures. The x86
 package ran on 64-bit Windows. This qualifies this NSIS version pair and synthetic
-data, not arbitrary historical migrations, power-loss recovery, MSI transitions
-or Linux/macOS application-triggered updates to 0.11.2.
+data, not arbitrary historical migrations, power-loss recovery or Linux/macOS
+application-triggered updates to 0.11.2.
+
+Additional public-package checks qualified the 0.11.1 → 0.11.2 → 0.11.1 pair:
+
+- [MSI run 36482694133](https://github.com/Moresyl/metaclean/actions/runs/36482694133)
+  verified sole product registration, executable versions, six-second windows,
+  upgrade/downgrade and removal. Repair of the deliberately corrupted 0.11.2
+  executable restored its exact original hash, registration and launchability.
+- [DEB run 36482701851](https://github.com/Moresyl/metaclean/actions/runs/36482701851)
+  verified package-manager versions, eight-second process liveness for each
+  transition and clean removal on Ubuntu 22.04 amd64.
+- [DMG run 36482709218](https://github.com/Moresyl/metaclean/actions/runs/36482709218)
+  verified manual temporary-bundle replacement and rollback for ARM and Intel
+  packages, checking bundle identity, versions, architectures, six-second process
+  liveness and removal. Both hosts were ARM64; Intel used compatibility support.
+
+Downloaded artifacts and logs confirmed all three observed versions in each job.
+These additional runs do not assert MSI/DEB/DMG user-data preservation, Linux/macOS
+self-update, native Intel Mac execution, Gatekeeper acceptance or interrupted
+installation recovery.
 
 ## Remaining external release gates
 

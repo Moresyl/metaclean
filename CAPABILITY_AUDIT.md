@@ -79,6 +79,12 @@ Both macOS jobs used ARM hosts; Intel execution used compatibility support.
 These checks do not establish Linux/macOS application-triggered updates,
 data preservation or Apple Gatekeeper acceptance.
 
+The 0.11.1/0.11.2 release pair subsequently passed the same
+[MSI transitions and repair](https://github.com/Moresyl/metaclean/actions/runs/36482694133),
+[DEB transitions](https://github.com/Moresyl/metaclean/actions/runs/36482701851) and
+[ARM/Intel DMG replacement](https://github.com/Moresyl/metaclean/actions/runs/36482709218)
+checks, with the same scope limitations.
+
 ## Product boundaries and remaining qualification
 
 Inspection exposes categories and counts, not raw identity, location or comment
