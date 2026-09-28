@@ -3,6 +3,28 @@
 All notable changes to MetaClean are documented here. The project follows
 [Semantic Versioning](https://semver.org/).
 
+## [0.11.2] - 2026-09-29
+
+### Changed
+
+- Process Unicode text with a sliding character context instead of materializing
+  every character, and copy unchanged spans together. Keep original-neighbor,
+  emoji, script, CJK variation and paired directional-control policies unchanged.
+- On three local synthetic 64/256 MiB text runs, observed native peak working set
+  decreased by about 43%; 256 MiB copy-clean time decreased from 6.1–6.3 seconds
+  to 4.7–5.1 seconds. These figures exclude the desktop WebView and are not general
+  performance guarantees; measurement scope is recorded in VALIDATION.md.
+
+### Tests
+
+- Add explicit large-file boundary qualification with complete output-byte,
+  source-preservation and audit-hash checks, plus rejection above 256 MiB.
+- Add regressions for original Unicode neighbors, nested directional controls and
+  incomplete emoji flag tags; compare 108,921 generated cases against prior behavior.
+- Add repeatable public-package transition workflows for Windows NSIS/MSI,
+  Linux DEB and macOS DMG. The 0.11.0/0.11.1 pair passed the documented scenarios,
+  including Windows NSIS application-triggered updates and MSI executable repair.
+
 ## [0.11.1] - 2026-09-29
 
 ### Fixed
