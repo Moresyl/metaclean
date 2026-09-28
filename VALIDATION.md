@@ -541,6 +541,38 @@ race exposed by an earlier macOS queue-intake timeout, without retrying drops or
 weakening output checks. [CI 36488873692](https://github.com/Moresyl/metaclean/actions/runs/36488873692)
 passed all three 15-test desktop suites. It does not change the released product.
 
+## Published desktop memory observation — 2026-09-29
+
+[Run 36491998506](https://github.com/Moresyl/metaclean/actions/runs/36491998506)
+completed six fresh Windows x64 application runs against the checksummed public
+v0.11.3 portable package: three each with a 64 MiB and 256 MiB synthetic text
+file containing one zero-width character. Real native drag/drop, scan and
+confirmation controls drove cleanup. Every source hash, complete expected
+output hash and stored audit fingerprint matched; no extra fixture files remained.
+The shared UI driver's existing crash scenario also passed again in
+[run 36492003924](https://github.com/Moresyl/metaclean/actions/runs/36492003924).
+
+The sampler observed the owned application and its descendants, including the
+WebView (seven processes), excluding the fixture generator and Node controller.
+It enumerated the process tree between requested 200 ms waits; enumeration adds
+overhead, so this is not a fixed-frequency trace. Runs used Windows Server 2025
+Datacenter hosts with different AMD EPYC and Intel Xeon CPUs. The table gives
+the minimum and maximum across the three observations for each input size.
+
+| Input | UI scan time | UI cleanup time | Maximum sampled sum of working sets | Maximum sampled sum of private bytes |
+| --- | --- | --- | --- | --- |
+| 64 MiB | 0.52–1.04 s | 1.08–1.56 s | 503.79–571.55 MiB | 332.92–336.55 MiB |
+| 256 MiB | 2.55–3.71 s | 4.68–4.73 s | 887.26–1,243.54 MiB | 911.42–1,168.73 MiB |
+
+Timing includes UI polling; memory sampling covers startup through completed
+cleanup. Working-set sums may count shared pages more than once, and private
+bytes measure committed private memory rather than resident pages. Samples can
+miss short peaks. These figures are workload-specific observations, not a memory
+upper bound, a minimum-RAM recommendation or a before/after speed comparison.
+They add full-process-tree evidence to the earlier native-only measurements;
+slow disks, other operating systems, complex documents and mixed Unicode
+workloads still need separate qualification. No product binary changed.
+
 ## Remaining external release gates
 
 1. Test representative documents in genuine Microsoft Word and newer WPS builds, including layout, complex objects and supported OpenDocument interoperability. The limited WPS 2019 OOXML semantic round trip above and prior LibreOffice 26.2.5 samples do not close that broader qualification.

@@ -46,6 +46,14 @@ text batches observed up to 14.63 MiB peak working set. The sampling method and
 scope are recorded in `VALIDATION.md`. This does not establish a memory upper
 bound or cover the desktop WebView, large documents or slow storage.
 
+Separate public v0.11.3 desktop measurements in
+[run 36491998506](https://github.com/Moresyl/metaclean/actions/runs/36491998506)
+include the application and WebView process tree. Three 64 MiB and three 256 MiB
+text cleanups passed complete source/output and audit-hash checks. Observed
+aggregate working-set maxima ranged from 503.79–571.55 MiB and
+887.26–1,243.54 MiB respectively. Shared pages can be counted more than once;
+sampling, host differences and timing limits are detailed in `VALIDATION.md`.
+
 Public Windows x64 and x86 NSIS installers passed isolated 0.11.0 → 0.11.1 → 0.11.0
 install/upgrade/manual-downgrade sequences, version/launch checks, truncated-package
 rejection with the old executable intact, and final uninstall in
@@ -110,6 +118,6 @@ outside the current contract in `SUPPORT_POLICY.md`.
 
 Microsoft Word/newer-WPS interoperability, Apple signing/notarization, complete installed
 application update/rollback recovery, slow-device behavior and full-application
-peak-memory qualification remain open. They must not be described as completed merely because
+memory qualification beyond the measured Windows text scenarios remain open. They must not be described as completed merely because
 unit tests or release packaging passed. The roadmap in `docs/PLAN.md` tracks these
 items separately from the completed release.
