@@ -1,0 +1,41 @@
+name: Measure published desktop memory
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Published stable version without v
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  measure:
+    runs-on: windows-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        size: [64, 256]
+        iteration: [1, 2, 3]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - name: Measure real application and WebView processes
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_VERSION: ${{ inputs.version }}
+          FIXTURE_MIB: ${{ matrix.size }}
+          MEASUREMENT_RUN: ${{ matrix.iteration }}
+        run: ./scripts/verify-desktop-budget.ps1 -Version $env:RELEASE_VERSION -SizeMiB ([int]$env:FIXTURE_MIB) -Iteration ([int]$env:MEASUREMENT_RUN)
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: desktop-memory-${{ matrix.size }}-${{ matrix.iteration }}
+          path: ${{ runner.temp }}/metaclean-memory-evidence/*
+          if-no-files-found: error
