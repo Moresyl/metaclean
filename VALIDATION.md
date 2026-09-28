@@ -240,6 +240,13 @@ version/launch results and the truncated-installer rejection with the previous
 executable hash unchanged. The x86 package ran under the hosted 64-bit Windows
 compatibility environment; this is not a native 32-bit Windows OS qualification.
 
+An experimental storage-preservation check in runs `36472009034` and
+`36472271783` failed before writing synthetic data: neither architecture exposed
+the requested WebView CDP endpoint (`fetch failed`). No storage-preservation
+conclusion follows from those runs. The workflow's explicit `verify_storage`
+option retains this strict experimental check; default installer evidence marks
+`storageVerified` false. The endpoint connection issue remains unresolved.
+
 `scripts/verify-windows-upgrade.ps1` refuses non-hosted environments and existing
 MetaClean installations/processes. The local preexisting 0.9.0 MSI installation
 was not modified. This verifies x64/x86 NSIS installer transitions and launchability;

@@ -2,7 +2,8 @@ param(
   [Parameter(Mandatory = $true)][string]$PreviousVersion,
   [Parameter(Mandatory = $true)][string]$CurrentVersion,
   [Parameter(Mandatory = $true)][string]$AssetDirectory,
-  [Parameter(Mandatory = $true)][ValidateSet('x64', 'x86')][string]$Architecture
+  [Parameter(Mandatory = $true)][ValidateSet('x64', 'x86')][string]$Architecture,
+  [switch]$VerifyStorage
 )
 
 $ErrorActionPreference = "Stop"
@@ -28,7 +29,7 @@ $application = Join-Path $installRoot "MetaClean.exe"
 $process = $null
 $results = @()
 $originalBrowserArguments = $env:WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS
-$env:WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS = '--remote-debugging-port=9222'
+if ($VerifyStorage) { $env:WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS = '--remote-debugging-port=9222' }
 try {
   foreach ($version in @($PreviousVersion, $CurrentVersion, $PreviousVersion)) {
     $installer = Join-Path $AssetDirectory "$version/MetaClean_${version}_${Architecture}-setup.exe"
@@ -67,8 +68,10 @@ try {
       Start-Sleep -Seconds 6
       $process.Refresh()
       if ($process.HasExited -or $process.MainWindowTitle -ne 'MetaClean') { throw 'Previous installation cannot launch after rejection' }
-      node (Join-Path $PSScriptRoot 'verify-upgrade-storage.mjs') verify
-      if ($LASTEXITCODE -ne 0) { throw 'User data changed after damaged installer rejection' }
+      if ($VerifyStorage) {
+        node (Join-Path $PSScriptRoot 'verify-upgrade-storage.mjs') verify
+        if ($LASTEXITCODE -ne 0) { throw 'User data changed after damaged installer rejection' }
+      }
       Stop-Process -Id $process.Id -Force
       $process.WaitForExit()
       $process = $null
@@ -85,13 +88,15 @@ try {
     Start-Sleep -Seconds 6
     $process.Refresh()
     if ($process.HasExited -or $process.MainWindowTitle -ne "MetaClean") { throw "Installed $version failed to launch" }
-    $storageMode = if ($results.Count -eq 0) { 'seed' } else { 'verify' }
-    node (Join-Path $PSScriptRoot 'verify-upgrade-storage.mjs') $storageMode
-    if ($LASTEXITCODE -ne 0) { throw "User data verification failed for $version" }
+    if ($VerifyStorage) {
+      $storageMode = if ($results.Count -eq 0) { 'seed' } else { 'verify' }
+      node (Join-Path $PSScriptRoot 'verify-upgrade-storage.mjs') $storageMode
+      if ($LASTEXITCODE -ne 0) { throw "User data verification failed for $version" }
+    }
     Stop-Process -Id $process.Id -Force
     $process.WaitForExit()
     $process = $null
-    $results += [pscustomobject]@{ architecture = $Architecture; version = $version; executableVersion = $fileVersion; launchPassed = $true; storageVerified = $true }
+    $results += [pscustomobject]@{ architecture = $Architecture; version = $version; executableVersion = $fileVersion; launchPassed = $true; storageVerified = [bool]$VerifyStorage }
     Write-Output "Installed and launched $version successfully"
   }
 } finally {

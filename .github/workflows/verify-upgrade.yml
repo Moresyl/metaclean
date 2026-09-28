@@ -11,6 +11,10 @@ on:
         description: Current stable version without v
         required: true
         type: string
+      verify_storage:
+        description: Experimental WebView storage check (requires debug endpoint)
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -50,7 +54,8 @@ jobs:
           PREVIOUS_VERSION: ${{ inputs.previous }}
           CURRENT_VERSION: ${{ inputs.current }}
           PACKAGE_ARCHITECTURE: ${{ matrix.architecture }}
-        run: ./scripts/verify-windows-upgrade.ps1 -PreviousVersion $env:PREVIOUS_VERSION -CurrentVersion $env:CURRENT_VERSION -AssetDirectory "$env:RUNNER_TEMP/assets" -Architecture $env:PACKAGE_ARCHITECTURE
+          VERIFY_STORAGE: ${{ inputs.verify_storage }}
+        run: ./scripts/verify-windows-upgrade.ps1 -PreviousVersion $env:PREVIOUS_VERSION -CurrentVersion $env:CURRENT_VERSION -AssetDirectory "$env:RUNNER_TEMP/assets" -Architecture $env:PACKAGE_ARCHITECTURE -VerifyStorage:($env:VERIFY_STORAGE -eq 'true')
       - uses: actions/upload-artifact@v6
         with:
           name: windows-upgrade-evidence-${{ matrix.architecture }}
