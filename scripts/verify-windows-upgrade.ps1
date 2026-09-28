@@ -3,10 +3,12 @@ param(
   [Parameter(Mandatory = $true)][string]$CurrentVersion,
   [Parameter(Mandatory = $true)][string]$AssetDirectory,
   [Parameter(Mandatory = $true)][ValidateSet('x64', 'x86')][string]$Architecture,
-  [switch]$VerifyStorage
+  [switch]$VerifyStorage,
+  [switch]$InAppUpdate
 )
 
 $ErrorActionPreference = "Stop"
+if ($InAppUpdate -and -not $VerifyStorage) { throw 'In-app update validation requires WebView storage verification' }
 foreach ($version in @($PreviousVersion, $CurrentVersion)) {
   if ($version -notmatch '^\d+\.\d+\.\d+$') { throw "Expected a stable numeric version" }
 }
@@ -90,8 +92,35 @@ try {
       $results += [pscustomobject]@{ architecture = $Architecture; case = 'truncated-installer'; rejected = $true; previousHashUnchanged = $true; previousLaunchPassed = $true }
       Write-Output 'Truncated installer rejected; previous executable, registration and launch preserved'
     }
-    $install = Start-Process -FilePath $installer -ArgumentList @("/S", "/D=$installRoot") -PassThru -Wait -WindowStyle Hidden
-    if ($install.ExitCode -ne 0) { throw "Installation of $version failed: $($install.ExitCode)" }
+    if ($InAppUpdate -and $version -eq $CurrentVersion) {
+      $process = Start-Process -FilePath $application -PassThru -WindowStyle Hidden
+      Start-Sleep -Seconds 6
+      node (Join-Path $PSScriptRoot 'verify-upgrade-storage.mjs') update $CurrentVersion
+      if ($LASTEXITCODE -ne 0) { throw 'Application update button could not be activated' }
+      $deadline = [DateTime]::UtcNow.AddMinutes(3)
+      $updated = $false
+      while ([DateTime]::UtcNow -lt $deadline) {
+        Start-Sleep -Seconds 2
+        $process.Refresh()
+        if ($process.HasExited -and (Test-Path -LiteralPath $application)) {
+          $observed = (Get-Item -LiteralPath $application).VersionInfo.ProductVersion
+          if ($observed -eq $CurrentVersion) { $updated = $true; break }
+        }
+      }
+      if (-not $updated) { throw 'Application-triggered update did not install the expected version' }
+      Start-Sleep -Seconds 6
+      $restarted = @(Get-Process metaclean -ErrorAction SilentlyContinue | Where-Object { $_.Path -eq $application })
+      if ($restarted.Count -ne 1 -or $restarted[0].MainWindowTitle -ne 'MetaClean') { throw 'Updated application did not restart successfully' }
+      node (Join-Path $PSScriptRoot 'verify-upgrade-storage.mjs') verify
+      if ($LASTEXITCODE -ne 0) { throw 'Restarted application did not retain user data' }
+      Stop-Process -Id $restarted[0].Id -Force
+      $restarted[0].WaitForExit()
+      $process = $null
+      Write-Output "Application-triggered signed update and restart passed: $CurrentVersion"
+    } else {
+      $install = Start-Process -FilePath $installer -ArgumentList @("/S", "/D=$installRoot") -PassThru -Wait -WindowStyle Hidden
+      if ($install.ExitCode -ne 0) { throw "Installation of $version failed: $($install.ExitCode)" }
+    }
     $fileVersion = (Get-Item -LiteralPath $application).VersionInfo.ProductVersion
     if ($fileVersion -notmatch "^$([regex]::Escape($version))(?:\.0)?$") { throw "Installed version mismatch: $fileVersion" }
     $entry = @(Get-ItemProperty $registryPaths -ErrorAction SilentlyContinue | Where-Object { $_.DisplayName -eq "MetaClean" })

@@ -15,6 +15,10 @@ on:
         description: Experimental WebView storage check (requires debug endpoint)
         type: boolean
         default: false
+      in_app_update:
+        description: Use the real application update button (current must be latest)
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -55,7 +59,8 @@ jobs:
           CURRENT_VERSION: ${{ inputs.current }}
           PACKAGE_ARCHITECTURE: ${{ matrix.architecture }}
           VERIFY_STORAGE: ${{ inputs.verify_storage }}
-        run: ./scripts/verify-windows-upgrade.ps1 -PreviousVersion $env:PREVIOUS_VERSION -CurrentVersion $env:CURRENT_VERSION -AssetDirectory "$env:RUNNER_TEMP/assets" -Architecture $env:PACKAGE_ARCHITECTURE -VerifyStorage:($env:VERIFY_STORAGE -eq 'true')
+          IN_APP_UPDATE: ${{ inputs.in_app_update }}
+        run: ./scripts/verify-windows-upgrade.ps1 -PreviousVersion $env:PREVIOUS_VERSION -CurrentVersion $env:CURRENT_VERSION -AssetDirectory "$env:RUNNER_TEMP/assets" -Architecture $env:PACKAGE_ARCHITECTURE -VerifyStorage:($env:VERIFY_STORAGE -eq 'true') -InAppUpdate:($env:IN_APP_UPDATE -eq 'true')
       - uses: actions/upload-artifact@v6
         with:
           name: windows-upgrade-evidence-${{ matrix.architecture }}

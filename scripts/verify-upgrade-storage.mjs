@@ -3,7 +3,7 @@ import { setTimeout as delay } from "node:timers/promises";
 
 assert.equal(process.env.RUNNER_ENVIRONMENT, "github-hosted", "Requires an isolated hosted runner");
 const mode = process.argv[2];
-assert.ok(["seed", "verify"].includes(mode));
+assert.ok(["seed", "verify", "update"].includes(mode));
 const expected = {
   "metaclean.locale": "en",
   "metaclean.theme": "dark",
@@ -60,4 +60,17 @@ try {
   assert.equal(snapshot.theme, "dark", "Application did not apply the persisted theme");
   assert.equal(snapshot.title, "MetaClean");
   console.log(`WebView ${mode}: preferences and synthetic history/fingerprints preserved; dark theme applied`);
+  if (mode === "update") {
+    const version = process.argv[3];
+    assert.match(version, /^\d+\.\d+\.\d+$/u);
+    let ready = false;
+    for (let attempt = 0; attempt < 60; attempt++) {
+      ready = await evaluate(`(() => { const title = document.getElementById('update-dialog-title'); return title?.textContent === ${JSON.stringify(`v${version}`)} && [...document.querySelectorAll('[role="dialog"] button')].some(button => button.textContent.trim() === 'Install update' && !button.disabled); })()`);
+      if (ready) break;
+      await delay(500);
+    }
+    assert.ok(ready, "Expected signed update was not offered by the real application");
+    assert.equal(await evaluate("(() => { const button = [...document.querySelectorAll('[role=\"dialog\"] button')].find(button => button.textContent.trim() === 'Install update' && !button.disabled); if (!button) return false; button.click(); return true; })()"), true);
+    console.log(`Clicked the released application's Install update button for ${version}`);
+  }
 } finally { socket.close(); }
