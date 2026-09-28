@@ -484,9 +484,62 @@ vulnerabilities after the development-toolchain `ip-address` 10.5.1 pin; the eig
 previously documented upstream Rust warnings remain. Local strict Clippy and the
 rebuilt Windows desktop suite also passed.
 
-This is candidate evidence, not yet a public v0.11.3 package claim. The forced
+This section records candidate evidence; public-package checks follow below. The forced
 termination scenario is Windows x64 safe-copy cleanup; it does not qualify
 power loss, interrupted installation or all operating systems and output modes.
+
+## Published v0.11.3 verification — 2026-09-29
+
+[Release 36488240740](https://github.com/Moresyl/metaclean/actions/runs/36488240740)
+passed source validation, all five platform builds, applicable package smoke
+checks and finalization. The [stable release](https://github.com/Moresyl/metaclean/releases/tag/v0.11.3)
+at `f8b95987d4ffce164e5ca26d3bd4acc73822437a` contains 20 nonempty assets.
+Source validation passed 424 frontend tests, 224 Linux native tests (5 ignored),
+15 Linux desktop tests and ten independent FFmpeg PCM comparisons. Rust line
+coverage was 92.27% with the documented exclusions; the recovery module reached
+94.96% on Linux. The eight known upstream Rust audit warnings remain.
+
+[Independent verification 36490447072](https://github.com/Moresyl/metaclean/actions/runs/36490447072)
+downloaded the public packages, checked all 19 checksummed files, verified all
+five updater signatures against the tagged key and rejected modified bytes.
+The release and Pages update manifests both returned 0.11.3 and matched exactly
+across all five platforms after deployment 36490377849.
+
+[Public crash regression 36490451100](https://github.com/Moresyl/metaclean/actions/runs/36490451100)
+passed the same 64-file scenario using the downloaded x64 portable package.
+All sources and the one committed output retained their expected hashes; there
+were no additional fixture files. The first restart displayed the interruption
+notice, the second cleared it, and neither restart resumed file operations.
+The tested public executable SHA-256 was
+`ab8af37d734d2bd405aeace48c7a82be5ac431d60cc94f50c4e0c1f29cc9ed3f`.
+
+[Windows upgrade 36490455936](https://github.com/Moresyl/metaclean/actions/runs/36490455936)
+passed x64 and x86 NSIS application-triggered signed updates from 0.11.2 to
+0.11.3, automatic restart, synthetic settings/history/hash preservation, manual
+downgrade to 0.11.2 and uninstall. Truncated-installer rejection preserved the
+old executable hash, registration and launch. The x86 package ran on a 64-bit
+Windows host; this does not qualify a native 32-bit OS or arbitrary user data.
+
+Additional public-package checks passed the 0.11.2 → 0.11.3 → 0.11.2 pair:
+
+- [MSI 36490896570](https://github.com/Moresyl/metaclean/actions/runs/36490896570)
+  verified registration, executable versions, launch, repair, downgrade and
+  removal. Repair restored the exact executable hash after deliberate damage.
+- [DEB 36490900879](https://github.com/Moresyl/metaclean/actions/runs/36490900879)
+  verified installation, package versions, live launch windows, downgrade and
+  removal on the hosted Ubuntu x64 runner.
+- [DMG 36490904420](https://github.com/Moresyl/metaclean/actions/runs/36490904420)
+  verified copied-app replacement, versions, bundle identity, six-second launches,
+  rollback and removal for arm64 and x86_64 packages on arm64 hosts.
+
+These MSI/DEB/DMG transitions do not establish arbitrary-data migration, in-app
+updates for those formats, native Intel Mac qualification or Gatekeeper approval.
+
+Post-tag test-only commit `313dc70` adds an observed native drag-enter response
+before its single synthetic drop event. This addresses a plausible registration
+race exposed by an earlier macOS queue-intake timeout, without retrying drops or
+weakening output checks. [CI 36488873692](https://github.com/Moresyl/metaclean/actions/runs/36488873692)
+passed all three 15-test desktop suites. It does not change the released product.
 
 ## Remaining external release gates
 

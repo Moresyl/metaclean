@@ -1,7 +1,7 @@
 # MetaClean capability audit
 
-Audited on 2026-09-29 for the published v0.11.2 release at
-`ae197feac7c90cd8a5b106657265abbe1fc071fe`.
+Audited on 2026-09-29 for the published v0.11.3 release at
+`f8b95987d4ffce164e5ca26d3bd4acc73822437a`.
 
 This ledger describes implemented behavior, its evidence and its limits.
 Extension counts and passing tests do not establish universal format support,
@@ -23,13 +23,13 @@ application. Detailed run evidence is recorded in `VALIDATION.md`.
 
 ## Release evidence
 
-- [Candidate CI](https://github.com/Moresyl/metaclean/actions/runs/36477273684)
+- [Candidate CI](https://github.com/Moresyl/metaclean/actions/runs/36486908322)
   passed the main quality gates and desktop tests on all three operating systems.
-- [Release pipeline](https://github.com/Moresyl/metaclean/actions/runs/36479381902)
+- [Release pipeline](https://github.com/Moresyl/metaclean/actions/runs/36488240740)
   passed source validation, five platform builds, package checks and finalization.
-- [Independent public-asset verification](https://github.com/Moresyl/metaclean/actions/runs/36481920205)
+- [Independent public-asset verification](https://github.com/Moresyl/metaclean/actions/runs/36490447072)
   checked downloaded bytes and signatures against the tagged public key.
-- [Published v0.11.2](https://github.com/Moresyl/metaclean/releases/tag/v0.11.2)
+- [Published v0.11.3](https://github.com/Moresyl/metaclean/releases/tag/v0.11.3)
   contains 20 assets, including the checksum manifest. The public Pages update
   feed was checked against the release's five platform URLs and signatures.
 
@@ -93,8 +93,14 @@ outputs. The WebView-only marker did not provide the expected restart prompt;
 see the failed-run evidence in `VALIDATION.md`. The v0.11.3 candidate's native
 path-free record passed the same real interruption and two-restart scenario in
 [run 36486936517](https://github.com/Moresyl/metaclean/actions/runs/36486936517),
-with all source and committed-output hashes preserved. This fixes the reproduced
-candidate behavior; public-package verification remains pending. It does not
+with all source and committed-output hashes preserved. The public v0.11.3
+portable package passed the same scenario in
+[run 36490451100](https://github.com/Moresyl/metaclean/actions/runs/36490451100).
+Its 20 published assets, five signed updates and matching release/Pages feeds
+were independently checked; Windows x64/x86 real application updates from
+0.11.2 also passed. MSI (including executable repair), DEB and both DMG
+architectures passed the 0.11.2 → 0.11.3 → 0.11.2 transition scenarios.
+See the run evidence and host limitations in `VALIDATION.md`. These checks do not
 qualify power loss or installer interruption.
 
 Inspection exposes categories and counts, not raw identity, location or comment
