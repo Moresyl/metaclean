@@ -50,7 +50,7 @@ struct Stream {
 
 struct Layout {
     pages: Vec<Range<usize>>,
-    comments: Vec<Vec<Range<usize>>>,
+    comments: Vec<(Vec<Range<usize>>, Vec<u8>)>,
     count: usize,
 }
 
@@ -65,6 +65,7 @@ fn identification(packet: &[u8]) -> Result<()> {
             let streams = u16::from(packet[19]);
             let coupled = u16::from(packet[20]);
             if streams == 0
+                || (packet[18] == 1 && channels > 8)
                 || coupled > streams
                 || streams + coupled > 255
                 || packet[21..]
@@ -79,7 +80,7 @@ fn identification(packet: &[u8]) -> Result<()> {
     }
 }
 
-fn comment_count(packet: &[u8]) -> Result<usize> {
+fn clean_comments(packet: &[u8]) -> Result<(Vec<u8>, usize)> {
     if !packet.starts_with(b"OpusTags") {
         return Err(invalid());
     }
@@ -93,13 +94,46 @@ fn comment_count(packet: &[u8]) -> Result<usize> {
     if comments > (packet.len() - offset) / 4 {
         return Err(invalid());
     }
+    let mut retained: Vec<&[u8]> = Vec::new();
+    let mut gain_names = Vec::new();
     for _ in 0..comments {
         let size = word(packet, offset)? as usize;
+        let start = offset + 4;
         offset = offset
             .checked_add(4)
             .and_then(|start| start.checked_add(size))
             .filter(|end| *end <= packet.len())
             .ok_or_else(invalid)?;
+        let comment = &packet[start..offset];
+        if let Some(separator) = comment.iter().position(|byte| *byte == b'=') {
+            let name = &comment[..separator];
+            if name.eq_ignore_ascii_case(b"R128_TRACK_GAIN")
+                || name.eq_ignore_ascii_case(b"R128_ALBUM_GAIN")
+            {
+                let normalized = name.to_ascii_uppercase();
+                if gain_names.contains(&normalized) {
+                    return Err(invalid());
+                }
+                let value = &comment[separator + 1..];
+                let digits = if matches!(value.first(), Some(b'+' | b'-')) {
+                    &value[1..]
+                } else {
+                    value
+                };
+                if value.len() > 6
+                    || digits.is_empty()
+                    || !digits.iter().all(u8::is_ascii_digit)
+                    || std::str::from_utf8(value)
+                        .ok()
+                        .and_then(|value| value.parse::<i16>().ok())
+                        .is_none()
+                {
+                    return Err(invalid());
+                }
+                gain_names.push(normalized);
+                retained.push(comment);
+            }
+        }
     }
     // An odd extension marker requests preservation of unspecified binary data.
     // Refuse it until its semantics can be validated rather than erasing it.
@@ -107,9 +141,17 @@ fn comment_count(packet: &[u8]) -> Result<usize> {
         return Err(invalid());
     }
     // Zero padding carries no private data; disposable padding is cleared.
-    Ok(usize::from(vendor_size > 0)
-        + comments
-        + usize::from(packet[offset..].iter().any(|byte| *byte != 0)))
+    let count = usize::from(vendor_size > 0) + comments - retained.len()
+        + usize::from(packet[offset..].iter().any(|byte| *byte != 0));
+    let mut cleaned = b"OpusTags".to_vec();
+    cleaned.extend_from_slice(&0u32.to_le_bytes());
+    cleaned.extend_from_slice(&(retained.len() as u32).to_le_bytes());
+    for comment in retained {
+        cleaned.extend_from_slice(&(comment.len() as u32).to_le_bytes());
+        cleaned.extend_from_slice(comment);
+    }
+    cleaned.resize(packet.len(), 0);
+    Ok((cleaned, count))
 }
 
 fn layout(data: &[u8]) -> Result<Layout> {
@@ -176,8 +218,11 @@ fn layout(data: &[u8]) -> Result<Layout> {
                         }
                         identification(&stream.header)?;
                     } else {
-                        result.count += comment_count(&stream.header)?;
-                        result.comments.push(std::mem::take(&mut stream.fragments));
+                        let (cleaned, count) = clean_comments(&stream.header)?;
+                        result.count += count;
+                        result
+                            .comments
+                            .push((std::mem::take(&mut stream.fragments), cleaned));
                     }
                     stream.header.clear();
                     stream.fragments.clear();
@@ -224,11 +269,11 @@ pub fn inspect(data: &[u8]) -> Result<Vec<Finding>> {
 pub fn clean(data: &[u8]) -> Result<(Vec<u8>, Vec<Finding>)> {
     let parsed = layout(data)?;
     let mut output = data.to_vec();
-    for fragments in parsed.comments {
+    for (fragments, packet) in parsed.comments {
         let mut position = 0;
         for fragment in fragments {
             for byte in &mut output[fragment] {
-                *byte = b"OpusTags".get(position).copied().unwrap_or(0);
+                *byte = packet[position];
                 position += 1;
             }
         }
@@ -243,6 +288,45 @@ pub fn clean(data: &[u8]) -> Result<(Vec<u8>, Vec<Finding>)> {
 #[cfg(test)]
 pub(crate) mod tests {
     use super::*;
+
+    fn comment_count(packet: &[u8]) -> Result<usize> {
+        Ok(clean_comments(packet)?.1)
+    }
+
+    fn tags(comments: &[&str]) -> Vec<u8> {
+        let mut packet = b"OpusTags".to_vec();
+        packet.extend_from_slice(&0u32.to_le_bytes());
+        packet.extend_from_slice(&(comments.len() as u32).to_le_bytes());
+        for comment in comments {
+            packet.extend_from_slice(&(comment.len() as u32).to_le_bytes());
+            packet.extend_from_slice(comment.as_bytes());
+        }
+        packet
+    }
+
+    #[test]
+    fn preserves_only_valid_playback_gain_comments() {
+        let packet = tags(&[
+            "ARTIST=Alice",
+            "R128_TRACK_GAIN=-573",
+            "r128_album_gain=+00111",
+        ]);
+        let (cleaned, count) = clean_comments(&packet).unwrap();
+        assert_eq!(count, 1);
+        assert_eq!(cleaned.len(), packet.len());
+        assert!(cleaned
+            .windows(b"r128_album_gain=+00111".len())
+            .any(|value| value == b"r128_album_gain=+00111"));
+        assert!(cleaned
+            .windows(b"R128_TRACK_GAIN=-573".len())
+            .any(|value| value == b"R128_TRACK_GAIN=-573"));
+        assert!(!cleaned.windows(5).any(|value| value == b"Alice"));
+        assert_eq!(clean_comments(&cleaned).unwrap(), (cleaned, 0));
+        for invalid_value in ["", "+", " 1", "1 ", "32768", "-32769", "0000001", "1.0"] {
+            assert!(clean_comments(&tags(&[&format!("R128_TRACK_GAIN={invalid_value}")])).is_err());
+        }
+        assert!(clean_comments(&tags(&["R128_TRACK_GAIN=1", "r128_track_gain=2"])).is_err());
+    }
 
     fn page(sequence: u32, flags: u8, lacing: &[u8], payload: &[u8]) -> Vec<u8> {
         let mut page = b"OggS\0".to_vec();
@@ -352,6 +436,13 @@ pub(crate) mod tests {
         assert!(identification(&head).is_err());
         head[8] = 2;
         assert!(identification(&head).is_err());
+        let mut surround = b"OpusHead\x01\x09".to_vec();
+        surround.extend_from_slice(&[0; 8]);
+        surround.extend_from_slice(&[1, 9, 0]);
+        surround.extend(0..9);
+        assert!(identification(&surround).is_err());
+        surround[18] = 255;
+        assert!(identification(&surround).is_ok());
     }
 
     #[test]

@@ -1821,6 +1821,25 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "requires METACLEAN_AUDIO_SAMPLE_DIR with an encoded sample.opus fixture"]
+    fn cleans_external_opus_sample_without_changing_source() {
+        let directory = std::env::var_os("METACLEAN_AUDIO_SAMPLE_DIR").expect("sample directory");
+        let source = PathBuf::from(directory).join("sample.opus");
+        let before = fs::read(&source).unwrap();
+        let report = scan_file(&source);
+        assert!(report.supported, "{:?}", report.error);
+        assert!(!report.findings.is_empty());
+        let result = clean_file_with_options(&source, &OutputMode::Copy, true, true, true, false);
+        assert!(result.success, "{:?}", result.error);
+        assert_eq!(fs::read(&source).unwrap(), before);
+        let output = PathBuf::from(result.output_path.unwrap());
+        let cleaned_report = scan_file(&output);
+        assert!(cleaned_report.supported, "{:?}", cleaned_report.error);
+        assert!(cleaned_report.findings.is_empty());
+        assert_eq!(fs::metadata(&output).unwrap().len(), before.len() as u64);
+    }
+
+    #[test]
     fn native_cleaners_never_panic_at_any_truncated_prefix() {
         for (name, bytes) in supported_media_samples() {
             let path = Path::new(name);
