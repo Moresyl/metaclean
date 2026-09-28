@@ -1,7 +1,7 @@
 # MetaClean capability audit
 
-Audited on 2026-09-29 for the published v0.11.0 release at
-`67b6947f94c5cdd20ea44c04bf772b0ce1c71505`.
+Audited on 2026-09-29 for the published v0.11.1 release at
+`b0a9bd5bda8b11921b1290069e1738ba6b416db1`.
 
 This ledger describes implemented behavior, its evidence and its limits.
 Extension counts and passing tests do not establish universal format support,
@@ -23,15 +23,17 @@ application. Detailed run evidence is recorded in `VALIDATION.md`.
 
 ## Release evidence
 
-- [Candidate CI](https://github.com/Moresyl/metaclean/actions/runs/36457229373)
+- [Candidate CI](https://github.com/Moresyl/metaclean/actions/runs/36465554165)
   passed the main quality gates and desktop tests on all three operating systems.
-- [Release pipeline](https://github.com/Moresyl/metaclean/actions/runs/36459432379)
+- [Release pipeline](https://github.com/Moresyl/metaclean/actions/runs/36467341453)
   passed source validation, five platform builds, package checks and finalization.
-- [Independent public-asset verification](https://github.com/Moresyl/metaclean/actions/runs/36462092583)
+- [Independent public-asset verification](https://github.com/Moresyl/metaclean/actions/runs/36469907196)
   checked downloaded bytes and signatures against the tagged public key.
-- [Published v0.11.0](https://github.com/Moresyl/metaclean/releases/tag/v0.11.0)
+- [Published v0.11.1](https://github.com/Moresyl/metaclean/releases/tag/v0.11.1)
   contains 20 assets, including the checksum manifest. The public Pages update
   feed was checked against the release's five platform URLs and signatures.
+
+The VML note-shape fix verified with WPS 2019 is included in v0.11.1.
 
 ## Product boundaries and remaining qualification
 

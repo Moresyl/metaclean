@@ -151,6 +151,19 @@ This file records evidence, not intent. A row is complete only when the named ar
 
 ## WPS interoperability regression — 2026-09-29
 
+The fix described below shipped in v0.11.1 at
+`b0a9bd5bda8b11921b1290069e1738ba6b416db1`.
+
+- Candidate CI `36465554165` passed all quality gates and desktop tests on
+  Windows, macOS and Linux. Release `36467341453` passed source validation,
+  five platform builds, applicable installation/launch checks and finalization.
+- The stable, non-draft release was published on 2026-09-28 at 19:05:21 UTC,
+  with 20 nonempty assets. Independent verification `36469907196` downloaded
+  the public assets, verified all 19 checksum-listed files and all five updater
+  signatures against the tagged key, and rejected modified bytes for each.
+- Pages deployment `36469791424` succeeded. Both public update feeds were read
+  directly and match version 0.11.1 plus all five platform URLs and signatures.
+
 - Registry discovery located WPS Office 2019 enhanced edition 11.8.6.11825 in
   a custom installation directory. The earlier claim that WPS was unavailable
   was based on incomplete executable discovery and is corrected here.
