@@ -224,6 +224,15 @@ uninstall registration and a live MetaClean window after six seconds. Final
 uninstall removed the executable and registration. The downloadable
 `windows-upgrade-evidence` artifact records all three observed versions.
 
+A second [run 36471177273](https://github.com/Moresyl/metaclean/actions/runs/36471177273)
+also passed a damaged-package scenario. Before the valid upgrade, the test
+truncated a copy of the new installer to half its size and attempted a silent
+installation. Rejection preserved the previous executable's SHA-256, its single
+version-matching uninstall registration and its ability to launch for six
+seconds. The subsequent valid upgrade, manual downgrade and uninstall all passed.
+This establishes rejection of that truncated package before replacement; it does
+not simulate process termination or power loss during installation.
+
 `scripts/verify-windows-upgrade.ps1` refuses non-hosted environments and existing
 MetaClean installations/processes. The local preexisting 0.9.0 MSI installation
 was not modified. This verifies x64 NSIS installer transitions and launchability;
