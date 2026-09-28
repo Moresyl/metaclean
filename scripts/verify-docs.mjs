@@ -46,6 +46,13 @@ assert.doesNotMatch(docsConfig, /ignoreDeadLinks/u, "site links must be checked 
 assert.match(docsHome, /按任务进入/u);
 const [major, minor] = packageJson.version.split(".");
 const sourceLine = `${major}.${minor}.x`;
+assert.ok(docsIndex.includes(`\`${sourceLine}\``), "documentation index source line must match the package version");
+assert.ok(plan.includes(`| 当前包版本 | ${packageJson.version}`), "roadmap package version must match the current source");
+const engineSource = await read("src-tauri/src/engine.rs");
+const extensionBlock = engineSource.match(/pub const SUPPORTED_EXTENSIONS:.*?=\s*&\[(.*?)\];/su)?.[1];
+assert.ok(extensionBlock, "native extension allowlist must exist");
+const extensionCount = [...extensionBlock.matchAll(/"[a-z0-9]+"/gu)].length;
+assert.ok(plan.includes(`| 支持范围 | ${extensionCount} 个扩展名`), "roadmap scope must match native intake");
 assert.equal(docsHome.match(new RegExp(sourceLine.replaceAll(".", "\\."), "gu"))?.length, 2, "documentation source line must match the package version");
 assert.match(docsHome, /site-footer/u, "documentation home must expose a factual footer navigation");
 assert.match(docsHome, /proof-metrics/u, "documentation home must expose current capability evidence");
@@ -88,7 +95,7 @@ assert.match(design, /`Ctrl\/Cmd\+B` collapse control/u, "design reference must 
 assert.equal(packageJson.scripts["docs:dev"], "vitepress dev docs");
 assert.equal(packageJson.scripts["docs:build"], "vitepress build docs");
 assert.equal(packageJson.scripts["docs:preview"], "vitepress preview docs");
-for (const file of ["docs/user-guide.md", "docs/release.md", "docs/validation.md", "docs/safety.md", "docs/competitive-audit.md", "docs/product.md", "docs/security.md", "docs/support-policy.md", "docs/design.md", "docs/changelog.md"]) {
+for (const file of ["docs/user-guide.md", "docs/release.md", "docs/validation.md", "docs/safety.md", "docs/capability-audit.md", "docs/product.md", "docs/security.md", "docs/support-policy.md", "docs/design.md", "docs/changelog.md"]) {
   await read(file);
 }
 

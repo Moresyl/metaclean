@@ -34,7 +34,7 @@ export default defineConfig({
           items: [
             { text: "架构", link: "/ARCHITECTURE" },
             { text: "路线图", link: "/PLAN" },
-            { text: "竞品审计", link: "/competitive-audit" },
+            { text: "能力验收", link: "/capability-audit" },
             { text: "设计系统", link: "/design" },
           ],
         },

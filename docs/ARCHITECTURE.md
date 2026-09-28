@@ -151,7 +151,7 @@ When two documents disagree, resolve the mismatch against this order:
 2. `SUPPORT_POLICY.md` defines the accepted safety contract.
 3. `VALIDATION.md` records what was actually run and what remains external.
 4. `README.md` and `README.zh-CN.md` summarize the product for users.
-5. `COMPETITIVE_AUDIT.md` compares only evidence available at its dated baseline.
+5. `CAPABILITY_AUDIT.md` maps implemented behavior to evidence and explicit limits.
 6. `CHANGELOG.md` records historical changes and is not a current capability map.
 
 ## Change checklist

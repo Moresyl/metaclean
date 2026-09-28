@@ -70,7 +70,7 @@ description: 面向用户、贡献者和发布维护者的 MetaClean 事实文�
 
 - [产品能力](./product) · [用户指南](./user-guide) · [架构](./ARCHITECTURE)
 - [验证账本](./validation) · [支持策略](./support-policy) · [安全报告](./security)
-- [设计参考](./design) · [竞品审计](./competitive-audit) · [变更记录](./changelog)
+- [设计参考](./design) · [能力验收](./capability-audit) · [变更记录](./changelog)
 
 > 文档站是展示层，不是第二个产品事实源。数字、完成状态和安全边界以源码、测试与 [验证账本](./validation) 的证据顺序为准。
 

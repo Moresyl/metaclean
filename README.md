@@ -140,8 +140,8 @@ exports while still giving every file an explicit outcome.
 The application is intentionally fail-closed. Unknown binary formats, legacy
 binary Office files and pixel/statistical watermark removal are refused instead
 of being routed through a generic rewriter. See [SUPPORT_POLICY.md](SUPPORT_POLICY.md)
-for the format-by-format safety bar and [COMPETITIVE_AUDIT.md](COMPETITIVE_AUDIT.md)
-for the evidence-backed comparison with other local cleaners.
+for the format-by-format safety bar and [CAPABILITY_AUDIT.md](CAPABILITY_AUDIT.md)
+for verified capabilities, release evidence and remaining qualification limits.
 
 ## The desktop app
 

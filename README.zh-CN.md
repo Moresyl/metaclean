@@ -129,8 +129,8 @@ MetaClean 使用一条刻意收窄的处理链：导入阶段拒绝符号链接�
 
 应用坚持“失败即拒绝”：未知二进制、旧版二进制 Office，以及像素/统计型水印
 移除都会直接拒绝，不会交给通用重写器冒险改写。格式边界与证据门槛见
-[SUPPORT_POLICY.md](SUPPORT_POLICY.md)，与其他本地清理工具的对比见
-[COMPETITIVE_AUDIT.md](COMPETITIVE_AUDIT.md)。
+[SUPPORT_POLICY.md](SUPPORT_POLICY.md)，已验证能力、发布证据和待验证边界见
+[CAPABILITY_AUDIT.md](CAPABILITY_AUDIT.md)。
 当前工程状态、路线图和验证边界见 [docs/PLAN.md](docs/PLAN.md)，文档索引见 [docs/README.md](docs/README.md)。
 
 ## 桌面端
