@@ -3,6 +3,7 @@
 /dist
 /coverage
 /src-tauri/target
+/scripts/release-signature-check/target/
 .firecrawl/
 /docs/*
 !/docs/PLAN.md

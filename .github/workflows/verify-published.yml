@@ -1,0 +1,39 @@
+name: Verify published release
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Published stable release tag
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - name: Test verifier
+        run: node --test scripts/verify-published-assets.test.mjs
+      - name: Download public assets
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: |
+          node --input-type=module -e 'import { stableVersion } from "./scripts/stable-version.mjs"; const tag=process.env.RELEASE_TAG; if (!tag.startsWith("v") || stableVersion(tag.slice(1)) !== tag.slice(1)) process.exit(1);'
+          gh release view "$RELEASE_TAG" --json isDraft,isPrerelease,assets > "$RUNNER_TEMP/release.json"
+          gh release download "$RELEASE_TAG" --dir "$RUNNER_TEMP/assets"
+          gh api "repos/$GITHUB_REPOSITORY/contents/src-tauri/tauri.conf.json?ref=$RELEASE_TAG" --jq .content | base64 --decode > "$RUNNER_TEMP/release-config.json"
+      - name: Verify checksums, signed packages and update manifest
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: |
+          node scripts/verify-published-assets.mjs "$RUNNER_TEMP/assets" "${RELEASE_TAG#v}" "$RUNNER_TEMP/release.json"
+          cargo run --locked --manifest-path scripts/release-signature-check/Cargo.toml -- "$RUNNER_TEMP/release-config.json" "$RUNNER_TEMP/assets"
