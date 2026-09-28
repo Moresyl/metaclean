@@ -48,8 +48,11 @@ The x86 package was tested on a 64-bit Windows host, not a native 32-bit OS.
 An additional [run 36472802532](https://github.com/Moresyl/metaclean/actions/runs/36472802532)
 verified preservation of synthetic preferences and history/fingerprints through
 the same sequence in both installed WebViews, including applied dark theme.
-Application-triggered updates, arbitrary historical schema migrations and
-interrupted-update recovery remain outside this evidence.
+[Run 36473320724](https://github.com/Moresyl/metaclean/actions/runs/36473320724)
+also passed the real application's update button, public signed download,
+installation, automatic restart and storage checks for both Windows architectures.
+Arbitrary historical schema migrations and interrupted-update recovery remain
+outside this evidence.
 
 ## Product boundaries and remaining qualification
 

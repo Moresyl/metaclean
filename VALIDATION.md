@@ -261,11 +261,23 @@ Both downloaded artifacts record `storageVerified: true` for all three versions.
 This proves preservation of these synthetic values across this release pair,
 not arbitrary historical schema migration or every user-data condition.
 
+[Run 36473320724](https://github.com/Moresyl/metaclean/actions/runs/36473320724)
+passed with both `verify_storage=true` and `in_app_update=true`. On x64 and x86,
+the test clicked the real 0.11.0 application's **Install update** button only
+after its dialog offered exactly 0.11.1. The normal frontend/native updater
+used the public signed feed, downloaded and installed the update, exited the old
+process and automatically restarted the new executable. The test verified the
+new version, live restarted window and preserved synthetic storage before any
+manual relaunch. Subsequent manual downgrade and final uninstall also passed.
+Logs explicitly distinguish this application-triggered update from the earlier
+installer-only runs. No update endpoint or package signature check was mocked.
+
 `scripts/verify-windows-upgrade.ps1` refuses non-hosted environments and existing
 MetaClean installations/processes. The local preexisting 0.9.0 MSI installation
 was not modified. This verifies x64/x86 NSIS installer transitions and launchability;
-it does not yet verify application-triggered signed updates, arbitrary historical
-user-data migration, interrupted installation recovery, MSI transitions or other platforms.
+the application-triggered signed-update path is additionally covered by run
+36473320724. Arbitrary historical user-data migration, interrupted installation
+recovery, MSI transitions and other platforms remain unverified.
 
 ## Remaining external release gates
 
