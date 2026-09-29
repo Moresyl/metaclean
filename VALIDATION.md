@@ -16,6 +16,26 @@ This file records evidence, not intent. A row is complete only when the named ar
 | M3: Windows release | Complete for v0.3.0 | The successful v0.3.0 release matrix published launch-smoked x64 NSIS/MSI, x86 NSIS and architecture-labelled x64/x86 portable ZIPs. Local installation/extraction proof also kept each package active for six seconds with the `MetaClean` title before clean uninstall/removal. |
 | M3: macOS/Linux release | Complete for unsigned v0.3.0 artifacts | The successful v0.3.0 matrix copied and launch-smoked both Intel and Apple Silicon DMGs, then installed and launch-smoked the Linux DEB before publishing DEB/RPM/AppImage assets. Apple signing/notarization secrets remain unavailable, so Gatekeeper qualification is an external gate rather than a completed claim. |
 
+## Candidate UTF-8 buffer reuse — 2026-09-29
+
+Revision `5616ba7893a91ccdfe114332fc1031250f726ad7` borrows validated
+UTF-8 input and consumes the cleaned string for UTF-8 output. Three isolated
+optimized native processes per implementation each scanned and cleaned 64 MiB
+and 256 MiB synthetic text fixtures. Every source, output and audit fingerprint
+check passed. Observed peak working sets were 1,030.87–1,031.34 MiB before and
+518.86–519.32 MiB after; sampled private memory was 1,028.21–1,028.25 MiB
+before and 515.20–515.25 MiB after. The requested sampling wait was 5 ms.
+
+These numbers include native test fixture and verification work, exclude the
+desktop UI/WebView, and are not an application memory requirement or upper bound.
+Concurrent compilation also prevents a controlled throughput comparison.
+The borrowed-input regression failed on the original implementation. All 243
+native tests then passed (nine ignored), along with strict Clippy and formatting.
+Exact-byte tests cover empty and multibyte text, UTF-8 BOM insertion and UTF-16
+endianness. Sixteen local Windows desktop cases, the production frontend build
+and the documentation build also passed. Hosted candidate desktop measurements
+remain pending.
+
 ## Published v0.11.7 verification — 2026-09-29
 
 The [stable release](https://github.com/Moresyl/metaclean/releases/tag/v0.11.7)

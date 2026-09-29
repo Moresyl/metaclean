@@ -5,6 +5,20 @@ All notable changes to MetaClean are documented here. The project follows
 
 ## [Unreleased]
 
+## [0.11.8] - 2026-09-29
+
+### Changed
+
+- Borrow validated UTF-8 input during text inspection and cleanup, then reuse
+  the cleaned string buffer for UTF-8 output. Preserve BOMs, UTF-16 byte order,
+  multibyte characters and line endings while avoiding full-buffer copies.
+
+### Tests
+
+- Cover borrowed decoding, output buffer reuse, exact multibyte and empty
+  encoding bytes. Allow isolated hosted desktop memory measurements of a
+  candidate revision, with executable hashes and process ancestry evidence.
+
 ## [0.11.7] - 2026-09-29
 
 ### Changed
