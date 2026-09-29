@@ -80,7 +80,18 @@ text batches observed up to 14.63 MiB peak working set. The sampling method and
 scope are recorded in `VALIDATION.md`. This does not establish a memory upper
 bound or cover the desktop WebView, large documents or slow storage.
 
-Separate public v0.11.7 desktop measurements in
+Public v0.11.8 desktop measurements in
+[run 36528753753](https://github.com/Moresyl/metaclean/actions/runs/36528753753)
+passed three 64 MiB and three 256 MiB text cleanups with exact source/output/audit
+hash checks. Aggregate private-memory maxima were 272.02–273.76 MiB and
+654.48–659.94 MiB; working sets were 504.95–506.64 MiB and 889.04–892.42 MiB.
+All peak inventories contained seven application/WebView processes. Public
+upgrade and rollback checks passed for NSIS, MSI, DEB and both DMGs. The public
+crash run preserved all sources but left one cleaned temporary file after forced
+termination; this is not an orphan-free guarantee. See `VALIDATION.md` for links,
+sampled-process limitations and exact scope.
+
+Earlier public v0.11.7 desktop measurements in
 [run 36523943242](https://github.com/Moresyl/metaclean/actions/runs/36523943242)
 validate process creation times and include the application and WebView tree.
 Three 64 MiB and three 256 MiB text cleanups passed source/output and audit-hash

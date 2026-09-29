@@ -16,7 +16,62 @@ This file records evidence, not intent. A row is complete only when the named ar
 | M3: Windows release | Complete for v0.3.0 | The successful v0.3.0 release matrix published launch-smoked x64 NSIS/MSI, x86 NSIS and architecture-labelled x64/x86 portable ZIPs. Local installation/extraction proof also kept each package active for six seconds with the `MetaClean` title before clean uninstall/removal. |
 | M3: macOS/Linux release | Complete for unsigned v0.3.0 artifacts | The successful v0.3.0 matrix copied and launch-smoked both Intel and Apple Silicon DMGs, then installed and launch-smoked the Linux DEB before publishing DEB/RPM/AppImage assets. Apple signing/notarization secrets remain unavailable, so Gatekeeper qualification is an external gate rather than a completed claim. |
 
-## Candidate UTF-8 buffer reuse — 2026-09-29
+## Published v0.11.8 verification — 2026-09-29
+
+[v0.11.8](https://github.com/Moresyl/metaclean/releases/tag/v0.11.8), immutable
+revision `4ad0ee63a9bae22ea3c2dd5fcaff039b22c0c58d`, was published at
+2026-09-29 05:57:19 UTC with twenty nonempty assets.
+
+- [Release 36527199482](https://github.com/Moresyl/metaclean/actions/runs/36527199482)
+  passed source validation, five platform builds and applicable installation and
+  launch checks. Linux validation passed 428 frontend tests, 237 native tests
+  (ten ignored), sixteen desktop cases, ten independent FFmpeg PCM cases,
+  six PDF, six HEIF/AVIF and sixteen JPEG cases. Rust line coverage was 91.35%;
+  frontend line coverage was 93.58%. The npm audit found no known vulnerabilities;
+  seven previously classified Rust warnings remain.
+- [Public assets 36528727885](https://github.com/Moresyl/metaclean/actions/runs/36528727885)
+  verified nineteen checksum-listed assets, five updater signatures and rejection
+  of modified package bytes.
+- [NSIS 36528731019](https://github.com/Moresyl/metaclean/actions/runs/36528731019)
+  passed x64/x86 application-triggered signed updates and restart, synthetic
+  preferences/history/fingerprint preservation, truncated-installer rejection
+  with the old executable intact, and uninstall through 0.11.7 → 0.11.8 → 0.11.7.
+  [MSI 36528733990](https://github.com/Moresyl/metaclean/actions/runs/36528733990),
+  [DEB 36528736592](https://github.com/Moresyl/metaclean/actions/runs/36528736592)
+  and [DMG 36528740683](https://github.com/Moresyl/metaclean/actions/runs/36528740683)
+  passed the corresponding version transitions and launch/removal checks.
+  MSI repair passed for `{F05371A7-098E-4F43-A4C9-29A0F33FF74C}`.
+- [Crash recovery 36528743327](https://github.com/Moresyl/metaclean/actions/runs/36528743327)
+  preserved sixty-four source hashes and verified one committed output. Forced
+  termination left one additional 8,388,605-byte temporary file whose hash matched
+  the expected cleaned output, not the source. Two restarts preserved the snapshot,
+  did not resume cleanup and showed the interruption notice only once. This is
+  direct evidence that forced termination can leave a temporary file.
+- [Pages 36528633642](https://github.com/Moresyl/metaclean/actions/runs/36528633642)
+  deployed an update feed byte-identical to the release feed, version 0.11.8 with
+  five platforms, SHA-256
+  `7D80ADB8ADCBA105AA2996F8F62F1C8DC4C6FB38535D7483D545618A0C07AE18`.
+
+[Public desktop measurements 36528753753](https://github.com/Moresyl/metaclean/actions/runs/36528753753)
+passed three fresh runs per fixture size. All source, output and audit hashes
+matched; all twelve peak inventories contained seven application/WebView processes.
+Both crash and memory evidence identify public executable SHA-256
+`56A7AF5BB09FD8555D50FFBB4A2EBAED15F14FE83A60CF6750287AB148D8DEB1`.
+
+| Synthetic UTF-8 input | Scan | Cleanup | Aggregate working set | Aggregate private memory |
+|---|---:|---:|---:|---:|
+| 64 MiB | 1.03–1.08 s | 1.17–1.36 s | 504.95–506.64 MiB | 272.02–273.76 MiB |
+| 256 MiB | 3.07–3.77 s | 4.46–4.78 s | 889.04–892.42 MiB | 654.48–659.94 MiB |
+
+These are sampled application-plus-WebView totals on disposable hosted machines,
+not memory limits or a controlled speed comparison. Shared working-set pages may
+be counted twice and sampling may miss peaks. Windows x86 ran on 64-bit Windows;
+Intel DMG ran on arm64 macOS. Synthetic migration and forced-process-termination
+tests do not qualify arbitrary user state, physical power loss, interrupted
+installation or Apple Gatekeeper approval. The user's installed application was
+not changed.
+
+## UTF-8 buffer reuse candidate measurements — 2026-09-29
 
 Revision `5616ba7893a91ccdfe114332fc1031250f726ad7` borrows validated
 UTF-8 input and consumes the cleaned string for UTF-8 output. Three isolated
