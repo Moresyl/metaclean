@@ -34,9 +34,9 @@ ASCII85 unwrapping now supports that chain without JPEG pixel re-encoding.
 Malformed encodings, unknown chains and non-default composite parameters are
 rejected. Dedicated unit tests cover decode limits and integer-overflow input.
 
-The hosted `Verify independent PDF fidelity` workflow and the release source
-gate run the same checks with Poppler. Hosted results are pending for this
-candidate. These synthetic samples do not establish arbitrary PDF, XFA,
+The hosted [PDF workflow 36502482296](https://github.com/Moresyl/metaclean/actions/runs/36502482296)
+passed all six cases with Poppler on Linux. The release source gate now runs
+the same checks before packaging. These synthetic samples do not establish arbitrary PDF, XFA,
 digital-signature, accessibility or complex form compatibility.
 
 ## Published v0.11.4 verification — 2026-09-29
