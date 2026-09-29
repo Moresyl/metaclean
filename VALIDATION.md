@@ -65,6 +65,24 @@ arbitrary user-data migration, physical power-loss recovery, interrupted
 installation or Apple Gatekeeper approval. Earlier memory measurements were
 not repeated for this PDF patch.
 
+## Independent HEIF/AVIF qualification — 2026-09-29
+
+`scripts/verify-heif-fidelity.py` generates synthetic HEIC RGB, two-image HEIC
+and transparent AVIF fixtures with ICC profiles, rotated display orientation,
+EXIF author/description fields and XMP. In both copy and replace modes, external
+decoders compare frame counts, RGBA pixels, displayed pixels/dimensions, alpha
+ranges and exact ICC profile bytes. The checks require distinct HEIC frames and
+varying AVIF alpha, then verify private EXIF/XMP fields and marker bytes are gone.
+Native SHA-256 results and independent source/backup byte comparisons also pass.
+
+All six cases pass locally using Pillow 12.2.0, pillow-heif 1.3.0 and libheif
+1.21.2; codec versions are saved with each run. A shared ignored native test
+helper now serves these cases and the existing six PDF cases, which also passed
+after the refactor. No production cleaner change was required by these samples.
+The independent Linux workflow is pending qualification. This matrix does not
+qualify HDR, gain maps, depth images, every encoder, arbitrary RAW files or all
+HEIF/AVIF reader applications.
+
 ## Independent PDF fidelity qualification — 2026-09-29
 
 `scripts/verify-pdf-fidelity.py` generates its own ReportLab fixtures: two-page

@@ -2145,11 +2145,30 @@ mod tests {
             _ => panic!("METACLEAN_PDF_OUTPUT_MODE must be copy or replace"),
         };
         let source = directory.join("sample.pdf");
-        let before = fs::read(&source).unwrap();
-        let report = scan_file(&source);
+        assert_external_cleanup_integrity(&source, &mode);
+    }
+
+    #[test]
+    #[ignore = "requires METACLEAN_HEIF_SAMPLE_PATH with a generated HEIF/AVIF fixture"]
+    fn cleans_external_heif_sample_with_verified_output() {
+        let source = PathBuf::from(
+            std::env::var_os("METACLEAN_HEIF_SAMPLE_PATH")
+                .expect("METACLEAN_HEIF_SAMPLE_PATH must point to a validation fixture"),
+        );
+        let mode = match std::env::var("METACLEAN_HEIF_OUTPUT_MODE").as_deref() {
+            Ok("replace") => OutputMode::Replace,
+            Ok("copy") => OutputMode::Copy,
+            _ => panic!("METACLEAN_HEIF_OUTPUT_MODE must be copy or replace"),
+        };
+        assert_external_cleanup_integrity(&source, &mode);
+    }
+
+    fn assert_external_cleanup_integrity(source: &Path, mode: &OutputMode) {
+        let before = fs::read(source).unwrap();
+        let report = scan_file(source);
         assert!(report.supported, "{:?}", report.error);
         assert!(!report.findings.is_empty());
-        let result = clean_file_with_options(&source, &mode, true, true, true, false);
+        let result = clean_file_with_options(source, mode, true, true, true, false);
         assert!(result.success, "{:?}", result.error);
         let output = PathBuf::from(result.output_path.unwrap());
         let cleaned = fs::read(&output).unwrap();
@@ -2163,10 +2182,10 @@ mod tests {
             format!("{:x}", Sha256::digest(&cleaned))
         );
         match mode {
-            OutputMode::Copy => assert_eq!(fs::read(&source).unwrap(), before),
+            OutputMode::Copy => assert_eq!(fs::read(source).unwrap(), before),
             OutputMode::Replace => {
                 assert_eq!(fs::read(result.backup_path.unwrap()).unwrap(), before);
-                assert_eq!(fs::read(&source).unwrap(), cleaned);
+                assert_eq!(fs::read(source).unwrap(), cleaned);
             }
         }
         let report = scan_file(&output);

@@ -5,6 +5,13 @@ All notable changes to MetaClean are documented here. The project follows
 
 ## [Unreleased]
 
+### Tests
+
+- Add independent HEIC/AVIF cleanup qualification for RGB images, multiple
+  HEIC images and AVIF alpha. Both output modes compare decoded pixels,
+  displayed orientation, alpha, ICC profiles, frame counts, metadata and
+  source/backup integrity using external image codecs.
+
 ## [0.11.5] - 2026-09-29
 
 ### Fixed
