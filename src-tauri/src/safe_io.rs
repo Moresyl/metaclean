@@ -227,7 +227,7 @@ pub fn validate_input(path: &Path) -> Result<fs::Metadata> {
     Ok(metadata)
 }
 
-pub fn read_validated_input(path: &Path) -> Result<(fs::Metadata, Vec<u8>)> {
+fn open_validated_input(path: &Path) -> Result<(fs::Metadata, fs::File)> {
     validate_input(path)?;
     let file = open_without_following_links(path)?;
     let metadata = file.metadata()?;
@@ -237,7 +237,11 @@ pub fn read_validated_input(path: &Path) -> Result<(fs::Metadata, Vec<u8>)> {
     if metadata.len() > MAX_INPUT_BYTES {
         return Err(CleanError::TooLarge(display_path(path)));
     }
+    Ok((metadata, file))
+}
 
+pub fn read_validated_input(path: &Path) -> Result<(fs::Metadata, Vec<u8>)> {
+    let (metadata, file) = open_validated_input(path)?;
     let mut bytes = Vec::with_capacity(metadata.len().min(MAX_INPUT_BYTES) as usize);
     file.take(MAX_INPUT_BYTES + 1).read_to_end(&mut bytes)?;
     if bytes.len() as u64 > MAX_INPUT_BYTES {
@@ -393,15 +397,38 @@ pub fn ensure_source_unchanged(
     expected: &[u8],
     expected_metadata: &FileMetadataSnapshot,
 ) -> Result<()> {
-    let (metadata, current) = read_validated_input(path)?;
-    if current != expected {
+    let (metadata, mut file) = open_validated_input(path)?;
+    if metadata.len() != expected.len() as u64 || !reader_matches_bytes(&mut file, expected)? {
         return Err(CleanError::SourceChanged(display_path(path)));
     }
-    let current_snapshot = FileMetadataSnapshot::capture(path, &metadata)?;
+    validate_input(path)?;
+    let current_snapshot = FileMetadataSnapshot::capture(path, &file.metadata()?)?;
     if !expected_metadata.matches(&current_snapshot) {
         return Err(CleanError::SourceChanged(display_path(path)));
     }
     Ok(())
+}
+
+fn reader_matches_bytes(reader: &mut impl Read, expected: &[u8]) -> std::io::Result<bool> {
+    // Revalidate exact bytes without allocating another source-sized buffer.
+    let mut buffer = [0_u8; 64 * 1024];
+    for chunk in expected.chunks(buffer.len()) {
+        match reader.read_exact(&mut buffer[..chunk.len()]) {
+            Ok(()) => {}
+            Err(error) if error.kind() == std::io::ErrorKind::UnexpectedEof => return Ok(false),
+            Err(error) => return Err(error),
+        }
+        if &buffer[..chunk.len()] != chunk {
+            return Ok(false);
+        }
+    }
+    loop {
+        match reader.read(&mut buffer[..1]) {
+            Ok(count) => return Ok(count == 0),
+            Err(error) if error.kind() == std::io::ErrorKind::Interrupted => continue,
+            Err(error) => return Err(error),
+        }
+    }
 }
 
 pub fn atomic_create_unique_with_metadata(
@@ -574,6 +601,121 @@ mod tests {
             atomic_replace_if_unchanged(&path, &original, b"cleaned", &snapshot, true, false);
         assert!(matches!(result, Err(CleanError::SourceChanged(_))));
         assert_eq!(fs::read(&path).unwrap(), b"edited elsewhere");
+    }
+
+    #[test]
+    fn source_comparison_checks_chunk_boundaries_and_exact_length() {
+        for size in [0, 1, 65_535, 65_536, 65_537, 131_075] {
+            let expected = vec![0x5a; size];
+            assert!(reader_matches_bytes(&mut expected.as_slice(), &expected).unwrap());
+            let mut longer = expected.clone();
+            longer.push(0);
+            assert!(!reader_matches_bytes(&mut longer.as_slice(), &expected).unwrap());
+            if size > 0 {
+                assert!(!reader_matches_bytes(&mut &expected[..size - 1], &expected).unwrap());
+                for offset in [0, size / 2, size - 1] {
+                    let mut changed = expected.clone();
+                    changed[offset] ^= 1;
+                    assert!(!reader_matches_bytes(&mut changed.as_slice(), &expected).unwrap());
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn source_comparison_handles_short_reads_interruptions_and_io_errors() {
+        struct ShortReader<'a> {
+            bytes: &'a [u8],
+            interrupt: bool,
+            fail_at_end: bool,
+        }
+        impl Read for ShortReader<'_> {
+            fn read(&mut self, buffer: &mut [u8]) -> std::io::Result<usize> {
+                if self.interrupt {
+                    self.interrupt = false;
+                    return Err(std::io::ErrorKind::Interrupted.into());
+                }
+                if self.bytes.is_empty() && self.fail_at_end {
+                    return Err(std::io::ErrorKind::PermissionDenied.into());
+                }
+                let count = buffer.len().min(7).min(self.bytes.len());
+                buffer[..count].copy_from_slice(&self.bytes[..count]);
+                self.bytes = &self.bytes[count..];
+                self.interrupt = count > 0;
+                Ok(count)
+            }
+        }
+        let bytes = vec![42; 65_539];
+        let make_reader = |fail_at_end| ShortReader {
+            bytes: &bytes,
+            interrupt: true,
+            fail_at_end,
+        };
+        assert!(reader_matches_bytes(&mut make_reader(false), &bytes).unwrap());
+        assert_eq!(
+            reader_matches_bytes(&mut make_reader(true), &bytes)
+                .unwrap_err()
+                .kind(),
+            std::io::ErrorKind::PermissionDenied
+        );
+        assert_eq!(
+            reader_matches_bytes(&mut make_reader(true), &vec![42; bytes.len() + 1])
+                .unwrap_err()
+                .kind(),
+            std::io::ErrorKind::PermissionDenied
+        );
+    }
+
+    #[test]
+    fn streamed_source_guard_rejects_same_size_edits_even_with_restored_timestamp() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("source.bin");
+        let bytes = vec![0x5a; 131_075];
+        fs::write(&path, &bytes).unwrap();
+        let snapshot = FileMetadataSnapshot::capture(&path, &fs::metadata(&path).unwrap()).unwrap();
+        ensure_source_unchanged(&path, &bytes, &snapshot).unwrap();
+        for offset in [0, 65_536, bytes.len() - 1] {
+            let mut changed = bytes.clone();
+            changed[offset] ^= 1;
+            fs::write(&path, changed).unwrap();
+            filetime::set_file_mtime(&path, snapshot.modified).unwrap();
+            assert!(matches!(
+                ensure_source_unchanged(&path, &bytes, &snapshot),
+                Err(CleanError::SourceChanged(_))
+            ));
+        }
+    }
+
+    #[test]
+    #[ignore = "explicit isolated source revalidation memory measurement"]
+    fn benchmark_source_revalidation() {
+        let size_mib = std::env::var("METACLEAN_GUARD_MIB")
+            .unwrap_or_else(|_| "256".into())
+            .parse::<usize>()
+            .unwrap();
+        assert!([64, 256].contains(&size_mib));
+        let baseline = std::env::var("METACLEAN_GUARD_BASELINE").as_deref() == Ok("true");
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("source.bin");
+        let bytes = vec![0x5a; size_mib * 1024 * 1024];
+        fs::write(&path, &bytes).unwrap();
+        let snapshot = FileMetadataSnapshot::capture(&path, &fs::metadata(&path).unwrap()).unwrap();
+        let started = std::time::Instant::now();
+        for _ in 0..5 {
+            if baseline {
+                // Reproduce the previous whole-buffer guard for a like-for-like
+                // isolated comparison, without exposing it in production code.
+                let (metadata, current) = read_validated_input(&path).unwrap();
+                assert_eq!(current, bytes);
+                assert!(snapshot.matches(&FileMetadataSnapshot::capture(&path, &metadata).unwrap()));
+            } else {
+                ensure_source_unchanged(&path, &bytes, &snapshot).unwrap();
+            }
+        }
+        eprintln!(
+            "METACLEAN_GUARD {{\"size_mib\":{size_mib},\"baseline\":{baseline},\"passes\":5,\"elapsed_ms\":{:.2}}}",
+            started.elapsed().as_secs_f64() * 1000.0
+        );
     }
 
     #[test]

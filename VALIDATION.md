@@ -16,6 +16,42 @@ This file records evidence, not intent. A row is complete only when the named ar
 | M3: Windows release | Complete for v0.3.0 | The successful v0.3.0 release matrix published launch-smoked x64 NSIS/MSI, x86 NSIS and architecture-labelled x64/x86 portable ZIPs. Local installation/extraction proof also kept each package active for six seconds with the `MetaClean` title before clean uninstall/removal. |
 | M3: macOS/Linux release | Complete for unsigned v0.3.0 artifacts | The successful v0.3.0 matrix copied and launch-smoked both Intel and Apple Silicon DMGs, then installed and launch-smoked the Linux DEB before publishing DEB/RPM/AppImage assets. Apple signing/notarization secrets remain unavailable, so Gatekeeper qualification is an external gate rather than a completed claim. |
 
+## Bounded source revalidation — v0.11.7 candidate
+
+The source guard now reads through a 64 KiB buffer and compares every byte,
+including an explicit end-of-file check. It retains validated opening, source
+size limits and path-link checks, then refreshes handle metadata before comparing
+the metadata snapshot. This removes the second source-sized allocation from
+revalidation; it does not make all cleaners streaming or bound total app memory.
+
+Local native tests passed 240 cases (nine explicit/environment-dependent cases
+ignored), including new chunk-boundary, truncated/appended data, short-read,
+interruption, I/O-error and same-size mutation cases. Existing permission,
+timestamp, reparse-path and guarded-write tests still pass. Strict all-target,
+all-feature Clippy and formatting passed before the version-only candidate bump.
+
+The ignored `safe_io::tests::benchmark_source_revalidation` runs five exact-byte
+checks against a generated file. `METACLEAN_GUARD_MIB` accepts 64 or 256;
+`METACLEAN_GUARD_BASELINE=true` reproduces the previous whole-buffer guard inside
+test code. Twelve isolated optimized Windows processes (three per size/mode)
+were measured using process peak working set and requested 5 ms private-byte
+sampling, alternating old/new modes. Each process includes fixture allocation
+and excludes cleaning and the WebView; both modes use the same executable.
+
+| Source size | Previous guard peak working set | Bounded guard peak working set |
+| --- | --- | --- |
+| 64 MiB | 132.66–133.11 MiB | 68.73–68.77 MiB |
+| 256 MiB | 516.66–516.67 MiB | 260.75 MiB |
+
+All 428 frontend tests also pass (93.58% lines, 85.49% branches). Independent
+JPEG sixteen-case, HEIF/AVIF six-case and MuPDF six-case fidelity checks pass with
+the candidate version, including source/backup hashes and both output modes.
+
+Every measurement's exact-byte and metadata assertions passed. These observations
+are specific to this synthetic revalidation workload and machine, not a guarantee
+of application-wide peak memory or throughput. Hosted candidate and publication
+gates remain pending at this checkpoint.
+
 ## Published v0.11.6 verification — 2026-09-29
 
 The [stable release](https://github.com/Moresyl/metaclean/releases/tag/v0.11.6)

@@ -5,6 +5,24 @@ All notable changes to MetaClean are documented here. The project follows
 
 ## [Unreleased]
 
+## [0.11.7] - 2026-09-29
+
+### Changed
+
+- Compare source files in bounded chunks before output creation and replacement,
+  avoiding an additional source-sized allocation while retaining exact byte,
+  length, link and metadata checks. Refresh opened-file metadata after reading.
+
+### Tests
+
+- Cover chunk boundaries, short/interrupted reads, truncation, appended data,
+  same-size edits with restored timestamps and I/O failures. Add an isolated
+  old/new source-revalidation memory benchmark.
+- Export per-file crash evidence, including hidden files, with names, sizes,
+  hashes and source/output classification. Four public v0.11.6 repetitions
+  passed; timing-dependent runs do not guarantee absence of temporary files
+  after arbitrary forced termination.
+
 ## [0.11.6] - 2026-09-29
 
 ### Fixed
