@@ -16,6 +16,29 @@ This file records evidence, not intent. A row is complete only when the named ar
 | M3: Windows release | Complete for v0.3.0 | The successful v0.3.0 release matrix published launch-smoked x64 NSIS/MSI, x86 NSIS and architecture-labelled x64/x86 portable ZIPs. Local installation/extraction proof also kept each package active for six seconds with the `MetaClean` title before clean uninstall/removal. |
 | M3: macOS/Linux release | Complete for unsigned v0.3.0 artifacts | The successful v0.3.0 matrix copied and launch-smoked both Intel and Apple Silicon DMGs, then installed and launch-smoked the Linux DEB before publishing DEB/RPM/AppImage assets. Apple signing/notarization secrets remain unavailable, so Gatekeeper qualification is an external gate rather than a completed claim. |
 
+## Independent PDF fidelity qualification — 2026-09-29
+
+`scripts/verify-pdf-fidelity.py` generates its own ReportLab fixtures: two-page
+vector/text with rotation, a two-page interactive form with three fields, and
+an ASCII85-wrapped JPEG with EXIF plus transparent vector content. Copy and
+replace modes each verify source/backup bytes and native source/output hashes.
+Independent pypdf checks compare page geometry, text, field names, values and
+widget state. Pillow checks decoded JPEG pixels and confirms EXIF removal.
+
+Local MuPDF 1.27.2.3 rendering at 144 dpi passes all six cases with identical
+before/after RGB pixels. The original implementation failed the form case:
+all three field names disappeared and the rendered page changed. Distinguishing
+widget field names from annotation authors fixes that regression. The image
+case initially failed closed on its ordinary ASCII85/DCT filter chain; bounded
+ASCII85 unwrapping now supports that chain without JPEG pixel re-encoding.
+Malformed encodings, unknown chains and non-default composite parameters are
+rejected. Dedicated unit tests cover decode limits and integer-overflow input.
+
+The hosted `Verify independent PDF fidelity` workflow and the release source
+gate run the same checks with Poppler. Hosted results are pending for this
+candidate. These synthetic samples do not establish arbitrary PDF, XFA,
+digital-signature, accessibility or complex form compatibility.
+
 ## Published v0.11.4 verification — 2026-09-29
 
 The [stable release](https://github.com/Moresyl/metaclean/releases/tag/v0.11.4)

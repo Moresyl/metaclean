@@ -5,6 +5,21 @@ All notable changes to MetaClean are documented here. The project follows
 
 ## [Unreleased]
 
+### Fixed
+
+- Preserve merged PDF widget field names during metadata removal. The `/T`
+  key names an interactive form field on widgets and identifies an author on
+  other annotations; treating both as author metadata broke real form samples.
+- Clean JPEG metadata behind ASCII85 transport filters with a 64 MiB decoded
+  stream limit, without re-encoding image pixels. Unknown filter combinations
+  and non-default composite-filter parameters remain rejected.
+
+### Tests
+
+- Add independent PDF page-render, text, form-field, embedded JPEG EXIF/pixel
+  and source/backup integrity checks for three synthetic scenarios in both
+  copy and replace modes, using pypdf with MuPDF locally and Poppler in CI.
+
 ### Security
 
 - Update development-only `undici` dependencies to 6.28.1 and 7.29.1 for

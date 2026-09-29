@@ -2133,6 +2133,48 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "requires METACLEAN_PDF_SAMPLE_DIR with a generated sample.pdf fixture"]
+    fn cleans_external_pdf_sample_with_verified_output() {
+        let directory = PathBuf::from(
+            std::env::var_os("METACLEAN_PDF_SAMPLE_DIR")
+                .expect("METACLEAN_PDF_SAMPLE_DIR must point to validation fixtures"),
+        );
+        let mode = match std::env::var("METACLEAN_PDF_OUTPUT_MODE").as_deref() {
+            Ok("replace") => OutputMode::Replace,
+            Ok("copy") => OutputMode::Copy,
+            _ => panic!("METACLEAN_PDF_OUTPUT_MODE must be copy or replace"),
+        };
+        let source = directory.join("sample.pdf");
+        let before = fs::read(&source).unwrap();
+        let report = scan_file(&source);
+        assert!(report.supported, "{:?}", report.error);
+        assert!(!report.findings.is_empty());
+        let result = clean_file_with_options(&source, &mode, true, true, true, false);
+        assert!(result.success, "{:?}", result.error);
+        let output = PathBuf::from(result.output_path.unwrap());
+        let cleaned = fs::read(&output).unwrap();
+        let integrity = result.integrity.unwrap();
+        assert_eq!(
+            integrity.source_sha256,
+            format!("{:x}", Sha256::digest(&before))
+        );
+        assert_eq!(
+            integrity.output_sha256,
+            format!("{:x}", Sha256::digest(&cleaned))
+        );
+        match mode {
+            OutputMode::Copy => assert_eq!(fs::read(&source).unwrap(), before),
+            OutputMode::Replace => {
+                assert_eq!(fs::read(result.backup_path.unwrap()).unwrap(), before);
+                assert_eq!(fs::read(&source).unwrap(), cleaned);
+            }
+        }
+        let report = scan_file(&output);
+        assert!(report.supported, "{:?}", report.error);
+        assert!(report.findings.is_empty());
+    }
+
+    #[test]
     #[ignore = "requires METACLEAN_OFFICE_SAMPLE_DIR with DOCX/XLSX/PPTX/ODT fixtures"]
     fn cleans_external_office_validation_samples() {
         let root = PathBuf::from(
