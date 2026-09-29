@@ -16,33 +16,34 @@ const PUBLISHED_LOCALES = [
     .matchAll(/\{ code: "/gu),
 ].length;
 
+async function clickVisible(selector) {
+  // A refresh may briefly expose the old shell before the new navigation is
+  // mounted. Element arrays do not wait for missing entries; wait for the
+  // actual target so a slow WebView still exercises the real click.
+  const target = await $(selector);
+  await target.waitForDisplayed();
+  await target.click();
+}
+
 async function openSettingsPage() {
-  const navigation = await $$(".sidebar nav button");
-  await navigation[3].click();
+  await clickVisible(".sidebar nav button:nth-of-type(4)");
   await $(".locale-switch select").waitForDisplayed();
 }
 
 async function openCleaningPreferences() {
-  const navigation = await $$(".sidebar nav button");
-  await navigation[3].click();
-  await $(".settings-nav button:nth-child(2)").waitForDisplayed();
-  const categories = await $$(".settings-nav button");
-  await categories[1].click();
+  await clickVisible(".sidebar nav button:nth-of-type(4)");
+  await clickVisible(".settings-nav button:nth-child(2)");
   await $(".fidelity-options").waitForDisplayed();
 }
 
 async function openSystemPreferences() {
-  const navigation = await $$(".sidebar nav button");
-  await navigation[3].click();
-  await $(".settings-nav button:nth-child(3)").waitForDisplayed();
-  const categories = await $$(".settings-nav button");
-  await categories[2].click();
+  await clickVisible(".sidebar nav button:nth-of-type(4)");
+  await clickVisible(".settings-nav button:nth-child(3)");
   await $(".settings-list").waitForDisplayed();
 }
 
 async function openAboutPage() {
-  const navigation = await $$(".sidebar nav button");
-  await navigation[4].click();
+  await clickVisible(".sidebar nav button:nth-of-type(5)");
   await $("a=Report a bug").waitForDisplayed();
 }
 
