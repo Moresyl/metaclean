@@ -1,7 +1,7 @@
 # MetaClean capability audit
 
-Audited on 2026-09-29 for the published v0.11.6 release at
-`5d6da93a5355048c2ab3f404f4022f46f70d635b`.
+Audited on 2026-09-29 for the published v0.11.7 release at
+`8efad9c51c6129c25d722d1c7eb62dbe875393b0`.
 
 This ledger describes implemented behavior, its evidence and its limits.
 Extension counts and passing tests do not establish universal format support,
@@ -25,17 +25,29 @@ application. Detailed run evidence is recorded in `VALIDATION.md`.
 
 ## Release evidence
 
-- [Candidate CI](https://github.com/Moresyl/metaclean/actions/runs/36513754246)
+- [Candidate CI](https://github.com/Moresyl/metaclean/actions/runs/36519310581)
   passed the main quality gates and desktop tests on all three operating systems.
-- [Release pipeline](https://github.com/Moresyl/metaclean/actions/runs/36514991683)
+- [Release pipeline](https://github.com/Moresyl/metaclean/actions/runs/36520841603)
   passed source validation, five platform builds, package checks and finalization.
-- [Independent public-asset verification](https://github.com/Moresyl/metaclean/actions/runs/36516811314)
+- [Independent public-asset verification](https://github.com/Moresyl/metaclean/actions/runs/36522541974)
   checked downloaded bytes and signatures against the tagged public key.
-- [Published v0.11.6](https://github.com/Moresyl/metaclean/releases/tag/v0.11.6)
+- [Published v0.11.7](https://github.com/Moresyl/metaclean/releases/tag/v0.11.7)
   contains 20 assets, including the checksum manifest. The public Pages update
   feed was checked against the release's five platform URLs and signatures.
 
 The VML note-shape fix verified with WPS 2019 is included in v0.11.1.
+
+v0.11.7 revalidates source bytes with a 64 KiB buffer while retaining exact-length,
+link and metadata checks. Twelve isolated Windows memory measurements compared
+the previous whole-buffer algorithm with the new guard; observed peaks for a
+256 MiB source fell from 516.66–516.67 MiB to about 260.75 MiB. This measures
+revalidation, including fixture allocation, and does not establish whole-app
+peak memory. The benchmark method and all sizes are recorded in `VALIDATION.md`.
+Its public 0.11.6 → 0.11.7 → 0.11.6 NSIS/MSI/DEB/DMG checks passed, including
+both Windows application-triggered updates and MSI repair. The public crash
+check preserved sixty-four sources and one committed output, with no additional
+files in its complete inventory. This single interruption point does not qualify
+all temporary-file cleanup or physical power-loss behavior.
 
 v0.11.6 adds exact JPEG print-density retention and classifies retained
 orientation as informational. Its public NSIS/MSI/DEB/DMG transitions from

@@ -16,7 +16,62 @@ This file records evidence, not intent. A row is complete only when the named ar
 | M3: Windows release | Complete for v0.3.0 | The successful v0.3.0 release matrix published launch-smoked x64 NSIS/MSI, x86 NSIS and architecture-labelled x64/x86 portable ZIPs. Local installation/extraction proof also kept each package active for six seconds with the `MetaClean` title before clean uninstall/removal. |
 | M3: macOS/Linux release | Complete for unsigned v0.3.0 artifacts | The successful v0.3.0 matrix copied and launch-smoked both Intel and Apple Silicon DMGs, then installed and launch-smoked the Linux DEB before publishing DEB/RPM/AppImage assets. Apple signing/notarization secrets remain unavailable, so Gatekeeper qualification is an external gate rather than a completed claim. |
 
-## Bounded source revalidation — v0.11.7 candidate
+## Published v0.11.7 verification — 2026-09-29
+
+The [stable release](https://github.com/Moresyl/metaclean/releases/tag/v0.11.7)
+at `8efad9c51c6129c25d722d1c7eb62dbe875393b0` was published on
+2026-09-29 at 04:37:26 UTC with twenty nonempty assets.
+
+- [Candidate CI 36519310581](https://github.com/Moresyl/metaclean/actions/runs/36519310581)
+  passed 428 frontend tests, 240 Windows native tests (nine ignored) and sixteen
+  desktop cases on each of Windows, Linux and macOS. Its Windows run recorded
+  91.77% Rust line coverage with the documented exclusions. The rebuilt local
+  Windows desktop suite also passed all sixteen cases.
+- [Release 36520841603](https://github.com/Moresyl/metaclean/actions/runs/36520841603)
+  passed source revalidation, all five platform builds, applicable installation
+  and launch checks, and finalization. Linux source validation passed 428 frontend
+  tests, 234 native tests (ten ignored), sixteen desktop cases, ten FFmpeg PCM
+  cases, six PDF, six HEIF/AVIF and sixteen JPEG cases. Linux Rust line coverage
+  was 91.30%. Frontend coverage was 89.96% statements, 85.54% branches, 92.07%
+  functions and 93.58% lines. The npm audit reported no known vulnerabilities;
+  seven previously classified Rust warnings remain.
+- The separate tagged [image workflow 36520841553](https://github.com/Moresyl/metaclean/actions/runs/36520841553)
+  and [PDF workflow 36520841510](https://github.com/Moresyl/metaclean/actions/runs/36520841510)
+  also passed. Downloaded image evidence includes sixteen matching JPEG raw-pixel
+  hash pairs and six HEIF/AVIF result records; all six Poppler PDF cases passed.
+- [Public assets 36522541974](https://github.com/Moresyl/metaclean/actions/runs/36522541974)
+  passed verification of the nineteen checksum-listed assets, all five updater
+  signatures and rejection of modified package bytes.
+- [Windows NSIS 36522545117](https://github.com/Moresyl/metaclean/actions/runs/36522545117)
+  passed x64/x86 application-triggered updates, automatic restart and synthetic
+  settings/history/fingerprint preservation through 0.11.6 → 0.11.7 → 0.11.6.
+  Truncated installers were rejected with the previous executable hash and
+  launch intact, and final removal passed.
+- [MSI 36522548342](https://github.com/Moresyl/metaclean/actions/runs/36522548342),
+  [DEB 36522551545](https://github.com/Moresyl/metaclean/actions/runs/36522551545)
+  and [both DMGs 36522554872](https://github.com/Moresyl/metaclean/actions/runs/36522554872)
+  passed the same upgrade/rollback pair, applicable launch checks and removal.
+  MSI repair passed for product code `{A3F32EC3-8C41-48BA-A3F7-C9A881F9C59F}`.
+- [Crash recovery 36522558812](https://github.com/Moresyl/metaclean/actions/runs/36522558812)
+  preserved all sixty-four source hashes and verified one committed output.
+  The complete file inventory, including hidden files, contained no other files
+  in this run. Two restarts preserved the snapshot, did not resume cleanup and
+  showed the interruption notice only once. Public executable SHA-256:
+  `D4AAC722073F65BB9BC2D5C381CDE295852036307C793F5BF0EB345585E98227`.
+- After [Pages 36522454945](https://github.com/Moresyl/metaclean/actions/runs/36522454945),
+  the release and Pages update manifests were byte-identical for version 0.11.7
+  and all five platforms, SHA-256
+  `893D7939F63F1A9C71C60E1B8A8DEC95BE5C83C8E03E15BBBA9B181E542A040F`.
+
+These use disposable hosted machines and synthetic state. Windows x86 runs on
+64-bit Windows and Intel DMG on an arm64 Mac. They do not qualify native older
+CPUs/32-bit Windows, arbitrary data migration, physical power loss, interrupted
+installation or Apple Gatekeeper approval. A crash run without extra files does
+not guarantee absence of orphaned temporary files at every interruption point.
+The user's local installed application was not changed. The new memory results
+below cover the source guard; whole-application measurements were not repeated.
+
+## Bounded source revalidation — v0.11.7
 
 The source guard now reads through a 64 KiB buffer and compares every byte,
 including an explicit end-of-file check. It retains validated opening, source
@@ -50,7 +105,7 @@ the candidate version, including source/backup hashes and both output modes.
 Every measurement's exact-byte and metadata assertions passed. These observations
 are specific to this synthetic revalidation workload and machine, not a guarantee
 of application-wide peak memory or throughput. Hosted candidate and publication
-gates remain pending at this checkpoint.
+results are recorded above.
 
 ## Published v0.11.6 verification — 2026-09-29
 
