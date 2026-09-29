@@ -79,9 +79,11 @@ All six cases pass locally using Pillow 12.2.0, pillow-heif 1.3.0 and libheif
 1.21.2; codec versions are saved with each run. A shared ignored native test
 helper now serves these cases and the existing six PDF cases, which also passed
 after the refactor. No production cleaner change was required by these samples.
-The independent Linux workflow is pending qualification. This matrix does not
-qualify HDR, gain maps, depth images, every encoder, arbitrary RAW files or all
-HEIF/AVIF reader applications.
+The [independent Linux workflow 36509053726](https://github.com/Moresyl/metaclean/actions/runs/36509053726)
+also passed all six cases. These checks now run before future release packaging;
+changes to the shared engine trigger both PDF and HEIF fidelity workflows.
+This matrix does not qualify HDR, gain maps, depth images, timed animations,
+every encoder, arbitrary RAW files or all HEIF/AVIF reader applications.
 
 ## Independent PDF fidelity qualification — 2026-09-29
 

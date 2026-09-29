@@ -4,6 +4,7 @@ on:
   workflow_dispatch:
   push:
     paths:
+      - src-tauri/src/engine.rs
       - src-tauri/src/cleaners/heif.rs
       - scripts/verify-heif-fidelity.py
       - .github/workflows/verify-heif-fidelity.yml
