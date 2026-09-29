@@ -1,6 +1,6 @@
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { useState } from "react";
+import { StrictMode, useState } from "react";
 import CleanOptions from "./CleanOptions";
 import DropZone from "./DropZone";
 import FileQueue from "./FileQueue";
@@ -39,7 +39,7 @@ vi.mock("../lib/update", () => ({
   installAvailableUpdate: installAvailableUpdateMock,
 }));
 
-const wrap = (node: React.ReactNode) => render(<ThemeProvider initialMode="light"><I18nProvider><UpdateProvider>{node}</UpdateProvider></I18nProvider></ThemeProvider>);
+const wrap = (node: React.ReactNode) => render(<StrictMode><ThemeProvider initialMode="light"><I18nProvider><UpdateProvider>{node}</UpdateProvider></I18nProvider></ThemeProvider></StrictMode>);
 
 function UpdateDialogHarness() {
   const update = useUpdate();
@@ -224,16 +224,18 @@ describe("desktop components", () => {
 
   it("renders queue findings, errors and removal controls", async () => {
     const onRemove = vi.fn();
+    const onNotify = vi.fn();
     const entries: FileEntry[] = [
       { id: "1", name: "photo.jpg", path: "photo.jpg", kind: "image", status: "scanned", report: { path: "photo.jpg", name: "photo.jpg", format: "JPEG", size: 1, supported: true, findings: [{ category: "image_metadata", label: "metadata", count: 2, severity: "privacy" }] } },
       { id: "2", name: "bad.pdf", path: "bad.pdf", kind: "pdf", status: "error", report: { path: "bad.pdf", name: "bad.pdf", format: "PDF", size: 1, supported: false, findings: [], error: "格式损坏" } },
     ];
-    wrap(<FileQueue entries={entries} preserveColorProfile removeExtendedAttributes={false} onRemove={onRemove} onClear={vi.fn()} onReveal={vi.fn()} onNotify={vi.fn()} />);
+    wrap(<FileQueue entries={entries} preserveColorProfile removeExtendedAttributes={false} onRemove={onRemove} onClear={vi.fn()} onReveal={vi.fn()} onNotify={onNotify} />);
     expect(screen.getByText("发现 2 项痕迹")).toBeInTheDocument();
     expect(screen.getByText("图片元数据 · 2")).toBeInTheDocument();
     expect(screen.getByText("格式损坏")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "复制全部路径" }));
     await waitFor(() => expect(clipboardMock).toHaveBeenCalledWith("photo.jpg\r\nbad.pdf"));
+    expect(onNotify).toHaveBeenCalledWith("已复制 2 个路径");
     fireEvent.click(screen.getByRole("button", { name: "移除 photo.jpg" }));
     fireEvent.click(within(screen.getByRole("dialog", { name: "从队列中移除？" })).getByRole("button", { name: "移除" }));
     expect(onRemove).toHaveBeenCalledWith("1");
@@ -393,6 +395,23 @@ describe("desktop components", () => {
     expect(saveMock).toHaveBeenCalledOnce();
     finishSave?.("C:\\reports\\once.json");
     await waitFor(() => expect(invokeMock).toHaveBeenCalledWith("export_audit_report", expect.anything()));
+  });
+
+  it("does not export or notify after the queue unmounts during the save dialog", async () => {
+    let finishSave: ((path: string) => void) | undefined;
+    saveMock.mockReturnValueOnce(new Promise((resolve) => { finishSave = resolve; }));
+    const entries: FileEntry[] = [{
+      id: "late-export", name: "notes.txt", path: "notes.txt", kind: "text", status: "scanned",
+      report: { path: "notes.txt", name: "notes.txt", format: "Text", size: 4, supported: true, findings: [] },
+    }];
+    const onNotify = vi.fn();
+    const view = wrap(<FileQueue entries={entries} preserveColorProfile removeExtendedAttributes={false} onRemove={vi.fn()} onClear={vi.fn()} onReveal={vi.fn()} onNotify={onNotify} />);
+    fireEvent.click(screen.getByRole("button", { name: "导出审计报告" }));
+    await waitFor(() => expect(saveMock).toHaveBeenCalledOnce());
+    view.unmount();
+    await act(async () => { finishSave?.("C:\\reports\\late.json"); });
+    expect(invokeMock).not.toHaveBeenCalledWith("export_audit_report", expect.anything());
+    expect(onNotify).not.toHaveBeenCalled();
   });
 
   it("renders empty and every queue lifecycle status", () => {
@@ -739,6 +758,23 @@ describe("desktop components", () => {
     fireEvent.click(screen.getByRole("button", { name: /前往 GitHub 查看并下载/ }));
     await waitFor(() => expect(openUrlMock).toHaveBeenCalledWith("https://github.com/Moresyl/metaclean/releases/tag/v0.5.0"));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("shows a release-link failure and allows retry after StrictMode remount", async () => {
+    openUrlMock.mockRejectedValueOnce(new Error("opener unavailable")).mockResolvedValueOnce(undefined);
+    checkForUpdateMock.mockResolvedValue({
+      status: "available",
+      info: { currentVersion: "0.4.1", availableVersion: "0.5.0", name: "MetaClean v0.5.0", releaseUrl: "https://github.com/Moresyl/metaclean/releases/tag/v0.5.0" },
+    });
+    wrap(<UpdateDialogHarness />);
+    fireEvent.click(screen.getByRole("button", { name: "trigger update" }));
+    const download = await screen.findByRole("button", { name: /前往 GitHub 查看并下载/ });
+    fireEvent.click(download);
+    expect(await screen.findByRole("alert")).toHaveTextContent("opener unavailable");
+    expect(download).toBeEnabled();
+    fireEvent.click(download);
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(openUrlMock).toHaveBeenCalledTimes(2);
   });
 
   it("does not close or update an unmounted prompt after its release link resolves", async () => {

@@ -5,6 +5,13 @@ All notable changes to MetaClean are documented here. The project follows
 
 ## [Unreleased]
 
+### Fixed
+
+- Restore queue and update-dialog async lifecycle guards when React replays
+  effects in development StrictMode. Audit export, clipboard feedback and
+  release-link completion now remain usable, while real unmounts still stop
+  pending UI work and audit writes that have not started.
+
 ### Tests
 
 - Add independent HEIC/AVIF cleanup qualification for RGB images, multiple

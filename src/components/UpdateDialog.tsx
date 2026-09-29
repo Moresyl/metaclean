@@ -15,7 +15,10 @@ export default function UpdateDialog() {
   const primaryAction = useRef<HTMLButtonElement>(null);
   const mountedRef = useRef(true);
 
-  useEffect(() => () => { mountedRef.current = false; }, []);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; };
+  }, []);
 
   useLayoutEffect(() => {
     if (!update.promptOpen) return;

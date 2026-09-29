@@ -69,7 +69,10 @@ export default function FileQueue({ entries, preserveColorProfile, removeExtende
   const mountedRef = useRef(true);
   const exportingRef = useRef(false);
   const menu = useContextMenu();
-  useEffect(() => () => { mountedRef.current = false; }, []);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; };
+  }, []);
   const sortedEntries = useMemo(() => entries.map((entry, index) => ({ entry, index })).sort((left, right) => {
     const values: Record<SortKey, [string | number | undefined, string | number | undefined]> = {
       name: [left.entry.name, right.entry.name],
