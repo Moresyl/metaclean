@@ -53,6 +53,20 @@ Rust warnings remain.
   but does not export its name or contents, so this result does not establish
   absence or cleanup of orphaned temporary files. Public executable SHA-256:
   `D991FF63E6ACD7FB2A3432FF52757ED67E8398546658A62AEBB47F0574A2C033`.
+- The crash verifier now exports a per-file inventory with name, size, SHA-256,
+  source/output/other classification and exact source/clean-output hash matches;
+  hidden files are included in both inventory and restart comparisons.
+  Four subsequent public-binary runs
+  ([36517727117](https://github.com/Moresyl/metaclean/actions/runs/36517727117),
+  [36517907228](https://github.com/Moresyl/metaclean/actions/runs/36517907228),
+  [36517911359](https://github.com/Moresyl/metaclean/actions/runs/36517911359),
+  [36517914627](https://github.com/Moresyl/metaclean/actions/runs/36517914627))
+  all preserved sixty-four sources, verified respectively one, two, two and one
+  committed outputs, and found no additional files. Both restart checks passed
+  in every run. These timing-dependent observations do not identify the earlier
+  extra file or establish that forced termination always leaves no temporary
+  files. The named temporary-file implementation relies on normal process
+  cleanup; abrupt termination can bypass that cleanup.
 - After [Pages 36516748487](https://github.com/Moresyl/metaclean/actions/runs/36516748487),
   the public Pages and release update manifests were byte-identical, reporting
   0.11.6 and five platforms, SHA-256
