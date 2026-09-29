@@ -1,7 +1,7 @@
 # MetaClean capability audit
 
-Audited on 2026-09-29 for the published v0.11.5 release at
-`6d937b9fcc2940b3621a43935dfc8a1073802647`.
+Audited on 2026-09-29 for the published v0.11.6 release at
+`5d6da93a5355048c2ab3f404f4022f46f70d635b`.
 
 This ledger describes implemented behavior, its evidence and its limits.
 Extension counts and passing tests do not establish universal format support,
@@ -15,7 +15,8 @@ application. Detailed run evidence is recorded in `VALIDATION.md`.
 | Cleanup verification | Candidate bytes are re-detected and re-inspected before output allocation and writing. Engine regressions cover residual findings, format changes, truncation and corruption. | Verification covers implemented privacy surfaces; it is not a forensic proof of absence of all information. |
 | Audio preservation | Native Opus/Vorbis comment cleanup preserves page layout, codec setup and audio bytes, while retaining validated numeric playback gains. Ten independent FFmpeg cases cover mono, stereo, 5.1, long comments and chained streams. | Unknown codecs, unsupported extensions and malformed structures fail closed; the cleaner does not fully decode audio. |
 | Document privacy | Native Office/OpenDocument/EPUB and PDF cleaners have structural and residual-data tests; real Office samples were opened and exported with LibreOffice. Post-v0.11.0 WPS 2019 sample tests found and verified a VML comment-shape fix; see VALIDATION.md. | Microsoft Word, newer WPS releases and complex document fidelity remain unverified. The fix is not included in v0.11.0. Legacy binary Office is refused. |
-| PDF fidelity | Six synthetic copy/replace cases preserve rendered pages, searchable text, form fields and JPEG pixels while removing document metadata and embedded JPEG EXIF. Independent MuPDF and Poppler rendering, pypdf parsing and Pillow checks pass. | These samples do not qualify arbitrary PDFs, complex forms, XFA, digital signatures or accessibility. |
+| PDF fidelity | Six synthetic copy/replace cases preserve rendered pages, searchable text, form fields and JPEG pixels while removing document metadata and private embedded JPEG EXIF. Validated JPEG orientation, density and ICC are retained. Independent MuPDF and Poppler rendering, pypdf parsing and Pillow checks pass. | These samples do not qualify arbitrary PDFs, complex forms, XFA, digital signatures or accessibility. |
+| Image fidelity | Six independent HEIF/AVIF cases preserve frames, display pixels, alpha and ICC. Sixteen JPEG cases preserve exact EXIF density rationals/units, JFIF, ICC and pixels, with orientation retention enabled and disabled. | Synthetic cases do not qualify all encoders, print drivers, HDR, gain maps, depth images, timed animation or arbitrary RAW. |
 | Batch isolation | Bounded intake, per-file outcomes, cancellation, count-only progress and source-path identity are tested across Rust and frontend boundaries. | Slow-device cancellation latency and general peak-memory bounds remain unqualified. |
 | Content fingerprints | Successful results, details, history and JSON reports carry source/output SHA-256. Desktop tests independently hash the actual files. | Hashes describe cleanup-time content, exclude filesystem attributes and do not prove metadata removal. |
 | Desktop workflow | Queue search/filtering, safe-copy cleanup, persistent preferences, keyboard navigation, RTL and accessibility checks run on Windows, macOS and Linux. | Automated scenarios do not replace a usability study with representative users. |
@@ -24,17 +25,24 @@ application. Detailed run evidence is recorded in `VALIDATION.md`.
 
 ## Release evidence
 
-- [Candidate CI](https://github.com/Moresyl/metaclean/actions/runs/36504579824)
+- [Candidate CI](https://github.com/Moresyl/metaclean/actions/runs/36513754246)
   passed the main quality gates and desktop tests on all three operating systems.
-- [Release pipeline](https://github.com/Moresyl/metaclean/actions/runs/36505903839)
+- [Release pipeline](https://github.com/Moresyl/metaclean/actions/runs/36514991683)
   passed source validation, five platform builds, package checks and finalization.
-- [Independent public-asset verification](https://github.com/Moresyl/metaclean/actions/runs/36507680233)
+- [Independent public-asset verification](https://github.com/Moresyl/metaclean/actions/runs/36516811314)
   checked downloaded bytes and signatures against the tagged public key.
-- [Published v0.11.5](https://github.com/Moresyl/metaclean/releases/tag/v0.11.5)
+- [Published v0.11.6](https://github.com/Moresyl/metaclean/releases/tag/v0.11.6)
   contains 20 assets, including the checksum manifest. The public Pages update
   feed was checked against the release's five platform URLs and signatures.
 
 The VML note-shape fix verified with WPS 2019 is included in v0.11.1.
+
+v0.11.6 adds exact JPEG print-density retention and classifies retained
+orientation as informational. Its public NSIS/MSI/DEB/DMG transitions from
+0.11.5 and back passed, including both Windows application-triggered updates.
+The crash check preserved sources and committed output, but recorded one
+additional file without identifying it; orphaned-temporary-file cleanup remains
+unqualified. Detailed evidence and hosted-machine limits are in `VALIDATION.md`.
 
 v0.11.5 fixes merged PDF widget field-name removal and supports bounded
 ASCII85-wrapped JPEG metadata cleanup without pixel re-encoding. Its release

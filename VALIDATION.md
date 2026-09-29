@@ -16,6 +16,54 @@ This file records evidence, not intent. A row is complete only when the named ar
 | M3: Windows release | Complete for v0.3.0 | The successful v0.3.0 release matrix published launch-smoked x64 NSIS/MSI, x86 NSIS and architecture-labelled x64/x86 portable ZIPs. Local installation/extraction proof also kept each package active for six seconds with the `MetaClean` title before clean uninstall/removal. |
 | M3: macOS/Linux release | Complete for unsigned v0.3.0 artifacts | The successful v0.3.0 matrix copied and launch-smoked both Intel and Apple Silicon DMGs, then installed and launch-smoked the Linux DEB before publishing DEB/RPM/AppImage assets. Apple signing/notarization secrets remain unavailable, so Gatekeeper qualification is an external gate rather than a completed claim. |
 
+## Published v0.11.6 verification — 2026-09-29
+
+The [stable release](https://github.com/Moresyl/metaclean/releases/tag/v0.11.6)
+at `5d6da93a5355048c2ab3f404f4022f46f70d635b` was published on
+2026-09-29 at 03:21:07 UTC with 20 nonempty assets.
+
+[Release 36514991683](https://github.com/Moresyl/metaclean/actions/runs/36514991683)
+passed source revalidation, all five platform builds, applicable package and
+launch checks, and finalization. Linux source validation passed 428 frontend
+tests, 231 native tests (nine ignored), sixteen desktop cases, ten FFmpeg PCM
+cases, six PDF cases, six HEIF/AVIF cases and sixteen JPEG fidelity cases.
+Frontend coverage was 89.96% statements, 85.54% branches, 92.07% functions and
+93.58% lines. Linux Rust line coverage was 91.46% with the documented exclusions.
+The npm audit reported no known vulnerabilities; seven previously classified
+Rust warnings remain.
+
+- [Public assets 36516811314](https://github.com/Moresyl/metaclean/actions/runs/36516811314)
+  passed checksum verification for nineteen listed assets, all five updater
+  signatures and rejection of modified package bytes.
+- [Windows NSIS 36516815192](https://github.com/Moresyl/metaclean/actions/runs/36516815192)
+  passed x64/x86 application-triggered signed updates, restart and preservation
+  of synthetic settings/history/fingerprints across 0.11.5 → 0.11.6 → 0.11.5.
+  Truncated installers were rejected with previous executable hashes and launch
+  intact; removal also passed.
+- [MSI 36516818549](https://github.com/Moresyl/metaclean/actions/runs/36516818549),
+  [DEB 36516821596](https://github.com/Moresyl/metaclean/actions/runs/36516821596)
+  and [both DMGs 36516826353](https://github.com/Moresyl/metaclean/actions/runs/36516826353)
+  passed the same version transition, applicable launch checks and removal.
+  MSI repair passed for product code `{6B8A0841-6B2F-40E6-909C-DD64A6A9B52C}`.
+- [Crash recovery 36516829493](https://github.com/Moresyl/metaclean/actions/runs/36516829493)
+  preserved all sixty-four source hashes and verified one committed output.
+  Two restarts left the file snapshot unchanged; cleanup did not automatically
+  resume and the interruption notice cleared after its first display. The
+  snapshot also contained one additional file. This runner records its count,
+  but does not export its name or contents, so this result does not establish
+  absence or cleanup of orphaned temporary files. Public executable SHA-256:
+  `D991FF63E6ACD7FB2A3432FF52757ED67E8398546658A62AEBB47F0574A2C033`.
+- After [Pages 36516748487](https://github.com/Moresyl/metaclean/actions/runs/36516748487),
+  the public Pages and release update manifests were byte-identical, reporting
+  0.11.6 and five platforms, SHA-256
+  `BBFDA758480FB7958B430729BEF6E0553161E1F697A9CA589A796B9CE0A41E0E`.
+
+These are disposable hosted-machine and synthetic-state checks. Windows x86
+runs on 64-bit Windows and Intel DMG on an arm64 Mac. They do not qualify native
+older-CPU/32-bit-OS compatibility, arbitrary user-data migration, physical power
+loss, interrupted installation or Apple Gatekeeper approval. The user's local
+installation was not changed. Previous memory measurements were not repeated.
+
 ## Published v0.11.5 verification — 2026-09-29
 
 The [stable release](https://github.com/Moresyl/metaclean/releases/tag/v0.11.5)
@@ -65,7 +113,7 @@ arbitrary user-data migration, physical power-loss recovery, interrupted
 installation or Apple Gatekeeper approval. Earlier memory measurements were
 not repeated for this PDF patch.
 
-## Independent JPEG print/display qualification — v0.11.6 candidate
+## Independent JPEG print/display qualification — v0.11.6
 
 `scripts/verify-jpeg-fidelity.py` generates four original JPEG fixtures and
 checks copy/replace with orientation retention both enabled and disabled:
