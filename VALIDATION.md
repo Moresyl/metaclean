@@ -83,8 +83,17 @@ original generated JPEG containing only retained display metadata, then turns
 off orientation preservation and creates a safe copy through the real UI.
 The independent JPEG sixteen-case and HEIF six-case suites were repeated after
 the shared test-helper changes; all passed. The six PDF cases with embedded
-JPEG display metadata also pass MuPDF. Hosted candidate and release results
-remain pending at this checkpoint.
+JPEG display metadata also pass MuPDF.
+
+[Final candidate CI 36513754246](https://github.com/Moresyl/metaclean/actions/runs/36513754246)
+passed 428 frontend tests, 237 Windows native tests (eight ignored) and sixteen
+desktop cases on each of Windows, macOS and Linux. The 2026-09-29 Windows run
+recorded 91.93% Rust line coverage with the documented exclusions.
+[Independent image checks 36513754218](https://github.com/Moresyl/metaclean/actions/runs/36513754218)
+passed all sixteen JPEG and six HEIF/AVIF cases;
+[PDF checks 36513754127](https://github.com/Moresyl/metaclean/actions/runs/36513754127)
+passed all six cases using Poppler. Publication and public-package qualification
+remain separate gates.
 
 Before this change, a real generated EXIF-only density sample lost tags
 282/283/296 despite retaining identical decoded pixels. A second sample with

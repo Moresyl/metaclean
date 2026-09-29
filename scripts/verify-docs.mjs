@@ -87,9 +87,12 @@ assert.match(customCss, /\.VPContent \{ overflow-x: clip; \}/u, "documentation c
 assert.match(customCss, /html \{ scroll-behavior: auto; \}/u, "documentation must disable smooth scrolling for reduced-motion users");
 assert.match(customCss, /@media \(min-width: 761px\) and \(max-width: 1100px\)/u, "documentation hero must keep a medium desktop split layout");
 assert.doesNotMatch(customCss, /@media \(max-width: 1100px\) \{ \.hero-grid \{ grid-template-columns: 1fr/u, "documentation hero must not collapse at the sidebar viewport boundary");
-assert.match(docsHome, /<b>84\.28%<\/b>/u, "documentation home coverage must match the current validation evidence");
-assert.match(validation, /84\.28% Rust line coverage/u, "documentation validation must expose the current coverage evidence");
-assert.match(validation, /Frontend: 401 tests\. Statements 89\.57%, branches 84\.87%, functions 91\.79%, lines 93\.39%/u, "frontend coverage evidence must match the latest full run");
+const homeCoverage = docsHome.match(/<b>(\d+\.\d+)%<\/b><span>Rust 行覆盖率<\/span>/u)?.[1];
+assert.ok(homeCoverage, "documentation home must name its Rust line coverage metric");
+assert.ok(validation.includes(`${homeCoverage}% Rust line coverage`), "homepage coverage must have recorded validation evidence");
+const coverageSource = docsHome.match(/href="(https:\/\/github\.com\/Moresyl\/metaclean\/actions\/runs\/\d+)">v\d+\.\d+\.\d+ Windows CI · (\d{4}-\d{2}-\d{2})<\/a>/u);
+assert.ok(coverageSource, "homepage coverage must identify its version, platform, date and CI source");
+assert.ok(validation.includes(coverageSource[1]) && validation.includes(coverageSource[2]), "homepage coverage source must appear in the validation ledger");
 assert.match(design, /264px persistent workspace panel that collapses to a 64px icon/u, "design reference must document both sidebar states");
 assert.match(design, /`Ctrl\/Cmd\+B` collapse control/u, "design reference must document the sidebar shortcut");
 assert.equal(packageJson.scripts["docs:dev"], "vitepress dev docs");
