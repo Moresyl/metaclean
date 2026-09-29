@@ -25,6 +25,9 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: 24
+      - name: Test process identity and ancestry checks
+        shell: pwsh
+        run: ./scripts/process-tree.test.ps1
       - name: Measure real application and WebView processes
         shell: pwsh
         env:

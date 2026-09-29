@@ -1,5 +1,6 @@
 param([Parameter(Mandatory = $true)][string]$Version, [ValidateSet(64, 256)][int]$SizeMiB = 64, [ValidateRange(1, 3)][int]$Iteration = 1)
 $ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot 'process-tree.ps1')
 if ($env:RUNNER_ENVIRONMENT -ne 'github-hosted' -or -not $env:RUNNER_TEMP) { throw 'Requires a disposable GitHub-hosted runner' }
 if ($Version -notmatch '^\d+\.\d+\.\d+$') { throw 'Invalid stable version' }
 if (Get-Process metaclean -ErrorAction SilentlyContinue) { throw 'Existing application process found' }
@@ -67,30 +68,22 @@ try {
   $peakWorkingSet = 0L
   $peakPrivate = 0L
   $maxProcesses = 0
+  $peakWorkingSetProcesses = @()
+  $peakPrivateProcesses = @()
   while (-not $driver.HasExited) {
     if ($timer.Elapsed.TotalSeconds -gt 180) { throw 'Desktop measurement exceeded its time budget' }
     if ($applicationProcess.HasExited) { throw 'Application exited during measurement' }
     # Include only this application and its descendants, including WebView.
     # The fixture/controller and UI-driver processes are excluded.
-    $inventory = @(Get-CimInstance Win32_Process | Select-Object ProcessId, ParentProcessId)
-    $owned = [Collections.Generic.HashSet[int]]::new()
-    [void]$owned.Add($applicationProcess.Id)
-    do {
-      $added = $false
-      foreach ($item in $inventory) {
-        if ($owned.Contains([int]$item.ParentProcessId) -and $owned.Add([int]$item.ProcessId)) { $added = $true }
-      }
-    } while ($added)
-    $workingSet = 0L
-    $private = 0L
-    $processCount = 0
-    foreach ($item in @(Get-Process -Id ([int[]]@($owned)) -ErrorAction SilentlyContinue)) {
-      try {
-        $workingSet += $item.WorkingSet64
-        $private += $item.PrivateMemorySize64
-        $processCount++
-      } catch [InvalidOperationException] { } # A child may exit between enumeration and sampling.
-    }
+    $inventory = @(Get-CimInstance Win32_Process | Select-Object ProcessId, ParentProcessId, CreationDate, Name, WorkingSetSize, PrivatePageCount)
+    $tree = @(Get-VerifiedProcessTree $inventory $applicationProcess.Id $applicationProcess.StartTime)
+    # Read identity and counters from the same snapshot, avoiding a second PID
+    # lookup after a sampled process may have exited and its PID been reused.
+    $workingSet = [long](($tree.workingSetBytes | Measure-Object -Sum).Sum)
+    $private = [long](($tree.privateBytes | Measure-Object -Sum).Sum)
+    $processCount = $tree.Count
+    if ($workingSet -gt $peakWorkingSet) { $peakWorkingSetProcesses = $tree }
+    if ($private -gt $peakPrivate) { $peakPrivateProcesses = $tree }
     $peakWorkingSet = [Math]::Max($peakWorkingSet, $workingSet)
     $peakPrivate = [Math]::Max($peakPrivate, $private)
     $maxProcesses = [Math]::Max($maxProcesses, $processCount)
@@ -105,6 +98,7 @@ try {
   if (@(Get-ChildItem -LiteralPath $fixtures -File).Count -ne 2) { throw 'Unexpected extra fixture files remain' }
   $completed = Get-Content (Join-Path $evidence 'completed.json') -Raw | ConvertFrom-Json
   if ($completed.results[0].integrity.sourceSha256 -ne $sourceHash -or $completed.results[0].integrity.outputSha256 -ne $cleanHash) { throw 'Audit fingerprints did not match independent hashes' }
+  [pscustomobject]@{ workingSet = $peakWorkingSetProcesses; privateBytes = $peakPrivateProcesses } | ConvertTo-Json -Depth 5 | Set-Content (Join-Path $evidence 'peak-processes.json') -Encoding utf8
   [pscustomobject]@{ version = $Version; sizeMiB = $SizeMiB; iteration = $Iteration; architecture = 'x64'; operatingSystem = $operatingSystem; processor = $processor.Name; logicalProcessors = $processor.NumberOfLogicalProcessors; revision = $env:GITHUB_SHA; executableSha256 = (Get-FileHash -LiteralPath $application).Hash; sourceSha256 = $sourceHash.ToLowerInvariant(); outputSha256 = $cleanHash.ToLowerInvariant(); scanMs = $completed.scanMs; cleanMs = $completed.cleanMs; observedAggregateWorkingSetBytes = $peakWorkingSet; observedAggregatePrivateBytes = $peakPrivate; maxProcessCount = $maxProcesses; samples = $samples; elapsedMs = $timer.ElapsedMilliseconds; requestedWaitMs = 200; sourceAndOutputHashesVerified = $true; scope = 'Application plus descendants, including WebView; sampled working-set sums can double-count shared pages; not a guaranteed peak or upper bound' } | ConvertTo-Json | Set-Content (Join-Path $evidence 'results.json') -Encoding utf8
   Write-Output 'Published desktop memory measurement and large-file integrity checks passed'
 } finally {
