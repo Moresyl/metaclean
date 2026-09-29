@@ -1,4 +1,4 @@
-name: Measure published desktop memory
+name: Measure desktop memory
 
 on:
   workflow_dispatch:
@@ -7,6 +7,10 @@ on:
         description: Published stable version without v
         required: true
         type: string
+      candidate:
+        description: Build this revision instead of downloading the published version
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -14,7 +18,7 @@ permissions:
 jobs:
   measure:
     runs-on: windows-latest
-    timeout-minutes: 15
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
@@ -25,6 +29,27 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: 24
+      - if: inputs.candidate
+        run: corepack enable
+      - if: inputs.candidate
+        run: corepack prepare pnpm@10.32.1 --activate
+      - if: inputs.candidate
+        run: rustup default stable
+      - uses: actions/cache@v5
+        if: inputs.candidate
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            src-tauri/target
+          key: rust-memory-${{ runner.os }}-${{ hashFiles('src-tauri/Cargo.lock') }}
+          restore-keys: |
+            rust-release-${{ runner.os }}-x86_64-pc-windows-msvc-
+            rust-ci-${{ runner.os }}-
+      - if: inputs.candidate
+        run: pnpm install --frozen-lockfile
+      - if: inputs.candidate
+        run: pnpm tauri build --no-bundle
       - name: Test process identity and ancestry checks
         shell: pwsh
         run: ./scripts/process-tree.test.ps1
@@ -35,7 +60,8 @@ jobs:
           RELEASE_VERSION: ${{ inputs.version }}
           FIXTURE_MIB: ${{ matrix.size }}
           MEASUREMENT_RUN: ${{ matrix.iteration }}
-        run: ./scripts/verify-desktop-budget.ps1 -Version $env:RELEASE_VERSION -SizeMiB ([int]$env:FIXTURE_MIB) -Iteration ([int]$env:MEASUREMENT_RUN)
+          BUILD_CANDIDATE: ${{ inputs.candidate }}
+        run: ./scripts/verify-desktop-budget.ps1 -Version $env:RELEASE_VERSION -SizeMiB ([int]$env:FIXTURE_MIB) -Iteration ([int]$env:MEASUREMENT_RUN) -Candidate:($env:BUILD_CANDIDATE -eq 'true')
       - uses: actions/upload-artifact@v6
         if: always()
         with:

@@ -1,4 +1,5 @@
 use sha2::{Digest, Sha256};
+use std::borrow::Cow;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::Mutex;
@@ -253,21 +254,21 @@ fn text_encoding(data: &[u8]) -> Result<TextEncoding> {
         })
 }
 
-fn decode_text(data: &[u8]) -> Result<(String, TextEncoding)> {
+fn decode_text(data: &[u8]) -> Result<(Cow<'_, str>, TextEncoding)> {
     let encoding = text_encoding(data)?;
     let value = match encoding {
         TextEncoding::Utf8 { bom: true } => std::str::from_utf8(&data[3..])
-            .map(str::to_owned)
+            .map(Cow::Borrowed)
             .map_err(|_| {
                 CleanError::InvalidFormat("文本不是有效的 UTF-8 或带 BOM 的 UTF-16 编码".into())
             })?,
         TextEncoding::Utf8 { bom: false } => {
-            std::str::from_utf8(data).map(str::to_owned).map_err(|_| {
+            std::str::from_utf8(data).map(Cow::Borrowed).map_err(|_| {
                 CleanError::InvalidFormat("文本不是有效的 UTF-8 或带 BOM 的 UTF-16 编码".into())
             })?
         }
-        TextEncoding::Utf16Le => decode_utf16(data, true)?,
-        TextEncoding::Utf16Be => decode_utf16(data, false)?,
+        TextEncoding::Utf16Le => Cow::Owned(decode_utf16(data, true)?),
+        TextEncoding::Utf16Be => Cow::Owned(decode_utf16(data, false)?),
     };
     Ok((value, encoding))
 }
@@ -293,14 +294,18 @@ fn decode_utf16(data: &[u8], little_endian: bool) -> Result<String> {
     })
 }
 
-fn encode_text(value: &str, encoding: TextEncoding) -> Vec<u8> {
+fn encode_text(value: String, encoding: TextEncoding) -> Vec<u8> {
     match encoding {
         TextEncoding::Utf8 { bom: true } => {
-            let mut output = vec![0xef, 0xbb, 0xbf];
-            output.extend_from_slice(value.as_bytes());
+            let mut output = value.into_bytes();
+            let length = output.len();
+            output.reserve_exact(3);
+            output.resize(length + 3, 0);
+            output.copy_within(..length, 3);
+            output[..3].copy_from_slice(&[0xef, 0xbb, 0xbf]);
             output
         }
-        TextEncoding::Utf8 { bom: false } => value.as_bytes().to_vec(),
+        TextEncoding::Utf8 { bom: false } => value.into_bytes(),
         TextEncoding::Utf16Le | TextEncoding::Utf16Be => {
             let mut output = if encoding == TextEncoding::Utf16Le {
                 vec![0xff, 0xfe]
@@ -519,7 +524,7 @@ fn clean_data(
         Format::Text => {
             let (value, encoding) = decode_text(data)?;
             let (cleaned, findings) = web_text::clean(&value, &extension(path));
-            Ok((encode_text(&cleaned, encoding), findings))
+            Ok((encode_text(cleaned, encoding), findings))
         }
         Format::Unsupported => Err(CleanError::Unsupported("未知格式".into())),
     }
@@ -1500,6 +1505,81 @@ mod tests {
     }
 
     #[test]
+    fn utf8_decoding_borrows_the_validated_input() {
+        for bytes in [
+            "hello 世界 🦀".as_bytes(),
+            "\u{feff}hello 世界 🦀".as_bytes(),
+        ] {
+            let (decoded, encoding) = decode_text(bytes).unwrap();
+            let offset = if encoding == (TextEncoding::Utf8 { bom: true }) {
+                3
+            } else {
+                0
+            };
+            assert_eq!(decoded, "hello 世界 🦀");
+            assert_eq!(decoded.as_ptr(), bytes[offset..].as_ptr());
+        }
+    }
+
+    #[test]
+    fn utf8_encoding_reuses_the_owned_cleaned_buffer() {
+        for bom in [false, true] {
+            let mut value = String::with_capacity(64);
+            value.push_str("hello 世界 🦀");
+            let pointer = value.as_ptr();
+            let output = encode_text(value, TextEncoding::Utf8 { bom });
+            assert_eq!(output.as_ptr(), pointer);
+            let expected = if bom {
+                "\u{feff}hello 世界 🦀"
+            } else {
+                "hello 世界 🦀"
+            };
+            assert_eq!(output, expected.as_bytes());
+        }
+    }
+
+    #[test]
+    fn text_encoding_preserves_exact_multibyte_and_empty_bytes() {
+        for (encoding, expected, empty) in [
+            (
+                TextEncoding::Utf8 { bom: false },
+                "Aé中🦀\r\n".as_bytes().to_vec(),
+                vec![],
+            ),
+            (
+                TextEncoding::Utf8 { bom: true },
+                "\u{feff}Aé中🦀\r\n".as_bytes().to_vec(),
+                vec![0xef, 0xbb, 0xbf],
+            ),
+            (
+                TextEncoding::Utf16Le,
+                vec![
+                    0xff, 0xfe, 0x41, 0, 0xe9, 0, 0x2d, 0x4e, 0x3e, 0xd8, 0x80, 0xdd, 0x0d, 0,
+                    0x0a, 0,
+                ],
+                vec![0xff, 0xfe],
+            ),
+            (
+                TextEncoding::Utf16Be,
+                vec![
+                    0xfe, 0xff, 0, 0x41, 0, 0xe9, 0x4e, 0x2d, 0xd8, 0x3e, 0xdd, 0x80, 0, 0x0d, 0,
+                    0x0a,
+                ],
+                vec![0xfe, 0xff],
+            ),
+        ] {
+            // Exact-capacity input also exercises BOM insertion without spare room.
+            assert_eq!(encode_text("Aé中🦀\r\n".into(), encoding), expected);
+            assert_eq!(
+                decode_text(&expected).unwrap(),
+                (Cow::Borrowed("Aé中🦀\r\n"), encoding)
+            );
+            assert_eq!(encode_text(String::new(), encoding), empty);
+            assert_eq!(decode_text(&empty).unwrap(), (Cow::Borrowed(""), encoding));
+        }
+    }
+
+    #[test]
     fn preserves_utf_bom_endianness_and_line_endings_while_cleaning_text() {
         let dir = tempfile::tempdir().unwrap();
         for (index, encoding) in [
@@ -1511,7 +1591,7 @@ mod tests {
         .enumerate()
         {
             let source = dir.path().join(format!("encoded-{index}.txt"));
-            fs::write(&source, encode_text("a\u{200b}b\r\n", encoding)).unwrap();
+            fs::write(&source, encode_text("a\u{200b}b\r\n".into(), encoding)).unwrap();
             let report = scan_file(&source);
             assert!(report.supported, "{:?}", report.error);
             assert_eq!(report.findings[0].category, "unicode");
@@ -1533,7 +1613,7 @@ mod tests {
         fs::write(
             &source,
             encode_text(
-                "<meta name=\"aut\u{200b}hor\" content=\"private\">\r\n<p>safe</p>",
+                "<meta name=\"aut\u{200b}hor\" content=\"private\">\r\n<p>safe</p>".into(),
                 TextEncoding::Utf16Le,
             ),
         )
