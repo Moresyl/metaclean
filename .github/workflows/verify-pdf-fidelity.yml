@@ -42,7 +42,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
       - name: Verify pages, text, fields, JPEG metadata and source integrity
-        run: python scripts/verify-pdf-fidelity.py --renderer poppler --output "$RUNNER_TEMP/metaclean-pdf-evidence"
+        run: python scripts/verify-pdf-fidelity.py --renderer poppler --output "${{ runner.temp }}/metaclean-pdf-evidence"
       - uses: actions/upload-artifact@v6
         if: always()
         with:

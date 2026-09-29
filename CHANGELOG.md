@@ -5,6 +5,8 @@ All notable changes to MetaClean are documented here. The project follows
 
 ## [Unreleased]
 
+## [0.11.5] - 2026-09-29
+
 ### Fixed
 
 - Preserve merged PDF widget field names during metadata removal. The `/T`
