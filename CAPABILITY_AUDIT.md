@@ -80,13 +80,15 @@ text batches observed up to 14.63 MiB peak working set. The sampling method and
 scope are recorded in `VALIDATION.md`. This does not establish a memory upper
 bound or cover the desktop WebView, large documents or slow storage.
 
-Separate public v0.11.3 desktop measurements in
-[run 36491998506](https://github.com/Moresyl/metaclean/actions/runs/36491998506)
-include the application and WebView process tree. Three 64 MiB and three 256 MiB
-text cleanups passed complete source/output and audit-hash checks. Observed
-aggregate working-set maxima ranged from 503.79–571.55 MiB and
-887.26–1,243.54 MiB respectively. Shared pages can be counted more than once;
-sampling, host differences and timing limits are detailed in `VALIDATION.md`.
+Separate public v0.11.7 desktop measurements in
+[run 36523943242](https://github.com/Moresyl/metaclean/actions/runs/36523943242)
+validate process creation times and include the application and WebView tree.
+Three 64 MiB and three 256 MiB text cleanups passed source/output and audit-hash
+checks. Observed aggregate working-set maxima ranged from 501.81–507.93 MiB
+and 953.24–1,145.31 MiB respectively; all peak inventories contained seven
+application/WebView processes. Earlier PID-only measurements cannot establish
+process ownership retrospectively. Shared pages may be counted more than once;
+sampling, host differences, rejected observations and limits are in `VALIDATION.md`.
 
 Public Windows x64 and x86 NSIS installers passed isolated 0.11.0 → 0.11.1 → 0.11.0
 install/upgrade/manual-downgrade sequences, version/launch checks, truncated-package

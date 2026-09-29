@@ -68,8 +68,48 @@ These use disposable hosted machines and synthetic state. Windows x86 runs on
 CPUs/32-bit Windows, arbitrary data migration, physical power loss, interrupted
 installation or Apple Gatekeeper approval. A crash run without extra files does
 not guarantee absence of orphaned temporary files at every interruption point.
-The user's local installed application was not changed. The new memory results
-below cover the source guard; whole-application measurements were not repeated.
+The user's local installed application was not changed. Separate process-tree
+measurements and isolated source-guard results are recorded below.
+
+## Published desktop memory with process identity checks — v0.11.7
+
+[Run 36523943242](https://github.com/Moresyl/metaclean/actions/runs/36523943242)
+passed six fresh runs of the checksummed public Windows x64 portable package,
+three each for 64 MiB and 256 MiB synthetic UTF-8 text. Real desktop scan and
+cleanup controls were used. Complete source/output hashes and stored audit
+fingerprints matched, with exactly the expected source and output files.
+
+The sampler validates the root's creation time, rejects parent relationships
+where the child predates the current parent instance, and reads memory counters
+from the same CIM snapshot as process identities. It exports names, IDs,
+creation times and counters for each observed working-set/private-byte peak.
+Regression tests cover stale parent IDs, reused root IDs, missing/duplicate
+identities, timestamp precision and invalid counters; live CIM checks passed
+on every runner. All six peak inventories contained seven processes and only
+`MetaClean.exe` and `msedgewebview2.exe` names.
+
+| Input | UI scan time | UI cleanup time | Maximum sampled sum of working sets | Maximum sampled sum of private bytes |
+| --- | --- | --- | --- | --- |
+| 64 MiB | 1.04–1.28 s | 1.27–1.29 s | 501.81–507.93 MiB | 332.84–337.12 MiB |
+| 256 MiB | 2.72–3.81 s | 4.44–4.89 s | 953.24–1,145.31 MiB | 911.56–916.15 MiB |
+
+Runs used Windows Server 2025 hosts with AMD EPYC 7763 or Intel Xeon 6973P-C
+processors. Sampling includes startup and the WebView, excludes the controller,
+and requests 200 ms waits between process enumeration. Shared resident pages
+may be counted more than once, enumeration adds variable delay and short peaks
+can be missed. These are workload-specific observations, not a RAM requirement,
+memory upper bound or causal before/after performance comparison. They do not
+support interpreting the isolated source-guard reduction as a halving of total
+application memory. Other formats, platforms and slow storage remain unqualified.
+
+The earlier [run 36523255513](https://github.com/Moresyl/metaclean/actions/runs/36523255513)
+passed all file-integrity checks but reported 142 processes and 3,679.77 MiB
+in one 64 MiB case, versus seven processes in its other cases. That sampler
+used PID-only ancestry and did not export contributing processes, so the outlier's
+ownership cannot be established. It is not accepted as application-memory
+evidence. The old algorithm could include an older unrelated process through a
+reused parent PID; the new regression fixture proves this mechanism, but cannot
+retroactively establish which processes caused that particular outlier.
 
 ## Bounded source revalidation — v0.11.7
 
@@ -940,6 +980,11 @@ weakening output checks. [CI 36488873692](https://github.com/Moresyl/metaclean/a
 passed all three 15-test desktop suites. It does not change the released product.
 
 ## Published desktop memory observation — 2026-09-29
+
+Historical evidence: this run used the older PID-only ancestry sampler. Its
+process ownership cannot be revalidated from the saved records. Use the v0.11.7
+identity-checked observations above for current process-tree evidence, and do
+not use this older table as a qualified before/after memory comparison.
 
 [Run 36491998506](https://github.com/Moresyl/metaclean/actions/runs/36491998506)
 completed six fresh Windows x64 application runs against the checksummed public
