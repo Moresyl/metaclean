@@ -67,19 +67,27 @@ try {
   foreach ($source in $sources) {
     if ((Get-FileHash -LiteralPath $source).Hash -ne $sourceHash) { throw 'Crash changed a source file' }
   }
-  $outputs = @(Get-ChildItem -LiteralPath $fixtures -Filter '*.cleaned.txt' -File)
+  $outputs = @(Get-ChildItem -LiteralPath $fixtures -Filter '*.cleaned.txt' -File -Force)
   if ($outputs.Count -eq 0 -or $outputs.Count -ge $sources.Count) { throw 'Did not interrupt a partially completed batch' }
   foreach ($output in $outputs) {
     if ($output.Length -ne $bytes.Length - 3 -or (Get-FileHash -LiteralPath $output.FullName).Hash -ne $cleanHash) { throw 'Committed output is incomplete or corrupt' }
   }
-  $snapshot = @(Get-ChildItem -LiteralPath $fixtures -File | ForEach-Object { "$($_.Name):$((Get-FileHash -LiteralPath $_.FullName).Hash)" } | Sort-Object)
+  # Export every fixture-directory entry, including hidden files, before restart.
+  # Names and hashes belong only to this generated, disposable test corpus.
+  $inventory = @(Get-ChildItem -LiteralPath $fixtures -File -Force | Sort-Object Name | ForEach-Object {
+    $hash = (Get-FileHash -LiteralPath $_.FullName).Hash
+    $role = if ($sources -contains $_.FullName) { 'source' } elseif ($outputs.FullName -contains $_.FullName) { 'committed-output' } else { 'other' }
+    [pscustomobject]@{ name = $_.Name; length = $_.Length; sha256 = $hash; role = $role; matchesSource = $hash -eq $sourceHash; matchesCleanOutput = $hash -eq $cleanHash }
+  })
+  ConvertTo-Json -InputObject $inventory -Depth 4 | Set-Content -LiteralPath (Join-Path $evidence 'file-inventory-after-crash.json') -Encoding utf8
+  $snapshot = @($inventory | ForEach-Object { "$($_.name):$($_.sha256)" } | Sort-Object)
   [pscustomobject]@{ sourceFiles = $sources.Count; committedOutputs = $outputs.Count; otherFiles = $snapshot.Count - $sources.Count - $outputs.Count; sourceHashesPreserved = $true; committedOutputHashesVerified = $true } | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $evidence 'integrity-after-crash.json') -Encoding utf8
   foreach ($mode in @('recover', 'cleared')) {
     $process = Start-Process -FilePath $application -PassThru -WindowStyle Hidden
     node (Join-Path $PSScriptRoot 'verify-crash-recovery.mjs') $mode $fixtures $evidence
     if ($LASTEXITCODE -ne 0) { throw "Restart verification failed: $mode" }
     Start-Sleep -Seconds 3
-    $afterRestart = @(Get-ChildItem -LiteralPath $fixtures -File | ForEach-Object { "$($_.Name):$((Get-FileHash -LiteralPath $_.FullName).Hash)" } | Sort-Object)
+    $afterRestart = @(Get-ChildItem -LiteralPath $fixtures -File -Force | ForEach-Object { "$($_.Name):$((Get-FileHash -LiteralPath $_.FullName).Hash)" } | Sort-Object)
     if (Compare-Object $snapshot $afterRestart) { throw 'Restart changed files without user action' }
     taskkill.exe /PID $process.Id /T /F | Out-Null
     if ($LASTEXITCODE -ne 0) { throw 'Test process cleanup failed' }
