@@ -1,7 +1,7 @@
 # MetaClean capability audit
 
-Audited on 2026-09-29 for the published v0.11.7 release at
-`8efad9c51c6129c25d722d1c7eb62dbe875393b0`.
+Audited on 2026-09-29 for the published v0.11.8 release at
+`4ad0ee63a9bae22ea3c2dd5fcaff039b22c0c58d`.
 
 This ledger describes implemented behavior, its evidence and its limits.
 Extension counts and passing tests do not establish universal format support,
@@ -25,13 +25,13 @@ application. Detailed run evidence is recorded in `VALIDATION.md`.
 
 ## Release evidence
 
-- [Candidate CI](https://github.com/Moresyl/metaclean/actions/runs/36519310581)
+- [Candidate CI](https://github.com/Moresyl/metaclean/actions/runs/36525823068)
   passed the main quality gates and desktop tests on all three operating systems.
-- [Release pipeline](https://github.com/Moresyl/metaclean/actions/runs/36520841603)
+- [Release pipeline](https://github.com/Moresyl/metaclean/actions/runs/36527199482)
   passed source validation, five platform builds, package checks and finalization.
-- [Independent public-asset verification](https://github.com/Moresyl/metaclean/actions/runs/36522541974)
+- [Independent public-asset verification](https://github.com/Moresyl/metaclean/actions/runs/36528727885)
   checked downloaded bytes and signatures against the tagged public key.
-- [Published v0.11.7](https://github.com/Moresyl/metaclean/releases/tag/v0.11.7)
+- [Published v0.11.8](https://github.com/Moresyl/metaclean/releases/tag/v0.11.8)
   contains 20 assets, including the checksum manifest. The public Pages update
   feed was checked against the release's five platform URLs and signatures.
 
