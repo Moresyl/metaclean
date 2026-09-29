@@ -16,6 +16,55 @@ This file records evidence, not intent. A row is complete only when the named ar
 | M3: Windows release | Complete for v0.3.0 | The successful v0.3.0 release matrix published launch-smoked x64 NSIS/MSI, x86 NSIS and architecture-labelled x64/x86 portable ZIPs. Local installation/extraction proof also kept each package active for six seconds with the `MetaClean` title before clean uninstall/removal. |
 | M3: macOS/Linux release | Complete for unsigned v0.3.0 artifacts | The successful v0.3.0 matrix copied and launch-smoked both Intel and Apple Silicon DMGs, then installed and launch-smoked the Linux DEB before publishing DEB/RPM/AppImage assets. Apple signing/notarization secrets remain unavailable, so Gatekeeper qualification is an external gate rather than a completed claim. |
 
+## Published v0.11.5 verification — 2026-09-29
+
+The [stable release](https://github.com/Moresyl/metaclean/releases/tag/v0.11.5)
+at `6d937b9fcc2940b3621a43935dfc8a1073802647` was published on
+2026-09-29 at 01:22:41 UTC with 20 nonempty assets.
+
+- [Final candidate CI 36504579824](https://github.com/Moresyl/metaclean/actions/runs/36504579824)
+  passed 424 frontend tests, 233 Windows native tests (6 ignored), the quality
+  gates and 15 desktop E2E cases on each of Windows, Linux and macOS. Windows
+  Rust line coverage was 92.07% with the documented exclusions. Local rebuilt
+  Windows E2E and a separate run after the navigation-test fix each passed 15 cases.
+- The earlier candidate failed one Linux E2E case when a navigation helper
+  indexed an empty button array after refresh. The helper now waits for the
+  actual visible button and clicks it; behavioral assertions and timeouts remain
+  intact. The final three-platform run above verifies the revised helper.
+- [Release 36505903839](https://github.com/Moresyl/metaclean/actions/runs/36505903839)
+  passed source revalidation, all five builds, package/launch checks and
+  finalization. Linux source validation passed 424 frontend, 227 native
+  (7 ignored), 15 desktop E2E, ten FFmpeg PCM cases and all six independent
+  PDF fidelity cases. Rust line coverage was 91.59%; seven previously classified
+  Rust warnings remain. The official npm audit reported no known vulnerabilities.
+- [Public verification 36507680233](https://github.com/Moresyl/metaclean/actions/runs/36507680233)
+  checked 19 checksum-listed assets and all five updater signatures against the tagged
+  public key, including rejection of modified bytes. Following successful Pages
+  deployment 36507610470, release and Pages update feeds both reported 0.11.5
+  and were byte-identical across all five platforms.
+- [Public crash regression 36507697390](https://github.com/Moresyl/metaclean/actions/runs/36507697390)
+  verified 64 unchanged sources, one committed output with the expected hash,
+  no extra files, a one-time restart notice and no automatic resumption. The
+  public x64 executable SHA-256 was
+  `cf61eb3a7df34f29ab365f40e9877c6c16c701eaeb1a57dcfc99528913b25a18`.
+- The 0.11.4 → 0.11.5 → 0.11.4 pair passed
+  [MSI repair/transitions 36507687631](https://github.com/Moresyl/metaclean/actions/runs/36507687631),
+  [DEB transitions 36507690761](https://github.com/Moresyl/metaclean/actions/runs/36507690761)
+  and [both DMG architectures 36507694143](https://github.com/Moresyl/metaclean/actions/runs/36507694143).
+  Version checks, applicable launch checks, repair and removal passed.
+- [Windows NSIS 36507899300](https://github.com/Moresyl/metaclean/actions/runs/36507899300)
+  passed x64/x86 application-triggered signed updates, automatic restart,
+  preservation of synthetic settings/history/fingerprints, manual downgrade and
+  removal. Truncated installers were rejected while the old executable hash,
+  registration and launch remained intact.
+
+These checks use disposable hosted machines and synthetic state. Windows x86
+runs on 64-bit Windows and Intel DMG runs on an arm64 Mac; they do not establish
+native older-CPU/32-bit-OS compatibility,
+arbitrary user-data migration, physical power-loss recovery, interrupted
+installation or Apple Gatekeeper approval. Earlier memory measurements were
+not repeated for this PDF patch.
+
 ## Independent PDF fidelity qualification — 2026-09-29
 
 `scripts/verify-pdf-fidelity.py` generates its own ReportLab fixtures: two-page
