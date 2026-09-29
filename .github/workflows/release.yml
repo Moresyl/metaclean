@@ -83,6 +83,14 @@ jobs:
           name: release-heif-fidelity-evidence
           path: ${{ runner.temp }}/metaclean-heif-evidence
           if-no-files-found: warn
+      - name: Verify JPEG print density and display fidelity
+        run: python scripts/verify-jpeg-fidelity.py --output "${{ runner.temp }}/metaclean-jpeg-evidence"
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: release-jpeg-fidelity-evidence
+          path: ${{ runner.temp }}/metaclean-jpeg-evidence
+          if-no-files-found: warn
       - run: cargo install cargo-llvm-cov --locked
       - run: cargo llvm-cov --locked --ignore-filename-regex '(lib|main|models|shell_integration)\.rs$' --fail-under-lines 80
         working-directory: src-tauri

@@ -130,7 +130,10 @@ fn embedded_image_findings(document: &Document) -> Result<usize> {
             continue;
         };
         if let Some(content) = jpeg_stream(stream)? {
-            if !image::inspect_jpeg(&content)?.is_empty() {
+            if image::inspect_jpeg(&content)?
+                .iter()
+                .any(|finding| finding.severity != FindingSeverity::Informational)
+            {
                 count += 1;
             }
         }

@@ -2133,6 +2133,32 @@ mod tests {
     }
 
     #[test]
+    fn rejects_invalid_jpeg_density_before_creating_output_or_backup() {
+        let directory = tempfile::tempdir().unwrap();
+        let source = directory.path().join("density.jpg");
+        // One XResolution entry points outside its TIFF payload.
+        let payload =
+            b"Exif\0\0MM\0*\0\0\0\x08\0\x01\x01\x1a\0\x05\0\0\0\x01\xff\xff\xff\xff\0\0\0\0";
+        let mut original = vec![0xff, 0xd8, 0xff, 0xe1];
+        original.extend_from_slice(&((payload.len() + 2) as u16).to_be_bytes());
+        original.extend_from_slice(payload);
+        original.extend_from_slice(&[0xff, 0xd9]);
+        fs::write(&source, &original).unwrap();
+        for mode in [OutputMode::Copy, OutputMode::Replace] {
+            let result = clean_file_with_options(&source, &mode, true, true, true, false);
+            assert!(!result.success);
+            assert!(result
+                .error
+                .as_ref()
+                .is_some_and(|error| error.contains("打印密度")));
+            assert!(result.output_path.is_none() && result.backup_path.is_none());
+            assert!(result.integrity.is_none());
+            assert_eq!(fs::read(&source).unwrap(), original);
+            assert_eq!(fs::read_dir(directory.path()).unwrap().count(), 1);
+        }
+    }
+
+    #[test]
     #[ignore = "requires METACLEAN_PDF_SAMPLE_DIR with a generated sample.pdf fixture"]
     fn cleans_external_pdf_sample_with_verified_output() {
         let directory = PathBuf::from(
@@ -2145,7 +2171,7 @@ mod tests {
             _ => panic!("METACLEAN_PDF_OUTPUT_MODE must be copy or replace"),
         };
         let source = directory.join("sample.pdf");
-        assert_external_cleanup_integrity(&source, &mode);
+        assert_external_cleanup_integrity(&source, &mode, true);
     }
 
     #[test]
@@ -2160,15 +2186,39 @@ mod tests {
             Ok("copy") => OutputMode::Copy,
             _ => panic!("METACLEAN_HEIF_OUTPUT_MODE must be copy or replace"),
         };
-        assert_external_cleanup_integrity(&source, &mode);
+        assert_external_cleanup_integrity(&source, &mode, true);
     }
 
-    fn assert_external_cleanup_integrity(source: &Path, mode: &OutputMode) {
+    #[test]
+    #[ignore = "requires METACLEAN_JPEG_SAMPLE_PATH with a generated JPEG fixture"]
+    fn cleans_external_jpeg_sample_with_verified_output() {
+        let source = PathBuf::from(
+            std::env::var_os("METACLEAN_JPEG_SAMPLE_PATH").expect("JPEG sample path is required"),
+        );
+        let mode = match std::env::var("METACLEAN_JPEG_OUTPUT_MODE").as_deref() {
+            Ok("copy") => OutputMode::Copy,
+            Ok("replace") => OutputMode::Replace,
+            _ => panic!("JPEG output mode must be copy or replace"),
+        };
+        let preserve_orientation =
+            match std::env::var("METACLEAN_JPEG_PRESERVE_ORIENTATION").as_deref() {
+                Ok("true") => true,
+                Ok("false") => false,
+                _ => panic!("JPEG orientation option must be true or false"),
+            };
+        assert_external_cleanup_integrity(&source, &mode, preserve_orientation);
+    }
+
+    fn assert_external_cleanup_integrity(
+        source: &Path,
+        mode: &OutputMode,
+        preserve_orientation: bool,
+    ) {
         let before = fs::read(source).unwrap();
         let report = scan_file(source);
         assert!(report.supported, "{:?}", report.error);
         assert!(!report.findings.is_empty());
-        let result = clean_file_with_options(source, mode, true, true, true, false);
+        let result = clean_file_with_options(source, mode, true, preserve_orientation, true, false);
         assert!(result.success, "{:?}", result.error);
         let output = PathBuf::from(result.output_path.unwrap());
         let cleaned = fs::read(&output).unwrap();
@@ -2190,7 +2240,16 @@ mod tests {
         }
         let report = scan_file(&output);
         assert!(report.supported, "{:?}", report.error);
-        assert!(report.findings.is_empty());
+        assert!(
+            report
+                .findings
+                .iter()
+                .all(|finding| finding.severity == FindingSeverity::Informational
+                    && (finding.category == "color_profile"
+                        || preserve_orientation && finding.category == "image_orientation")),
+            "Unexpected output findings: {:?}",
+            report.findings
+        );
     }
 
     #[test]

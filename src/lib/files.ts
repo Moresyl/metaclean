@@ -89,10 +89,12 @@ export function actionableFindingCount(
   report: ScanReport | undefined,
   preserveColorProfile: boolean,
   removeExtendedAttributes = false,
+  preserveOrientation = true,
 ): number {
   return report ? sumFindingCounts(report.findings.filter((finding) => {
       if (finding.category === "color_profile") return !preserveColorProfile;
       if (finding.category === "macos_xattr") return removeExtendedAttributes;
+      if (finding.category === "image_orientation") return !preserveOrientation;
       return true;
     })) : 0;
 }

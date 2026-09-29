@@ -18,6 +18,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import Button from "./Button";
 import Select from "./Select";
 import { useI18n } from "../lib/i18n";
+import { IMAGE_MESSAGES } from "../lib/image-messages";
 import type { CleanMode, ContextMenuStatus } from "../types";
 import { useUpdate } from "../contexts/UpdateContext";
 import { useTheme } from "../contexts/ThemeContext";
@@ -261,7 +262,7 @@ export default function SettingsPage({
             <div className="fidelity-options grid gap-0.5">
               <Check checked={preserveOrientation} onChange={onPreserveOrientationChange}
                 title={text("保留 JPEG 显示方向", "Preserve JPEG display orientation")}
-                detail={text("重建最小方向信息，其余 EXIF/GPS 仍全部移除。", "Rebuild minimal orientation data; all other EXIF/GPS data is removed.")} />
+                detail={IMAGE_MESSAGES[locale][1]} />
               <Check checked={preserveColorProfile} onChange={onPreserveColorProfileChange}
                 title={`${text("图片", "Images")} · ICC / sRGB`} />
               <Check checked={removeExtendedAttributes} onChange={onRemoveExtendedAttributesChange}

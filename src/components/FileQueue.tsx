@@ -12,8 +12,9 @@ import { copyText } from "../lib/window";
 import { boundedErrorMessage } from "../lib/errors";
 import { MAX_CLIPBOARD_BYTES, MAX_REPORT_BYTES, UTF8_ENCODER } from "../lib/bounds";
 import { QUEUE_MESSAGES } from "../lib/queue-messages";
+import { IMAGE_MESSAGES } from "../lib/image-messages";
 
-interface FileQueueProps { entries: FileEntry[]; preserveColorProfile: boolean; removeExtendedAttributes: boolean; busy?: boolean; onRemove: (id: string) => void; onClear: () => void; onReveal: (path: string) => void; onNotify: (message: string) => void }
+interface FileQueueProps { entries: FileEntry[]; preserveColorProfile: boolean; preserveOrientation?: boolean; removeExtendedAttributes: boolean; busy?: boolean; onRemove: (id: string) => void; onClear: () => void; onReveal: (path: string) => void; onNotify: (message: string) => void }
 
 type SortKey = "name" | "type" | "sourceSize" | "outputSize" | "findings";
 
@@ -46,13 +47,14 @@ function formatBytes(bytes: number) {
 }
 
 /** Whether a finding survives the current fidelity settings. */
-function isKept(finding: Finding, preserveColorProfile: boolean, removeExtendedAttributes: boolean) {
+function isKept(finding: Finding, preserveColorProfile: boolean, removeExtendedAttributes: boolean, preserveOrientation: boolean) {
   if (finding.category === "color_profile") return preserveColorProfile;
   if (finding.category === "macos_xattr") return !removeExtendedAttributes;
+  if (finding.category === "image_orientation") return preserveOrientation;
   return false;
 }
 
-export default function FileQueue({ entries, preserveColorProfile, removeExtendedAttributes, busy = false, onRemove, onClear, onReveal, onNotify }: FileQueueProps) {
+export default function FileQueue({ entries, preserveColorProfile, preserveOrientation = true, removeExtendedAttributes, busy = false, onRemove, onClear, onReveal, onNotify }: FileQueueProps) {
   const { locale, text } = useI18n();
   const [sortKey, setSortKey] = useState<SortKey>("name");
   const [descending, setDescending] = useState(false);
@@ -79,7 +81,7 @@ export default function FileQueue({ entries, preserveColorProfile, removeExtende
       type: [extension(left.entry.name), extension(right.entry.name)],
       sourceSize: [left.entry.report?.size ?? left.entry.result?.sourceSize ?? left.entry.size, right.entry.report?.size ?? right.entry.result?.sourceSize ?? right.entry.size],
       outputSize: [left.entry.result?.outputSize, right.entry.result?.outputSize],
-      findings: [actionableFindingCount(left.entry.report, preserveColorProfile, removeExtendedAttributes), actionableFindingCount(right.entry.report, preserveColorProfile, removeExtendedAttributes)],
+      findings: [actionableFindingCount(left.entry.report, preserveColorProfile, removeExtendedAttributes, preserveOrientation), actionableFindingCount(right.entry.report, preserveColorProfile, removeExtendedAttributes, preserveOrientation)],
     };
     const [leftValue, rightValue] = values[sortKey];
     if (leftValue === undefined || rightValue === undefined) {
@@ -90,24 +92,25 @@ export default function FileQueue({ entries, preserveColorProfile, removeExtende
       ? leftValue.localeCompare(String(rightValue), locale, { numeric: true, sensitivity: "base" })
       : leftValue - Number(rightValue);
     return comparison === 0 ? left.index - right.index : descending ? -comparison : comparison;
-  }).map(({ entry }) => entry), [descending, entries, locale, preserveColorProfile, removeExtendedAttributes, sortKey]);
+  }).map(({ entry }) => entry), [descending, entries, locale, preserveColorProfile, removeExtendedAttributes, preserveOrientation, sortKey]);
   const visibleEntries = useMemo(() => {
     const needle = query.trim().normalize("NFKC").toLocaleLowerCase(locale).replaceAll("\\", "/");
     return sortedEntries.filter((entry) => {
       const failed = entry.status === "error" || Boolean(entry.report?.error || entry.result?.error) || entry.result?.success === false;
       if (filter === "error" && !failed) return false;
-      if (filter === "findings" && (failed || entry.status === "clean" || !actionableFindingCount(entry.report, preserveColorProfile, removeExtendedAttributes))) return false;
+      if (filter === "findings" && (failed || entry.status === "clean" || !actionableFindingCount(entry.report, preserveColorProfile, removeExtendedAttributes, preserveOrientation))) return false;
       if (!needle) return true;
       return [entry.name, entry.path, entry.result?.outputPath, entry.result?.backupPath].some((value) =>
         value?.normalize("NFKC").toLocaleLowerCase(locale).replaceAll("\\", "/").includes(needle));
     });
-  }, [sortedEntries, query, filter, locale, preserveColorProfile, removeExtendedAttributes]);
+  }, [sortedEntries, query, filter, locale, preserveColorProfile, removeExtendedAttributes, preserveOrientation]);
   const filtered = Boolean(query.trim() || filter !== "all");
   const resetFilters = () => { setQuery(""); setFilter("all"); };
   const findingLabel = (category: string, fallback: string) => ({
     unicode: text("不可见 Unicode 字符", "Invisible Unicode"),
     unicode_space: text("异常空白字符", "Unusual whitespace"),
     image_metadata: text("图片元数据", "Image metadata"),
+    image_orientation: IMAGE_MESSAGES[locale][0],
     audio_metadata: text("音频元数据", "Audio metadata"),
     video_metadata: text("视频用户数据与位置", "Video user data and location"),
     provenance: text("来源标记", "Provenance marker"),
@@ -354,7 +357,7 @@ export default function FileQueue({ entries, preserveColorProfile, removeExtende
         <div className="min-h-0 flex-1 overflow-y-auto p-1.5">
           {visibleEntries.map((entry) => {
             const Icon = icons[entry.kind];
-            const findingCount = actionableFindingCount(entry.report, preserveColorProfile, removeExtendedAttributes);
+            const findingCount = actionableFindingCount(entry.report, preserveColorProfile, removeExtendedAttributes, preserveOrientation);
             const sourceSize = entry.result?.sourceSize ?? entry.report?.size ?? entry.size;
             const outputSize = entry.result?.outputSize;
             const sizeDelta = sourceSize !== undefined && outputSize !== undefined ? sourceSize - outputSize : undefined;
@@ -518,7 +521,7 @@ export default function FileQueue({ entries, preserveColorProfile, removeExtende
                     {findings.length ? (
                       <ul className="grid gap-px overflow-hidden rounded-control border border-line">
                         {findings.map((finding) => {
-                          const kept = isKept(finding, preserveColorProfile, removeExtendedAttributes);
+                          const kept = isKept(finding, preserveColorProfile, removeExtendedAttributes, preserveOrientation);
                           const gone = entry.status === "clean" && (removedCategories.size ? removedCategories.has(finding.category) : !kept);
                           return (
                             <li className="flex items-center gap-2 bg-surface px-2 py-1.5 text-xs" key={finding.category}>

@@ -8,7 +8,7 @@ from pathlib import Path
 import shutil
 import subprocess
 
-from PIL import Image
+from PIL import Image, ImageCms, TiffImagePlugin
 from pypdf import PdfReader
 from reportlab.lib.colors import HexColor
 from reportlab.lib.pagesizes import letter
@@ -60,8 +60,13 @@ def make_fixture(path, kind):
         exif = Image.Exif()
         exif[315] = "Synthetic private image author"
         exif[270] = "Synthetic private image description"
+        exif[274] = 6
+        exif[282] = TiffImagePlugin.IFDRational(300, 1)
+        exif[283] = TiffImagePlugin.IFDRational(150, 1)
+        exif[296] = 2
         jpeg = path.with_suffix(".jpg")
-        picture.save(jpeg, quality=95, exif=exif)
+        picture.save(jpeg, quality=95, exif=exif,
+                     icc_profile=ImageCms.ImageCmsProfile(ImageCms.createProfile("sRGB")).tobytes())
         # Keep the author's default ASCII85 + DCT filters: qualification must
         # exercise ordinary generated PDFs, not only hand-simplified streams.
         document.drawImage(str(jpeg), 54, 340, width=480, height=288)
@@ -167,7 +172,11 @@ def verify_case(directory, kind, mode, renderer):
         assert len(original_images) == len(cleaned_images) == 1
         before, after = original_images[0], cleaned_images[0]
         assert before.getexif().get(315) == "Synthetic private image author"
-        assert not after.getexif(), "Embedded JPEG metadata remains"
+        assert set(after.getexif()) == {274, 282, 283, 296}, "Unexpected embedded JPEG EXIF remains"
+        assert after.getexif().get(315) is None and after.getexif().get(270) is None
+        for key in (274, 282, 283, 296):
+            assert before.getexif()[key] == after.getexif()[key], "Embedded JPEG display metadata changed"
+        assert before.info.get("icc_profile") and before.info["icc_profile"] == after.info.get("icc_profile")
         assert before.size == after.size and before.tobytes() == after.tobytes(), "JPEG pixels changed"
     return {"scenario": kind, "mode": mode, "renderer": renderer,
             "pages": len(before_pages), "fields": expected["fields"],

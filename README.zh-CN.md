@@ -75,7 +75,7 @@ MetaClean 对支持的格式逐项扫描并清理这些痕迹，全过程只在�
 
 | 格式 | 扩展名 | 清理内容 |
 | --- | --- | --- |
-| JPEG | `.jpg` `.jpeg` `.jpe` | EXIF/GPS、XMP、IPTC、图片注释、JUMBF/C2PA 段；ICC 默认保留，也可明确移除 |
+| JPEG | `.jpg` `.jpeg` `.jpe` | 私密 EXIF/GPS、XMP、IPTC、图片注释、JUMBF/C2PA 段；保留有效打印密度，方向与 ICC 可按选项保留 |
 | PNG | `.png` | EXIF、文本元数据、C2PA/JUMBF 块；可选移除 ICC 配置 |
 | WebP | `.webp` | EXIF、XMP、C2PA 块；可选移除 ICC 配置 |
 | JPEG XL | `.jxl` | 原位作废容器中的 EXIF、XMP、JUMBF/C2PA、Brotli 包装元数据与 JPEG 重建数据；裸码流会被识别并原样保留 |

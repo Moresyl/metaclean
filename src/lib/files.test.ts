@@ -235,6 +235,12 @@ describe("actionableFindingCount", () => {
   it("handles an unscanned file", () => {
     expect(actionableFindingCount(undefined, false)).toBe(0);
   });
+
+  it("counts retained orientation only when its preservation option is disabled", () => {
+    const orientation = { ...report, findings: [{ category: "image_orientation", label: "Orientation", count: 1, severity: "informational" as const }] };
+    expect(actionableFindingCount(orientation, true, false)).toBe(0);
+    expect(actionableFindingCount(orientation, true, false, false)).toBe(1);
+  });
 });
 
 describe("sumFindingCounts", () => {

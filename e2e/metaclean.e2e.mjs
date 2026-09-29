@@ -166,6 +166,47 @@ describe("MetaClean desktop application", () => {
     await shell.waitForDisplayed();
   });
 
+  it("treats retained JPEG display data as clean and honors orientation removal", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "metaclean-jpeg-display-"));
+    const source = join(directory, "display.jpg");
+    const output = join(directory, "display.cleaned.jpg");
+    const original = readFileSync(new URL("./fixtures/jpeg-display.jpg", import.meta.url));
+    try {
+      await writeFile(source, original);
+      await browser.tauri.execute(() => {
+        localStorage.setItem("metaclean.outputMode", "copy");
+        localStorage.setItem("metaclean.preserveOrientation", "true");
+        localStorage.setItem("metaclean.preserveColorProfile", "true");
+      });
+      await browser.refresh();
+      await dropNativePaths([source]);
+      await $(".file-item").waitForDisplayed();
+      await $(".scan-button").click();
+      await browser.waitUntil(async () => (await $(".scan-button").getText()).includes("No traces to clean"));
+      assert.equal(await $(".scan-button").isEnabled(), false);
+      assert.ok((await $(".file-item").getText()).includes("No privacy traces found"));
+      await openCleaningPreferences();
+      await $(".fidelity-options input[type=checkbox]").click();
+      await clickVisible(".sidebar nav button:nth-of-type(1)");
+      await browser.waitUntil(async () => (await $(".scan-button").getText()).includes("Confirm"));
+      await $(".scan-button").click();
+      await browser.waitUntil(async () => {
+        try { return (await readFile(output)).length > 0; } catch { return false; }
+      });
+      const reports = await browser.tauri.execute(({ core }, paths) => core.invoke("scan_files", { paths }), [output]);
+      assert.equal(reports[0].supported, true);
+      assert.equal(reports[0].error, null);
+      assert.ok(reports[0].findings.length > 0);
+      assert.ok(reports[0].findings.every((finding) => finding.category === "color_profile"));
+      assert.deepEqual(await readFile(source), original);
+    } finally {
+      await browser.tauri.execute(() => localStorage.setItem("metaclean.preserveOrientation", "true"));
+      await browser.refresh();
+      await $(".app-shell").waitForDisplayed();
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
+
   it("launches the installed webview and exposes the complete navigation", async () => {
     assert.equal(await $(".titlebar-brand > span:nth-child(2)").getText(), "MetaClean");
     assert.equal((await $$(".sidebar nav button")).length, 5);

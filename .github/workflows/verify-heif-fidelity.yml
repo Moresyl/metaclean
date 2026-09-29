@@ -1,4 +1,4 @@
-name: Verify independent HEIF fidelity
+name: Verify independent image fidelity
 
 on:
   workflow_dispatch:
@@ -6,7 +6,9 @@ on:
     paths:
       - src-tauri/src/engine.rs
       - src-tauri/src/cleaners/heif.rs
+      - src-tauri/src/cleaners/image.rs
       - scripts/verify-heif-fidelity.py
+      - scripts/verify-jpeg-fidelity.py
       - .github/workflows/verify-heif-fidelity.yml
 
 permissions:
@@ -44,6 +46,14 @@ jobs:
       - run: pnpm build
       - name: Verify pixels, alpha, orientation, profiles, frames and source integrity
         run: python scripts/verify-heif-fidelity.py --output "${{ runner.temp }}/metaclean-heif-evidence"
+      - name: Verify JPEG print density, pixels and orientation options
+        run: python scripts/verify-jpeg-fidelity.py --output "${{ runner.temp }}/metaclean-jpeg-evidence"
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: jpeg-fidelity-evidence
+          path: ${{ runner.temp }}/metaclean-jpeg-evidence
+          if-no-files-found: warn
       - uses: actions/upload-artifact@v6
         if: always()
         with:

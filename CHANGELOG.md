@@ -5,7 +5,16 @@ All notable changes to MetaClean are documented here. The project follows
 
 ## [Unreleased]
 
+## [0.11.6] - 2026-09-29
+
 ### Fixed
+
+- Preserve exact JPEG EXIF print density and units while removing private
+  metadata. Rebuild only validated numeric display fields; reject incomplete,
+  invalid, duplicate or conflicting density data without writing an output.
+- Report rebuilt JPEG orientation as informational and let the preservation
+  switch control whether it is actionable. Retained orientation and ICC data
+  in PDF images no longer count as private metadata requiring removal.
 
 - Restore queue and update-dialog async lifecycle guards when React replays
   effects in development StrictMode. Audit export, clipboard feedback and
@@ -13,6 +22,11 @@ All notable changes to MetaClean are documented here. The project follows
   pending UI work and audit writes that have not started.
 
 ### Tests
+
+- Add sixteen independent JPEG checks covering asymmetric and fractional
+  density, inch/centimeter/unitless values, JFIF coexistence, orientation on/off,
+  both output modes, decoded pixels, ICC profiles and source/backup integrity.
+  Extend PDF fixtures with JPEG density, orientation and ICC preservation.
 
 - Add independent HEIC/AVIF cleanup qualification for RGB images, multiple
   HEIC images and AVIF alpha. Both output modes compare decoded pixels,

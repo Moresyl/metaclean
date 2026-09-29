@@ -340,7 +340,7 @@ export default function App() {
   const scanned = entries.length > 0 && entries.every((entry) => entry.status === "scanned" || entry.status === "clean" || (entry.status === "error" && Boolean(entry.result)));
   const cleanableEntries = entries.filter((entry) => (
     entry.status === "scanned" || (entry.status === "error" && entry.result?.success === false)
-  ) && actionableFindingCount(entry.report, preserveColorProfile, removeExtendedAttributes) > 0);
+  ) && actionableFindingCount(entry.report, preserveColorProfile, removeExtendedAttributes, preserveOrientation) > 0);
 
   async function scan() {
     if (!mountedRef.current || operationRef.current) return;
@@ -573,7 +573,7 @@ export default function App() {
                 </div>
               ) : null}
               <DropZone onAdd={addEntries} onAddNativePaths={addNativePaths} onError={reportPickerError} onOpenPicker={(directory) => void openPicker(directory)} dragActive={dragActive} compact={entries.length > 0} />
-              {entries.length > 0 ? <FileQueue entries={entries} preserveColorProfile={preserveColorProfile} removeExtendedAttributes={removeExtendedAttributes} busy={busy} onClear={clearQueue} onRemove={removeEntry} onReveal={(path) => void reveal(path)} onNotify={setMessage} /> : null}
+              {entries.length > 0 ? <FileQueue entries={entries} preserveOrientation={preserveOrientation} preserveColorProfile={preserveColorProfile} removeExtendedAttributes={removeExtendedAttributes} busy={busy} onClear={clearQueue} onRemove={removeEntry} onReveal={(path) => void reveal(path)} onNotify={setMessage} /> : null}
             </div>
               <CleanOptions mode={mode} onModeChange={setMode} preserveTimestamps={preserveTimestamps} onPreserveTimestampsChange={setPreserveTimestamps} preserveOrientation={preserveOrientation} onPreserveOrientationChange={setPreserveOrientation} preserveColorProfile={preserveColorProfile} onPreserveColorProfileChange={setPreserveColorProfile} removeExtendedAttributes={removeExtendedAttributes} onRemoveExtendedAttributesChange={setRemoveExtendedAttributes} disabled={!entries.length} scanned={scanned} hasFindings={cleanableEntries.length > 0} busy={busy} operation={activeOperation} cancelable={Boolean(activeBatchId)} cancelRequested={cancelRequested} onCancel={cancelOperation} onAction={() => void (scanned ? clean() : scan())} />
           </div> : page === "history" ? <HistoryPage entries={history} onClear={clearHistory} /> : page === "privacy" ? <PrivacyPage /> : page === "about" ? <AboutPage /> : <SettingsPage mode={mode} onModeChange={setMode} preserveTimestamps={preserveTimestamps} onPreserveTimestampsChange={setPreserveTimestamps} preserveOrientation={preserveOrientation} onPreserveOrientationChange={setPreserveOrientation} preserveColorProfile={preserveColorProfile} onPreserveColorProfileChange={setPreserveColorProfile} removeExtendedAttributes={removeExtendedAttributes} onRemoveExtendedAttributesChange={setRemoveExtendedAttributes} closeToTray={closeToTray} onCloseToTrayChange={setCloseToTray} />}

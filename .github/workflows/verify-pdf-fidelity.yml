@@ -6,6 +6,7 @@ on:
     paths:
       - src-tauri/src/engine.rs
       - src-tauri/src/cleaners/pdf.rs
+      - src-tauri/src/cleaners/image.rs
       - scripts/verify-pdf-fidelity.py
       - .github/workflows/verify-pdf-fidelity.yml
 

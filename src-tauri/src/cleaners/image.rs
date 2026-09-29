@@ -77,7 +77,14 @@ pub fn inspect_jpeg(data: &[u8]) -> Result<Vec<Finding>> {
     let mut provenance = 0;
     let mut comments = 0;
     let mut color_profiles = 0;
+    let mut orientations = 0;
     for (marker, payload, _) in segments {
+        if marker == 0xE1 {
+            if let Some(display) = minimal_display_metadata(payload) {
+                orientations += usize::from(display.orientation.is_some());
+                continue;
+            }
+        }
         match marker {
             0xE1 if payload.starts_with(b"Exif\0\0") => exif += 1,
             0xE1 => xmp += 1,
@@ -107,6 +114,14 @@ pub fn inspect_jpeg(data: &[u8]) -> Result<Vec<Finding>> {
     }
     if color_profiles > 0 {
         findings.push(color_profile_finding(color_profiles));
+    }
+    if orientations > 0 {
+        findings.push(Finding {
+            category: "image_orientation".into(),
+            label: "图片方向".into(),
+            count: orientations,
+            severity: FindingSeverity::Informational,
+        });
     }
     Ok(findings)
 }
@@ -197,12 +212,17 @@ pub fn clean_jpeg_with_options(
 ) -> Result<(Vec<u8>, Vec<Finding>)> {
     let findings = inspect_jpeg(data)?
         .into_iter()
-        .filter(|finding| finding.category != "color_profile" || !preserve_color_profile)
+        .filter(|finding| match finding.category.as_str() {
+            "color_profile" => !preserve_color_profile,
+            "image_orientation" => !preserve_orientation,
+            _ => true,
+        })
         .collect();
     let segments = jpeg_segments(data)?;
-    let orientation = preserve_orientation
-        .then(|| jpeg_orientation(&segments))
-        .flatten();
+    let mut display = jpeg_display_metadata(&segments)?;
+    if !preserve_orientation {
+        display.orientation = None;
+    }
     let mut output = Vec::with_capacity(data.len());
     let mut cursor = 0;
     for (marker, payload, range) in segments {
@@ -214,8 +234,7 @@ pub fn clean_jpeg_with_options(
         }
     }
     output.extend_from_slice(&data[cursor..]);
-    if let Some(value) = orientation {
-        let segment = orientation_segment(value);
+    if let Some(segment) = display_segment(display) {
         output.splice(2..2, segment);
     }
     Ok((output, findings))
@@ -227,11 +246,15 @@ pub fn verify_jpeg_cleaned(
     preserve_color_profile: bool,
 ) -> Result<()> {
     let segments = jpeg_segments(data)?;
-    let mut orientation_segments = 0;
+    let mut display_segments = 0;
     for (marker, payload, _) in segments {
-        if marker == 0xE1 && preserve_orientation && is_minimal_orientation(payload) {
-            orientation_segments += 1;
-            continue;
+        if marker == 0xE1 {
+            if let Some(display) = minimal_display_metadata(payload) {
+                if preserve_orientation || display.orientation.is_none() {
+                    display_segments += 1;
+                    continue;
+                }
+            }
         }
         if is_private_jpeg_marker(marker)
             || (!preserve_color_profile && is_jpeg_icc_profile(marker, payload))
@@ -241,38 +264,65 @@ pub fn verify_jpeg_cleaned(
             ));
         }
     }
-    if orientation_segments > 1 {
+    if display_segments > 1 {
         return Err(CleanError::Verification(
-            "JPEG 中存在多个保留的方向段".into(),
+            "JPEG 中存在多个保留的显示信息段".into(),
         ));
     }
     Ok(())
 }
 
-fn is_minimal_orientation(payload: &[u8]) -> bool {
-    let Some(orientation) = payload.strip_prefix(b"Exif\0\0").and_then(tiff_orientation) else {
-        return false;
-    };
-    orientation_segment(orientation).get(4..) == Some(payload)
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+struct DisplayMetadata {
+    orientation: Option<u16>,
+    density: Option<PrintDensity>,
 }
 
-fn jpeg_orientation(segments: &[(u8, &[u8], std::ops::Range<usize>)]) -> Option<u16> {
-    segments.iter().find_map(|(marker, payload, _)| {
-        if *marker != 0xE1 || !payload.starts_with(b"Exif\0\0") {
-            return None;
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+struct PrintDensity {
+    // Keep the original rational pairs, including asymmetric axes. Converting
+    // to integer DPI or to JFIF would lose precision or change reader priority.
+    x: (u32, u32),
+    y: (u32, u32),
+    unit: u16,
+}
+
+fn invalid_density() -> CleanError {
+    CleanError::InvalidFormat("JPEG EXIF 打印密度不完整、冲突或无效".into())
+}
+
+fn minimal_display_metadata(payload: &[u8]) -> Option<DisplayMetadata> {
+    let display = tiff_display_metadata(payload.strip_prefix(b"Exif\0\0")?).ok()?;
+    (display_segment(display)?.get(4..) == Some(payload)).then_some(display)
+}
+
+fn jpeg_display_metadata(segments: &[JpegSegment<'_>]) -> Result<DisplayMetadata> {
+    let mut display = DisplayMetadata::default();
+    for (marker, payload, _) in segments {
+        if *marker == 0xE1 {
+            if let Some(tiff) = payload.strip_prefix(b"Exif\0\0") {
+                let next = tiff_display_metadata(tiff)?;
+                display.orientation = display.orientation.or(next.orientation);
+                if let Some(density) = next.density {
+                    if display.density.is_some_and(|existing| existing != density) {
+                        return Err(invalid_density());
+                    }
+                    display.density = Some(density);
+                }
+            }
         }
-        tiff_orientation(&payload[6..])
-    })
+    }
+    Ok(display)
 }
 
-fn tiff_orientation(tiff: &[u8]) -> Option<u16> {
+fn tiff_display_metadata(tiff: &[u8]) -> Result<DisplayMetadata> {
     if tiff.len() < 8 {
-        return None;
+        return Ok(DisplayMetadata::default());
     }
     let little_endian = match &tiff[..2] {
         b"II" => true,
         b"MM" => false,
-        _ => return None,
+        _ => return Ok(DisplayMetadata::default()),
     };
     let read_u16 = |bytes: &[u8]| -> Option<u16> {
         let value: [u8; 2] = bytes.get(..2)?.try_into().ok()?;
@@ -290,21 +340,105 @@ fn tiff_orientation(tiff: &[u8]) -> Option<u16> {
             u32::from_be_bytes(value)
         })
     };
-    if read_u16(&tiff[2..])? != 42 {
-        return None;
+    if read_u16(&tiff[2..]) != Some(42) {
+        return Ok(DisplayMetadata::default());
     }
-    let ifd_offset = usize::try_from(read_u32(&tiff[4..])?).ok()?;
-    let count = usize::from(read_u16(tiff.get(ifd_offset..)?)?);
+    let ifd_offset = usize::try_from(read_u32(&tiff[4..]).ok_or_else(invalid_density)?)
+        .map_err(|_| invalid_density())?;
+    let count = usize::from(
+        read_u16(tiff.get(ifd_offset..).ok_or_else(invalid_density)?)
+            .ok_or_else(invalid_density)?,
+    );
+    let directory_end = ifd_offset
+        .checked_add(6 + count * 12)
+        .ok_or_else(invalid_density)?;
+    if ifd_offset < 8 || directory_end > tiff.len() {
+        return Err(invalid_density());
+    }
+    let mut display = DisplayMetadata::default();
+    let (mut x, mut y, mut unit) = (None, None, None);
     for index in 0..count {
-        let start = ifd_offset.checked_add(2 + index * 12)?;
-        let entry = tiff.get(start..start + 12)?;
-        if read_u16(entry)? == 0x0112 && read_u16(&entry[2..])? == 3 && read_u32(&entry[4..])? == 1
-        {
-            let value = read_u16(&entry[8..])?;
-            return (1..=8).contains(&value).then_some(value);
+        let start = ifd_offset
+            .checked_add(2 + index * 12)
+            .ok_or_else(invalid_density)?;
+        let end = start.checked_add(12).ok_or_else(invalid_density)?;
+        let entry = tiff.get(start..end).ok_or_else(invalid_density)?;
+        let tag = read_u16(entry).unwrap();
+        let kind = read_u16(&entry[2..]).unwrap();
+        let count = read_u32(&entry[4..]).unwrap();
+        if tag == 0x0112 && kind == 3 && count == 1 && display.orientation.is_none() {
+            display.orientation = read_u16(&entry[8..]).filter(|value| (1..=8).contains(value));
+        } else if matches!(tag, 0x011a | 0x011b) {
+            if kind != 5 || count != 1 {
+                return Err(invalid_density());
+            }
+            let offset =
+                usize::try_from(read_u32(&entry[8..]).unwrap()).map_err(|_| invalid_density())?;
+            let end = offset.checked_add(8).ok_or_else(invalid_density)?;
+            if offset < 8 || offset < directory_end && end > ifd_offset {
+                return Err(invalid_density());
+            }
+            let bytes = tiff.get(offset..).ok_or_else(invalid_density)?;
+            let numerator = read_u32(bytes).ok_or_else(invalid_density)?;
+            let denominator = read_u32(bytes.get(4..).ok_or_else(invalid_density)?)
+                .ok_or_else(invalid_density)?;
+            let destination = if tag == 0x011a { &mut x } else { &mut y };
+            if numerator == 0
+                || denominator == 0
+                || destination.replace((numerator, denominator)).is_some()
+            {
+                return Err(invalid_density());
+            }
+        } else if tag == 0x0128 {
+            let value = read_u16(&entry[8..]).unwrap();
+            if kind != 3 || count != 1 || !(1..=3).contains(&value) || unit.replace(value).is_some()
+            {
+                return Err(invalid_density());
+            }
         }
     }
-    None
+    display.density = match (x, y, unit) {
+        (None, None, None) => None,
+        (Some(x), Some(y), Some(unit)) => Some(PrintDensity { x, y, unit }),
+        _ => return Err(invalid_density()),
+    };
+    Ok(display)
+}
+
+fn display_segment(display: DisplayMetadata) -> Option<Vec<u8>> {
+    let Some(density) = display.density else {
+        return display.orientation.map(orientation_segment);
+    };
+    let count: u16 = 3 + u16::from(display.orientation.is_some());
+    let rational_offset = 8 + 2 + u32::from(count) * 12 + 4;
+    let mut payload = b"Exif\0\0MM\0*\0\0\0\x08".to_vec();
+    payload.extend_from_slice(&count.to_be_bytes());
+    for (tag, kind, value) in [
+        (
+            0x0112u16,
+            3u16,
+            u32::from(display.orientation.unwrap_or(1)) << 16,
+        ),
+        (0x011a, 5, rational_offset),
+        (0x011b, 5, rational_offset + 8),
+        (0x0128, 3, u32::from(density.unit) << 16),
+    ] {
+        if tag == 0x0112 && display.orientation.is_none() {
+            continue;
+        }
+        payload.extend_from_slice(&tag.to_be_bytes());
+        payload.extend_from_slice(&kind.to_be_bytes());
+        payload.extend_from_slice(&1u32.to_be_bytes());
+        payload.extend_from_slice(&value.to_be_bytes());
+    }
+    payload.extend_from_slice(&0u32.to_be_bytes());
+    for value in [density.x.0, density.x.1, density.y.0, density.y.1] {
+        payload.extend_from_slice(&value.to_be_bytes());
+    }
+    let mut segment = vec![0xff, 0xe1];
+    segment.extend_from_slice(&((payload.len() + 2) as u16).to_be_bytes());
+    segment.extend_from_slice(&payload);
+    Some(segment)
 }
 
 fn orientation_segment(orientation: u16) -> Vec<u8> {
@@ -660,9 +794,12 @@ mod tests {
         let source = jpeg_with_orientation(6);
         let (cleaned, findings) = clean_jpeg_with_options(&source, true, true).unwrap();
         let segments = jpeg_segments(&cleaned).unwrap();
-        assert_eq!(jpeg_orientation(&segments), Some(6));
+        assert_eq!(
+            jpeg_display_metadata(&segments).unwrap().orientation,
+            Some(6)
+        );
         assert!(!cleaned.windows(3).any(|window| window == b"gps"));
-        assert_eq!(findings.len(), 2);
+        assert_eq!(findings.len(), 1);
     }
 
     #[test]
@@ -670,6 +807,150 @@ mod tests {
         let source = jpeg_with_orientation(6);
         let (cleaned, _) = clean_jpeg_with_options(&source, false, true).unwrap();
         assert_eq!(cleaned, vec![0xff, 0xd8, 0xff, 0xd9]);
+    }
+
+    fn density_jpeg(little: bool, orientation: bool) -> Vec<u8> {
+        let u16_bytes = |value: u16| {
+            if little {
+                value.to_le_bytes()
+            } else {
+                value.to_be_bytes()
+            }
+        };
+        let u32_bytes = |value: u32| {
+            if little {
+                value.to_le_bytes()
+            } else {
+                value.to_be_bytes()
+            }
+        };
+        let mut tiff = if little {
+            b"II".to_vec()
+        } else {
+            b"MM".to_vec()
+        };
+        tiff.extend(u16_bytes(42));
+        tiff.extend(u32_bytes(8));
+        let count = 3 + u16::from(orientation);
+        let offset = 14 + u32::from(count) * 12;
+        tiff.extend(u16_bytes(count));
+        for (tag, kind, value) in [
+            (0x0112, 3, 6),
+            (0x011a, 5, offset),
+            (0x011b, 5, offset + 8),
+            (0x0128, 3, 3),
+        ] {
+            if tag == 0x0112 && !orientation {
+                continue;
+            }
+            tiff.extend(u16_bytes(tag));
+            tiff.extend(u16_bytes(kind));
+            tiff.extend(u32_bytes(1));
+            if kind == 3 {
+                tiff.extend(u16_bytes(value as u16));
+                tiff.extend([0, 0]);
+            } else {
+                tiff.extend(u32_bytes(value));
+            }
+        }
+        tiff.extend(u32_bytes(0));
+        for value in [30001, 100, 15001, 100] {
+            tiff.extend(u32_bytes(value));
+        }
+        tiff.extend_from_slice(b"private author trailer");
+        let mut payload = b"Exif\0\0".to_vec();
+        payload.extend(tiff);
+        let mut source = vec![0xff, 0xd8];
+        source.extend(jpeg_segment(0xe1, &payload));
+        source.extend_from_slice(&[0xff, 0xd9]);
+        source
+    }
+
+    #[test]
+    fn preserves_exact_density_in_both_byte_orders_and_orientation_modes() {
+        for little in [false, true] {
+            for has_orientation in [false, true] {
+                for preserve_orientation in [false, true] {
+                    let source = density_jpeg(little, has_orientation);
+                    let (cleaned, removed) =
+                        clean_jpeg_with_options(&source, preserve_orientation, true).unwrap();
+                    let display = jpeg_display_metadata(&jpeg_segments(&cleaned).unwrap()).unwrap();
+                    assert_eq!(
+                        display.density,
+                        Some(PrintDensity {
+                            x: (30001, 100),
+                            y: (15001, 100),
+                            unit: 3
+                        })
+                    );
+                    assert_eq!(
+                        display.orientation,
+                        (has_orientation && preserve_orientation).then_some(6)
+                    );
+                    assert!(!cleaned.windows(7).any(|bytes| bytes == b"private"));
+                    assert_eq!(removed[0].category, "image_metadata");
+                    verify_jpeg_cleaned(&cleaned, preserve_orientation, true).unwrap();
+                    let rescanned = inspect_jpeg(&cleaned).unwrap();
+                    assert!(rescanned
+                        .iter()
+                        .all(|finding| finding.category == "image_orientation"
+                            && finding.severity == FindingSeverity::Informational));
+                    assert_eq!(
+                        clean_jpeg_with_options(&cleaned, preserve_orientation, true)
+                            .unwrap()
+                            .0,
+                        cleaned
+                    );
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn retained_orientation_is_informational_but_can_still_be_removed() {
+        let source = clean_jpeg_with_options(&jpeg_with_orientation(6), true, true)
+            .unwrap()
+            .0;
+        let findings = inspect_jpeg(&source).unwrap();
+        assert_eq!(findings.len(), 1);
+        assert_eq!(findings[0].category, "image_orientation");
+        assert_eq!(findings[0].severity, FindingSeverity::Informational);
+        assert!(clean_jpeg_with_options(&source, true, true)
+            .unwrap()
+            .1
+            .is_empty());
+        let (cleaned, removed) = clean_jpeg_with_options(&source, false, true).unwrap();
+        assert_eq!(removed[0].category, "image_orientation");
+        assert!(inspect_jpeg(&cleaned).unwrap().is_empty());
+    }
+
+    #[test]
+    fn rejects_invalid_partial_duplicate_and_conflicting_densities() {
+        let source = density_jpeg(false, false);
+        // TIFF starts at byte12; IFD entries start at22, rational values at62.
+        for (offset, bytes) in [
+            (62, 0u32.to_be_bytes().to_vec()),
+            (66, 0u32.to_be_bytes().to_vec()),
+            (30, u32::MAX.to_be_bytes().to_vec()),
+            (24, 3u16.to_be_bytes().to_vec()),
+            (26, 2u32.to_be_bytes().to_vec()),
+            (34, 0x011au16.to_be_bytes().to_vec()),
+            (46, 0x013bu16.to_be_bytes().to_vec()),
+            (54, 4u16.to_be_bytes().to_vec()),
+        ] {
+            let mut broken = source.clone();
+            broken[offset..offset + bytes.len()].copy_from_slice(&bytes);
+            assert!(
+                clean_jpeg_with_options(&broken, true, true).is_err(),
+                "offset {offset}"
+            );
+        }
+        let mut conflicting = source.clone();
+        conflicting[62..66].copy_from_slice(&301u32.to_be_bytes());
+        let segment = jpeg_segments(&conflicting).unwrap()[0].2.clone();
+        let mut combined = source;
+        combined.splice(2..2, conflicting[segment].iter().copied());
+        assert!(clean_jpeg_with_options(&combined, true, true).is_err());
     }
     #[test]
     fn rejects_truncated_png() {

@@ -64,7 +64,11 @@ privacy-bearing file inside it. MetaClean therefore continues inspection into
 two bounded embedded surfaces:
 
 - PDF JPEG image XObjects are inspected and rebuilt with private APP/COM blocks
-  removed while orientation and ICC data follow the user's fidelity settings.
+  removed while orientation and ICC data are retained for PDF rendering.
+  Valid JPEG EXIF print density is rebuilt from its numeric horizontal/vertical
+  rational values and unit, including for embedded images. Incomplete, invalid,
+  duplicate or conflicting density fields fail closed. Standalone JPEG
+  orientation and ICC data follow the user's fidelity settings.
 - Image data URIs in HTML, XHTML, SVG and Markdown are decoded and run through
   the same native JPEG, PNG, WebP, JPEG XL, GIF, BMP and HEIF cleaners. Nested SVG is
   supported to four levels. Every decoded payload is capped at 16 MiB, while

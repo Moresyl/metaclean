@@ -65,6 +65,34 @@ arbitrary user-data migration, physical power-loss recovery, interrupted
 installation or Apple Gatekeeper approval. Earlier memory measurements were
 not repeated for this PDF patch.
 
+## Independent JPEG print/display qualification — v0.11.6 candidate
+
+`scripts/verify-jpeg-fidelity.py` generates four original JPEG fixtures and
+checks copy/replace with orientation retention both enabled and disabled:
+sixteen cases. Independent Pillow decoding verifies exact source EXIF rational
+density values and units, JFIF density, raw pixels, expected displayed pixels,
+ICC bytes, permitted EXIF fields and private-author removal. Native SHA-256
+results and unchanged source/backup bytes are also checked. All sixteen cases
+pass locally with Pillow 12.2.0. Native tests cover both TIFF byte orders,
+malformed/partial/duplicate/conflicting density and orientation-only rescans.
+
+Local candidate checks passed 428 frontend tests (93.58% lines, 85.49% branches),
+237 native tests with eight environment-dependent tests ignored, strict Clippy
+and all sixteen Windows desktop cases. The added desktop scenario scans an
+original generated JPEG containing only retained display metadata, then turns
+off orientation preservation and creates a safe copy through the real UI.
+The independent JPEG sixteen-case and HEIF six-case suites were repeated after
+the shared test-helper changes; all passed. The six PDF cases with embedded
+JPEG display metadata also pass MuPDF. Hosted candidate and release results
+remain pending at this checkpoint.
+
+Before this change, a real generated EXIF-only density sample lost tags
+282/283/296 despite retaining identical decoded pixels. A second sample with
+orientation also showed that a rebuilt orientation segment was reported as
+private EXIF. These regressions are now covered separately from pixel fidelity.
+This qualifies the stated synthetic cases, not arbitrary images, print drivers
+or application-specific interpretation of conflicting JFIF/EXIF density.
+
 ## Independent HEIF/AVIF qualification — 2026-09-29
 
 `scripts/verify-heif-fidelity.py` generates synthetic HEIC RGB, two-image HEIC
@@ -92,7 +120,8 @@ vector/text with rotation, a two-page interactive form with three fields, and
 an ASCII85-wrapped JPEG with EXIF plus transparent vector content. Copy and
 replace modes each verify source/backup bytes and native source/output hashes.
 Independent pypdf checks compare page geometry, text, field names, values and
-widget state. Pillow checks decoded JPEG pixels and confirms EXIF removal.
+widget state. Pillow checks decoded JPEG pixels and private EXIF removal while
+verifying retained density, orientation and ICC bytes in the current fixtures.
 
 Local MuPDF 1.27.2.3 rendering at 144 dpi passes all six cases with identical
 before/after RGB pixels. The original implementation failed the form case:

@@ -706,4 +706,28 @@ describe("App", () => {
     fireEvent.click(retry);
     await waitFor(() => expect(invokeMock.mock.calls.filter(([command]) => command === "scan_files")).toHaveLength(2));
   });
+
+  it("keeps an orientation-only scan clean until preservation is disabled", async () => {
+    invokeMock.mockImplementation((command: string) => {
+      if (command === "get_launch_paths") return Promise.resolve(["C:\\work\\photo.jpg"]);
+      if (command === "expand_paths") return Promise.resolve({ files: ["C:\\work\\photo.jpg"], skippedCount: 0, issues: [], limitReached: false });
+      if (command === "scan_files") return Promise.resolve([{ path: "C:\\work\\photo.jpg", name: "photo.jpg", format: "JPEG", size: 32, supported: true, findings: [{ category: "image_orientation", label: "Orientation", count: 1, severity: "informational" }] }]);
+      if (command === "get_context_menu_status") return Promise.resolve({ available: false, enabled: false, detail: "仅 Windows" });
+      return Promise.reject(new Error(`unexpected ${command}`));
+    });
+    renderApp();
+    await screen.findByText("photo.jpg");
+    fireEvent.click(screen.getByRole("button", { name: "扫描隐私痕迹" }));
+    expect(await screen.findByRole("button", { name: "没有需要清理的痕迹" })).toBeDisabled();
+    expect(screen.getByText("未发现隐私痕迹")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "设置" }));
+    fireEvent.click(screen.getByRole("button", { name: "清理偏好" }));
+    fireEvent.click(screen.getByRole("checkbox", { name: /保留 JPEG 显示方向/ }));
+    expect(localStorage.getItem("metaclean.preserveOrientation")).toBe("false");
+    fireEvent.click(screen.getByRole("button", { name: "文件净化" }));
+    expect(screen.getByRole("button", { name: "确认并开始清理" })).toBeEnabled();
+    expect(screen.getByText("发现 1 项痕迹")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "详细信息" }));
+    expect(screen.getByText("将被移除")).toBeInTheDocument();
+  });
 });

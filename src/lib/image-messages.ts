@@ -1,0 +1,38 @@
+import type { Locale } from "./locales";
+
+type Messages = readonly [orientation: string, fidelity: string];
+
+export const IMAGE_MESSAGES: Record<Locale, Messages> = {
+  zh: ["照片方向", "保留 JPEG 打印密度，移除 EXIF/GPS 中的隐私信息。"],
+  "zh-TW": ["照片方向", "保留 JPEG 列印密度，移除 EXIF/GPS 中的隱私資訊。"],
+  en: ["Photo orientation", "Preserve JPEG print density and remove private EXIF/GPS information."],
+  ja: ["写真の向き", "JPEG の印刷密度を保持し、EXIF/GPS の個人情報を削除します。"],
+  ko: ["사진 방향", "JPEG 인쇄 밀도를 유지하고 EXIF/GPS 개인정보를 제거합니다."],
+  de: ["Fotoausrichtung", "JPEG-Druckauflösung beibehalten und private EXIF/GPS-Informationen entfernen."],
+  fr: ["Orientation de la photo", "Conserver la densité d’impression JPEG et supprimer les informations privées EXIF/GPS."],
+  es: ["Orientación de la foto", "Conservar la densidad de impresión JPEG y eliminar la información privada EXIF/GPS."],
+  it: ["Orientamento della foto", "Mantieni la densità di stampa JPEG e rimuovi le informazioni private EXIF/GPS."],
+  pt: ["Orientação da fotografia", "Preservar a densidade de impressão JPEG e remover informações privadas EXIF/GPS."],
+  "pt-BR": ["Orientação da foto", "Preservar a densidade de impressão JPEG e remover informações privadas EXIF/GPS."],
+  nl: ["Foto-oriëntatie", "Behoud de JPEG-afdrukdichtheid en verwijder persoonlijke EXIF/GPS-informatie."],
+  da: ["Fotoretning", "Bevar JPEG-udskriftsopløsningen, og fjern private EXIF/GPS-oplysninger."],
+  nb: ["Bilderetning", "Behold JPEG-utskriftsoppløsningen og fjern private EXIF/GPS-opplysninger."],
+  sv: ["Bildorientering", "Behåll JPEG-utskriftsupplösningen och ta bort privat EXIF/GPS-information."],
+  ca: ["Orientació de la foto", "Conserva la densitat d’impressió JPEG i elimina la informació privada EXIF/GPS."],
+  cs: ["Orientace fotografie", "Zachovat tiskové rozlišení JPEG a odstranit soukromé údaje EXIF/GPS."],
+  sk: ["Orientácia fotografie", "Zachovať tlačové rozlíšenie JPEG a odstrániť súkromné údaje EXIF/GPS."],
+  pl: ["Orientacja zdjęcia", "Zachowaj rozdzielczość druku JPEG i usuń prywatne dane EXIF/GPS."],
+  ro: ["Orientarea fotografiei", "Păstrează densitatea de imprimare JPEG și elimină informațiile private EXIF/GPS."],
+  hr: ["Orijentacija fotografije", "Zadrži gustoću ispisa JPEG-a i ukloni privatne EXIF/GPS podatke."],
+  hu: ["Fénykép tájolása", "A JPEG nyomtatási felbontásának megőrzése és a privát EXIF/GPS-adatok eltávolítása."],
+  el: ["Προσανατολισμός φωτογραφίας", "Διατήρηση της πυκνότητας εκτύπωσης JPEG και αφαίρεση ιδιωτικών πληροφοριών EXIF/GPS."],
+  tr: ["Fotoğraf yönü", "JPEG baskı yoğunluğunu koru ve özel EXIF/GPS bilgilerini kaldır."],
+  ru: ["Ориентация фотографии", "Сохранять плотность печати JPEG и удалять личные сведения EXIF/GPS."],
+  uk: ["Орієнтація фотографії", "Зберігати щільність друку JPEG і видаляти приватні відомості EXIF/GPS."],
+  ar: ["اتجاه الصورة", "الاحتفاظ بكثافة طباعة JPEG وإزالة معلومات EXIF/GPS الخاصة."],
+  fa: ["جهت عکس", "حفظ تراکم چاپ JPEG و حذف اطلاعات خصوصی EXIF/GPS."],
+  ml: ["ഫോട്ടോയുടെ ദിശ", "JPEG പ്രിന്റ് സാന്ദ്രത നിലനിർത്തുകയും സ്വകാര്യ EXIF/GPS വിവരങ്ങൾ നീക്കം ചെയ്യുകയും ചെയ്യുക."],
+  id: ["Orientasi foto", "Pertahankan kerapatan cetak JPEG dan hapus informasi pribadi EXIF/GPS."],
+  vi: ["Hướng ảnh", "Giữ mật độ in JPEG và xóa thông tin riêng tư EXIF/GPS."],
+  ms: ["Orientasi foto", "Kekalkan ketumpatan cetakan JPEG dan buang maklumat peribadi EXIF/GPS."],
+};
