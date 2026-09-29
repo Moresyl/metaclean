@@ -33,8 +33,33 @@ The borrowed-input regression failed on the original implementation. All 243
 native tests then passed (nine ignored), along with strict Clippy and formatting.
 Exact-byte tests cover empty and multibyte text, UTF-8 BOM insertion and UTF-16
 endianness. Sixteen local Windows desktop cases, the production frontend build
-and the documentation build also passed. Hosted candidate desktop measurements
-remain pending.
+and the documentation build also passed.
+
+[Hosted candidate measurements 36525360046](https://github.com/Moresyl/metaclean/actions/runs/36525360046)
+passed three fresh runs per size, including source, output and audit fingerprint
+checks. All twelve peak process inventories contained exactly seven MetaClean
+and WebView processes, with creation-time ancestry checks:
+
+| Synthetic UTF-8 input | Aggregate working set | Aggregate private memory |
+|---|---:|---:|
+| 64 MiB | 504.23–507.87 MiB | 270.99–273.05 MiB |
+| 256 MiB | 887.80–889.71 MiB | 655.16–657.00 MiB |
+
+These candidate executables still reported version 0.11.7; `application.json`
+records `candidate: true`, the revision above and each executable hash. They
+are distinct from the published v0.11.7 baseline below. Measurements include
+startup through cleanup, use a requested 200 ms wait plus process enumeration,
+can miss peaks and can double-count shared working-set pages. Hosted machines
+vary, so this is neither a controlled timing comparison nor an application
+memory upper bound or proof that whole-application memory was halved.
+
+The final v0.11.8 revision `4ad0ee63a9bae22ea3c2dd5fcaff039b22c0c58d`
+passed [CI 36525823068](https://github.com/Moresyl/metaclean/actions/runs/36525823068):
+428 frontend tests, 243 native tests, 91.82% Rust line coverage with the documented
+exclusions, and sixteen desktop cases on each of Windows, Linux and macOS.
+Tagged independent [PDF checks](https://github.com/Moresyl/metaclean/actions/runs/36527199495)
+and [image checks](https://github.com/Moresyl/metaclean/actions/runs/36527199446)
+passed six PDF, six HEIF/AVIF and sixteen JPEG cases.
 
 ## Published v0.11.7 verification — 2026-09-29
 
