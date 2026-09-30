@@ -8,6 +8,8 @@ overrides:
   deepmerge-ts: 8.0.0
   js-yaml: 4.3.2
   vitepress>vite: 6.4.3
-  ip-address: 10.5.1
+  ip-address: 10.7.1
+  brace-expansion@1.1.18: 1.1.21
+  brace-expansion@2.1.4: 2.1.7
   undici@6.28.0: 6.28.1
   undici@7.29.0: 7.29.1

@@ -7,6 +7,12 @@ All notable changes to MetaClean are documented here. The project follows
 
 ## [0.11.9] - 2026-10-01
 
+### Security
+
+- Update desktop test-toolchain overrides for `ip-address` to 10.7.1 and
+  `brace-expansion` to 1.1.21 / 2.1.7, addressing the newly reported address
+  validation and brace-expansion denial-of-service advisories.
+
 ### Fixed
 
 - Detect and remove PNG `tIME` last-modification metadata, including timestamps

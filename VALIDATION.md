@@ -33,8 +33,17 @@ configured filesystem modification time remain identical. Source bytes or
 replacement backups also match. These synthetic fixtures do not qualify all
 PNG encoders or establish support for arbitrary unknown chunks.
 
-The independent checks are included in image and release source gates. Candidate
-cross-platform CI and a published v0.11.9 release remain pending.
+The independent checks are included in image and release source gates.
+[Image run 36753853542](https://github.com/Moresyl/metaclean/actions/runs/36753853542)
+passed six HEIF/AVIF, sixteen JPEG and eight PNG cases;
+[PDF run 36753853573](https://github.com/Moresyl/metaclean/actions/runs/36753853573)
+passed six page/text/form/source-integrity cases.
+
+The initial candidate CI stopped at newly disclosed npm dependency advisories.
+The desktop test-toolchain overrides now use `ip-address` 10.7.1 and
+`brace-expansion` 1.1.21 / 2.1.7. A fresh local npm audit reports zero known
+vulnerabilities; forty release automation tests and the supply-chain check pass.
+Candidate cross-platform CI and a published v0.11.9 release remain pending.
 
 ## Published v0.11.8 verification — 2026-09-29
 
