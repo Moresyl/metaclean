@@ -1,7 +1,7 @@
 # MetaClean capability audit
 
-Audited on 2026-09-29 for the published v0.11.8 release at
-`4ad0ee63a9bae22ea3c2dd5fcaff039b22c0c58d`.
+Audited on 2026-10-01 for the published v0.11.9 release at
+`e0113eb70ba6fd2049297464f66744a9f8b48ca7`.
 
 This ledger describes implemented behavior, its evidence and its limits.
 Extension counts and passing tests do not establish universal format support,
@@ -16,7 +16,7 @@ application. Detailed run evidence is recorded in `VALIDATION.md`.
 | Audio preservation | Native Opus/Vorbis comment cleanup preserves page layout, codec setup and audio bytes, while retaining validated numeric playback gains. Ten independent FFmpeg cases cover mono, stereo, 5.1, long comments and chained streams. | Unknown codecs, unsupported extensions and malformed structures fail closed; the cleaner does not fully decode audio. |
 | Document privacy | Native Office/OpenDocument/EPUB and PDF cleaners have structural and residual-data tests; real Office samples were opened and exported with LibreOffice. Post-v0.11.0 WPS 2019 sample tests found and verified a VML comment-shape fix; see VALIDATION.md. | Microsoft Word, newer WPS releases and complex document fidelity remain unverified. The fix is not included in v0.11.0. Legacy binary Office is refused. |
 | PDF fidelity | Six synthetic copy/replace cases preserve rendered pages, searchable text, form fields and JPEG pixels while removing document metadata and private embedded JPEG EXIF. Validated JPEG orientation, density and ICC are retained. Independent MuPDF and Poppler rendering, pypdf parsing and Pillow checks pass. | These samples do not qualify arbitrary PDFs, complex forms, XFA, digital signatures or accessibility. |
-| Image fidelity | Six independent HEIF/AVIF cases preserve frames, display pixels, alpha and ICC. Sixteen JPEG cases preserve exact EXIF density rationals/units, JFIF, ICC and pixels, with orientation retention enabled and disabled. | Synthetic cases do not qualify all encoders, print drivers, HDR, gain maps, depth images, timed animation or arbitrary RAW. |
+| Image fidelity | Six independent HEIF/AVIF cases preserve frames, display pixels, alpha and ICC. Sixteen JPEG cases preserve exact EXIF density rationals/units, JFIF, ICC and pixels, with orientation retention enabled and disabled. Eight PNG copy/replace cases remove embedded modification time while preserving retained chunks, pixels, profiles, resolution and APNG controls. | Synthetic cases do not qualify all encoders, print drivers, HDR, gain maps, depth images, arbitrary animation or RAW. |
 | Batch isolation | Bounded intake, per-file outcomes, cancellation, count-only progress and source-path identity are tested across Rust and frontend boundaries. | Slow-device cancellation latency and general peak-memory bounds remain unqualified. |
 | Content fingerprints | Successful results, details, history and JSON reports carry source/output SHA-256. Desktop tests independently hash the actual files. | Hashes describe cleanup-time content, exclude filesystem attributes and do not prove metadata removal. |
 | Desktop workflow | Queue search/filtering, safe-copy cleanup, persistent preferences, keyboard navigation, RTL and accessibility checks run on Windows, macOS and Linux. | Automated scenarios do not replace a usability study with representative users. |
@@ -25,15 +25,24 @@ application. Detailed run evidence is recorded in `VALIDATION.md`.
 
 ## Release evidence
 
-- [Candidate CI](https://github.com/Moresyl/metaclean/actions/runs/36525823068)
+- [Candidate CI](https://github.com/Moresyl/metaclean/actions/runs/36755147155)
   passed the main quality gates and desktop tests on all three operating systems.
-- [Release pipeline](https://github.com/Moresyl/metaclean/actions/runs/36527199482)
+- [Release pipeline](https://github.com/Moresyl/metaclean/actions/runs/36757394934)
   passed source validation, five platform builds, package checks and finalization.
-- [Independent public-asset verification](https://github.com/Moresyl/metaclean/actions/runs/36528727885)
+- [Independent public-asset verification](https://github.com/Moresyl/metaclean/actions/runs/36761767639)
   checked downloaded bytes and signatures against the tagged public key.
-- [Published v0.11.8](https://github.com/Moresyl/metaclean/releases/tag/v0.11.8)
+- [Published v0.11.9](https://github.com/Moresyl/metaclean/releases/tag/v0.11.9)
   contains 20 assets, including the checksum manifest. The public Pages update
   feed was checked against the release's five platform URLs and signatures.
+
+v0.11.9 adds PNG `tIME` cleanup with independent pixel/chunk checks. Public
+0.11.8 → 0.11.9 → 0.11.8 NSIS/MSI/DEB/DMG transitions passed, including MSI
+repair and both Windows application-triggered updates. The first NSIS attempt
+failed while seeding the old version's synthetic state; a diagnostic-only harness
+change preceded two successful full reruns, and the original cause is unconfirmed.
+Its crash sample preserved sixty-four sources and one committed output, with no
+additional files in that inventory. These results do not establish arbitrary
+migration compatibility or orphan-free recovery. `VALIDATION.md` links each run.
 
 The VML note-shape fix verified with WPS 2019 is included in v0.11.1.
 

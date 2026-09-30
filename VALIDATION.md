@@ -16,9 +16,54 @@ This file records evidence, not intent. A row is complete only when the named ar
 | M3: Windows release | Complete for v0.3.0 | The successful v0.3.0 release matrix published launch-smoked x64 NSIS/MSI, x86 NSIS and architecture-labelled x64/x86 portable ZIPs. Local installation/extraction proof also kept each package active for six seconds with the `MetaClean` title before clean uninstall/removal. |
 | M3: macOS/Linux release | Complete for unsigned v0.3.0 artifacts | The successful v0.3.0 matrix copied and launch-smoked both Intel and Apple Silicon DMGs, then installed and launch-smoked the Linux DEB before publishing DEB/RPM/AppImage assets. Apple signing/notarization secrets remain unavailable, so Gatekeeper qualification is an external gate rather than a completed claim. |
 
-## Candidate PNG modification-time cleanup — 2026-10-01
+## Published v0.11.9 verification — 2026-10-01
 
-The v0.11.9 candidate reports, removes and rejects residual PNG `tIME` chunks.
+[v0.11.9](https://github.com/Moresyl/metaclean/releases/tag/v0.11.9), immutable
+revision `e0113eb70ba6fd2049297464f66744a9f8b48ca7`, was published at
+2026-09-30 18:52:40 UTC with twenty nonempty assets.
+
+- [Candidate CI 36755147155](https://github.com/Moresyl/metaclean/actions/runs/36755147155)
+  passed 428 frontend tests, 244 Windows native tests (ten ignored), and sixteen
+  desktop cases on each of Windows, macOS and Linux. Rust line coverage was 91.77%.
+- [Release 36757394934](https://github.com/Moresyl/metaclean/actions/runs/36757394934)
+  passed source validation, five builds and applicable installation/launch checks.
+  Linux source validation passed 238 native tests (eleven ignored), sixteen desktop
+  cases, ten independent FFmpeg PCM cases, six PDF, six HEIF/AVIF, sixteen JPEG
+  and eight PNG cases. Rust line coverage was 91.30%; frontend line coverage was
+  93.58%. The npm audit was clean; seven previously classified Rust warnings remain.
+- [Public assets 36761767639](https://github.com/Moresyl/metaclean/actions/runs/36761767639)
+  verified nineteen checksum-listed assets, five updater signatures and rejection
+  of modified package bytes.
+- [NSIS 36762462081](https://github.com/Moresyl/metaclean/actions/runs/36762462081)
+  passed x64/x86 application-triggered signed updates and restart, synthetic
+  preferences/history/fingerprint preservation, truncated-installer rejection
+  and uninstall through 0.11.8 → 0.11.9 → 0.11.8.
+  [MSI 36761777603](https://github.com/Moresyl/metaclean/actions/runs/36761777603),
+  [DEB 36761783676](https://github.com/Moresyl/metaclean/actions/runs/36761783676)
+  and [DMG 36761788601](https://github.com/Moresyl/metaclean/actions/runs/36761788601)
+  passed the corresponding transitions and launch/removal checks. MSI repair
+  passed for `{54AAB4E4-6831-4625-8DE1-0C38C04EB6AB}`.
+- [Crash recovery 36761793491](https://github.com/Moresyl/metaclean/actions/runs/36761793491)
+  preserved sixty-four sources and verified one committed output. Its complete
+  inventory contained no additional files. Two restarts confirmed no automatic
+  resume and a notice consumed only once. This single interruption point does
+  not establish orphan-free cleanup or physical power-loss safety.
+- [Pages 36761714180](https://github.com/Moresyl/metaclean/actions/runs/36761714180)
+  deployed the five-platform update feed. Public Pages and release manifests were
+  byte-identical, SHA-256
+  `A4461ABAA4A18D086F104378CD891E94F26547740774CEC030FAF3DC5FAD624B`.
+
+The [first NSIS run 36761772615](https://github.com/Moresyl/metaclean/actions/runs/36761772615)
+failed while initializing synthetic storage on the previous v0.11.8 application,
+before attempting an upgrade. A diagnostic-only harness change added the failed
+phase and WebView exception details; the full rerun above and a
+[second complete run 36762793328](https://github.com/Moresyl/metaclean/actions/runs/36762793328)
+passed both architectures without a product change or weakened checks. The initial
+exception's cause remains unconfirmed.
+
+### PNG modification-time cleanup
+
+v0.11.9 reports, removes and rejects residual PNG `tIME` chunks.
 The [PNG specification](https://www.w3.org/TR/png-3/#11tIME) defines this optional
 chunk as the image's last-modification time, distinct from filesystem timestamps.
 The new detection regression failed on v0.11.8's implementation before the fix.
@@ -43,7 +88,7 @@ The initial candidate CI stopped at newly disclosed npm dependency advisories.
 The desktop test-toolchain overrides now use `ip-address` 10.7.1 and
 `brace-expansion` 1.1.21 / 2.1.7. A fresh local npm audit reports zero known
 vulnerabilities; forty release automation tests and the supply-chain check pass.
-Candidate cross-platform CI and a published v0.11.9 release remain pending.
+The qualified candidate and public release results are recorded above.
 
 ## Published v0.11.8 verification — 2026-09-29
 
