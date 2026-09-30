@@ -2289,6 +2289,20 @@ mod tests {
         assert_external_cleanup_integrity(&source, &mode, preserve_orientation);
     }
 
+    #[test]
+    #[ignore = "requires METACLEAN_PNG_SAMPLE_PATH with a generated PNG fixture"]
+    fn cleans_external_png_sample_with_verified_output() {
+        let source = PathBuf::from(
+            std::env::var_os("METACLEAN_PNG_SAMPLE_PATH").expect("PNG sample path is required"),
+        );
+        let mode = match std::env::var("METACLEAN_PNG_OUTPUT_MODE").as_deref() {
+            Ok("copy") => OutputMode::Copy,
+            Ok("replace") => OutputMode::Replace,
+            _ => panic!("PNG output mode must be copy or replace"),
+        };
+        assert_external_cleanup_integrity(&source, &mode, true);
+    }
+
     fn assert_external_cleanup_integrity(
         source: &Path,
         mode: &OutputMode,

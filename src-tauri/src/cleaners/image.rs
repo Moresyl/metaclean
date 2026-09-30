@@ -518,7 +518,10 @@ fn png_chunks(data: &[u8]) -> Result<Vec<([u8; 4], std::ops::Range<usize>)>> {
 }
 
 fn is_private_png_chunk(kind: &[u8; 4]) -> bool {
-    matches!(kind, b"eXIf" | b"tEXt" | b"zTXt" | b"iTXt" | b"caBX") || *kind == PNG_TRAILER
+    matches!(
+        kind,
+        b"eXIf" | b"tEXt" | b"zTXt" | b"iTXt" | b"tIME" | b"caBX"
+    ) || *kind == PNG_TRAILER
 }
 
 pub fn inspect_png(data: &[u8]) -> Result<Vec<Finding>> {
@@ -526,14 +529,14 @@ pub fn inspect_png(data: &[u8]) -> Result<Vec<Finding>> {
     let metadata = chunks
         .iter()
         .filter(|(kind, _)| {
-            matches!(kind, b"eXIf" | b"tEXt" | b"zTXt" | b"iTXt") || *kind == PNG_TRAILER
+            matches!(kind, b"eXIf" | b"tEXt" | b"zTXt" | b"iTXt" | b"tIME") || *kind == PNG_TRAILER
         })
         .count();
     let provenance = chunks.iter().filter(|(kind, _)| kind == b"caBX").count();
     let color_profiles = chunks.iter().filter(|(kind, _)| kind == b"iCCP").count();
     let mut findings = Vec::new();
     if metadata > 0 {
-        findings.push(finding("PNG 文本 / EXIF 元数据", metadata));
+        findings.push(finding("PNG 文本 / EXIF / 时间元数据", metadata));
     }
     if provenance > 0 {
         findings.push(Finding {
@@ -1006,6 +1009,38 @@ mod tests {
         assert_eq!(findings[0].category, "provenance");
         let (cleaned, _) = clean_png_with_options(&source, true).unwrap();
         assert!(!cleaned.windows(4).any(|window| window == b"caBX"));
+    }
+
+    #[test]
+    fn reports_and_removes_png_modification_times() {
+        let time = png_chunk(b"tIME", &[0x07, 0xea, 10, 1, 12, 34, 56]);
+        for after_pixels in [false, true] {
+            let mut expected = png_start();
+            expected.extend(png_chunk(b"pHYs", &[0, 0, 0x2e, 0x23, 0, 0, 0x17, 0x12, 1]));
+            let mut source = expected.clone();
+            if !after_pixels {
+                source.extend_from_slice(&time);
+            }
+            source.extend(png_chunk(b"IDAT", b"pixels"));
+            if after_pixels {
+                source.extend_from_slice(&time);
+            }
+            source.extend(png_chunk(b"IEND", b""));
+            finish_png(&mut expected);
+
+            let findings = inspect_png(&source).unwrap();
+            assert_eq!(findings.len(), 1);
+            assert_eq!(findings[0].category, "image_metadata");
+            assert_eq!(findings[0].count, 1);
+            for preserve_profile in [false, true] {
+                assert!(verify_png_cleaned(&source, preserve_profile).is_err());
+                let (cleaned, removed) = clean_png_with_options(&source, preserve_profile).unwrap();
+                assert_eq!(removed.len(), 1);
+                assert_eq!(cleaned, expected);
+                assert!(inspect_png(&cleaned).unwrap().is_empty());
+                verify_png_cleaned(&cleaned, preserve_profile).unwrap();
+            }
+        }
     }
 
     #[test]

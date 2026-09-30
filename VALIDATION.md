@@ -1,6 +1,6 @@
 # MetaClean validation status
 
-Last audited: 2026-09-29
+Last audited: 2026-10-01
 
 This file records evidence, not intent. A row is complete only when the named artifact or runtime check exists.
 
@@ -15,6 +15,26 @@ This file records evidence, not intent. A row is complete only when the named ar
 | M2: Office/PDF/shell integration | Complete | DOCX/XLSX/PPTX/ODT/EPUB and PDF cleaners, deep PDF JPEG cleanup, embedded markup data-URI cleanup, 116-extension Windows Explorer integration and launch-path handling are covered by unit and manifest-consistency tests. |
 | M3: Windows release | Complete for v0.3.0 | The successful v0.3.0 release matrix published launch-smoked x64 NSIS/MSI, x86 NSIS and architecture-labelled x64/x86 portable ZIPs. Local installation/extraction proof also kept each package active for six seconds with the `MetaClean` title before clean uninstall/removal. |
 | M3: macOS/Linux release | Complete for unsigned v0.3.0 artifacts | The successful v0.3.0 matrix copied and launch-smoked both Intel and Apple Silicon DMGs, then installed and launch-smoked the Linux DEB before publishing DEB/RPM/AppImage assets. Apple signing/notarization secrets remain unavailable, so Gatekeeper qualification is an external gate rather than a completed claim. |
+
+## Candidate PNG modification-time cleanup — 2026-10-01
+
+The v0.11.9 candidate reports, removes and rejects residual PNG `tIME` chunks.
+The [PNG specification](https://www.w3.org/TR/png-3/#11tIME) defines this optional
+chunk as the image's last-modification time, distinct from filesystem timestamps.
+The new detection regression failed on v0.11.8's implementation before the fix.
+After the change, 244 native tests passed (ten ignored), strict Clippy and
+formatting passed, and eight independent Pillow cases passed locally.
+
+The fixtures cover RGBA, indexed-color transparency, 16-bit grayscale and a
+two-frame APNG, each in copy and replacement modes. Independent CRC/chunk
+inspection confirms that only `tIME` disappears. Decoded pixels, all retained
+chunks, color profiles, physical resolution, animation timing/controls and the
+configured filesystem modification time remain identical. Source bytes or
+replacement backups also match. These synthetic fixtures do not qualify all
+PNG encoders or establish support for arbitrary unknown chunks.
+
+The independent checks are included in image and release source gates. Candidate
+cross-platform CI and a published v0.11.9 release remain pending.
 
 ## Published v0.11.8 verification — 2026-09-29
 

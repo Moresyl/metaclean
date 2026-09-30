@@ -5,6 +5,22 @@ All notable changes to MetaClean are documented here. The project follows
 
 ## [Unreleased]
 
+## [0.11.9] - 2026-10-01
+
+### Fixed
+
+- Detect and remove PNG `tIME` last-modification metadata, including timestamps
+  before or after image data. Reject residual time chunks during cleanup verification.
+  Preserve all other chunks and the configured filesystem timestamps.
+
+### Tests
+
+- Add a regression that fails on the previous implementation, plus eight independent
+  Pillow cases for RGBA, palette, 16-bit grayscale and APNG animation in both output
+  modes. Compare exact retained chunks, decoded pixels, color profiles, resolution,
+  animation controls, source/backup bytes and filesystem modification times.
+- Require PNG fidelity checks in image and release validation workflows.
+
 ## [0.11.8] - 2026-09-29
 
 ### Changed
