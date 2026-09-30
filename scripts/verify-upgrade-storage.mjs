@@ -33,7 +33,7 @@ await new Promise((resolve, reject) => {
   socket.addEventListener("error", reject, { once: true });
 });
 let nextId = 0;
-function evaluate(expression) {
+function evaluate(expression, phase = "evaluation") {
   return new Promise((resolve, reject) => {
     const id = ++nextId;
     const timeout = setTimeout(() => { socket.removeEventListener("message", listener); reject(new Error("CDP evaluation timed out")); }, 10000);
@@ -42,7 +42,10 @@ function evaluate(expression) {
       if (message.id !== id) return;
       clearTimeout(timeout);
       socket.removeEventListener("message", listener);
-      if (message.error || message.result?.exceptionDetails) reject(new Error("WebView evaluation failed"));
+      if (message.error || message.result?.exceptionDetails) {
+        const detail = message.error?.message ?? message.result.exceptionDetails.exception?.description ?? message.result.exceptionDetails.text;
+        reject(new Error(`WebView ${phase} failed: ${detail}`));
+      }
       else resolve(message.result.result.value);
     }
     socket.addEventListener("message", listener);
@@ -51,11 +54,11 @@ function evaluate(expression) {
 }
 try {
   if (mode === "seed") {
-    await evaluate(`(() => { for (const [key,value] of Object.entries(${JSON.stringify(expected)})) localStorage.setItem(key,value); return true; })()`);
-    await evaluate("location.reload(); true");
+    await evaluate(`(() => { for (const [key,value] of Object.entries(${JSON.stringify(expected)})) localStorage.setItem(key,value); return true; })()`, "seed storage");
+    await evaluate("location.reload(); true", "reload after seed");
     await delay(2000);
   }
-  const snapshot = await evaluate(`(() => ({ values: Object.fromEntries(${JSON.stringify(Object.keys(expected))}.map(key => [key, localStorage.getItem(key)])), theme: document.documentElement.dataset.theme, title: document.title }))()`);
+  const snapshot = await evaluate(`(() => ({ values: Object.fromEntries(${JSON.stringify(Object.keys(expected))}.map(key => [key, localStorage.getItem(key)])), theme: document.documentElement.dataset.theme, title: document.title }))()`, "read persisted state");
   assert.deepEqual(snapshot.values, expected, "Persisted preferences/history changed across installation");
   assert.equal(snapshot.theme, "dark", "Application did not apply the persisted theme");
   assert.equal(snapshot.title, "MetaClean");
