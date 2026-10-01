@@ -69,6 +69,10 @@ two bounded embedded surfaces:
   rational values and unit, including for embedded images. Incomplete, invalid,
   duplicate or conflicting density fields fail closed. Standalone JPEG
   orientation and ICC data follow the user's fidelity settings.
+- JPEG APP0 JFIF thumbnails and trailing private data are retired while exact
+  version, resolution units, densities and pixel aspect ratio are retained.
+  JFXX previews and other application-private APP0 segments are removed. Truncated
+  JFIF headers or thumbnail pixels and inconsistent dimensions fail closed.
 - Image data URIs in HTML, XHTML, SVG and Markdown are decoded and run through
   the same native JPEG, PNG, WebP, JPEG XL, GIF, BMP and HEIF cleaners. Nested SVG is
   supported to four levels. Every decoded payload is capped at 16 MiB, while

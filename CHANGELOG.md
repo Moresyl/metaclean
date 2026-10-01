@@ -5,6 +5,8 @@ All notable changes to MetaClean are documented here. The project follows
 
 ## [Unreleased]
 
+## [0.11.10] - 2026-10-01
+
 ### Fixed
 
 - Remove JPEG APP0 embedded previews and application-private data. Retain the
