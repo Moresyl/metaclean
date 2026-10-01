@@ -5,6 +5,20 @@ All notable changes to MetaClean are documented here. The project follows
 
 ## [Unreleased]
 
+### Fixed
+
+- Remove JPEG APP0 embedded previews and application-private data. Retain the
+  exact JFIF version, resolution units, densities and pixel aspect ratio while
+  clearing thumbnail dimensions; reject truncated JFIF headers and pixel data.
+  Cleanup verification now rejects residual APP0 privacy payloads.
+
+### Tests
+
+- Seed independent JPEG fidelity cases with RGB JFIF thumbnails, JPEG/palette/RGB
+  JFXX previews and application-private payloads. Verify their removal alongside
+  unchanged compressed scans, decoded pixels, print density, ICC profiles,
+  orientation and source/backup bytes across sixteen cases.
+
 ## [0.11.9] - 2026-10-01
 
 ### Security

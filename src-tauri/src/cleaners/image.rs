@@ -70,6 +70,11 @@ fn is_private_jpeg_marker(marker: u8) -> bool {
     matches!(marker, 0x00 | 0xE1 | 0xE3..=0xED | 0xEF | 0xFE)
 }
 
+fn is_private_jpeg_segment(marker: u8, payload: &[u8]) -> bool {
+    is_private_jpeg_marker(marker)
+        || (marker == 0xE0 && (!payload.starts_with(b"JFIF\0") || payload.len() > 14))
+}
+
 pub fn inspect_jpeg(data: &[u8]) -> Result<Vec<Finding>> {
     let segments = jpeg_segments(data)?;
     let mut exif = 0;
@@ -90,7 +95,7 @@ pub fn inspect_jpeg(data: &[u8]) -> Result<Vec<Finding>> {
             0xE1 => xmp += 1,
             0xE2 if is_jpeg_icc_profile(marker, payload) => color_profiles += 1,
             0xEB => provenance += 1,
-            marker if is_private_jpeg_marker(marker) => comments += 1,
+            marker if is_private_jpeg_segment(marker, payload) => comments += 1,
             _ => {}
         }
     }
@@ -172,6 +177,17 @@ fn jpeg_segments(data: &[u8]) -> Result<Vec<JpegSegment<'_>>> {
             return Err(CleanError::InvalidFormat("JPEG 段越界".into()));
         }
         let payload = &data[offset + 2..offset + length];
+        if marker == 0xE0 && payload.starts_with(b"JFIF\0") {
+            if payload.len() < 14 {
+                return Err(CleanError::InvalidFormat("JPEG JFIF 显示信息被截断".into()));
+            }
+            let thumbnail_bytes = usize::from(payload[12]) * usize::from(payload[13]) * 3;
+            if payload.len() < 14 + thumbnail_bytes || (payload[12] == 0) != (payload[13] == 0) {
+                return Err(CleanError::InvalidFormat(
+                    "JPEG JFIF 缩略图尺寸或数据无效".into(),
+                ));
+            }
+        }
         if marker == 0xDA {
             let components = payload.first().copied().unwrap_or(0) as usize;
             if components == 0 || payload.len() != 1 + components * 2 + 3 {
@@ -226,10 +242,17 @@ pub fn clean_jpeg_with_options(
     let mut output = Vec::with_capacity(data.len());
     let mut cursor = 0;
     for (marker, payload, range) in segments {
-        let remove = is_private_jpeg_marker(marker)
+        let remove = is_private_jpeg_segment(marker, payload)
             || (!preserve_color_profile && is_jpeg_icc_profile(marker, payload));
         if remove {
             output.extend_from_slice(&data[cursor..range.start]);
+            if marker == 0xE0 && payload.starts_with(b"JFIF\0") {
+                // Keep version, density and pixel aspect ratio; retire only the
+                // preview and any trailing application data, never the main image.
+                output.extend_from_slice(&[0xff, 0xe0, 0, 16]);
+                output.extend_from_slice(&payload[..12]);
+                output.extend_from_slice(&[0, 0]);
+            }
             cursor = range.end;
         }
     }
@@ -256,7 +279,7 @@ pub fn verify_jpeg_cleaned(
                 }
             }
         }
-        if is_private_jpeg_marker(marker)
+        if is_private_jpeg_segment(marker, payload)
             || (!preserve_color_profile && is_jpeg_icc_profile(marker, payload))
         {
             return Err(CleanError::Verification(
@@ -731,6 +754,75 @@ mod tests {
         let (cleaned, findings) = clean_jpeg_with_options(&source, true, true).unwrap();
         assert_eq!(cleaned, vec![0xff, 0xd8, 0xff, 0xd9]);
         assert_eq!(findings[0].count, 1);
+    }
+
+    #[test]
+    fn removes_jpeg_app0_previews_and_private_data_without_changing_density() {
+        let header = b"JFIF\0\x01\x02\x02\x00\x76\x00\x3b";
+        let mut preview = header.to_vec();
+        preview.extend_from_slice(&[1, 1, 10, 20, 30]);
+        preview.extend_from_slice(b"private thumbnail tail");
+        let mut source = vec![0xff, 0xd8];
+        source.extend(jpeg_segment(0xe0, &preview));
+        source.extend(jpeg_segment(0xe0, b"JFXX\0\x10private old preview"));
+        source.extend(jpeg_segment(0xe0, b"editor\0private identity"));
+        source.extend_from_slice(&[0xff, 0xd9]);
+        assert_eq!(
+            inspect_jpeg(&source)
+                .unwrap()
+                .iter()
+                .map(|item| item.count)
+                .sum::<usize>(),
+            3
+        );
+        assert!(verify_jpeg_cleaned(&source, true, true).is_err());
+        let mut expected = vec![0xff, 0xd8];
+        let mut retained = header.to_vec();
+        retained.extend_from_slice(&[0, 0]);
+        expected.extend(jpeg_segment(0xe0, &retained));
+        expected.extend_from_slice(&[0xff, 0xd9]);
+        for orientation in [false, true] {
+            for profile in [false, true] {
+                let (cleaned, findings) =
+                    clean_jpeg_with_options(&source, orientation, profile).unwrap();
+                assert_eq!(cleaned, expected);
+                assert_eq!(findings[0].count, 3);
+                assert!(inspect_jpeg(&cleaned).unwrap().is_empty());
+                verify_jpeg_cleaned(&cleaned, orientation, profile).unwrap();
+            }
+        }
+    }
+
+    #[test]
+    fn rejects_truncated_jfif_headers_and_thumbnail_pixels() {
+        for payload in [
+            b"JFIF\0".as_slice(),
+            b"JFIF\0\x01\x02\x01\x00\x48\x00\x48\x02\x02\x00",
+        ] {
+            let mut source = vec![0xff, 0xd8];
+            source.extend(jpeg_segment(0xe0, payload));
+            source.extend_from_slice(&[0xff, 0xd9]);
+            assert!(inspect_jpeg(&source).is_err());
+            assert!(clean_jpeg_with_options(&source, true, true).is_err());
+            assert!(verify_jpeg_cleaned(&source, true, true).is_err());
+        }
+    }
+
+    #[test]
+    fn preserves_jfif_display_header_without_a_preview_exactly() {
+        for units in [0, 1, 2] {
+            let mut payload = b"JFIF\0\x01\x02\x00\x00\x48\x00\x90\x00\x00".to_vec();
+            payload[7] = units;
+            let mut source = vec![0xff, 0xd8];
+            source.extend(jpeg_segment(0xe0, &payload));
+            source.extend_from_slice(&[0xff, 0xd9]);
+            assert!(inspect_jpeg(&source).unwrap().is_empty());
+            assert_eq!(
+                clean_jpeg_with_options(&source, true, true).unwrap().0,
+                source
+            );
+            verify_jpeg_cleaned(&source, true, true).unwrap();
+        }
     }
 
     #[test]

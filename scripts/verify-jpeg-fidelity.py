@@ -2,6 +2,7 @@
 import argparse
 from fractions import Fraction
 import hashlib
+import io
 import json
 import os
 from pathlib import Path
@@ -36,6 +37,41 @@ def make_fixture(path, scenario):
     image.save(path, exif=exif, quality=91,
                icc_profile=ImageCms.ImageCmsProfile(ImageCms.createProfile("sRGB")).tobytes(),
                **({"dpi": jfif} if jfif else {}))
+    seed_private_previews(path)
+
+
+PREVIEW_SENTINEL = b"MetaClean-private-preview-identity"
+
+
+def app0(payload):
+    return b"\xff\xe0" + (len(payload) + 2).to_bytes(2, "big") + payload
+
+
+def seed_private_previews(path):
+    data = path.read_bytes()
+    assert data[2:4] == b"\xff\xe0", "Fixture must begin with JFIF"
+    end = 4 + int.from_bytes(data[4:6], "big")
+    header = data[6:end]
+    assert len(header) == 14 and header[:5] == b"JFIF\0"
+    thumbnail = Image.new("RGB", (2, 1), (39, 72, 118))
+    encoded = io.BytesIO()
+    thumbnail.save(encoded, format="JPEG", comment=PREVIEW_SENTINEL)
+    previews = app0(header[:12] + b"\x01\x01\x27\x48\x76" + PREVIEW_SENTINEL)
+    previews += app0(b"JFXX\0\x10" + encoded.getvalue())
+    previews += app0(b"JFXX\0\x11\x01\x01" + bytes(768) + b"\x00")
+    previews += app0(b"JFXX\0\x13\x02\x01" + thumbnail.tobytes())
+    previews += app0(b"private-editor\0" + PREVIEW_SENTINEL)
+    path.write_bytes(data[:2] + previews + data[end:])
+
+
+def compressed_scan(data):
+    offset = 2
+    while offset < len(data):
+        assert data[offset] == 0xff, "Invalid fixture JPEG marker"
+        if data[offset + 1] == 0xda:
+            return data[offset:]
+        offset += 2 + int.from_bytes(data[offset + 2:offset + 4], "big")
+    raise AssertionError("Fixture lacks its compressed scan")
 
 
 def inspect(path, preview):
@@ -88,6 +124,9 @@ def verify_case(directory, scenario, mode, preserve_orientation):
     backup = case / "sample.jpg.bak" if mode == "replace" else source
     assert backup.read_bytes() == original, "Source or replacement backup changed"
     assert AUTHOR.encode() not in cleaned.read_bytes(), "Private author bytes remain"
+    cleaned_bytes = cleaned.read_bytes()
+    assert PREVIEW_SENTINEL not in cleaned_bytes and b"JFXX\0" not in cleaned_bytes
+    assert compressed_scan(cleaned_bytes) == compressed_scan(original), "Compressed image bytes changed"
     after = inspect(cleaned, case / "after.png")
     for key in ("size", "pixels", "density", "unit", "jfifUnit", "jfifDensity", "profile", "profileBytes"):
         assert after[key] == before[key], f"{scenario}/{mode}: {key} changed"
