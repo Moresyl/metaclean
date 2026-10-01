@@ -16,6 +16,62 @@ This file records evidence, not intent. A row is complete only when the named ar
 | M3: Windows release | Complete for v0.3.0 | The successful v0.3.0 release matrix published launch-smoked x64 NSIS/MSI, x86 NSIS and architecture-labelled x64/x86 portable ZIPs. Local installation/extraction proof also kept each package active for six seconds with the `MetaClean` title before clean uninstall/removal. |
 | M3: macOS/Linux release | Complete for unsigned v0.3.0 artifacts | The successful v0.3.0 matrix copied and launch-smoked both Intel and Apple Silicon DMGs, then installed and launch-smoked the Linux DEB before publishing DEB/RPM/AppImage assets. Apple signing/notarization secrets remain unavailable, so Gatekeeper qualification is an external gate rather than a completed claim. |
 
+## Published v0.11.10 verification — 2026-10-01
+
+[v0.11.10](https://github.com/Moresyl/metaclean/releases/tag/v0.11.10), immutable
+revision `92556428df40371ba240f583d67e11bdc4fae801`, was published at
+2026-10-01 03:42:48 UTC with twenty nonempty assets.
+
+- [Candidate CI 36808900161](https://github.com/Moresyl/metaclean/actions/runs/36808900161)
+  passed 428 frontend tests, 247 Windows native tests (ten ignored), and sixteen
+  desktop cases on each of Windows, macOS and Linux. Rust line coverage was 91.82%.
+- [Release 36810266098](https://github.com/Moresyl/metaclean/actions/runs/36810266098)
+  passed source validation, five platform builds and applicable installation/launch
+  checks. Linux validation passed 241 native tests (eleven ignored), sixteen desktop
+  cases, ten FFmpeg PCM, six PDF, six HEIF/AVIF, sixteen JPEG and eight PNG cases.
+  Rust line coverage was 91.36%; frontend line coverage was 93.58%. The npm audit
+  was clean; seven previously classified Rust warnings remain.
+- Tagged [images 36810266094](https://github.com/Moresyl/metaclean/actions/runs/36810266094)
+  and [PDF 36810266077](https://github.com/Moresyl/metaclean/actions/runs/36810266077)
+  independently passed the same image/document fidelity scenarios.
+- [Public assets 36811830309](https://github.com/Moresyl/metaclean/actions/runs/36811830309)
+  verified nineteen checksum-listed assets, five updater signatures and rejection
+  of modified package bytes.
+- [NSIS 36811833175](https://github.com/Moresyl/metaclean/actions/runs/36811833175)
+  passed x64/x86 application-triggered signed updates and restart, synthetic
+  preferences/history/fingerprint preservation, truncated-installer rejection
+  and uninstall through 0.11.9 → 0.11.10 → 0.11.9.
+  [MSI 36811836748](https://github.com/Moresyl/metaclean/actions/runs/36811836748),
+  [DEB 36811839406](https://github.com/Moresyl/metaclean/actions/runs/36811839406)
+  and [DMG 36811842316](https://github.com/Moresyl/metaclean/actions/runs/36811842316)
+  passed their corresponding transitions and launch/removal checks. MSI repair
+  passed for `{E1D8B940-2B14-4566-B859-E6551757AE59}`.
+- [Crash recovery 36811845168](https://github.com/Moresyl/metaclean/actions/runs/36811845168)
+  preserved sixty-four source hashes and verified two committed outputs. Its
+  complete inventory contained no additional files. Two restarts confirmed no
+  automatic resume and a notice consumed only once. This single interruption
+  point does not establish orphan-free cleanup or physical power-loss safety.
+- [Pages 36811779908](https://github.com/Moresyl/metaclean/actions/runs/36811779908)
+  deployed the five-platform update feed. The actual public Pages and release
+  manifests were byte-identical, SHA-256
+  `7951EA8D5A197FB37EAD6A1C6EC35B54190388E0B478419893221D2B3EA992C8`.
+
+### JPEG embedded previews and private APP0 payloads
+
+v0.11.10 reports and removes JFIF RGB thumbnails, JFXX JPEG/palette/RGB previews,
+application-private APP0 segments and trailing private bytes inside JFIF segments.
+It retains exact JFIF version, resolution units, densities and pixel aspect ratio.
+The [JFIF 1.02 specification](https://www.w3.org/Graphics/JPEG/jfif3.pdf) describes
+these separate display and preview fields. Truncated headers or thumbnail pixels,
+inconsistent thumbnail dimensions and residual APP0 privacy payloads are rejected.
+
+The detection regression failed on the previous implementation. The independent
+Pillow harness now seeds all these preview classes and private sentinel bytes
+into sixteen JPEG copy/replace cases. Assertions check private-payload removal,
+exact compressed scans, decoded main-image pixels, ICC, orientation, EXIF/JFIF
+print density and source/backup integrity. These synthetic cases do not qualify
+every encoder, application-specific extension or image-processing workflow.
+
 ## Published v0.11.9 verification — 2026-10-01
 
 [v0.11.9](https://github.com/Moresyl/metaclean/releases/tag/v0.11.9), immutable
