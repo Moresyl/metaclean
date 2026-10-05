@@ -115,10 +115,13 @@ Twelve isolated local Chrome views (390/590/768/1024/1440/2048px, both themes)
 passed actual bounds, card readability, link semantics and no-horizontal-overflow
 checks. Desktop/mobile screenshots were visually inspected. Preview asset caching
 was corrected before the complete rerun; documentation checks and build passed.
+The same twelve checks passed against the deployed site after
+[Pages 37376546767](https://github.com/Moresyl/metaclean/actions/runs/37376546767)
+published the layout correction.
 This is a documentation-site change after the immutable application release.
 
 The documentation follow-up [CI 37374640832](https://github.com/Moresyl/metaclean/actions/runs/37374640832)
-passed its main quality gate and Windows desktop cases, but its Linux audio
+passed its main quality gate and Windows/macOS desktop cases, but its Linux audio
 precheck found no native cache and timed out while Cargo was still compiling;
 the ten audio comparisons and desktop cases had not run. The original log is
 retained. The audio harness now compiles its native fixture target once with
@@ -127,6 +130,18 @@ FFmpeg encoding/decoding deadlines and every source/privacy/PCM assertion retain
 their original 120-second bounds and semantics. All ten Opus/Vorbis PCM cases
 passed locally after this test-tooling change; syntax/documentation checks and
 the documentation build also passed. This does not change the shipped cleaner.
+
+The corrected [CI 37377345533](https://github.com/Moresyl/metaclean/actions/runs/37377345533)
+passed all four jobs at `ac6229b29dcd4c727cae1ef024575d63fc83f052`.
+Downloaded logs confirm all ten Linux Opus/Vorbis PCM comparisons, eighteen
+desktop cases on each of Windows, macOS and Linux, and the macOS filesystem
+extended-attribute preservation test. Its main gate passed 428 frontend tests,
+247 Windows native tests (ten ignored), 93.58% frontend and 91.82% Rust line
+coverage, production/documentation builds and the security/format/release gates.
+[Pages 37377345674](https://github.com/Moresyl/metaclean/actions/runs/37377345674)
+also passed at this source, and the deployed validation page was checked for
+the precompilation correction. These post-release checks do not change the
+immutable application tag or its publicly qualified packages.
 
 The first [candidate CI 37355757810](https://github.com/Moresyl/metaclean/actions/runs/37355757810)
 passed the main gate (428 frontend tests, 247 native tests, 91.82% Rust line
