@@ -4,6 +4,30 @@ Last audited: 2026-10-06
 
 This file records evidence, not intent. A row is complete only when the named artifact or runtime check exists.
 
+## Unreleased About layout correction — 2026-10-06
+
+Additional browser review covered five pages and all four settings categories
+in English/Chinese, light/dark themes and five viewports
+(1180×720, 960×720, 768×540, 590×360 and 390×720). The initial outer-container
+checks passed, but screenshot review exposed an inner About scrollbar. A
+nested-scroll-region assertion reproduced 317px of content in a 283px region
+at the English 390px viewport; this initial pass did not prove inner containment.
+
+The page now responds to its content container, placing update actions and
+community links below their preceding content when narrow, with wrapping
+diagnostics and footer actions. All 160 browser states passed the expanded
+checks for typography, heading weight, control dimensions, accessible names
+and outer/inner horizontal containment. Screenshots were visually inspected.
+These browser checks do not exercise native IPC or cleaning.
+
+The new desktop regression exercises a 283px About region without changing the
+fixed native window. It fails on the preceding local binary with 317px content
+against 272px available after the vertical scrollbar. The rebuilt Windows
+application passed all nineteen desktop cases, including this English/Chinese
+containment check. Frontend verification passed 428 tests with 93.58% line
+coverage; production build, documentation and CSP checks also passed.
+This correction is not yet included in the published v0.12.0 packages.
+
 ## Published v0.12.0 and native captures — 2026-10-06
 
 The published [v0.12.0](https://github.com/Moresyl/metaclean/releases/tag/v0.12.0)

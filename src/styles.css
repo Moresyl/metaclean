@@ -719,6 +719,31 @@
   }
 }
 
+.about-page {
+  container-type: inline-size;
+  container-name: about;
+}
+
+@container about (max-width: 480px) {
+  .about-identity {
+    display: grid;
+    grid-template-columns: 56px minmax(0, 1fr);
+  }
+
+  .about-identity > button {
+    grid-column: 1 / -1;
+    justify-self: start;
+  }
+
+  .about-community {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .about-update-row {
+    flex-direction: column;
+  }
+}
+
 /* Compact viewports also occur when a fixed desktop window is zoomed. */
 @media (max-width: 960px) {
   .clean-workspace {

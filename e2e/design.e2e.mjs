@@ -42,6 +42,56 @@ describe("Desktop visual controls", () => {
     }
   });
 
+  it("keeps About actions inside a narrow content area in both languages", async () => {
+    const previousLocale = await browser.tauri.execute(() => localStorage.getItem("metaclean.locale"));
+    try {
+      for (const locale of ["en", "zh"]) {
+        await browser.tauri.execute((_, locale) => localStorage.setItem("metaclean.locale", locale), locale);
+        await browser.refresh();
+        await $(".sidebar nav button:nth-of-type(5)").waitForDisplayed();
+        await $(".sidebar nav button:nth-of-type(5)").click();
+        const content = $("main .animate-rise > section");
+        await content.waitForDisplayed();
+        // Exercise the available content width without changing the application's
+        // fixed native window size or relying on browser-only viewport emulation.
+        await browser.tauri.execute(() => {
+          document.querySelector("main .animate-rise > section").style.inlineSize = "283px";
+        });
+        await browser.waitUntil(async () => browser.tauri.execute(() => {
+          const region = document.querySelector("main .animate-rise > section");
+          const runtime = region.querySelector("p[translate=no]");
+          return Math.abs(region.getBoundingClientRect().width - 283) < 1
+            && getComputedStyle(region.parentElement).opacity === "1"
+            && runtime?.textContent.startsWith("v");
+        }), { timeoutMsg: "About content did not settle at the requested width" });
+        const state = await browser.tauri.execute(() => {
+          const region = document.querySelector("main .animate-rise > section");
+          const bounds = region.getBoundingClientRect();
+          return {
+            clientWidth: region.clientWidth,
+            scrollWidth: region.scrollWidth,
+            actions: [...region.querySelectorAll("button, a")].map(action => {
+              const rect = action.getBoundingClientRect();
+              return { left: rect.left - bounds.left, right: rect.right - bounds.left };
+            }),
+          };
+        });
+        assert.ok(state.scrollWidth <= state.clientWidth + 1, `About overflow in ${locale}: ${state.scrollWidth}/${state.clientWidth}`);
+        assert.ok(state.actions.length >= 8, "Expected update, diagnostic, community and project actions");
+        for (const action of state.actions) {
+          assert.ok(action.left >= 0 && action.right <= state.clientWidth + 1, `About action is clipped in ${locale}`);
+        }
+      }
+    } finally {
+      await browser.tauri.execute((_, previousLocale) => {
+        if (previousLocale === null) localStorage.removeItem("metaclean.locale");
+        else localStorage.setItem("metaclean.locale", previousLocale);
+      }, previousLocale);
+      await browser.refresh();
+      await $(".app-shell").waitForDisplayed();
+    }
+  });
+
   it("keeps checkbox states, focus and control sizing legible in both themes", async () => {
     await $(".app-shell").waitForDisplayed();
     const previous = await browser.tauri.execute(() => ({

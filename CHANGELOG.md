@@ -5,6 +5,17 @@ All notable changes to MetaClean are documented here. The project follows
 
 ## [Unreleased]
 
+### Fixed
+
+- Adapt the About page to its available content width. Stack community links
+  and update actions in narrow containers, and wrap diagnostics/footer actions
+  to prevent an inner horizontal scrollbar or clipped controls.
+
+### Tests
+
+- Add a native English/Chinese regression that checks About content and action
+  bounds in a 283px region without resizing the fixed application window.
+
 ## [0.12.0] - 2026-10-06
 
 ### Changed

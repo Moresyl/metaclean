@@ -181,12 +181,12 @@ export default function AboutPage() {
     : undefined;
 
   return (
-    <section className="h-full overflow-y-auto pr-1">
+    <section className="about-page h-full overflow-y-auto pr-1">
       <div className="mx-auto grid max-w-[720px] gap-3.5 pb-1">
         <span className="sr-only" role="status" aria-live="polite" aria-atomic="true">
           {copied ? text("已复制到剪贴板", "Copied to clipboard") : ""}
         </span>
-        <div className="flex items-center gap-4 rounded-panel border border-line bg-surface px-4 py-3.5 shadow-panel">
+        <div className="about-identity flex items-center gap-4 rounded-panel border border-line bg-surface px-4 py-3.5 shadow-panel">
           <img className="size-14 shrink-0 rounded-[12px] shadow-lift" src={appIcon} alt="MetaClean" width={56} height={56} />
           <div className="min-w-0 flex-1 grid gap-1">
             <h2 className="font-display text-lg font-semibold" translate="no">MetaClean</h2>
@@ -232,7 +232,7 @@ export default function AboutPage() {
                 {text("包含版本、平台、架构、更新方式和应用目录，不包含已处理文件、历史记录或文件内容。", "Includes version, platform, architecture, update mode and application paths—never processed files, history or file contents.")}
               </p>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <Button size="sm" disabled={!about} onClick={copyReport}>
                 {copied === "report" ? <Check size={14} className="text-ok" /> : <Copy size={14} />}
                 {copied === "report" ? text("已复制", "Copied") : text("复制诊断信息", "Copy diagnostics")}
@@ -247,14 +247,14 @@ export default function AboutPage() {
 
         <section className="grid gap-2">
           <h2 className="caption">{text("社区与项目", "Community and project")}</h2>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="about-community grid grid-cols-3 gap-2">
             <CommunityLink href={BUG_REPORT_URL} icon={Bug} label={text("报告问题", "Report a bug")} onClick={() => void openLink(BUG_REPORT_URL)} />
             <CommunityLink href={FEATURE_REQUEST_URL} icon={Lightbulb} label={text("功能建议", "Request a feature")} onClick={() => void openLink(FEATURE_REQUEST_URL)} />
             <CommunityLink href={RELEASES_URL} icon={Rocket} label={text("正式版本", "Releases")} onClick={() => void openLink(RELEASES_URL)} />
           </div>
         </section>
 
-        <footer className="flex items-center gap-4 px-1 text-sm text-faint">
+        <footer className="flex flex-wrap items-center gap-x-4 gap-y-2 px-1 text-sm text-faint">
           <ProjectLink href={REPOSITORY_URL} onClick={() => void openLink(REPOSITORY_URL)}>
             <Github size={13} aria-hidden="true" />{text("源代码", "Source code")}<ExternalLink size={11} aria-hidden="true" />
           </ProjectLink>
@@ -280,14 +280,14 @@ function UpdateCard({ update, percent, onOpenRelease }: { update: ReturnType<typ
   if (update.status === "available" || update.status === "updating") {
     return (
       <section className="grid gap-2.5 rounded-panel border border-brand/35 bg-brand/10 p-3.5">
-        <div className="flex items-start gap-3">
+        <div className="about-update-row flex items-start gap-3">
           <div className="min-w-0 flex-1 grid gap-1">
             <h2 className="text-base font-semibold">{text(`发现新版本 v${update.info?.availableVersion}`, `Version ${update.info?.availableVersion} is available`)}</h2>
             <p className="max-h-24 overflow-y-auto whitespace-pre-line text-sm leading-relaxed text-muted">
               {update.info?.notes ?? text("可通过签名更新器安装，或打开正式版本页面查看完整说明。", "Install with the signed updater or open the release page for complete notes.")}
             </p>
           </div>
-          <div className="flex shrink-0 gap-2">
+          <div className="flex shrink-0 flex-wrap gap-2">
             <Button size="sm" onClick={onOpenRelease}><ExternalLink size={14} />{text("版本说明", "Release notes")}</Button>
             <Button size="sm" variant="primary" disabled={update.status === "updating"} onClick={() => void update.installUpdate()}>
               {update.status === "updating" ? <LoaderCircle size={14} className="animate-spin" /> : update.runtime.selfUpdateSupported ? <Download size={14} /> : <ExternalLink size={14} />}
