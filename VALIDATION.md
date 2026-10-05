@@ -1,8 +1,42 @@
 # MetaClean validation status
 
-Last audited: 2026-10-01
+Last audited: 2026-10-06
 
 This file records evidence, not intent. A row is complete only when the named artifact or runtime check exists.
+
+## v0.12.0 candidate and native captures — 2026-10-06
+
+The UI and release-tooling candidate is source
+`e4afee41700d5fe66d9dbd57059a71d786ae781b`. It has not been published;
+the latest qualified public version remains v0.11.10 below.
+
+- Local verification passed 428 frontend tests with 93.58% line coverage,
+  247 Windows native tests (ten ignored), strict all-target Clippy, formatting,
+  44 release automation tests, documentation/CSP/supply-chain checks and the
+  116-extension manifest gate. Production and documentation builds passed.
+  A threaded frontend attempt had a worker startup timeout; the complete
+  single-fork rerun passed all 22 test files without worker errors.
+- The rebuilt v0.12.0 Windows application passed eighteen desktop cases.
+  A new regression fails on the older binary with an overlay left edge of
+  264px instead of 0, and passes after root-mounted overlays. Theme/control
+  geometry, visible focus, full-window coverage and focus return are checked.
+- Independent [images 37355841002](https://github.com/Moresyl/metaclean/actions/runs/37355841002)
+  and [PDF 37355846497](https://github.com/Moresyl/metaclean/actions/runs/37355846497)
+  passed six HEIF/AVIF, sixteen JPEG, eight PNG and six PDF cases at this exact
+  source. Downloaded records were checked for case counts, unchanged JPEG
+  pixels/profiles and matching PNG frame/animation inspections.
+- Two localized native capture scenarios passed actual intake, scan, search,
+  safe-copy cleanup and settings. Fifteen PNGs and two finite-loop GIFs were
+  refreshed from this development build, using disposable synthetic files and
+  restoring prior preferences. English and Chinese default cleanup preferences
+  fit without scrolling. These captures are not public-installer qualification.
+- Browser review checked 1180×720 and 590×360 layouts, light/dark themes,
+  command search, the compact full-window confirmation and forced-color
+  navigation outlines. The official npm audit reports no known vulnerabilities
+  after targeted development dependency updates.
+
+Cross-platform CI and release/package qualification must finish before public
+v0.12.0 delivery can be claimed.
 
 ## Milestones
 
