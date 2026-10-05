@@ -4,11 +4,13 @@ Last audited: 2026-10-06
 
 This file records evidence, not intent. A row is complete only when the named artifact or runtime check exists.
 
-## Candidate v0.12.1 About layout correction — 2026-10-06
+## Published v0.12.1 About layout correction — 2026-10-06
 
-The package metadata and bilingual release notes are prepared for v0.12.1.
-Final-source cross-platform qualification and publication are still pending;
-the latest public packages remain v0.12.0.
+The published [v0.12.1](https://github.com/Moresyl/metaclean/releases/tag/v0.12.1)
+uses immutable source `5c5dfe67befa88a40763c79e1458f3b09d313ee5`.
+It was published at 2026-10-05 23:18:44 UTC with twenty nonempty assets and is
+the latest stable release. All five package builds and all six public
+qualification workflows passed at this source.
 
 Local v0.12.1 qualification passed 428 frontend tests with 93.58% line coverage,
 247 Windows native tests (ten ignored), strict all-target Clippy, formatting,
@@ -38,7 +40,55 @@ against 272px available after the vertical scrollbar. The rebuilt Windows
 application passed all nineteen desktop cases, including this English/Chinese
 containment check. Frontend verification passed 428 tests with 93.58% line
 coverage; production build, documentation and CSP checks also passed.
-This correction is not yet included in the published v0.12.0 packages.
+This correction is included in the published v0.12.1 packages.
+
+The final [CI 37383424915](https://github.com/Moresyl/metaclean/actions/runs/37383424915)
+passed all four jobs: 428 frontend tests, 247 Windows native tests (ten ignored),
+93.58% frontend and 91.82% Rust line coverage, and nineteen desktop cases on each
+of Windows, macOS and Linux. The preceding runtime-fix
+[CI 37381268365](https://github.com/Moresyl/metaclean/actions/runs/37381268365)
+also passed nineteen desktop cases on all three systems. Downloaded complete
+logs were checked for the three design cases and sixteen workflow cases per OS.
+
+Independent [images 37383882399](https://github.com/Moresyl/metaclean/actions/runs/37383882399)
+and [PDF 37383886210](https://github.com/Moresyl/metaclean/actions/runs/37383886210)
+passed six HEIF/AVIF, sixteen JPEG, eight PNG and six PDF cases at the final
+source. Their downloaded records and source/output hashes were inspected.
+
+[Release 37385725038](https://github.com/Moresyl/metaclean/actions/runs/37385725038)
+was submitted through the authenticated browser with this exact commit. It
+passed all seven jobs on its first attempt. Its source gate repeated all
+nineteen Linux desktop cases, 241 Linux native tests (eleven ignored), ten
+FFmpeg PCM comparisons and the thirty-six independent fidelity cases, with
+91.36% Rust line coverage. Complete source logs and all four fidelity artifacts
+were downloaded and inspected. The five package jobs passed their applicable
+installation, portable-package and copied-DMG launch checks before finalization
+created the immutable tag and published the assets.
+
+| Public qualification | Actual result | Limit |
+| --- | --- | --- |
+| [Assets 37387791430](https://github.com/Moresyl/metaclean/actions/runs/37387791430) | Passed all 19 checksum-listed downloads and five updater signature/tamper-rejection checks. | Updater signing is separate from OS signing. |
+| [Windows NSIS 37387794916](https://github.com/Moresyl/metaclean/actions/runs/37387794916) | Both architectures passed 0.12.0 → 0.12.1 → 0.12.0, real application-triggered signed update/restart, preferences/history/fingerprint preservation, truncated-installer rejection and uninstall. | x86 runs on a 64-bit hosted machine; arbitrary migrations remain unqualified. |
+| [MSI 37387798072](https://github.com/Moresyl/metaclean/actions/runs/37387798072) | Install, upgrade, repair, rollback and removal passed. Repair restored the exact executable hash, registration and launch. | One hosted Windows transition, without interrupted-install qualification. |
+| [DEB 37387801560](https://github.com/Moresyl/metaclean/actions/runs/37387801560) | All three version/launch records passed 0.12.0 → 0.12.1 → 0.12.0. | This does not qualify RPM installation or every Linux distribution. |
+| [DMG 37387805306](https://github.com/Moresyl/metaclean/actions/runs/37387805306) | Both architectures passed the same three-version replacement sequence, with six-second launches. | Intel packages ran on an ARM runner through Rosetta; Apple signing/notarization remains unavailable. |
+| [Crash recovery 37387808921](https://github.com/Moresyl/metaclean/actions/runs/37387808921) | The public executable preserved 64 source hashes and verified seven committed outputs; the fixture inventory had zero other files. No automatic resume occurred and the notice cleared on the second restart. | One forced-termination timing sample does not qualify arbitrary power loss or guarantee absence of temporary files at every interruption point. |
+
+All public logs and result artifacts were downloaded and inspected. The repaired
+v0.12.1 MSI product code is `{33EE7CAD-452E-488F-9372-0D043B12B1BC}`; the previous
+v0.12.0 product code is `{A625F6DE-DEC6-4DD7-A191-00460FA095A9}`.
+Release and deployed Pages `latest.json` were fetched independently and were
+byte-identical, with SHA-256
+`3853aecf8fa7cb0bd6f5225bcd4b0206f8973470fcee363eb8f0a918f3ab53d9`.
+The manifest contains version 0.12.1 and the five expected signed platform URLs.
+
+Two localized native capture scenarios passed with the v0.12.1 development
+executable at 1180 × 720, exercising intake, scan, search, safe-copy cleanup and
+settings. Fifteen PNGs and two finite-loop GIFs were refreshed from these actual
+English/Chinese captures. Synthetic fixtures used an ignored workspace demo
+directory, saved preferences were restored and the temporary fixture folders
+were removed. These captures are development-build evidence, separate from the
+public-installer qualifications above.
 
 ## Published v0.12.0 and native captures — 2026-10-06
 

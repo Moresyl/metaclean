@@ -1,7 +1,7 @@
 # MetaClean capability audit
 
-Audited on 2026-10-06 for the published v0.12.0 release at
-`7c53f8d2d236444fba0be5b93b23538f57e573a8`.
+Audited on 2026-10-06 for the published v0.12.1 release at
+`5c5dfe67befa88a40763c79e1458f3b09d313ee5`.
 
 This ledger describes implemented behavior, its evidence and its limits.
 Extension counts and passing tests do not establish universal format support,
@@ -25,15 +25,24 @@ application. Detailed run evidence is recorded in `VALIDATION.md`.
 
 ## Release evidence
 
-- [Candidate CI](https://github.com/Moresyl/metaclean/actions/runs/37360716150)
+- [Candidate CI](https://github.com/Moresyl/metaclean/actions/runs/37383424915)
   passed the main quality gates and desktop tests on all three operating systems.
-- [Release pipeline](https://github.com/Moresyl/metaclean/actions/runs/37363399635)
+- [Release pipeline](https://github.com/Moresyl/metaclean/actions/runs/37385725038)
   passed source validation, five platform builds, package checks and finalization.
-- [Independent public-asset verification](https://github.com/Moresyl/metaclean/actions/runs/37372566840)
+- [Independent public-asset verification](https://github.com/Moresyl/metaclean/actions/runs/37387791430)
   checked downloaded bytes and signatures against the tagged public key.
-- [Published v0.12.0](https://github.com/Moresyl/metaclean/releases/tag/v0.12.0)
+- [Published v0.12.1](https://github.com/Moresyl/metaclean/releases/tag/v0.12.1)
   contains 20 assets, including the checksum manifest. The public Pages update
   feed was checked against the release's five platform URLs and signatures.
+
+v0.12.1 prevents About content and actions from overflowing narrow containers.
+Its final CI passed nineteen desktop cases on each of three operating systems,
+including the English/Chinese 283px containment regression. All six public
+qualification workflows passed 0.12.0 → 0.12.1 → 0.12.0 transitions where applicable,
+including real Windows signed update/restart and MSI repair. The public crash
+sample preserved sixty-four sources and seven committed outputs, with no
+additional fixture files or automatic resume. Current native documentation
+captures display v0.12.1. Exact run IDs, records and limits are in `VALIDATION.md`.
 
 v0.12.0 refreshes the shared desktop design rules, compact layouts and full-window
 dialogs, and pins manual publication to an immutable source. Its final CI passed
