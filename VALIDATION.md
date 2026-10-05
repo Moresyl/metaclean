@@ -106,6 +106,17 @@ The public crash artifact records `candidate=false`, the exact tagged source,
 and executable SHA-256
 `5dfcc6d6df67b9109a09bafd95408aeeddfb6164313b6d939669619e216f2c79`.
 
+Post-publication documentation review found that the 688px article area still
+used a two-column hero and four narrow cards on a wide desktop. Its layout now
+responds to the article container, with two readable cards or a single mobile
+column, and avoids inherited whole-card/button underlines. At 768px the navigation
+also extended about 11px beyond the viewport; compact link spacing fixes it.
+Twelve isolated local Chrome views (390/590/768/1024/1440/2048px, both themes)
+passed actual bounds, card readability, link semantics and no-horizontal-overflow
+checks. Desktop/mobile screenshots were visually inspected. Preview asset caching
+was corrected before the complete rerun; documentation checks and build passed.
+This is a documentation-site change after the immutable application release.
+
 The first [candidate CI 37355757810](https://github.com/Moresyl/metaclean/actions/runs/37355757810)
 passed the main gate (428 frontend tests, 247 native tests, 91.82% Rust line
 coverage) and all eighteen Windows/macOS desktop cases. Linux passed the
