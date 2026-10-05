@@ -305,9 +305,16 @@ describe("MetaClean desktop application", () => {
 
     const html = await $("html");
     await browser.waitUntil(async () => await html.getAttribute("data-theme") === "dark");
+    assert.equal(await browser.tauri.execute(() => localStorage.getItem("metaclean.theme")), "dark");
     await browser.refresh();
     await $(".app-shell").waitForDisplayed();
+    // Refresh can return while the WebView is replacing its document. Wait
+    // for the persisted theme to be applied, then verify storage as well.
+    await browser.waitUntil(async () => await $("html").getAttribute("data-theme") === "dark", {
+      timeoutMsg: "The persisted dark theme was not restored after a desktop reload",
+    });
     assert.equal(await $("html").getAttribute("data-theme"), "dark");
+    assert.equal(await browser.tauri.execute(() => localStorage.getItem("metaclean.theme")), "dark");
   });
 
   it("persists ICC and macOS xattr fidelity preferences across a real desktop reload", async () => {

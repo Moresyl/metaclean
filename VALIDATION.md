@@ -48,6 +48,15 @@ remain enabled and all final-value assertions remain strict. Cross-platform
 verification of that correction is still required; the local Windows rerun
 passed all eighteen cases.
 
+The subsequent [capture revision CI 37357510617](https://github.com/Moresyl/metaclean/actions/runs/37357510617)
+also sampled an intermediate fill on Linux. Its macOS theme-reload assertion
+read a missing theme attribute during document replacement. The reload check
+now waits for the exact persisted theme and verifies the stored choice both
+before and after refresh. These test synchronization changes do not alter the
+application's theme initialization or storage behavior. The combined local
+Windows rerun passed all eighteen cases; the final cross-platform gate remains
+pending.
+
 ## Milestones
 
 | Gate | Status | Evidence |
