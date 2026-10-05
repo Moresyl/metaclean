@@ -10,9 +10,9 @@ const root = fileURLToPath(new URL("../", import.meta.url));
 const ffmpeg = process.env.METACLEAN_FFMPEG || "ffmpeg";
 const directory = await mkdtemp(path.join(tmpdir(), "metaclean-ogg-validation-"));
 
-function run(binary, args, env = process.env) {
+function run(binary, args, env = process.env, timeout = 120_000) {
   const result = spawnSync(binary, args, {
-    cwd: root, env, encoding: "utf8", timeout: 120_000, maxBuffer: 8 * 1024 * 1024,
+    cwd: root, env, encoding: "utf8", timeout, maxBuffer: 8 * 1024 * 1024,
   });
   if (result.error) throw result.error;
   assert.equal(result.status, 0, `${binary} failed: ${result.stderr}\n${result.stdout}`);
@@ -21,6 +21,10 @@ function run(binary, args, env = process.env) {
 
 try {
   run(ffmpeg, ["-version"]);
+  // Match the cold-compilation budget used by the image/PDF fidelity harnesses.
+  run("cargo", [
+    "test", "--manifest-path", "src-tauri/Cargo.toml", "--lib", "--no-run",
+  ], process.env, 600_000);
   for (const codec of ["opus", "vorbis"]) {
     const extension = codec === "opus" ? "opus" : "ogg";
     const gains = codec === "opus"

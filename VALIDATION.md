@@ -117,6 +117,17 @@ checks. Desktop/mobile screenshots were visually inspected. Preview asset cachin
 was corrected before the complete rerun; documentation checks and build passed.
 This is a documentation-site change after the immutable application release.
 
+The documentation follow-up [CI 37374640832](https://github.com/Moresyl/metaclean/actions/runs/37374640832)
+passed its main quality gate and Windows desktop cases, but its Linux audio
+precheck found no native cache and timed out while Cargo was still compiling;
+the ten audio comparisons and desktop cases had not run. The original log is
+retained. The audio harness now compiles its native fixture target once with
+the same 600-second budget as the image/PDF harnesses. Per-case native execution,
+FFmpeg encoding/decoding deadlines and every source/privacy/PCM assertion retain
+their original 120-second bounds and semantics. All ten Opus/Vorbis PCM cases
+passed locally after this test-tooling change; syntax/documentation checks and
+the documentation build also passed. This does not change the shipped cleaner.
+
 The first [candidate CI 37355757810](https://github.com/Moresyl/metaclean/actions/runs/37355757810)
 passed the main gate (428 frontend tests, 247 native tests, 91.82% Rust line
 coverage) and all eighteen Windows/macOS desktop cases. Linux passed the
