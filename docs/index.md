@@ -26,7 +26,7 @@ description: 面向用户、贡献者和发布维护者的 MetaClean 事实文�
       <div><b>32</b><span>界面语言</span></div>
       <div><b>91.82%</b><span>Rust 行覆盖率</span></div>
     </div>
-    <a href="https://github.com/Moresyl/metaclean/actions/runs/36808900161">v0.11.10 Windows CI · 2026-10-01</a>
+    <a href="https://github.com/Moresyl/metaclean/actions/runs/37360716150">v0.12.0 Windows CI · 2026-10-06</a>
   </div>
 </div>
 

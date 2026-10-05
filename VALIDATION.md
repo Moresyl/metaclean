@@ -4,11 +4,13 @@ Last audited: 2026-10-06
 
 This file records evidence, not intent. A row is complete only when the named artifact or runtime check exists.
 
-## v0.12.0 candidate and native captures — 2026-10-06
+## Published v0.12.0 and native captures — 2026-10-06
 
-The UI and release-tooling candidate is source
-`e4afee41700d5fe66d9dbd57059a71d786ae781b`. It has not been published;
-the latest qualified public version remains v0.11.10 below.
+The published [v0.12.0](https://github.com/Moresyl/metaclean/releases/tag/v0.12.0)
+uses immutable source `7c53f8d2d236444fba0be5b93b23538f57e573a8`.
+It was published at 2026-10-05 20:53:12 UTC with twenty nonempty assets.
+The release matrix passed all five platforms, and all six post-publication
+qualification workflows passed at this same source as recorded below.
 
 - Local verification passed 428 frontend tests with 93.58% line coverage,
   247 Windows native tests (ten ignored), strict all-target Clippy, formatting,
@@ -22,8 +24,10 @@ the latest qualified public version remains v0.11.10 below.
   geometry, visible focus, full-window coverage and focus return are checked.
 - Independent [images 37355841002](https://github.com/Moresyl/metaclean/actions/runs/37355841002)
   and [PDF 37355846497](https://github.com/Moresyl/metaclean/actions/runs/37355846497)
-  passed six HEIF/AVIF, sixteen JPEG, eight PNG and six PDF cases at this exact
-  source. Downloaded records were checked for case counts, unchanged JPEG
+  passed six HEIF/AVIF, sixteen JPEG, eight PNG and six PDF cases at the original
+  runtime revision `e4afee41700d5fe66d9dbd57059a71d786ae781b`. Later commits change
+  captures, documentation and test synchronization. Downloaded records were
+  checked for case counts, unchanged JPEG
   pixels/profiles and matching PNG frame/animation inspections.
 - Two localized native capture scenarios passed actual intake, scan, search,
   safe-copy cleanup and settings. Fifteen PNGs and two finite-loop GIFs were
@@ -35,8 +39,72 @@ the latest qualified public version remains v0.11.10 below.
   navigation outlines. The official npm audit reports no known vulnerabilities
   after targeted development dependency updates.
 
-Cross-platform CI and release/package qualification must finish before public
-v0.12.0 delivery can be claimed.
+The final [CI 37360716150](https://github.com/Moresyl/metaclean/actions/runs/37360716150)
+passed all four jobs at the final candidate revision: 428 frontend tests,
+247 Windows native tests (ten ignored), 93.58% frontend and 91.82% Rust line
+coverage, and eighteen desktop cases on each of Windows, macOS and Linux.
+The preceding [CI 37359090620](https://github.com/Moresyl/metaclean/actions/runs/37359090620)
+also passed all three desktop platforms after the animation synchronization fix.
+
+[Release 37363399635](https://github.com/Moresyl/metaclean/actions/runs/37363399635)
+was dispatched through the authenticated browser at the final immutable source.
+Its source gate passed all eighteen Linux desktop cases, 241 Linux native tests
+(eleven ignored), 91.36% Rust line coverage, ten FFmpeg PCM cases and the same
+thirty-six independent image/PDF cases. Downloaded source logs and all four
+fidelity artifacts were inspected. The first attempt passed Windows x64 and
+both macOS builds and their actual package launch checks, but Linux and Windows
+x86 never acquired hosted runners; both have no executed steps and explicit
+runner-allocation failure annotations. The official
+[Actions incident](https://stspg.io/c11dc9nb1zdq) also reports hosted-runner
+assignment delays beginning before this release. The browser submitted a failed-jobs-only
+retry on this same run and source. The eventual third attempt passed every
+release gate and published the version; post-publication checks are separate
+from the release matrix's package launch checks.
+
+The second attempt again had no Windows x86 runner. Linux started its package
+build, then reported a cancelled build step with all subsequent package gates
+skipped; its complete log remained unavailable from GitHub's log storage.
+After these failures, the browser submitted a normal workflow cancellation.
+GitHub confirmed terminal cancellation at 2026-10-05 20:30:49 UTC, and the browser
+submitted a third failed-jobs-only retry at the same immutable source. At recovery,
+all seven existing source-evidence and successful package artifacts were unexpired.
+The original Linux build-step cancellation cause is not established by the
+later manual cancellation annotation.
+
+The third attempt passed Linux and Windows x86 builds and package checks, reused
+the successful source/Windows x64/macOS jobs, and passed finalization. Its actual
+Linux log records an eight-second DEB launch and removal, AppImage zsync
+verification and four collected distribution assets. The Windows x86 log records
+six-second installed NSIS and portable launches, removal and signed updater asset
+collection. The tag was created only after these gates succeeded.
+
+The first public NSIS attempt passed x86, but its x64 job and the separate MSI
+job ended without any executed steps. Both job annotations explicitly report
+that a hosted runner could not be acquired. These terminal failures were
+archived before browser failed-job-only retries of the same two runs and source;
+no replacement workflows or releases were dispatched.
+
+### Public package qualification
+
+All six checks were dispatched once at the published tag and exact source above.
+Downloaded logs and artifacts support the completed rows; queued jobs do not
+establish qualification.
+
+| Check | Current evidence | Limit |
+| --- | --- | --- |
+| [Public assets 37372566840](https://github.com/Moresyl/metaclean/actions/runs/37372566840) | Passed all 19 checksum-listed downloads and five updater signature/tamper-rejection checks. | Updater signing is separate from OS signing. |
+| [Windows NSIS 37372571375](https://github.com/Moresyl/metaclean/actions/runs/37372571375) | Both x64 and x86 passed 0.11.10 → 0.12.0 → 0.11.10, real application-triggered signed update/restart, synthetic preferences/history/fingerprints, truncated-installer rejection and uninstall. | x86 runs on a 64-bit hosted machine; arbitrary migrations are not qualified. |
+| [Windows MSI 37372575524](https://github.com/Moresyl/metaclean/actions/runs/37372575524) | Passed installation, upgrade, exact executable repair, registration/launch verification, manual rollback and removal. Current ProductCode: `A625F6DE-DEC6-4DD7-A191-00460FA095A9`. | Hosted Windows x64, one version pair; arbitrary migration and interrupted installation are not qualified. |
+| [Linux DEB 37372580978](https://github.com/Moresyl/metaclean/actions/runs/37372580978) | Downloaded TSV/log confirms install, upgrade, manual rollback and removal at 0.11.10 → 0.12.0 → 0.11.10. | Hosted Ubuntu/Xvfb samples. |
+| [Both macOS DMGs 37372584842](https://github.com/Moresyl/metaclean/actions/runs/37372584842) | Both downloaded TSVs/logs confirm six-second launches, replacement, rollback and removal across the same three versions. | Intel x86_64 ran on an arm64 host through compatibility support; Apple signing/notarization remains unavailable. |
+| [Public crash recovery 37372588890](https://github.com/Moresyl/metaclean/actions/runs/37372588890) | Actual public portable v0.12.0 preserved 64 source hashes and two committed output hashes, with zero other fixture files. Two restarts made no automatic writes; a generic notice appeared once and then cleared. | One synthetic partial-batch interruption, not physical power loss or all interruption points. |
+
+The actual release and Pages `latest.json` downloads are byte-identical,
+SHA-256 `45a050616ee6d34ba0824dd90a2a2c2f7a03eced77227f77a6163fa6ac18c51d`.
+Both advertise v0.12.0 and five correctly versioned platform URLs/signatures.
+The public crash artifact records `candidate=false`, the exact tagged source,
+and executable SHA-256
+`5dfcc6d6df67b9109a09bafd95408aeeddfb6164313b6d939669619e216f2c79`.
 
 The first [candidate CI 37355757810](https://github.com/Moresyl/metaclean/actions/runs/37355757810)
 passed the main gate (428 frontend tests, 247 native tests, 91.82% Rust line
@@ -44,9 +112,8 @@ coverage) and all eighteen Windows/macOS desktop cases. Linux passed the
 viewport regression and the sixteen existing desktop cases, but its theme
 check sampled an intermediate animated fill (`rgb(90, 90, 90)`). The check now
 waits for the exact target fill before inspecting the controls; transitions
-remain enabled and all final-value assertions remain strict. Cross-platform
-verification of that correction is still required; the local Windows rerun
-passed all eighteen cases.
+remain enabled and all final-value assertions remain strict. The local Windows
+rerun and both corrected cross-platform CI runs passed all eighteen cases.
 
 The subsequent [capture revision CI 37357510617](https://github.com/Moresyl/metaclean/actions/runs/37357510617)
 also sampled an intermediate fill on Linux. Its macOS theme-reload assertion
@@ -54,8 +121,7 @@ read a missing theme attribute during document replacement. The reload check
 now waits for the exact persisted theme and verifies the stored choice both
 before and after refresh. These test synchronization changes do not alter the
 application's theme initialization or storage behavior. The combined local
-Windows rerun passed all eighteen cases; the final cross-platform gate remains
-pending.
+Windows rerun and the final cross-platform gate passed all eighteen cases.
 
 ## Milestones
 

@@ -1,7 +1,7 @@
 # MetaClean capability audit
 
-Audited on 2026-10-01 for the published v0.11.10 release at
-`92556428df40371ba240f583d67e11bdc4fae801`.
+Audited on 2026-10-06 for the published v0.12.0 release at
+`7c53f8d2d236444fba0be5b93b23538f57e573a8`.
 
 This ledger describes implemented behavior, its evidence and its limits.
 Extension counts and passing tests do not establish universal format support,
@@ -25,15 +25,24 @@ application. Detailed run evidence is recorded in `VALIDATION.md`.
 
 ## Release evidence
 
-- [Candidate CI](https://github.com/Moresyl/metaclean/actions/runs/36808900161)
+- [Candidate CI](https://github.com/Moresyl/metaclean/actions/runs/37360716150)
   passed the main quality gates and desktop tests on all three operating systems.
-- [Release pipeline](https://github.com/Moresyl/metaclean/actions/runs/36810266098)
+- [Release pipeline](https://github.com/Moresyl/metaclean/actions/runs/37363399635)
   passed source validation, five platform builds, package checks and finalization.
-- [Independent public-asset verification](https://github.com/Moresyl/metaclean/actions/runs/36811830309)
+- [Independent public-asset verification](https://github.com/Moresyl/metaclean/actions/runs/37372566840)
   checked downloaded bytes and signatures against the tagged public key.
-- [Published v0.11.10](https://github.com/Moresyl/metaclean/releases/tag/v0.11.10)
+- [Published v0.12.0](https://github.com/Moresyl/metaclean/releases/tag/v0.12.0)
   contains 20 assets, including the checksum manifest. The public Pages update
   feed was checked against the release's five platform URLs and signatures.
+
+v0.12.0 refreshes the shared desktop design rules, compact layouts and full-window
+dialogs, and pins manual publication to an immutable source. Its final CI passed
+eighteen desktop cases on each of three operating systems. Public DEB and both
+DMG upgrade/rollback checks passed; both Windows NSIS architectures passed real
+application update/restart, storage preservation and damaged-installer rejection.
+Public MSI install/upgrade/repair/rollback/removal also passed. The public crash sample preserved sixty-four
+sources and two committed outputs, with no additional fixture files or automatic
+resume on either restart. See `VALIDATION.md` for the exact runs and limits.
 
 v0.11.10 adds JPEG APP0 preview/private-data cleanup with independent compressed
 scan and pixel checks. Public 0.11.9 → 0.11.10 → 0.11.9 NSIS/MSI/DEB/DMG
