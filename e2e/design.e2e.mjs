@@ -58,6 +58,14 @@ describe("Desktop visual controls", () => {
           window.dispatchEvent(new KeyboardEvent("keydown", { key: "1", ctrlKey: true }));
         }, theme);
         await $(".clean-options .check").waitForDisplayed();
+        // Theme changes animate the fill; inspect the final color without
+        // disabling the transition or accepting an intermediate shade.
+        await browser.waitUntil(async () => browser.tauri.execute((_, theme) => {
+          const check = document.querySelector(".clean-options .check");
+          const expected = !check.checked ? "rgba(0, 0, 0, 0)"
+            : theme === "light" ? "rgb(24, 24, 24)" : "rgb(237, 237, 237)";
+          return getComputedStyle(check).backgroundColor === expected;
+        }, theme), { timeoutMsg: `Checkbox fill did not settle in the ${theme} theme` });
         const state = await browser.tauri.execute(() => {
           const check = document.querySelector(".clean-options .check");
           const action = document.querySelector(".scan-button");

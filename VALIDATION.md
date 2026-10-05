@@ -38,6 +38,16 @@ the latest qualified public version remains v0.11.10 below.
 Cross-platform CI and release/package qualification must finish before public
 v0.12.0 delivery can be claimed.
 
+The first [candidate CI 37355757810](https://github.com/Moresyl/metaclean/actions/runs/37355757810)
+passed the main gate (428 frontend tests, 247 native tests, 91.82% Rust line
+coverage) and all eighteen Windows/macOS desktop cases. Linux passed the
+viewport regression and the sixteen existing desktop cases, but its theme
+check sampled an intermediate animated fill (`rgb(90, 90, 90)`). The check now
+waits for the exact target fill before inspecting the controls; transitions
+remain enabled and all final-value assertions remain strict. Cross-platform
+verification of that correction is still required; the local Windows rerun
+passed all eighteen cases.
+
 ## Milestones
 
 | Gate | Status | Evidence |
