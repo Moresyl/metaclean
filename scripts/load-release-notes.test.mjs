@@ -85,5 +85,11 @@ test("release workflow consumes validated notes and finalizes checksums", async 
   assert.match(linuxSmoke, /deb_file="\$\(realpath /u);
   assert.match(linuxSmoke, /apt-get install -y "\$deb_file"/u);
   assert.doesNotMatch(workflow, /\$RUNNER_TEMP/u);
-  assert.equal((workflow.match(/ref: \$\{\{ env\.RELEASE_TAG \}\}/gu) ?? []).length, 3);
+  assert.equal((workflow.match(/ref: \$\{\{ env\.RELEASE_REF \}\}/gu) ?? []).length, 3);
+  assert.match(workflow, /Verify immutable release source and version/u);
+  assert.match(workflow, /node scripts\/verify-release-source\.mjs/u);
+  assert.match(workflow, /if: env\.SOURCE_COMMIT != ''/u);
+  assert.ok(workflow.indexOf("Tag the verified manual source") > workflow.indexOf("Generate SHA-256 manifest"));
+  assert.ok(workflow.indexOf("Tag the verified manual source") < workflow.indexOf("Create the public release"));
+  assert.doesNotMatch(workflow, /git push[^\n]*(?:--force|\s-f\b)/u);
 });

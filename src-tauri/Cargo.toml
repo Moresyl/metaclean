@@ -1,6 +1,6 @@
 [package]
 name = "metaclean"
-version = "0.11.10"
+version = "0.12.0"
 description = "Offline file privacy cleaner"
 authors = ["Moresyl"]
 license = "MIT"

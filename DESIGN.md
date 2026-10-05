@@ -1,35 +1,36 @@
-# MetaClean design reference
+# MetaClean desktop design system
 
-## Source
+## Design basis
 
-- Inspiration list: the local `wcb.txt` supplied during the design review; its absolute workstation path is intentionally not published.
-- Captures: [Navbar Gallery](https://navbar.gallery) and [CTA.gallery](https://cta.gallery), captured 2026-09-12 with Firecrawl.
-- Local capture artifacts are kept in the ignored `.firecrawl/` directory for review; third-party logos, images and copy are not shipped with MetaClean.
+- The updated desktop design library supplied by the user was reviewed on 2026-10-06.
+- Current theme declarations, selector scopes and control rules take precedence over older summaries.
+- Source locations, comparison material and research evidence stay in the ignored local research directory. Product code uses independent components and semantic tokens.
 
 ## Design direction
 
-MetaClean is a desktop utility, so the reference sites are used for interaction
-principles rather than visual copying:
-
-- Navbar Gallery: a compact, persistent navigation rail with a clear active
-  state and a discoverable collection structure.
-- CTA.gallery: a single dominant action, restrained secondary actions and
-  category-driven grouping that lets users scan before committing.
-- The remaining links in `wcb.txt` are a pattern library for hero hierarchy,
-  footer grouping, bento-style information cards, empty states and responsive
-  rhythm; they are references only, not source assets.
+The whole application shares the supplied desktop design language: quiet neutral
+surfaces, compact controls, short feedback, consistent typography and a persistent
+workspace sidebar. File cleaning, history, privacy, settings, support and overlays
+consume the same tokens. Their content remains specific to a local file utility.
 
 ## MetaClean tokens
 
 | Role | Current rule |
 | --- | --- |
-| Canvas | Dark `#212121` or light `#ffffff` content beside a quieter `#181818` / `#f9f9f9` sidebar |
-| Surface | Neutral `#282828` / `#ffffff` cards and `#303030` / `#ededed` raised controls |
-| Brand and status | Neutral primary actions; blue focus and checked controls; green, orange and red for semantic status |
-| Text | `#ededed` / `#282828` primary and `#afafaf` / `#5d5d5d` secondary text |
-| Geometry | 12px panels, 8px controls, a 24px intake surface, 1px hairlines, 28/32/36px buttons and 32px fields |
-| Type | 14px Segoe UI Variable base with Microsoft YaHei UI, PingFang SC and Noto Sans SC fallbacks |
-| Motion | 100–200ms colour, opacity and geometry transitions; reduced-motion mode collapses them to 1ms |
+| Canvas | Dark `#181818` or light `#ffffff` content beside `#000000` / `#f9f9f9` workspace chrome |
+| Surface | Neutral `#212121` / `#ffffff` panels and `#303030` / `#ededed` raised controls |
+| Brand and status | Neutral primary actions and checked controls; blue focus; green, orange and red for semantic status |
+| Text | Dark `#dfdfdf`, light `#1a1c1f`; secondary ink resolves from 70% foreground opacity |
+| Geometry | 12px panels, 6px controls, a 24px intake surface, 1px hairlines, shared 28/32/36px buttons and 32px fields |
+| Type | System UI font stack, 14px body with 1.5 line height, 500/600 weights; Microsoft YaHei UI, PingFang SC and Noto Sans SC fallbacks |
+| Checkbox | 18px square, 4px corner, neutral checked and indeterminate states, 2px focus outline, distinct disabled combinations |
+| Motion | 150ms control feedback; reduced-motion mode collapses animations and transitions to 0.001ms |
+
+Supported renderers apply a 1.25 corner scale with `superellipse(1.5)` to
+shared panel/control shapes. Other renderers use the unscaled radius. The
+checkbox keeps its explicit 4px corner in both cases. Font fallbacks are
+implementation choices; a declared stack alone does not prove which font
+renders a Chinese glyph on a particular machine.
 
 ## Implemented patterns
 
@@ -37,12 +38,18 @@ principles rather than visual copying:
   appears only after importing files, so an empty queue does not duplicate the
   initial instructions. Settings use divided rows instead of nested cards.
 - Cleanup preferences sit behind one vertical divider, without an outer card.
-  A 26px intake heading, 18px page titles and lighter CJK heading weights keep
-  the hierarchy readable without oversized bold text. File-type glyphs explain
+  Shared 28px intake/page headings and 500/600 weights keep
+  the hierarchy consistent across scripts. File-type glyphs explain
   intake scope. Queue search and filters expose their batch-action scope.
 - `Sidebar` is a 264px persistent workspace panel that collapses to a 64px icon
   rail. It keeps five destinations, an explicit `aria-current` state,
   `Ctrl/Cmd+1…5` navigation and `Ctrl/Cmd+B` collapse control.
+- At compact viewport widths the workspace uses a 64px navigation rail with
+  visually hidden accessible labels. Cleanup options move below file intake,
+  settings categories scroll horizontally, and modal content stays within the
+  viewport with its own scroll area. These rules also support desktop zoom.
+- Confirmation and update overlays render at the document root. Animated page
+  containers cannot redefine their fixed-position bounds or clip their actions.
 - `TitleBar` aligns its identity area with the sidebar, reserves its center for
   command search and keeps native caption actions fixed to the right edge.
 - `CleanOptions` owns the one commit action. The queue toolbar remains secondary
@@ -58,6 +65,9 @@ principles rather than visual copying:
 - Page-level chunks are loaded on demand. The first paint keeps the cleaning
   workflow small while History, Privacy, Settings and About remain independently
   cacheable.
+- Styles scan the application source directory explicitly. Development watching
+  excludes local research, coverage, native builds and generated documentation, so these
+  artifacts cannot trigger unrelated page reloads or expand style scanning.
 - Windows NSIS and WiX bundles reuse the same neutral light/dark surfaces,
   product mark and compact typography hierarchy. The native installers keep
   platform-standard controls while their welcome, progress, completion and
@@ -82,15 +92,16 @@ those unmodified captures. Each README uses only its matching language.
 
 Do not add third-party imagery, raw metadata previews, decorative gradients over
 the file workflow, generic `transition: all`, unlabeled icon buttons or button
-elements for navigation. Any new format or destructive write must clear the
+controls without accessible names. Any new format or destructive write must clear the
 native bounded-parser, candidate re-inspection and atomic-write tests described
 in `SUPPORT_POLICY.md`.
 
 ## Rerun inputs
 
 ```text
-workflow: firecrawl-website-design-clone
-source_urls: https://navbar.gallery, https://cta.gallery
-target_stack: Tauri 2 + React 19 + Vite + Tailwind CSS 4
-output: DESIGN.md
+pnpm test:coverage
+pnpm test:e2e
+pnpm docs:capture
+pnpm test:docs
+pnpm docs:build
 ```

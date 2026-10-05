@@ -113,7 +113,7 @@ export default function DropZone({ onAdd, onAddNativePaths, onError, onOpenPicke
       ) : null}
 
       <div className={`grid gap-2 ${compact ? "text-left" : ""}`}>
-        <h2 className={compact ? "text-base font-medium" : "text-[26px] leading-snug font-semibold"}>
+        <h2 className={compact ? "text-base font-medium" : "text-xl leading-snug font-semibold"}>
           {text("拖入要净化的文件", "Drop files to clean")}
         </h2>
         <p className="text-sm text-muted">

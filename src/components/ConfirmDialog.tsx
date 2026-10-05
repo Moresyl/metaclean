@@ -1,4 +1,5 @@
 import { useId, useLayoutEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import Button, { IconButton } from "./Button";
 import { loopFocus } from "../lib/focus";
 import { useI18n } from "../lib/i18n";
@@ -44,9 +45,9 @@ export default function ConfirmDialog({ title, description, confirmLabel, onConf
     };
   }, []);
 
-  return (
+  return createPortal(
     <div
-      className="animate-fade fixed inset-0 z-50 grid place-items-center bg-canvas-deep/60 p-6 backdrop-blur-[2px]"
+      className="dialog-layer animate-fade fixed inset-0 z-50 grid place-items-center bg-canvas-deep/60 p-6 backdrop-blur-[2px]"
       role="presentation"
       onMouseDown={(event) => {
         if (event.target === event.currentTarget) onCancel();
@@ -54,7 +55,7 @@ export default function ConfirmDialog({ title, description, confirmLabel, onConf
     >
       <section
         ref={dialog}
-        className="animate-pop relative flex w-[min(390px,100%)] flex-col gap-3 rounded-panel border border-line-strong bg-surface p-5 shadow-lift"
+        className="dialog-panel animate-pop relative flex w-[min(390px,100%)] flex-col gap-3 rounded-panel border border-line-strong bg-surface p-5 shadow-lift"
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
@@ -78,6 +79,6 @@ export default function ConfirmDialog({ title, description, confirmLabel, onConf
           <Button ref={confirm} variant="danger" onClick={onConfirm}>{confirmLabel}</Button>
         </div>
       </section>
-    </div>
+    </div>, document.body
   );
 }

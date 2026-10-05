@@ -13,3 +13,6 @@ overrides:
   brace-expansion@2.1.4: 2.1.7
   undici@6.28.0: 6.28.1
   undici@7.29.0: 7.29.1
+  basic-ftp: 6.2.2
+  # WDIO uses Mocha without CLI glob-watch mode; retain the v10 lifecycle.
+  mocha>chokidar: 4.0.3

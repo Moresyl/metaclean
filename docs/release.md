@@ -34,10 +34,16 @@ pwsh -NoLogo -NoProfile -File .\scripts\preflight-windows.ps1
 ## 自动发布门禁
 
 GitHub Release workflow 在任何平台打包前，会先 checkout 同一个
-`RELEASE_TAG` 并运行完整的源码校验 job：供应链、CSP、发布脚本、格式清单、
+版本标签或明确指定的完整提交 SHA，并运行完整的源码校验 job：供应链、CSP、发布脚本、格式清单、
 文档构建、npm audit、前端覆盖率与生产构建、Linux Xvfb 下的桌面 E2E，以及 Rust
 格式化、测试、覆盖率和 Cargo audit。只有这个 job 成功，Windows、macOS、Linux 的矩阵构建才会开始；
 所有平台 smoke test 和资产校验完成后才允许生成公开 Release。
+
+也可以在 GitHub Actions 的 **Release → Run workflow** 页面启动发布。
+填写版本标签（例如 `v0.12.0`）；标签尚未创建时，另填已经验证的完整
+40 位小写提交 SHA 到 `source_commit`。所有 jobs 都构建该不可变提交，
+并校验包版本与标签一致。只有全部平台检查通过后，流水线才创建标签
+并公开发布。留空 `source_commit` 则沿用已有标签流程；已有标签不会被覆盖。
 
 ## 发布边界
 

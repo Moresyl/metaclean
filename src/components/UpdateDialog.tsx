@@ -1,5 +1,6 @@
 import { ArrowRight, Download, ExternalLink, Sparkles, X } from "lucide-react";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import Button, { IconButton } from "./Button";
 import { useUpdate } from "../contexts/UpdateContext";
 import { useI18n } from "../lib/i18n";
@@ -66,16 +67,16 @@ export default function UpdateDialog() {
     }
   };
 
-  return (
+  return createPortal(
     <div
-      className="animate-fade fixed inset-0 z-50 grid place-items-center bg-canvas-deep/60 p-6 backdrop-blur-[2px]"
+      className="dialog-layer animate-fade fixed inset-0 z-50 grid place-items-center bg-canvas-deep/60 p-6 backdrop-blur-[2px]"
       role="presentation"
       onMouseDown={(event) => {
         if (event.target === event.currentTarget) update.dismissUpdatePrompt();
       }}
     >
       <section
-        className="animate-pop relative flex w-[min(430px,100%)] flex-col gap-4 rounded-panel border border-line-strong bg-surface p-5 shadow-lift"
+        className="dialog-panel animate-pop relative flex w-[min(430px,100%)] flex-col gap-4 rounded-panel border border-line-strong bg-surface p-5 shadow-lift"
         role="dialog"
         aria-modal="true"
         aria-labelledby="update-dialog-title"
@@ -152,6 +153,6 @@ export default function UpdateDialog() {
           </Button>
         </div>
       </section>
-    </div>
+    </div>, document.body
   );
 }

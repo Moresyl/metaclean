@@ -5,6 +5,40 @@ All notable changes to MetaClean are documented here. The project follows
 
 ## [Unreleased]
 
+## [0.12.0] - 2026-10-06
+
+### Changed
+
+- Unify light and dark themes, system typography, neutral selected controls,
+  28/32/36px button sizes, 18px checkboxes and shared control geometry.
+- Adapt the workspace and settings navigation to compact viewports. Keep
+  dialogs within the viewport and use a full-window presentation below 768px.
+- Allow a manual release to select a full commit SHA. Validate the immutable
+  checkout and package version, then create the tag only after all release
+  source checks, package builds and smoke tests succeed.
+
+### Fixed
+
+- Render confirmation and update overlays at the document root so animated
+  content cannot constrain their bounds or clip their actions.
+- Limit application stylesheet scanning and ignore research, coverage, native
+  build and generated documentation output in the development watcher.
+- Preserve selected navigation outlines in forced-color mode and prevent
+  unchecked hover styles from overriding indeterminate checkboxes.
+
+### Security
+
+- Update the development-only FTP dependency to 6.2.2 and replace Mocha's
+  watcher with Chokidar 4.0.3, removing the vulnerable braces dependency while
+  preserving the desktop runner's Mocha 10 lifecycle.
+
+### Tests
+
+- Add real desktop checks for checkbox geometry, theme states, focus feedback,
+  button sizes and complete viewport coverage of confirmation overlays.
+- Reject malformed or moving manual release sources, version mismatches and
+  checkouts that differ from the requested commit.
+
 ## [0.11.10] - 2026-10-01
 
 ### Fixed

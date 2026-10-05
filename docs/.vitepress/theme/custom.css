@@ -5,6 +5,8 @@
   --vp-c-brand-3: #4a4a4a;
   --vp-c-brand-soft: rgba(13, 13, 13, 0.07);
   --vp-home-hero-name-color: #0d0d0d;
+  --vp-c-text-1: #1a1c1f;
+  --vp-c-text-2: color-mix(in oklab, #1a1c1f 70%, transparent);
   --mc-ok: #1e8a3e;
   --mc-on-brand: #ffffff;
   --mc-radius-lg: 12px;
@@ -18,12 +20,12 @@
   --vp-c-brand-2: #e8e8e8;
   --vp-c-brand-3: #a3a3a3;
   --vp-c-brand-soft: rgba(244, 244, 244, 0.1);
-  --vp-c-bg: #212121;
-  --vp-c-bg-alt: #181818;
-  --vp-c-bg-soft: #282828;
+  --vp-c-bg: #181818;
+  --vp-c-bg-alt: #000000;
+  --vp-c-bg-soft: #212121;
   --vp-c-bg-elv: #303030;
-  --vp-c-text-1: #ededed;
-  --vp-c-text-2: #afafaf;
+  --vp-c-text-1: #dfdfdf;
+  --vp-c-text-2: color-mix(in oklab, #ffffff 70%, transparent);
   --vp-c-divider: rgba(255, 255, 255, 0.1);
   --mc-ok: #46bf72;
   --mc-on-brand: #161616;

@@ -31,7 +31,9 @@ assert.match(readmeZh, /PDF、Office 与 UTF-8\/带 BOM 的 UTF-16 文本按各�
 assert.match(docsIndex, /ARCHITECTURE\.md/u);
 assert.match(architecture, /Non-negotiable invariants/u);
 assert.match(architecture, /pathIdentity/u);
-assert.match(design, /wcb\.txt/u);
+assert.match(design, /Current theme declarations, selector scopes and control rules/u);
+assert.match(design, /18px square, 4px corner/u);
+assert.match(design, /System UI font stack, 14px body/u);
 assert.match(plan, /Word 与 WPS/u);
 assert.match(docsConfig, /defineConfig/u);
 assert.match(docsConfig, /base: process\.env\.DOCS_BASE \?\? "\/"/u, "documentation must support a project Pages base path");

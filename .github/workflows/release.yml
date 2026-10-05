@@ -4,8 +4,13 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: Existing version tag to publish, for example v0.4.0
+        description: Version tag to publish, for example v0.12.0
         required: true
+        type: string
+      source_commit:
+        description: Optional full commit SHA; creates the version tag only after all checks pass
+        required: false
+        default: ""
         type: string
   push:
     tags: ["v*"]
@@ -15,6 +20,8 @@ permissions:
 
 env:
   RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+  SOURCE_COMMIT: ${{ github.event_name == 'workflow_dispatch' && inputs.source_commit || '' }}
+  RELEASE_REF: ${{ github.event_name == 'workflow_dispatch' && inputs.source_commit || (github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name) }}
   APPIMAGE_UPDATE_INFORMATION: gh-releases-zsync|Moresyl|metaclean|latest|MetaClean_*_amd64.AppImage.zsync
 
 jobs:
@@ -26,10 +33,12 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          ref: ${{ env.RELEASE_TAG }}
+          ref: ${{ env.RELEASE_REF }}
       - uses: actions/setup-node@v7
         with:
           node-version: 24
+      - name: Verify immutable release source and version
+        run: node scripts/verify-release-source.mjs
       - run: corepack enable
       - run: corepack prepare pnpm@10.32.1 --activate
       - run: rustup default stable
@@ -150,7 +159,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          ref: ${{ env.RELEASE_TAG }}
+          ref: ${{ env.RELEASE_REF }}
       - uses: actions/setup-node@v7
         with:
           node-version: 24
@@ -228,7 +237,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          ref: ${{ env.RELEASE_TAG }}
+          ref: ${{ env.RELEASE_REF }}
       - uses: actions/setup-node@v7
         with:
           node-version: 24
@@ -245,6 +254,12 @@ jobs:
           node scripts/generate-updater-manifest.mjs "${{ runner.temp }}/release-assets" "$RELEASE_TAG" "${{ github.repository }}" "release-notes/$RELEASE_TAG.md" "$publication_date" "${{ runner.temp }}/release-assets/latest.json"
       - name: Generate SHA-256 manifest
         run: node scripts/generate-checksums.mjs "${{ runner.temp }}/release-assets" "${{ runner.temp }}/SHASUMS256.txt"
+      - name: Tag the verified manual source after every smoke test passes
+        if: env.SOURCE_COMMIT != ''
+        run: |
+          node scripts/verify-release-source.mjs
+          git -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' tag -a "$RELEASE_TAG" -m "MetaClean $RELEASE_TAG" "$SOURCE_COMMIT"
+          git push origin "refs/tags/$RELEASE_TAG"
       - name: Create the public release only after every smoke test passes
         run: gh release create "$RELEASE_TAG" "${{ runner.temp }}"/release-assets/* "${{ runner.temp }}/SHASUMS256.txt" --title "MetaClean $RELEASE_TAG" --notes-file "release-notes/$RELEASE_TAG.md" --verify-tag
         env:

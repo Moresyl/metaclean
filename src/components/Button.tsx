@@ -16,7 +16,8 @@ export type ButtonSize = "sm" | "md" | "lg";
 
 const BASE =
   "inline-flex shrink-0 items-center justify-center gap-1.5 rounded-control font-medium " +
-  "whitespace-nowrap transition duration-100 ease-[var(--ease-out-soft)] select-none";
+  "whitespace-nowrap transition duration-150 ease-[var(--ease-out-soft)] select-none " +
+  "enabled:active:scale-[0.98]";
 
 /* What a button that cannot be pressed looks like — and it is not that button
    at 40% opacity.
@@ -38,9 +39,9 @@ const OFF: Record<ButtonVariant, string> = {
 /* Default buttons align with 32px fields; compact and primary actions use
    the adjacent 28px and 36px steps. */
 const SIZES: Record<ButtonSize, string> = {
-  sm: "h-[28px] px-2 text-sm",
-  md: "h-[32px] px-3 text-base",
-  lg: "h-[36px] px-4 text-base",
+  sm: "h-[var(--control-size-sm)] px-2 text-sm",
+  md: "h-[var(--control-size-md)] px-3 text-base",
+  lg: "h-[var(--control-size-lg)] px-4 text-base",
 };
 
 const VARIANTS: Record<ButtonVariant, string> = {
