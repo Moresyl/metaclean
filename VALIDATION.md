@@ -4,7 +4,19 @@ Last audited: 2026-10-06
 
 This file records evidence, not intent. A row is complete only when the named artifact or runtime check exists.
 
-## Unreleased About layout correction — 2026-10-06
+## Candidate v0.12.1 About layout correction — 2026-10-06
+
+The package metadata and bilingual release notes are prepared for v0.12.1.
+Final-source cross-platform qualification and publication are still pending;
+the latest public packages remain v0.12.0.
+
+Local v0.12.1 qualification passed 428 frontend tests with 93.58% line coverage,
+247 Windows native tests (ten ignored), strict all-target Clippy, formatting,
+all nineteen native desktop cases, 44 release automation tests and the
+documentation/116-extension gates. The documentation build passed. The desktop
+launcher emitted an automatic Edge-driver download warning; both spec files
+nevertheless completed all nineteen cases with exit status 0. This does not
+establish that the automatic driver download succeeded.
 
 Additional browser review covered five pages and all four settings categories
 in English/Chinese, light/dark themes and five viewports

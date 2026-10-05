@@ -5,6 +5,8 @@ All notable changes to MetaClean are documented here. The project follows
 
 ## [Unreleased]
 
+## [0.12.1] - 2026-10-06
+
 ### Fixed
 
 - Adapt the About page to its available content width. Stack community links
@@ -15,6 +17,14 @@ All notable changes to MetaClean are documented here. The project follows
 
 - Add a native English/Chinese regression that checks About content and action
   bounds in a 283px region without resizing the fixed application window.
+- Compile the audio fixture target once with a 600-second cold-build budget,
+  keeping each subsequent native/FFmpeg execution at its original 120 seconds.
+
+### Documentation
+
+- Size the documentation home layout by its article container, keeping cards
+  readable and the navigation inside a 768px viewport.
+- Record the published package qualification and the corrected audio CI evidence.
 
 ## [0.12.0] - 2026-10-06
 
