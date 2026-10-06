@@ -14,6 +14,7 @@ const PNG_TRAILER: [u8; 4] = [0; 4];
 const JPEG_ADOBE_HEADER_LEN: usize = 12;
 const JPEG_GAINMAP_NAMESPACE: &[u8] = b"urn:iso:std:iso:ts:21496:-1\0";
 type JpegSegment<'a> = (u8, &'a [u8], Range<usize>);
+type WebpChunk = ([u8; 4], Range<usize>);
 
 pub(crate) fn png_crc32(bytes: &[u8]) -> u32 {
     let mut crc = u32::MAX;
@@ -773,15 +774,28 @@ pub fn verify_png_cleaned(data: &[u8], preserve_color_profile: bool) -> Result<(
 
 pub fn inspect_webp(data: &[u8]) -> Result<Vec<Finding>> {
     let chunks = webp_chunks(data)?;
-    let count = chunks
-        .iter()
-        .filter(|(kind, _)| matches!(kind, b"EXIF" | b"XMP "))
-        .count();
-    let provenance = chunks.iter().filter(|(kind, _)| kind == b"C2PA").count();
+    let mut count = 0;
+    let mut provenance = 0;
+    for (kind, range) in &chunks {
+        if kind == b"C2PA" {
+            provenance += 1;
+        } else if is_private_webp_chunk(kind) {
+            count += 1;
+        }
+        if kind == b"ANMF" {
+            for (child, _) in webp_frame_chunks(data, range)? {
+                if &child == b"C2PA" {
+                    provenance += 1;
+                } else if is_private_webp_chunk(&child) {
+                    count += 1;
+                }
+            }
+        }
+    }
     let color_profiles = chunks.iter().filter(|(kind, _)| kind == b"ICCP").count();
     let mut findings = Vec::new();
     if count > 0 {
-        findings.push(finding("WebP EXIF / XMP 元数据", count));
+        findings.push(finding("WebP EXIF / XMP 及附加元数据", count));
     }
     if provenance > 0 {
         findings.push(Finding {
@@ -797,30 +811,75 @@ pub fn inspect_webp(data: &[u8]) -> Result<Vec<Finding>> {
     Ok(findings)
 }
 
-fn webp_chunks(data: &[u8]) -> Result<Vec<([u8; 4], std::ops::Range<usize>)>> {
-    if data.len() < 12 || &data[..4] != b"RIFF" || &data[8..12] != b"WEBP" {
-        return Err(CleanError::InvalidFormat("不是有效 WebP".into()));
-    }
-    let declared = u32::from_le_bytes(data[4..8].try_into().unwrap()) as usize + 8;
-    if declared != data.len() {
-        return Err(CleanError::InvalidFormat("WebP RIFF 长度不匹配".into()));
-    }
+fn is_private_webp_chunk(kind: &[u8; 4]) -> bool {
+    !matches!(
+        kind,
+        b"VP8X" | b"VP8 " | b"VP8L" | b"ALPH" | b"ICCP" | b"ANIM" | b"ANMF"
+    )
+}
+
+fn webp_chunk_ranges(data: &[u8], span: Range<usize>) -> Result<Vec<WebpChunk>> {
     let mut chunks = Vec::new();
-    let mut offset = 12;
-    while offset + 8 <= declared {
+    let mut offset = span.start;
+    while span.end.saturating_sub(offset) >= 8 {
         let length = u32::from_le_bytes(data[offset + 4..offset + 8].try_into().unwrap()) as usize;
-        let end = offset
-            .checked_add(8 + length + (length & 1))
+        let payload_end = offset
+            .checked_add(8)
+            .and_then(|start| start.checked_add(length))
             .ok_or_else(|| CleanError::InvalidFormat("WebP 块长度溢出".into()))?;
-        if end > declared {
-            return Err(CleanError::InvalidFormat("WebP 块越界".into()));
+        let end = payload_end
+            .checked_add(length & 1)
+            .filter(|end| *end <= span.end)
+            .ok_or_else(|| CleanError::InvalidFormat("WebP 块越界".into()))?;
+        if length & 1 != 0 && data[payload_end] != 0 {
+            return Err(CleanError::InvalidFormat("WebP 块填充字节无效".into()));
         }
         chunks.push((data[offset..offset + 4].try_into().unwrap(), offset..end));
         offset = end;
     }
-    if offset != declared {
+    if offset != span.end {
         return Err(CleanError::InvalidFormat("WebP 块尾存在截断数据".into()));
     }
+    Ok(chunks)
+}
+
+fn webp_frame_chunks(data: &[u8], range: &Range<usize>) -> Result<Vec<WebpChunk>> {
+    let size =
+        u32::from_le_bytes(data[range.start + 4..range.start + 8].try_into().unwrap()) as usize;
+    if size < 16 || data[range.start + 23] & 0xfc != 0 {
+        return Err(CleanError::InvalidFormat("WebP 动画帧头无效".into()));
+    }
+    let chunks = webp_chunk_ranges(data, range.start + 24..range.start + 8 + size)?;
+    let layout: Vec<_> = chunks
+        .iter()
+        .filter(|(kind, _)| !is_private_webp_chunk(kind))
+        .map(|(kind, _)| *kind)
+        .collect();
+    if !matches!(layout.as_slice(), [kind] if matches!(kind, b"VP8 " | b"VP8L"))
+        && !matches!(layout.as_slice(), [alpha, image] if alpha == b"ALPH" && image == b"VP8 ")
+    {
+        return Err(CleanError::InvalidFormat(
+            "WebP 动画帧图像块组合无效".into(),
+        ));
+    }
+    Ok(chunks)
+}
+
+fn webp_u24(bytes: &[u8]) -> u32 {
+    u32::from_le_bytes([bytes[0], bytes[1], bytes[2], 0])
+}
+
+fn webp_chunks(data: &[u8]) -> Result<Vec<WebpChunk>> {
+    if data.len() < 12 || &data[..4] != b"RIFF" || &data[8..12] != b"WEBP" {
+        return Err(CleanError::InvalidFormat("不是有效 WebP".into()));
+    }
+    let declared = (u32::from_le_bytes(data[4..8].try_into().unwrap()) as usize)
+        .checked_add(8)
+        .ok_or_else(|| CleanError::InvalidFormat("WebP RIFF 长度溢出".into()))?;
+    if declared != data.len() {
+        return Err(CleanError::InvalidFormat("WebP RIFF 长度不匹配".into()));
+    }
+    let chunks = webp_chunk_ranges(data, 12..declared)?;
     if !chunks
         .iter()
         .any(|(kind, _)| matches!(kind, b"VP8 " | b"VP8L" | b"ANMF"))
@@ -828,7 +887,11 @@ fn webp_chunks(data: &[u8]) -> Result<Vec<([u8; 4], std::ops::Range<usize>)>> {
         return Err(CleanError::InvalidFormat("WebP 缺少图像数据块".into()));
     }
     let extended: Vec<_> = chunks.iter().filter(|(kind, _)| kind == b"VP8X").collect();
-    if extended.len() > 1 || extended.iter().any(|(_, range)| range.len() != 18) {
+    if extended.len() > 1
+        || extended
+            .iter()
+            .any(|(_, range)| data[range.start + 4..range.start + 8] != 10u32.to_le_bytes())
+    {
         return Err(CleanError::InvalidFormat("WebP VP8X 块无效或重复".into()));
     }
     if let Some((_, range)) = extended.first() {
@@ -852,6 +915,46 @@ fn webp_chunks(data: &[u8]) -> Result<Vec<([u8; 4], std::ops::Range<usize>)>> {
             "WebP 图像与动画载荷组合无效".into(),
         ));
     }
+    let animation_headers: Vec<_> = chunks.iter().filter(|(kind, _)| kind == b"ANIM").collect();
+    if animation_headers.len() > 1
+        || animation_headers
+            .iter()
+            .any(|(_, range)| data[range.start + 4..range.start + 8] != 6u32.to_le_bytes())
+    {
+        return Err(CleanError::InvalidFormat(
+            "WebP 动画控制块无效或重复".into(),
+        ));
+    }
+    let animation_flag = extended
+        .first()
+        .is_some_and(|(_, range)| data[range.start + 8] & 0x02 != 0);
+    if animation_flag != (animation_frames > 0)
+        || (animation_headers.is_empty() != (animation_frames == 0))
+        || animation_frames > 0
+            && (animation_headers.len() != 1 || chunks.iter().any(|(kind, _)| kind == b"ALPH"))
+    {
+        return Err(CleanError::InvalidFormat(
+            "WebP 动画标记与载荷不匹配".into(),
+        ));
+    }
+    if let Some((_, extended_range)) = extended.first() {
+        let width = webp_u24(&data[extended_range.start + 12..extended_range.start + 15]) + 1;
+        let height = webp_u24(&data[extended_range.start + 15..extended_range.start + 18]) + 1;
+        if u64::from(width) * u64::from(height) > u64::from(u32::MAX) {
+            return Err(CleanError::InvalidFormat("WebP 画布尺寸超出限制".into()));
+        }
+        for (_, range) in chunks.iter().filter(|(kind, _)| kind == b"ANMF") {
+            webp_frame_chunks(data, range)?;
+            let payload = range.start + 8;
+            let x = webp_u24(&data[payload..payload + 3]) * 2;
+            let y = webp_u24(&data[payload + 3..payload + 6]) * 2;
+            let frame_width = webp_u24(&data[payload + 6..payload + 9]) + 1;
+            let frame_height = webp_u24(&data[payload + 9..payload + 12]) + 1;
+            if x + frame_width > width || y + frame_height > height {
+                return Err(CleanError::InvalidFormat("WebP 动画帧超出画布".into()));
+            }
+        }
+    }
     Ok(chunks)
 }
 
@@ -867,13 +970,23 @@ pub fn clean_webp_with_options(
     let mut output = Vec::with_capacity(data.len());
     output.extend_from_slice(&data[..12]);
     for (kind, range) in chunks {
-        if matches!(&kind, b"EXIF" | b"XMP " | b"C2PA")
-            || (!preserve_color_profile && &kind == b"ICCP")
-        {
+        if is_private_webp_chunk(&kind) || (!preserve_color_profile && &kind == b"ICCP") {
             continue;
         }
         let start = output.len();
-        output.extend_from_slice(&data[range]);
+        if &kind == b"ANMF" {
+            output.extend_from_slice(&data[range.start..range.start + 24]);
+            for (child, child_range) in webp_frame_chunks(data, &range)? {
+                if !is_private_webp_chunk(&child) {
+                    output.extend_from_slice(&data[child_range]);
+                }
+            }
+            let size = u32::try_from(output.len() - start - 8)
+                .map_err(|_| CleanError::InvalidFormat("WebP 动画帧长度溢出".into()))?;
+            output[start + 4..start + 8].copy_from_slice(&size.to_le_bytes());
+        } else {
+            output.extend_from_slice(&data[range]);
+        }
         if &kind == b"VP8X" && output.len() >= start + 9 {
             output[start + 8] &= !(0x08 | 0x04);
             if !preserve_color_profile {
@@ -887,12 +1000,19 @@ pub fn clean_webp_with_options(
 }
 
 pub fn verify_webp_cleaned(data: &[u8], preserve_color_profile: bool) -> Result<()> {
-    if webp_chunks(data)?.iter().any(|(kind, _)| {
-        matches!(kind, b"EXIF" | b"XMP " | b"C2PA") || (!preserve_color_profile && kind == b"ICCP")
-    }) {
-        return Err(CleanError::Verification(
-            "WebP 中仍存在应移除的元数据块".into(),
-        ));
+    for (kind, range) in webp_chunks(data)? {
+        let private_frame_data = &kind == b"ANMF"
+            && webp_frame_chunks(data, &range)?
+                .iter()
+                .any(|(child, _)| is_private_webp_chunk(child));
+        if is_private_webp_chunk(&kind)
+            || (!preserve_color_profile && &kind == b"ICCP")
+            || private_frame_data
+        {
+            return Err(CleanError::Verification(
+                "WebP 中仍存在应移除的元数据块".into(),
+            ));
+        }
     }
     Ok(())
 }
@@ -1457,6 +1577,211 @@ mod tests {
             output.push(0);
         }
         output
+    }
+
+    fn webp_file(chunks: &[Vec<u8>]) -> Vec<u8> {
+        let mut source = b"RIFF\0\0\0\0WEBP".to_vec();
+        for chunk in chunks {
+            source.extend(chunk);
+        }
+        let size = (source.len() - 8) as u32;
+        source[4..8].copy_from_slice(&size.to_le_bytes());
+        source
+    }
+
+    #[test]
+    fn removes_webp_private_application_chunks_inside_animation_frames() {
+        let pixels = b"compressed pixels with EXIF and private application words";
+        let image = webp_chunk(b"VP8 ", pixels);
+        let mut frame = vec![0; 16];
+        frame.extend(&image);
+        frame.extend(webp_chunk(b"prIv", b"private frame identity"));
+        frame.extend(webp_chunk(b"JUMB", b"private frame provenance"));
+        for animated in [false, true] {
+            for preserve_profile in [false, true] {
+                let mut extended = vec![0; 10];
+                extended[0] = if animated { 0x22 } else { 0x20 };
+                let mut chunks = vec![
+                    webp_chunk(b"VP8X", &extended),
+                    webp_chunk(b"ICCP", b"profile"),
+                ];
+                if animated {
+                    chunks.push(webp_chunk(b"ANIM", &[0; 6]));
+                    chunks.push(webp_chunk(b"ANMF", &frame));
+                } else {
+                    chunks.push(image.clone());
+                }
+                chunks.extend([
+                    webp_chunk(b"prIv", b"private application identity"),
+                    webp_chunk(b"JUMB", b"private application provenance"),
+                    webp_chunk(b"ZERO", b""),
+                ]);
+                let source = webp_file(&chunks);
+                let expected = if animated { 5 } else { 3 };
+                let inspected = inspect_webp(&source).unwrap();
+                assert_eq!(
+                    inspected
+                        .iter()
+                        .find(|item| item.category == "image_metadata")
+                        .map(|item| item.count),
+                    Some(expected)
+                );
+                assert!(verify_webp_cleaned(&source, preserve_profile).is_err());
+                let (cleaned, removed) =
+                    clean_webp_with_options(&source, preserve_profile).unwrap();
+                assert_eq!(
+                    removed
+                        .iter()
+                        .find(|item| item.category == "image_metadata")
+                        .unwrap()
+                        .count,
+                    expected
+                );
+                assert!(cleaned.windows(pixels.len()).any(|window| window == pixels));
+                for kind in [b"prIv", b"JUMB", b"ZERO"] {
+                    assert!(!cleaned.windows(4).any(|window| window == kind));
+                }
+                assert_eq!(
+                    cleaned.windows(4).any(|window| window == b"ICCP"),
+                    preserve_profile
+                );
+                verify_webp_cleaned(&cleaned, preserve_profile).unwrap();
+                assert!(inspect_webp(&cleaned)
+                    .unwrap()
+                    .iter()
+                    .all(|item| item.category == "color_profile"));
+                assert_eq!(
+                    clean_webp_with_options(&cleaned, preserve_profile)
+                        .unwrap()
+                        .0,
+                    cleaned
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn refuses_unsafe_webp_animation_frames_and_padding() {
+        let image = webp_chunk(b"VP8 ", b"image");
+        let mut frame = vec![0; 16];
+        frame.extend(&image);
+        let mut malformed = vec![vec![0; 15], vec![0; 16]];
+        let mut reserved = frame.clone();
+        reserved[15] = 4;
+        malformed.push(reserved);
+        let mut outside_canvas = frame.clone();
+        outside_canvas[6] = 1;
+        malformed.push(outside_canvas);
+        let mut bad_padding = frame.clone();
+        *bad_padding.last_mut().unwrap() = 42;
+        malformed.push(bad_padding);
+        let mut out_of_bounds = frame.clone();
+        out_of_bounds[20..24].copy_from_slice(&u32::MAX.to_le_bytes());
+        malformed.push(out_of_bounds);
+        let mut trailing = frame.clone();
+        trailing.push(42);
+        malformed.push(trailing);
+        let mut duplicate = frame.clone();
+        duplicate.extend(&image);
+        malformed.push(duplicate);
+        for kind in [b"VP8X", b"ANMF", b"ICCP", b"ALPH"] {
+            let mut invalid_layout = frame.clone();
+            invalid_layout.extend(webp_chunk(kind, b"extra"));
+            malformed.push(invalid_layout);
+        }
+        let mut lossless_alpha = vec![0; 16];
+        lossless_alpha.extend(webp_chunk(b"ALPH", b"alpha"));
+        lossless_alpha.extend(webp_chunk(b"VP8L", b"image"));
+        malformed.push(lossless_alpha);
+        for payload in malformed {
+            let source = webp_file(&[
+                webp_chunk(b"VP8X", &[2, 0, 0, 0, 0, 0, 0, 0, 0, 0]),
+                webp_chunk(b"ANIM", &[0; 6]),
+                webp_chunk(b"ANMF", &payload),
+            ]);
+            for preserve_profile in [false, true] {
+                assert!(inspect_webp(&source).is_err());
+                assert!(clean_webp_with_options(&source, preserve_profile).is_err());
+                assert!(verify_webp_cleaned(&source, preserve_profile).is_err());
+            }
+        }
+        let mut nonzero_padding = image;
+        *nonzero_padding.last_mut().unwrap() = 42;
+        let source = webp_file(&[nonzero_padding]);
+        assert!(inspect_webp(&source).is_err());
+        assert!(clean_webp_with_options(&source, true).is_err());
+        assert!(verify_webp_cleaned(&source, true).is_err());
+    }
+
+    #[test]
+    fn counts_webp_frame_provenance_and_preserves_animation_display_fields() {
+        let mut extended = [0; 10];
+        extended[0] = 0x12;
+        extended[4] = 7;
+        extended[7] = 7;
+        let mut frame = [0; 16].to_vec();
+        frame[0] = 1;
+        frame[3] = 2;
+        frame[6] = 3;
+        frame[9] = 2;
+        frame[12..15].copy_from_slice(&[75, 0, 0]);
+        frame[15] = 3;
+        let mut clean_frame = frame.clone();
+        clean_frame.extend(webp_chunk(b"ALPH", b"alpha"));
+        clean_frame.extend(webp_chunk(b"VP8 ", b"pixels mention C2PA and JUMB"));
+        frame = clean_frame.clone();
+        frame.extend(webp_chunk(b"C2PA", b"private provenance"));
+        let control = [17, 31, 47, 128, 3, 0];
+        let source = webp_file(&[
+            webp_chunk(b"VP8X", &extended),
+            webp_chunk(b"ANIM", &control),
+            webp_chunk(b"ANMF", &frame),
+        ]);
+        let inspected = inspect_webp(&source).unwrap();
+        assert_eq!(inspected.len(), 1);
+        assert_eq!(inspected[0].category, "provenance");
+        assert_eq!(inspected[0].count, 1);
+        let (cleaned, removed) = clean_webp_with_options(&source, true).unwrap();
+        assert_eq!(removed, inspected);
+        assert_eq!(
+            cleaned,
+            webp_file(&[
+                webp_chunk(b"VP8X", &extended),
+                webp_chunk(b"ANIM", &control),
+                webp_chunk(b"ANMF", &clean_frame),
+            ])
+        );
+        verify_webp_cleaned(&cleaned, true).unwrap();
+        for chunks in [
+            vec![webp_chunk(b"VP8X", &extended), webp_chunk(b"ANMF", &frame)],
+            vec![webp_chunk(b"ANIM", &control), webp_chunk(b"ANMF", &frame)],
+            vec![
+                webp_chunk(b"VP8X", &extended),
+                webp_chunk(b"ANIM", &control),
+                webp_chunk(b"ANIM", &control),
+                webp_chunk(b"ANMF", &frame),
+            ],
+            vec![
+                webp_chunk(b"VP8X", &extended),
+                webp_chunk(b"ANIM", b"short"),
+                webp_chunk(b"ANMF", &frame),
+            ],
+            vec![
+                webp_chunk(b"VP8X", &extended[..9]),
+                webp_chunk(b"ANIM", &control),
+                webp_chunk(b"ANMF", &frame),
+            ],
+            vec![
+                webp_chunk(b"VP8X", &[0; 10]),
+                webp_chunk(b"ANIM", &control),
+                webp_chunk(b"VP8 ", b"image"),
+            ],
+        ] {
+            let invalid = webp_file(&chunks);
+            assert!(inspect_webp(&invalid).is_err());
+            assert!(clean_webp_with_options(&invalid, true).is_err());
+            assert!(verify_webp_cleaned(&invalid, true).is_err());
+        }
     }
 
     #[test]

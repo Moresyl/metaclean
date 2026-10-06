@@ -106,6 +106,16 @@ jobs:
         run: python scripts/verify-jpeg-fidelity.py --output "${{ runner.temp }}/metaclean-jpeg-evidence"
       - name: Verify PNG privacy removal, pixels, animation and HDR/layout chunks
         run: python scripts/verify-png-fidelity.py --output "${{ runner.temp }}/metaclean-png-evidence"
+      - name: Verify WebP private blocks, alpha, animation and profile policy
+        run: |
+          python scripts/test-webp-fidelity.py
+          python scripts/verify-webp-fidelity.py --output "${{ runner.temp }}/metaclean-webp-evidence"
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: release-webp-fidelity-evidence
+          path: ${{ runner.temp }}/metaclean-webp-evidence
+          if-no-files-found: warn
       - uses: actions/upload-artifact@v6
         if: always()
         with:

@@ -42,6 +42,13 @@ the supplied desktop platform defaults. Generic fallbacks remain platform
 dependent; a declared stack alone does not prove which font renders a Chinese
 glyph on a particular machine.
 
+Actual Windows native WebView2 observations on 2026-10-07 cover the existing
+Chinese/English page heading and two sidebar controls. Rendered-glyph records
+identify Noto Sans SC for Chinese text and Segoe UI family faces for Latin text
+and shortcuts. These are six localized product-node observations in an isolated
+test build, separate from the earlier Chrome measurements; they do not identify
+the original application's fonts or qualify every node and operating system.
+
 Actions follow the current component's default pill configuration. Their surfaces
 carry theme-specific normal, hover, pressed and disabled colors; labels and icons
 remain stable. Outlined and ghost actions place the focus ring 1px inside the

@@ -2303,16 +2303,58 @@ mod tests {
         assert_external_cleanup_integrity(&source, &mode, true);
     }
 
+    #[test]
+    #[ignore = "requires METACLEAN_WEBP_SAMPLE_PATH with a generated WebP fixture"]
+    fn cleans_external_webp_sample_with_verified_output() {
+        let source = PathBuf::from(
+            std::env::var_os("METACLEAN_WEBP_SAMPLE_PATH").expect("WebP sample path is required"),
+        );
+        let mode = match std::env::var("METACLEAN_WEBP_OUTPUT_MODE").as_deref() {
+            Ok("copy") => OutputMode::Copy,
+            Ok("replace") => OutputMode::Replace,
+            _ => panic!("WebP output mode must be copy or replace"),
+        };
+        let preserve_color_profile =
+            match std::env::var("METACLEAN_WEBP_PRESERVE_PROFILE").as_deref() {
+                Ok("true") => true,
+                Ok("false") => false,
+                _ => panic!("WebP profile option must be true or false"),
+            };
+        assert_eq!(scan_file(&source).format, "WebP");
+        assert_external_cleanup_integrity_with_profile(
+            &source,
+            &mode,
+            true,
+            preserve_color_profile,
+        );
+    }
+
     fn assert_external_cleanup_integrity(
         source: &Path,
         mode: &OutputMode,
         preserve_orientation: bool,
     ) {
+        assert_external_cleanup_integrity_with_profile(source, mode, preserve_orientation, true);
+    }
+
+    fn assert_external_cleanup_integrity_with_profile(
+        source: &Path,
+        mode: &OutputMode,
+        preserve_orientation: bool,
+        preserve_color_profile: bool,
+    ) {
         let before = fs::read(source).unwrap();
         let report = scan_file(source);
         assert!(report.supported, "{:?}", report.error);
         assert!(!report.findings.is_empty());
-        let result = clean_file_with_options(source, mode, true, preserve_orientation, true, false);
+        let result = clean_file_with_options(
+            source,
+            mode,
+            true,
+            preserve_orientation,
+            preserve_color_profile,
+            false,
+        );
         assert!(result.success, "{:?}", result.error);
         let output = PathBuf::from(result.output_path.unwrap());
         let cleaned = fs::read(&output).unwrap();
@@ -2339,7 +2381,7 @@ mod tests {
                 .findings
                 .iter()
                 .all(|finding| finding.severity == FindingSeverity::Informational
-                    && (finding.category == "color_profile"
+                    && (preserve_color_profile && finding.category == "color_profile"
                         || preserve_orientation && finding.category == "image_orientation")),
             "Unexpected output findings: {:?}",
             report.findings

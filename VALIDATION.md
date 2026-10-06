@@ -4,6 +4,59 @@ Last audited: 2026-10-07
 
 This file records evidence, not intent. A row is complete only when the named artifact or runtime check exists.
 
+## Unreleased WebP qualification — 2026-10-07
+
+The actual prior native application reported successful cleanup for five WebP
+fixtures while retaining 23 private application chunks at the container and
+animation-frame levels. Independent decoding confirmed that the original
+cleaning path preserved seven decoded frames, profiles and animation timing;
+privacy removal was the failing requirement.
+
+The current original implementation removes those private extensions and checks
+frame structure, bounds and padding. The independent
+[WebP verifier](https://github.com/Moresyl/metaclean/blob/master/scripts/verify-webp-fidelity.py)
+passes 24 local native-engine cases: RGB lossy, RGBA lossy/lossless and two-frame
+lossy/lossless animations with full and offset frames,
+each in copy/replacement mode with ICC retention enabled and disabled. Checks
+compare exact compressed image/alpha bytes, frame headers and animation controls,
+decoded pixels, transparency, canvas, timing, loops, background, profile policy,
+source/backup bytes and preserved filesystem modification time.
+
+The actual lossless-animation offset fixture retains its 32 × 24 canvas and
+second frame at (2, 2) with a 28 × 9 extent. Independent artifact inspection
+verifies all 24 completed native test logs, 36 decoded frames, 240 removed private
+blocks, actual source/backup/output hashes and retained compressed/control bytes.
+
+Seven [checker regressions](https://github.com/Moresyl/metaclean/blob/master/scripts/test-webp-fidelity.py)
+pass for residual
+frame-private data, incorrect profile policy, altered duration/media bytes,
+missing secondary frames and malformed RIFF lengths/padding. Both the image
+workflow and release source gate now require this qualification. Complete local
+Rust checks pass 281 tests with 12 ignored, strict Clippy and formatting pass,
+and all 455 frontend tests pass at 93.99% line coverage. The ordinary Windows
+native configuration separately passes all 15 design and 16 desktop workflow
+cases. An earlier full run
+exposed a padded-length validation defect and a system-temp storage failure;
+the defect was corrected and a task-specific temporary directory was used.
+Earlier frontend worker/timeout failures remain recorded; assertions and
+coverage thresholds were retained.
+
+The actual after-fix Windows application passes the same five original fixtures
+through `scan_files`, `clean_files` and output rescanning. Independent inspection
+confirms that all 23 private blocks are removed, the source hashes are unchanged
+and all decoded frames, compressed media, profiles and animation controls remain
+intact. The independent 24-case engine gate separately covers replacement and
+profile removal.
+
+In an isolated native Windows WebView2 test build, actual Chinese and English
+headings plus two sidebar controls were measured with
+`CSS.getPlatformFontsForNode`. The six current UI observations record Noto Sans
+SC for Chinese text and Segoe UI family faces for Latin text/shortcuts. Locale
+changes were restored, and the ordinary native configuration was rebuilt
+separately. These observations do not establish other operating systems, every
+UI node or the original application's rendered font selection. A new published
+version and full original-runtime UI identity remain unproved.
+
 ## v0.12.4 public packages — 2026-10-07
 
 [Published v0.12.4](https://github.com/Moresyl/metaclean/releases/tag/v0.12.4)

@@ -5,6 +5,24 @@ All notable changes to MetaClean are documented here. The project follows
 
 ## [Unreleased]
 
+### Security
+
+- Remove private and unrecognized WebP application chunks at the container level
+  and inside animation frames. Keep compressed image/alpha data, frame geometry,
+  timing, blend/disposal controls and the existing ICC retention choice.
+- Reject truncated or conflicting animation frames, invalid padding, reserved
+  frame bits and frames outside the declared canvas before writing.
+
+### Tests
+
+- Add 24 independent WebP copy/replacement cases across lossy/lossless images,
+  transparency, animation with full and offset frames and both ICC settings,
+  with decoded and compressed media comparisons, source/backup integrity and
+  preserved filesystem timestamps.
+- Add seven evidence-checker regressions that reject residual private chunks,
+  changed media/control bytes, missing frames, wrong profile policy and malformed
+  container sizes or padding. Run these checks in image and release source gates.
+
 ## [0.12.4] - 2026-10-07
 
 ### Added

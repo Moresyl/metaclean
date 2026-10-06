@@ -25,6 +25,26 @@ application. Detailed run evidence is recorded in `VALIDATION.md`.
 | Localization | All 32 published locale catalogs are checked for completeness; supported-scope counts are checked in every translated locale. | Catalog completeness does not establish independent linguistic review. |
 | Release integrity | The five-platform release matrix runs applicable package smoke tests. Independent public downloads verify all 19 checksum-listed assets, five updater signatures and rejection of modified package bytes. | Updater signatures are separate from OS code signing; Apple signing/notarization remains unavailable. |
 
+## Unreleased WebP qualification
+
+Current source removes private application chunks at the WebP container and
+animation-frame levels. Twenty-four independent local engine cases cover
+lossy/lossless pixels, alpha, full/offset animation frames, copy/replacement and
+both ICC settings. Actual compressed/control bytes, 36 decoded frames, profile
+policy and source/backup hashes are checked; seven checker regressions reject
+damaged evidence. The actual Windows application also clears all 23 previously
+retained private blocks from the five original regression samples without
+changing their media or preserved profiles. This is current-source evidence,
+separate from the v0.12.4 published baseline above. Unknown-extension removal
+may discard application editing information; the samples do not qualify every
+encoder or viewer. Image and release source workflows now require the expanded
+WebP gate.
+
+Six actual Windows native rendered-font observations additionally identify
+Noto Sans SC for measured Chinese text and Segoe UI family faces for Latin text.
+They do not establish every node, other operating systems or the original
+application's runtime typography. Detailed scopes remain in `VALIDATION.md`.
+
 ## Published JPEG qualification
 
 Published source `007cb6384f5c7d2d4181bb9ac89cf9a317daa705` passes three-platform
