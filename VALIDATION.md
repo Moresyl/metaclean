@@ -7,11 +7,11 @@ This file records evidence, not intent. A row is complete only when the named ar
 ## v0.12.3 tooltip candidate — 2026-10-06
 
 v0.12.3 is an unpublished candidate. Its tooltip changes pass 455 frontend tests
-across 23 files at 93.99% line coverage, the production build, and 14 design plus
+across 23 files at 93.99% line coverage, the production build, and 15 design plus
 16 workflow cases on the local Windows native application. The four initial
 interaction/description/placement regressions fail on the previous implementation;
 the prior native binary also fails the new tooltip root-mount assertion.
-The versioned v0.12.3 Windows native binary also passes all 30 cases and both
+The corrected versioned v0.12.3 Windows native binary passes all 31 cases and both
 English/Chinese capture cases. Its 15 PNGs and two five-frame workflow GIFs have
 verified dimensions and frame durations; the current native captures were
 visually reviewed. Remote candidate and publication checks remain pending.
@@ -24,6 +24,37 @@ case fails because `[role=tooltip]` is not displayed within the unchanged
 and relationship to the missing tip are not established. Bounded event and
 insertion/removal diagnostics now record each theme/direction/corner without
 reopening tips, extending waits or relaxing assertions. Publication remains pending.
+
+The diagnostic [CI 37469681184](https://github.com/Moresyl/metaclean/actions/runs/37469681184)
+at `f1560b6` again passes the main gate and all 30 Windows/Linux desktop cases;
+macOS again passes the other 29 cases. In the failing dark/LTR/leading-corner
+phase, the tooltip is created and its control remains focused and linked.
+Its animation reports finished with progress 1 and a 0.001ms duration, but
+computed opacity remains 0 and the transform retains the entering offset/scale.
+No recorded blur, resize, pointer-out or removal explains that phase.
+This is evidence of an invisible final surface; the underlying renderer cause
+and the separate driver timeouts remain unconfirmed.
+
+Reduced motion now disables animations instead of shortening them. A new native
+regression activates the actual stylesheet rule, then checks immediate visibility,
+identity transforms and disabled animation across two themes, three mounts and
+four entrance classes. The previous Windows binary fails its pending-animation
+check; an earlier literal `none` transform comparison was corrected because an
+identity matrix has no displacement. The updated Windows native build passes
+this regression and the complete 31-case desktop suite; cross-platform
+qualification is pending. Normal-motion animations retain their existing rules.
+Trusted browser Tab and Escape also pass after this correction: normal motion
+executes a finished 140ms fade, while reduced motion shows opacity 1 with no
+animations. Both retain visible keyboard focus, description association and
+focus after dismissal; fixtures are removed after each check.
+The first full frontend run encountered four thread-worker startup timeouts and
+completed only 295 tests; it is not a passing qualification. The complete
+single-process-worker run passes all 455 tests in 23 files at 93.99% line coverage
+and 86.10% branch coverage. Release automation (44 tests) and docs verification
+also pass. Both the failed and complete-run logs are retained.
+The corrected native binary regenerates all 17 documentation assets; dimensions,
+GIF frames/durations and both language contact sheets are checked again after
+the runtime correction. Production/CSP, format, supply-chain and docs builds pass.
 
 An independent browser comparison renders the supplied current stylesheet with
 its actual desktop scope and ordinary tooltip defaults. All 12 inspected style

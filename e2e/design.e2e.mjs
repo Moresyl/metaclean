@@ -332,6 +332,68 @@ describe("Desktop visual controls", () => {
     }
   });
 
+  it("keeps reduced-motion entrance surfaces visible across themes and repeated mounts", async () => {
+    await $(".app-shell").waitForDisplayed();
+    const previousTheme = await browser.tauri.execute(() => document.documentElement.dataset.theme);
+    try {
+      const ruleCount = await browser.tauri.execute(() => {
+        const rules = [];
+        const collect = list => {
+          for (const rule of list) {
+            if (rule instanceof CSSMediaRule && /prefers-reduced-motion\s*:\s*reduce/.test(rule.conditionText)) {
+              rules.push({ rule, original: rule.media.mediaText });
+            }
+            if (rule.cssRules) collect(rule.cssRules);
+          }
+        };
+        for (const sheet of document.styleSheets) collect(sheet.cssRules);
+        window.__entranceMotionRules = rules;
+        rules.forEach(({ rule }) => { rule.media.mediaText = "all"; });
+        const fixture = document.createElement("div");
+        fixture.id = "entrance-motion-regression";
+        fixture.style.cssText = "position:fixed;left:100px;top:100px;pointer-events:none";
+        document.body.append(fixture);
+        return rules.length;
+      });
+      assert.ok(ruleCount > 0, "The actual reduced-motion stylesheet rule is missing");
+      for (const theme of ["light", "dark"]) {
+        for (let mount = 0; mount < 3; mount++) {
+          const states = await browser.tauri.execute((_, theme) => {
+            document.documentElement.dataset.theme = theme;
+            const fixture = document.getElementById("entrance-motion-regression");
+            fixture.replaceChildren(...["animate-rise", "animate-pop", "animate-fade", "context-menu"].map(className => {
+              const surface = document.createElement("div");
+              surface.className = className;
+              surface.textContent = "Synthetic motion surface";
+              return surface;
+            }));
+            return [...fixture.children].map(surface => {
+              const style = getComputedStyle(surface);
+              return { className: surface.className, opacity: style.opacity, transform: style.transform,
+                transformIdentity: style.transform === "none" || new DOMMatrixReadOnly(style.transform).isIdentity,
+                display: style.display, animation: style.animationName,
+                running: surface.getAnimations().some(animation => animation.pending || animation.playState === "running") };
+            });
+          }, theme);
+          for (const state of states) {
+            assert.equal(state.opacity, "1", `${theme}/${mount} reduced-motion surface is transparent: ${JSON.stringify(state)}`);
+            assert.equal(state.transformIdentity, true, `${theme}/${mount} reduced-motion surface retains entrance displacement: ${JSON.stringify(state)}`);
+            assert.notEqual(state.display, "none");
+            assert.equal(state.animation, "none", `${theme}/${mount} reduced-motion animation remains enabled`);
+            assert.equal(state.running, false, `${theme}/${mount} reduced-motion surface still animates`);
+          }
+        }
+      }
+    } finally {
+      await browser.tauri.execute((_, theme) => {
+        window.__entranceMotionRules?.forEach(({ rule, original }) => { rule.media.mediaText = original; });
+        delete window.__entranceMotionRules;
+        document.getElementById("entrance-motion-regression")?.remove();
+        document.documentElement.dataset.theme = theme;
+      }, previousTheme);
+    }
+  });
+
   it("keeps context menus inside the viewport without scrolling their animated workspace", async () => {
     await $(".app-shell").waitForDisplayed();
     const previousMenuState = await browser.tauri.execute(() => ({ direction: document.documentElement.dir,

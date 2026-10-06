@@ -31,7 +31,7 @@ consume the same tokens. Their content remains specific to a local file utility.
 | Segmented choices | 32px track, 2px padding/gap, 8px base ordinary corner, 28px options, 12px gutters and 600-weight 13px labels; a neutral raised selected thumb |
 | Context menus | 180px minimum width, 6px viewport margin, 4px gutter, opaque canvas surface, 16px panel/12px row base corners, 13px/430 text, 5px/8px row padding, 6px gaps, arrow cursor and 50% disabled opacity |
 | Tooltips | Ordinary 300px width cap bounded by the viewport, 12px/16px gutters, scaled 8px round corners, 14px/400 text at 1.45 line height, themed elevated surfaces and shadows; 150ms hover delay, 5px anchor gap and 15px collision margins |
-| Motion | 150ms control feedback; reduced-motion mode disables transitions and limits animations to 0.001ms |
+| Motion | 150ms control feedback; reduced-motion mode disables transitions and animations, showing entrance surfaces immediately |
 
 Supported renderers apply a 1.25 corner scale with `superellipse(1.5)` to
 shared panel/control shapes. Other renderers use the unscaled radius. The

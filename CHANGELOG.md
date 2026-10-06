@@ -17,6 +17,9 @@ All notable changes to MetaClean are documented here. The project follows
 
 ### Fixed
 
+- Disable animations under reduced motion so entrance surfaces display their
+  final state immediately, without filled micro-duration animations retaining
+  a transparent or displaced tooltip after a theme change.
 - Dismiss visible and pending tooltips on Escape without consuming the key.
   Cancel when the pointer leaves the control or the window resizes, and hide
   detached controls' descriptions instead of leaving stale overlays behind.
@@ -31,6 +34,9 @@ All notable changes to MetaClean are documented here. The project follows
   host regressions. Four new regressions fail on the previous implementation.
 - Cover native light/dark tooltip typography, colors, geometry, LTR/RTL corners,
   description association, focus retention and real Escape dismissal.
+- Exercise the actual reduced-motion stylesheet across both themes and repeated
+  mounts of rise, pop, fade and context-menu surfaces, checking immediate opacity,
+  identity transforms and disabled animations.
 - Retain native context-menu event diagnostics without reopening menus, extending
   waits or relaxing geometry and focus assertions.
 
