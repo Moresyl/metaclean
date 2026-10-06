@@ -27,6 +27,7 @@ consume the same tokens. Their content remains specific to a local file utility.
 | Actions | 400-weight labels with 1em line height; 12/14/12px type for 28/32/36px heights, 18px icons and separate surface feedback; icon-only actions retain 24/28px squares |
 | Selects | 32px height, 12px gutters, 500-weight 12px labels with 24px line height; transparent surface, 1px inset border, an 8×12px direction indicator and a 2px inset focus ring |
 | Queue search | 32px height, 8px base ordinary corner, 12px gutters, 400-weight 12px text with 18px line height, 8px adornment gap and a soft theme surface |
+| Segmented choices | 32px track, 2px padding/gap, 8px base ordinary corner, 28px options, 12px gutters and 600-weight 12px labels; a neutral raised selected thumb |
 | Motion | 150ms control feedback; reduced-motion mode collapses animations and transitions to 0.001ms |
 
 Supported renderers apply a 1.25 corner scale with `superellipse(1.5)` to
@@ -58,6 +59,17 @@ input dims the complete control to 50% and suppresses focus/error borders.
 The native input retains its search behavior and has no separate focus outline;
 forced-color mode restores a system-colored container boundary and focus ring.
 
+Settings categories and theme choices share one segmented control. The selected
+label uses the main ink; inactive labels use 65% of the same ink in sRGB and
+receive emphasis on hover or keyboard focus. Disabled options retain 50% opacity.
+The selected
+thumb follows the actual option bounds and remeasures when the track or labels
+resize. Selection remains visible in an overflowing track, including RTL.
+Native buttons expose their pressed state; a single keyboard entry point,
+non-wrapping arrows, Home/End and disabled-option skipping preserve navigation.
+Focus movement alone does not change the preference. Thumb movement uses a
+300ms entering curve; reduced-motion and forced-color rules remain active.
+
 ## Implemented patterns
 
 - The empty cleaning workspace has one centered file-entry area. The queue
@@ -78,8 +90,10 @@ forced-color mode restores a system-colored container boundary and focus ring.
   zoom constraints. Stacked intake keeps its content height; queued files occupy
   a bounded 260–360px panel with wrapped toolbar groups and an independently
   scrolling list. Options follow the complete intake/queue region.
-- Confirmation and update overlays render at the document root. Animated page
-  containers cannot redefine their fixed-position bounds or clip their actions.
+- Confirmation, update and context-menu overlays render at the document root.
+  Animated page containers cannot redefine their fixed-position bounds or clip
+  their actions. Context menus measure unscaled layout bounds, keep an 8px
+  viewport margin and focus without scrolling the workspace.
 - `TitleBar` aligns its identity area with the sidebar, reserves its center for
   command search and keeps native caption actions fixed to the right edge.
 - `CleanOptions` owns the one commit action. The queue toolbar remains secondary

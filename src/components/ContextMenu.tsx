@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 
 /**
  * The flyout Windows draws for a right-click, rebuilt because turning the
@@ -54,22 +55,25 @@ export default function ContextMenu({
   const commands = entries.filter(isCommand);
   const activeCommand = commands[active];
 
-  // Measured after the first paint rather than guessed: the flyout is as wide
-  // as its longest label, which depends on the locale.
+  // Use layout dimensions before paint: animation transforms must not shrink
+  // the measured flyout, and localized labels determine its actual width.
   useLayoutEffect(() => {
     const element = surface.current;
     if (!element) return;
-    const { width, height } = element.getBoundingClientRect();
+    const layout = getComputedStyle(element);
+    const width = parseFloat(layout.width) || element.offsetWidth;
+    const height = parseFloat(layout.height) || element.offsetHeight;
     const rightToLeft = document.documentElement.dir === "rtl";
     let x = rightToLeft ? anchor.x - width : anchor.x;
     let y = anchor.y;
     if (x + width > window.innerWidth - MARGIN) x = anchor.x - width;
-    if (x < MARGIN) x = MARGIN;
+    x = Math.max(MARGIN, Math.min(x, window.innerWidth - width - MARGIN));
     // Flip above the pointer instead of clipping, which is what a real menu
     // near the bottom of the screen does.
-    if (y + height > window.innerHeight - MARGIN) y = Math.max(MARGIN, anchor.y - height);
+    if (y + height > window.innerHeight - MARGIN) y = anchor.y - height;
+    y = Math.max(MARGIN, Math.min(y, window.innerHeight - height - MARGIN));
     setPosition({ x, y });
-    element.focus();
+    element.focus({ preventScroll: true });
   }, [anchor.x, anchor.y]);
 
   useEffect(() => {
@@ -99,7 +103,7 @@ export default function ContextMenu({
     command.run();
   };
 
-  return (
+  return createPortal(
     <div
       className="menu-layer fixed inset-0 z-50"
       onPointerDown={onClose}
@@ -168,7 +172,7 @@ export default function ContextMenu({
           );
         })}
       </div>
-    </div>
+    </div>, document.body
   );
 }
 

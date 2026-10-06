@@ -4,6 +4,50 @@ Last audited: 2026-10-06
 
 This file records evidence, not intent. A row is complete only when the named artifact or runtime check exists.
 
+## Unreleased settings segments and context-menu placement — 2026-10-06
+
+Settings categories and theme choices now share an independent segmented
+control: 32px track, 28px options, 2px padding/gap, ordinary corners and a
+selected thumb that follows measured option bounds. Current default rules
+were checked separately from the action pill configuration. All twelve
+rendered light/dark comparisons pass for selected/unselected, disabled
+selected/unselected and focused selected/unselected states. The comparison
+uses same-origin source CSS only in an ignored research build under the
+unchanged production CSP; it does not execute source JavaScript or establish
+the original application's runtime behavior. The paired screenshots were
+inspected. Separate product WebView checks use actual CDP pointer and keyboard
+input in both themes: hover emphasizes ink and the feedback surface, pressing
+scales only the feedback, releasing changes the choice, an arrow moves focus
+without changing selection, and Enter selects the focused option. Recorded
+pointer, click and keyboard events all have isTrusted=true. This uses an ignored
+debug configuration with a separate data directory, not a production setting.
+
+The previous native binary fails the new segment-height assertion at 36px
+instead of 32px. Subsequent comparisons expose inactive ink and focused-ink
+differences; final colors use 65% main ink in sRGB and emphasize inactive
+keyboard focus. Native checks cover settled focus, track/thumb geometry,
+category changes, container resizing and narrow RTL selection.
+
+A real queue menu audit exposes a shifted, clipped overlay inside its animated
+workspace, with horizontal workspace scrolling. Root mounting and focus with
+preventScroll correct the containing block. Corner regressions additionally
+expose missing leading/trailing margins; final positioning uses unscaled,
+fractional layout dimensions and clamps both axes without weakening the 8px
+edge assertions. The final native audit measures an exact 1180x720 root
+overlay and a fully contained menu; the corrected screenshot was inspected.
+The tracked test checks both corners in LTR/RTL, menu focus, Escape dismissal
+and unchanged workspace scroll.
+
+The complete local frontend suite passes 441 tests with 93.79% line coverage
+and all configured coverage thresholds. The normal Windows E2E build passes
+27 desktop cases: eleven design regressions and sixteen native workflow cases.
+Private research builds, failed diagnostics and pending checks are separate
+from those ordinary product results. The ordinary native configuration is
+restored, its binary contains no private debug argument, and the final
+production build passes. All 44 release tests and documentation/format/CSP
+checks also pass. These changes are unreleased; exact-source CI for this batch
+remains pending.
+
 ## Unreleased queue-search alignment — 2026-10-06
 
 Current input component defaults and its child rules were read independently
@@ -27,12 +71,16 @@ width where the input rule specifies `outline: 0`; the implementation now uses
 the exact zero-width declaration. Paired focus-state comparison also reveals
 that disabled controls need an explicit focus guard. Both corrections retain
 the original assertions, and failed logs remain separate from passing evidence.
-The complete frontend suite passes 432 tests with 93.67% line coverage. The
+The complete local frontend suite passes 432 tests with 93.67% line coverage. The
 final Windows build passes all 25 desktop cases: nine design regressions and
 sixteen native workflow cases. This includes the corrected zero input outline,
 input theme/state geometry and About layout checks through the real locale
 control. Production build, all 44 release tests and documentation/format/CSP
-checks also pass. Cross-platform qualification remains pending.
+checks also pass. [CI 37403595467](https://github.com/Moresyl/metaclean/actions/runs/37403595467)
+qualifies source `87f6de2` with all four jobs successful: 432 frontend tests,
+93.58% frontend and 91.82% Rust line coverage, a clean npm audit, and all
+25 desktop cases on each of Windows, Linux and macOS. The actual logs include
+both English and Chinese About layout phases on all three platforms.
 The browser page review passes all 80 English/Chinese, light/dark, wide/narrow,
 empty/populated and five-page cases, including search/select bounds; narrow
 and wide queue screenshots were inspected. These changes are unreleased.
@@ -68,8 +116,9 @@ in both themes. The complete frontend suite passes 432 tests with 93.58% line
 coverage. The final default-layout browser review passes all 80 English/Chinese,
 light/dark, wide/narrow, empty/populated and five-page cases, including select
 bounds; representative narrow screenshots were inspected. Production build,
-44 release tests and documentation/format/CSP checks pass. Cross-platform CI
-for the complete change remains pending; these changes are unreleased.
+44 release tests and documentation/format/CSP checks pass. The subsequent
+`87f6de2` CI above also passes the select regression on all three platforms;
+these changes are unreleased.
 
 [CI 37401489467](https://github.com/Moresyl/metaclean/actions/runs/37401489467)
 passes the main checks and the complete Windows/Linux desktop suites. The native

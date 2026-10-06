@@ -17,6 +17,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import Button from "./Button";
 import Select from "./Select";
+import SegmentedControl from "./SegmentedControl";
 import { useI18n } from "../lib/i18n";
 import { IMAGE_MESSAGES } from "../lib/image-messages";
 import type { CleanMode, ContextMenuStatus } from "../types";
@@ -141,46 +142,16 @@ export default function SettingsPage({
        sat half a metre from the word 界面语言 with nothing in between, which is
        a table of contents, not a form. */
     <section className="grid h-full max-w-[760px] grid-rows-[auto_minmax(0,1fr)] gap-5">
-      {/* Segments in a recessed track, not a second rail down the side. Four
-          categories is a switch, and a switch belongs on one line above the
-          thing it switches — a 176px column held four short labels and 500px of
-          nothing, which is what made the page read as half-built. The selected
-          segment is raised out of the track on the card colour, so which one is
-          on can be read without reading the labels. */}
-      {/* `justify-self`, not `self`: inside a grid `self-start` aligns on the
-          block axis, which this row was already doing, and left the track
-          stretched the full 900px with four segments huddled at one end of
-          it — a switch drawn as if it were a table. */}
       <nav
-        className="settings-nav flex shrink-0 items-center gap-1 justify-self-start rounded-panel bg-surface p-1"
+        className="settings-nav min-w-0 max-w-full justify-self-start"
         aria-label={text("设置分类", "Settings categories")}
       >
-        {sections.map(([id, icon, label]) => {
-          const selected = section === id;
-          return (
-            <button
-              key={id}
-              type="button"
-              aria-pressed={selected}
-              onClick={() => setSection(id)}
-              className={[
-                "flex h-[28px] items-center gap-1.5 rounded-control px-2.5 text-base whitespace-nowrap",
-                "transition-colors duration-100",
-                selected
-                  ? "cursor-default bg-surface-2 font-medium text-text"
-                  : "text-muted hover:bg-surface/55 hover:text-text",
-              ].join(" ")}
-            >
-              {/* The glyph tracks the label it sits beside — `muted` at rest,
-                  mint when this is the open section — instead of dropping a
-                  step below it. A tab strip where four icons are dimmer than
-                  the four words attached to them reads as four disabled tabs
-                  with one live one, which is not what a segmented control is. */}
-              <span className={`shrink-0 ${selected ? "text-brand" : "text-inherit"}`} aria-hidden="true">{icon}</span>
-              {label}
-            </button>
-          );
-        })}
+        <SegmentedControl
+          label={text("设置分类", "Settings categories")}
+          options={sections.map(([value, icon, label]) => ({ value, icon, label }))}
+          value={section}
+          onChange={setSection}
+        />
       </nav>
 
       <div className="settings-list grid min-h-0 auto-rows-max overflow-y-auto pr-2 pb-1">
@@ -209,21 +180,17 @@ export default function SettingsPage({
               title={text("界面主题", "Theme")}
               detail={text("跟随系统，或固定使用浅色/深色主题。", "Follow the system or use a fixed light or dark theme.")}
             />
-            {/* Capped, because three choices do not get wider just because the
-                window did. Stretched across the card each tile was 300px of
-                empty ground around one 17px glyph, which reads as three panels
-                rather than as one control with three positions. */}
-            <div className="theme-choices grid max-w-[420px] grid-cols-3 gap-3">
-              <Tile selected={theme.mode === "system"} onClick={() => theme.setMode("system")}>
-                <Monitor size={17} strokeWidth={1.8} />{text("跟随系统", "System")}
-              </Tile>
-              <Tile selected={theme.mode === "light"} onClick={() => theme.setMode("light")}>
-                <Sun size={17} strokeWidth={1.8} />{text("浅色", "Light")}
-              </Tile>
-              <Tile selected={theme.mode === "dark"} onClick={() => theme.setMode("dark")}>
-                <Moon size={17} strokeWidth={1.8} />{text("深色", "Dark")}
-              </Tile>
-            </div>
+            <SegmentedControl
+              className="theme-choices justify-self-start"
+              label={text("界面主题", "Theme")}
+              value={theme.mode}
+              onChange={theme.setMode}
+              options={[
+                { value: "system", label: text("跟随系统", "System"), icon: <Monitor size={14} strokeWidth={1.8} /> },
+                { value: "light", label: text("浅色", "Light"), icon: <Sun size={14} strokeWidth={1.8} /> },
+                { value: "dark", label: text("深色", "Dark"), icon: <Moon size={14} strokeWidth={1.8} /> },
+              ]}
+            />
           </div>
         </> : null}
 
@@ -401,24 +368,6 @@ function Head({ title, detail }: { title: string; detail?: string }) {
       <h3 className="text-base font-semibold">{title}</h3>
       {detail ? <p className="text-sm leading-relaxed text-muted">{detail}</p> : null}
     </div>
-  );
-}
-
-function Tile({ selected, onClick, children }: { selected: boolean; onClick: () => void; children: ReactNode }) {
-  return (
-    <button
-      type="button"
-      aria-pressed={selected}
-      onClick={onClick}
-      className={[
-        "grid h-[84px] place-items-center content-center gap-2 rounded-panel border text-sm transition-colors duration-100",
-        selected
-          ? "border-focus bg-focus/8 font-medium text-text"
-          : "border-line bg-surface text-muted hover:border-line-strong hover:bg-surface-2 hover:text-text",
-      ].join(" ")}
-    >
-      {children}
-    </button>
   );
 }
 

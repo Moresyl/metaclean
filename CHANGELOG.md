@@ -13,6 +13,10 @@ All notable changes to MetaClean are documented here. The project follows
 
 ### Changed
 
+- Unify settings categories and theme choices as compact segmented controls,
+  with a moving selected thumb, resize tracking and visible overflow selection.
+  Retain native buttons and add one keyboard entry point, non-wrapping arrow
+  navigation, Home/End and right-to-left movement.
 - Align queue search with the current soft-input geometry, typography and
   theme surfaces. Keep focus on the container, suppress focus/error feedback
   while disabled and retain native search and Escape reset behavior.
@@ -30,12 +34,21 @@ All notable changes to MetaClean are documented here. The project follows
 
 ### Fixed
 
+- Mount context menus outside transformed and clipped workspaces. Keep focus
+  from scrolling the workspace, measure unscaled layout dimensions and retain
+  the 8px viewport margin at both leading and trailing corners, including RTL.
 - Stack the cleaning workspace by its available content width. Keep intake
   content inside its card, wrap queue actions and reserve visible file-list
   space in narrow layouts instead of clipping controls or overlapping options.
 
 ### Tests
 
+- Cover context-menu portal focus, fractional layout dimensions and viewport
+  edges; check native LTR/RTL corners without changing workspace scroll.
+- Cover controlled segment selection, disabled choices, keyboard boundaries,
+  RTL focus and resized/overflowing tracks, including reduced-motion scrolling.
+- Add a native settings regression for light/dark track geometry and selected
+  thumb alignment after category changes and narrow-container resizing.
 - Cover native queue-search focus, read-only, disabled and invalid states in
   both themes. Switch languages through the real settings control during About
   layout checks instead of reloading between languages.

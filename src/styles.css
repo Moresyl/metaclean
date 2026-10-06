@@ -72,6 +72,10 @@
   --color-field-hover: color-mix(in oklab, #dfdfdf 30%, transparent);
   --color-field-invalid: #ba2623;
   --color-input-soft: color-mix(in oklab, #ffffff 3%, transparent);
+  --color-segment-track: #0d0d0d;
+  --color-segment-thumb: #303030;
+  --color-segment-hover: #303030;
+  --color-segment-ink: color-mix(in srgb, var(--color-text) 65%, transparent);
 
   /* Brand ink stays neutral; semantic success, warning and danger colours are
      independent so an ordinary selected control never looks like a status. */
@@ -279,6 +283,9 @@
     --color-field-hover: color-mix(in oklab, #1a1c1f 25%, transparent);
     --color-field-invalid: #e02e2a;
     --color-input-soft: color-mix(in oklab, #1a1c1f 2%, transparent);
+    --color-segment-track: #ededed;
+    --color-segment-thumb: #ffffff;
+    --color-segment-hover: #cdcdcd;
 
     --color-brand: #0d0d0d;
     --color-ok: #1e8a3e;
@@ -331,6 +338,9 @@
   --color-field-hover: color-mix(in oklab, #1a1c1f 25%, transparent);
   --color-field-invalid: #e02e2a;
   --color-input-soft: color-mix(in oklab, #1a1c1f 2%, transparent);
+  --color-segment-track: #ededed;
+  --color-segment-thumb: #ffffff;
+  --color-segment-hover: #cdcdcd;
 
   --color-brand: #0d0d0d;
   --color-ok: #1e8a3e;
@@ -454,6 +464,81 @@
 }
 
 @layer components {
+  .segmented-control {
+    --segment-radius: calc(0.5rem * var(--corner-radius-scale));
+    display: inline-flex;
+    position: relative;
+    flex-wrap: nowrap;
+    gap: 2px;
+    height: var(--control-size-md);
+    max-inline-size: 100%;
+    padding: 2px;
+    border-radius: var(--segment-radius);
+    corner-shape: round;
+    background-color: var(--color-segment-track);
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+    vertical-align: middle;
+    overflow: auto;
+    scrollbar-width: none;
+  }
+
+  .segmented-control::-webkit-scrollbar { width: 0; height: 0; }
+
+  .segment-option {
+    position: relative;
+    flex-shrink: 0;
+    padding: 0 12px;
+    border-radius: calc(var(--segment-radius) - 2px);
+    corner-shape: round;
+    color: var(--color-segment-ink);
+    line-height: 1;
+    transition: opacity var(--transition-duration-basic) ease, color var(--transition-duration-basic) ease;
+  }
+
+  .segment-option:focus { outline: 0; }
+  .segment-option:focus-visible:not(:disabled) { outline: 2px solid var(--color-check-ring); outline-offset: 0; }
+  .segment-option[aria-pressed='true'] { color: var(--color-text); }
+
+  .segment-option::before {
+    content: '';
+    position: absolute;
+    inset: 1px;
+    pointer-events: none;
+    border-radius: inherit;
+    background-color: var(--color-segment-hover);
+    opacity: 0;
+    transform: scale(1);
+    transition: opacity var(--transition-duration-basic) ease, transform var(--transition-duration-basic) ease;
+  }
+
+  .segment-option:active::before { transform: scale(1, 0.97); }
+
+  @media (hover: hover) and (pointer: fine) {
+    .segment-option[aria-pressed='false']:not(:disabled):hover { color: var(--color-text); }
+    .segment-option[aria-pressed='false']:not(:disabled):hover::before { opacity: 0.5; }
+    .segment-option[aria-pressed='false']:not(:disabled):focus-visible { color: var(--color-text); }
+  }
+
+  .segment-option:disabled { cursor: not-allowed; opacity: 0.5; }
+  .segment-option:disabled::before { opacity: 0; }
+  .segment-content { display: flex; position: relative; align-items: center; gap: 6px; }
+  .segment-content svg { display: block; flex-shrink: 0; }
+
+  .segment-thumb {
+    position: absolute;
+    inset-block: 2px;
+    left: 0;
+    pointer-events: none;
+    border-radius: calc(var(--segment-radius) - 2px);
+    background-color: var(--color-segment-thumb);
+    box-shadow: 0 1px 4px -1px #0003;
+    will-change: transform;
+  }
+
+  .segment-thumb[data-ready] { transition: width 300ms cubic-bezier(0.19, 1, 0.22, 1), transform 300ms cubic-bezier(0.19, 1, 0.22, 1); }
+
   /* Tauri starts a window drag from any element carrying
      `data-tauri-drag-region`, and it matches on the event target — so the
      cursor has to say "grab the window" only on the parts that really do. */
@@ -1144,4 +1229,7 @@
   .action:disabled { color: GrayText; }
   .queue-search { border: 1px solid ButtonText; }
   .queue-search:focus-within:not(:has(input:disabled)) { outline: 2px solid Highlight; outline-offset: -1px; }
+  .segment-thumb { background: ButtonFace; box-shadow: none; }
+  .segment-option[aria-pressed='true'] { outline: 2px solid Highlight; outline-offset: -2px; }
+  .segment-option:focus-visible:not(:disabled) { outline: 2px solid Highlight; }
 }

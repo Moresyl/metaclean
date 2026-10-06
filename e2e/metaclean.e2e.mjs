@@ -32,13 +32,13 @@ async function openSettingsPage() {
 
 async function openCleaningPreferences() {
   await clickVisible(".sidebar nav button:nth-of-type(4)");
-  await clickVisible(".settings-nav button:nth-child(2)");
+  await clickVisible(".settings-nav button:nth-of-type(2)");
   await $(".fidelity-options").waitForDisplayed();
 }
 
 async function openSystemPreferences() {
   await clickVisible(".sidebar nav button:nth-of-type(4)");
-  await clickVisible(".settings-nav button:nth-child(3)");
+  await clickVisible(".settings-nav button:nth-of-type(3)");
   await $(".settings-list").waitForDisplayed();
 }
 
@@ -300,7 +300,7 @@ describe("MetaClean desktop application", () => {
 
   it("persists an explicit theme across a real desktop reload", async () => {
     await openSettingsPage();
-    const darkTheme = await $(".theme-choices button:nth-child(3)");
+    const darkTheme = await $(".theme-choices button:nth-of-type(3)");
     await darkTheme.click();
 
     const html = await $("html");

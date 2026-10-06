@@ -113,19 +113,60 @@ describe("context menu", () => {
 
   it("closes on Escape and on a press outside", () => {
     const onClose = vi.fn();
-    const { container } = wrap(<ContextMenu entries={build(vi.fn())} anchor={{ x: 10, y: 10 }} label="测试菜单" onClose={onClose} />);
+    wrap(<ContextMenu entries={build(vi.fn())} anchor={{ x: 10, y: 10 }} label="测试菜单" onClose={onClose} />);
     fireEvent.keyDown(screen.getByRole("menu"), { key: "Escape" });
     expect(onClose).toHaveBeenCalledTimes(1);
-    fireEvent.pointerDown(container.querySelector(".menu-layer")!);
+    fireEvent.pointerDown(screen.getByRole("menu").parentElement!);
     expect(onClose).toHaveBeenCalledTimes(2);
   });
 
+  it("escapes transformed and clipped hosts without scrolling them when focused", () => {
+    const focus = vi.spyOn(HTMLElement.prototype, "focus");
+    const { container } = wrap(
+      <div style={{ transform: "translateY(0)", overflow: "hidden" }}>
+        <ContextMenu entries={build(vi.fn())} anchor={{ x: 10, y: 10 }} label="测试菜单" onClose={vi.fn()} />
+      </div>,
+    );
+    const menu = screen.getByRole("menu");
+    expect(menu.parentElement?.parentElement).toBe(document.body);
+    expect(container).not.toContainElement(menu);
+    expect(menu).toHaveFocus();
+    expect(focus).toHaveBeenCalledWith({ preventScroll: true });
+  });
+
   it("flips a flyout that would fall off the window instead of clipping it", () => {
-    stubRect(Element.prototype, { width: 200, height: 120 });
+    vi.spyOn(HTMLElement.prototype, "offsetWidth", "get").mockReturnValue(200);
+    vi.spyOn(HTMLElement.prototype, "offsetHeight", "get").mockReturnValue(120);
     wrap(<ContextMenu entries={build(vi.fn())} anchor={{ x: 1000, y: 700 }} label="测试菜单" onClose={vi.fn()} />);
     const menu = screen.getByRole("menu");
     expect(menu.style.left).toBe("800px");
     expect(menu.style.top).toBe("580px");
+  });
+
+  it("keeps the top and leading edges inside the window margin", () => {
+    vi.spyOn(HTMLElement.prototype, "offsetWidth", "get").mockReturnValue(200);
+    vi.spyOn(HTMLElement.prototype, "offsetHeight", "get").mockReturnValue(120);
+    wrap(<ContextMenu entries={build(vi.fn())} anchor={{ x: 2, y: 2 }} label="测试菜单" onClose={vi.fn()} />);
+    const menu = screen.getByRole("menu");
+    expect(menu.style.left).toBe("8px");
+    expect(menu.style.top).toBe("8px");
+  });
+
+  it("uses fractional layout bounds rather than the entering animation's scaled bounds", () => {
+    const originalStyle = window.getComputedStyle.bind(window);
+    vi.spyOn(window, "getComputedStyle").mockImplementation((element, pseudo) => {
+      const style = originalStyle(element, pseudo);
+      if (element.getAttribute("role") === "menu") {
+        style.width = "200.5px";
+        style.height = "120.5px";
+      }
+      return style;
+    });
+    stubRect(Element.prototype, { width: 180.45, height: 108.45 });
+    wrap(<ContextMenu entries={build(vi.fn())} anchor={{ x: innerWidth - 2, y: innerHeight - 2 }} label="测试菜单" onClose={vi.fn()} />);
+    const menu = screen.getByRole("menu");
+    expect(menu.style.left).toBe(`${innerWidth - 208.5}px`);
+    expect(menu.style.top).toBe(`${innerHeight - 128.5}px`);
   });
 
   it("anchors on the focused control when the keyboard opens it", async () => {

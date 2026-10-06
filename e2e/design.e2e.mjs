@@ -36,6 +36,160 @@ async function selectInterfaceLocale(locale) {
 }
 
 describe("Desktop visual controls", () => {
+  it("keeps context menus inside the viewport without scrolling their animated workspace", async () => {
+    await $(".app-shell").waitForDisplayed();
+    const previousDirection = await browser.tauri.execute(() => document.documentElement.dir);
+    try {
+      await $(".sidebar nav button:nth-of-type(1)").click();
+      await browser.tauri.execute(() => {
+        const input = document.querySelector("input[type=file]");
+        const transfer = new DataTransfer();
+        transfer.items.add(new File(["Synthetic menu geometry"], "menu-geometry.txt", { type: "text/plain" }));
+        input.files = transfer.files;
+        input.dispatchEvent(new Event("change", { bubbles: true }));
+      });
+      await $(".file-queue .file-item").waitForDisplayed();
+      await browser.waitUntil(async () => browser.tauri.execute(() => !document.querySelector(".workspace-content")
+        .getAnimations({ subtree: true }).some(animation => animation.pending || animation.playState === "running")));
+      for (const direction of ["ltr", "rtl"]) {
+        for (const corner of ["top-left", "bottom-right"]) {
+          const before = await browser.tauri.execute((_, direction, corner) => {
+            document.documentElement.dir = direction;
+            const main = document.querySelector("main");
+            const scroll = { left: main.scrollLeft, top: main.scrollTop };
+            document.querySelector(".file-queue .file-item").dispatchEvent(new MouseEvent("contextmenu",
+              { bubbles: true, cancelable: true, clientX: corner === "top-left" ? 2 : innerWidth - 2,
+                clientY: corner === "top-left" ? 2 : innerHeight - 2, button: 2 }));
+            return scroll;
+          }, direction, corner);
+          await $("[role=menu]").waitForDisplayed();
+          await browser.waitUntil(async () => browser.tauri.execute(() => !document.querySelector("[role=menu]")
+            .getAnimations({ subtree: true }).some(animation => animation.pending || animation.playState === "running")));
+          const state = await browser.tauri.execute(() => {
+            const layer = document.querySelector(".menu-layer");
+            const overlay = layer.getBoundingClientRect();
+            const menu = layer.querySelector("[role=menu]");
+            const panel = menu.getBoundingClientRect();
+            const main = document.querySelector("main");
+            return { layer: { left: overlay.left, top: overlay.top, width: overlay.width, height: overlay.height },
+              viewport: { width: innerWidth, height: innerHeight }, rootMounted: layer.parentElement === document.body,
+              panel: { left: panel.left, top: panel.top, right: panel.right, bottom: panel.bottom },
+              contained: panel.left >= 8 && panel.top >= 8 && panel.right <= innerWidth - 8 && panel.bottom <= innerHeight - 8,
+              focused: document.activeElement === menu, scroll: { left: main.scrollLeft, top: main.scrollTop } };
+          });
+          assert.deepEqual(state.layer, { left: 0, top: 0, width: state.viewport.width, height: state.viewport.height });
+          assert.equal(state.rootMounted, true);
+          assert.equal(state.contained, true, `${direction}/${corner} menu leaves the viewport: ${JSON.stringify(state.panel)}`);
+          assert.equal(state.focused, true);
+          assert.deepEqual(state.scroll, before, `${direction}/${corner} menu scrolls its workspace`);
+          await browser.keys("Escape");
+          await $("[role=menu]").waitForDisplayed({ reverse: true });
+        }
+      }
+    } finally {
+      await browser.tauri.execute((_, direction) => { document.documentElement.dir = direction; }, previousDirection);
+      await browser.refresh();
+      await $(".app-shell").waitForDisplayed();
+    }
+  });
+
+  it("aligns settings segments and keeps the selected thumb visible after selection and resizing", async () => {
+    await $(".app-shell").waitForDisplayed();
+    const previousTheme = await browser.tauri.execute(() => document.documentElement.dataset.theme);
+    const previousDirection = await browser.tauri.execute(() => document.documentElement.dir);
+    try {
+      await browser.tauri.execute(() => window.dispatchEvent(new KeyboardEvent("keydown", { key: "4", ctrlKey: true })));
+      await $(".settings-nav").waitForDisplayed();
+      assert.equal(await browser.tauri.execute(() => getComputedStyle(document.querySelector(".settings-nav .segmented-control")
+        ?? document.querySelector(".settings-nav")).height), "32px");
+      for (const theme of ["light", "dark"]) {
+        await browser.tauri.execute((_, theme) => { document.documentElement.dataset.theme = theme; }, theme);
+        for (const index of [1, 4, 2, 1]) {
+          await $(`.settings-nav button:nth-of-type(${index})`).click();
+          await browser.waitUntil(async () => browser.tauri.execute(() => {
+            const track = document.querySelector(".settings-nav .segmented-control");
+            const selected = track.querySelector("button[aria-pressed='true']").getBoundingClientRect();
+            const thumb = track.querySelector(".segment-thumb").getBoundingClientRect();
+            return Math.abs(thumb.left - selected.left) < 0.6 && Math.abs(thumb.width - selected.width) < 0.6;
+          }), { timeoutMsg: `${theme}/${index} segment thumb did not align` });
+        }
+        const state = await browser.tauri.execute(() => {
+          const track = document.querySelector(".settings-nav .segmented-control");
+          const option = track.querySelector("button");
+          const thumb = track.querySelector(".segment-thumb");
+          const rootStyle = getComputedStyle(track);
+          const itemStyle = getComputedStyle(option);
+          return { height: rootStyle.height, gap: rootStyle.columnGap, padding: rootStyle.paddingTop,
+            radius: rootStyle.borderRadius, corner: rootStyle.cornerShape,
+            font: rootStyle.fontSize, weight: rootStyle.fontWeight, surface: rootStyle.backgroundColor,
+            itemHeight: itemStyle.height, itemRadius: itemStyle.borderRadius, gutter: itemStyle.paddingInlineStart,
+            line: itemStyle.lineHeight, thumbColor: getComputedStyle(thumb).backgroundColor,
+            shadow: getComputedStyle(thumb).boxShadow, scaled: CSS.supports("corner-shape", "superellipse(1.5)") };
+        });
+        assert.equal(state.height, "32px");
+        assert.equal(state.gap, "2px");
+        assert.equal(state.padding, "2px");
+        assert.equal(state.radius, state.scaled ? "10px" : "8px");
+        assert.equal(state.font, "12px");
+        assert.equal(state.weight, "600");
+        assert.equal(state.itemHeight, "28px");
+        assert.equal(state.itemRadius, state.scaled ? "8px" : "6px");
+        assert.equal(state.gutter, "12px");
+        assert.equal(state.line, "12px");
+        assert.equal(state.surface, theme === "light" ? "rgb(237, 237, 237)" : "rgb(13, 13, 13)");
+        assert.equal(state.thumbColor, theme === "light" ? "rgb(255, 255, 255)" : "rgb(48, 48, 48)");
+        assert.equal(state.shadow, "rgba(0, 0, 0, 0.2) 0px 1px 4px -1px");
+        const inactive = await browser.tauri.execute((_, theme) => {
+          const probe = document.createElement("span");
+          probe.style.color = `color-mix(in srgb, ${theme === "light" ? "#1a1c1f" : "#dfdfdf"} 65%, transparent)`;
+          document.body.append(probe);
+          const actual = getComputedStyle(document.querySelectorAll(".settings-nav button")[1]).color;
+          const expected = getComputedStyle(probe).color;
+          probe.remove();
+          return { actual, expected };
+        }, theme);
+        assert.equal(inactive.actual, inactive.expected);
+        await browser.tauri.execute(() => document.querySelectorAll(".settings-nav button")[1].focus());
+        await browser.waitUntil(async () => browser.tauri.execute(() => {
+          const button = document.querySelectorAll(".settings-nav button")[1];
+          return button.matches(":focus-visible") && getComputedStyle(button).color === getComputedStyle(document.querySelector(".settings-nav button")).color;
+        }), { timeoutMsg: `${theme} focused segment ink did not settle` });
+        assert.equal(await browser.tauri.execute(() => getComputedStyle(document.querySelectorAll(".settings-nav button")[1]).outlineWidth), "2px");
+        await browser.tauri.execute(() => { document.querySelector("main > .animate-rise").style.inlineSize = "220px"; });
+        await $(".settings-nav button:nth-of-type(4)").click();
+        await browser.waitUntil(async () => browser.tauri.execute(() => {
+          const track = document.querySelector(".settings-nav .segmented-control");
+          const bounds = track.getBoundingClientRect();
+          const selected = track.querySelector("button[aria-pressed='true']").getBoundingClientRect();
+          const thumb = track.querySelector(".segment-thumb").getBoundingClientRect();
+          return selected.left >= bounds.left && selected.right <= bounds.right + 0.6
+            && Math.abs(thumb.left - selected.left) < 0.6 && Math.abs(thumb.width - selected.width) < 0.6;
+        }), { timeoutMsg: `${theme} narrow selection was clipped` });
+        await browser.tauri.execute(() => { document.documentElement.dir = "rtl"; });
+        await $(".settings-nav button:nth-of-type(2)").click();
+        await browser.waitUntil(async () => browser.tauri.execute(() => {
+          const track = document.querySelector(".settings-nav .segmented-control");
+          const bounds = track.getBoundingClientRect();
+          const selected = track.querySelector("button[aria-pressed='true']").getBoundingClientRect();
+          const thumb = track.querySelector(".segment-thumb").getBoundingClientRect();
+          return selected.left >= bounds.left && selected.right <= bounds.right + 0.6
+            && Math.abs(thumb.left - selected.left) < 0.6 && Math.abs(thumb.width - selected.width) < 0.6;
+        }), { timeoutMsg: `${theme} RTL segment thumb did not align` });
+        await browser.tauri.execute((_, previousDirection) => { document.documentElement.dir = previousDirection; }, previousDirection);
+        await browser.tauri.execute(() => { document.querySelector("main > .animate-rise").style.inlineSize = ""; });
+        await $(".settings-nav button:nth-of-type(1)").click();
+        assert.equal(await browser.tauri.execute(() => getComputedStyle(document.querySelector(".theme-choices")).height), "32px");
+      }
+    } finally {
+      await browser.tauri.execute((_, previousTheme, previousDirection) => {
+        document.documentElement.dataset.theme = previousTheme;
+        document.documentElement.dir = previousDirection;
+        document.querySelector("main > .animate-rise").style.inlineSize = "";
+        document.querySelector(".settings-nav button")?.click();
+      }, previousTheme, previousDirection);
+    }
+  });
+
   it("preserves queue search geometry and input states in both themes", async () => {
     await $(".app-shell").waitForDisplayed();
     const previousTheme = await browser.tauri.execute(() => document.documentElement.dataset.theme);
