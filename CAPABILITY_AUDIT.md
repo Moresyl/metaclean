@@ -1,7 +1,7 @@
 # MetaClean capability audit
 
-Audited on 2026-10-06 for the published v0.12.2 release at
-`f90e642c834f768dffa0e4acd48660c043d5da52`.
+Audited on 2026-10-06 for the published v0.12.3 release at
+`9e834cb86b11e4177bf8316a068e1c95f8e443f1`.
 
 This ledger describes implemented behavior, its evidence and its limits.
 Extension counts and passing tests do not establish universal format support,
@@ -26,16 +26,32 @@ application. Detailed run evidence is recorded in `VALIDATION.md`.
 
 ## Release evidence
 
-- [Candidate CI](https://github.com/Moresyl/metaclean/actions/runs/37450509493)
-  passed the main quality gates and 29 desktop cases on all three operating
+- [Qualified CI](https://github.com/Moresyl/metaclean/actions/runs/37477283119)
+  passed the main quality gates and 31 desktop cases on all three operating
   systems; a targeted second macOS round also passed at the same source.
-- [Release pipeline](https://github.com/Moresyl/metaclean/actions/runs/37454123215)
+- [Release pipeline](https://github.com/Moresyl/metaclean/actions/runs/37481870179)
   passed source validation, five platform builds, package checks and finalization.
-- [Independent public-asset verification](https://github.com/Moresyl/metaclean/actions/runs/37456598874)
+- [Independent public-asset verification](https://github.com/Moresyl/metaclean/actions/runs/37484479678)
   checked downloaded bytes and signatures against the tagged public key.
-- [Published v0.12.2](https://github.com/Moresyl/metaclean/releases/tag/v0.12.2)
+- [Published v0.12.3](https://github.com/Moresyl/metaclean/releases/tag/v0.12.3)
   contains 20 assets, including the checksum manifest. The public Pages update
   feed was checked against the release's five platform URLs and signatures.
+
+v0.12.3 updates ordinary tooltip geometry, typography, theme surfaces,
+description association, cancellation and root-mounted positioning. Reduced
+motion disables entrance animations so surfaces immediately reach their final
+state. Native regression checks cover both themes, repeated mounts and four
+entrance classes; actual normal-motion and reduced-motion browser keyboard
+checks also pass. Current native documentation captures display v0.12.3.
+All six public qualification workflows passed `0.12.2 → 0.12.3 → 0.12.2`
+where applicable, including both Windows signed application updates and MSI
+repair. The independently hashed public crash inventory preserves 64 sources
+and one complete output, with zero other fixture files and no automatic resume.
+The public portable executable matches that crash application's version and
+hash. Both DMG jobs used arm64 runners, including the x86_64 package. Actual
+GitHub and Pages feed bytes match. Earlier tooltip failures, the successful
+same-source macOS repeat and unresolved driver-warning causes remain recorded
+in `VALIDATION.md`; passing runs are not a universal runtime guarantee.
 
 v0.12.2 adds Office property identity/URI handling, PNG privacy classification,
 updated desktop controls, native pickers and menu/command-panel containment.
@@ -43,11 +59,13 @@ All six public qualification workflows passed `0.12.1 → 0.12.2 → 0.12.1`
 where applicable, including both Windows signed application updates and MSI
 repair. The public crash sample preserves 64 sources and two complete outputs,
 with zero other fixture files and no automatic resume. Actual public feed bytes
-match GitHub and Pages. Native documentation captures display v0.12.2.
+match GitHub and Pages. Native documentation captures for that release displayed
+v0.12.2 before the current refresh.
 Both DMG package checks used arm64 runners, including the x86_64 package.
-The later documentation-only CI exposes an unresolved macOS context-menu
-display failure; it must not be described as a passing latest-master CI.
-Diagnostic qualification and exact public run evidence are in `VALIDATION.md`.
+Its later documentation-only CI exposed a macOS context-menu display failure.
+Diagnostic qualification and a targeted repeat subsequently passed, but the
+original cause remains unconfirmed. Exact public run evidence and the subsequent
+v0.12.3 qualification are recorded separately in `VALIDATION.md`.
 
 v0.12.1 prevents About content and actions from overflowing narrow containers.
 Its final CI passed nineteen desktop cases on each of three operating systems,

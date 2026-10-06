@@ -4,9 +4,74 @@ Last audited: 2026-10-06
 
 This file records evidence, not intent. A row is complete only when the named artifact or runtime check exists.
 
-## v0.12.3 tooltip candidate — 2026-10-06
+## v0.12.3 public packages — 2026-10-06
 
-v0.12.3 is an unpublished candidate. Its tooltip changes pass 455 frontend tests
+[Published v0.12.3](https://github.com/Moresyl/metaclean/releases/tag/v0.12.3)
+was published at 2026-10-06T15:03:25Z from immutable source
+`9e834cb86b11e4177bf8316a068e1c95f8e443f1`, with 20 nonempty assets.
+The real browser submitted the publication form once after the corrected
+three-platform qualification and targeted macOS repeat passed.
+[Release 37481870179](https://github.com/Moresyl/metaclean/actions/runs/37481870179)
+passed all seven jobs: source validation, five platform builds and finalization.
+The completed Linux source log records 455 frontend tests at 93.99% line coverage,
+256 Rust tests with 12 explicitly ignored cases at 91.74% line coverage, and
+15 design plus 16 workflow cases. These Linux totals are separate from the
+Windows totals below. All eight actual source-gate native probe phases were
+inspected. Ten independent audio cases retain identical FFmpeg PCM.
+Downloaded release-source artifacts pass actual source/backup/output hash and
+fidelity inspection for 42 Office, 16 JPEG, eight PNG, six HEIF/AVIF and six PDF
+cases. The Office verifier also passes all seven corrupt-evidence regressions;
+32 library round trips are direct and ten use explicitly recorded relationship
+views. No native cleaner source changed from the preceding published release.
+
+All six public qualification workflows passed at that exact tagged source;
+their completed logs and downloaded artifacts were inspected:
+
+- [Assets 37484479678](https://github.com/Moresyl/metaclean/actions/runs/37484479678)
+  verifies all 19 checksum-listed downloads, five updater signatures and five
+  modified-package rejection cases against the tagged public key.
+- [NSIS 37484488544](https://github.com/Moresyl/metaclean/actions/runs/37484488544)
+  covers x64 and x86 with storage and application-update checks both enabled:
+  `0.12.2 → 0.12.3 → 0.12.2`, actual Install update button activation, signed
+  installation/restart, synthetic preferences/history/fingerprints, damaged
+  installer rejection, registration/executable preservation and uninstall.
+  Both four-record artifacts and both actual button/update log sequences pass.
+- [MSI 37484496923](https://github.com/Moresyl/metaclean/actions/runs/37484496923)
+  verifies the same transitions and removal. Repair restores the deliberately
+  damaged executable to its exact hash, registration and successful launch.
+  The current product code is `{250CDBFB-681A-45F0-A724-E9B79A89FC11}`.
+- [DEB 37484503531](https://github.com/Moresyl/metaclean/actions/runs/37484503531)
+  verifies the three installed versions, application launch, manual downgrade
+  and removal.
+- [DMG 37485579723](https://github.com/Moresyl/metaclean/actions/runs/37485579723)
+  verifies both package architectures, bundle identity, the three version
+  transitions, six-second launches and removal. Both jobs used arm64 runners;
+  the x86_64 package result does not qualify physical Intel hardware.
+- [Crash 37485587862](https://github.com/Moresyl/metaclean/actions/runs/37485587862)
+  interrupts the actual public portable application mid-batch and checks two
+  restarts. Independent inventory hashing confirms 64 intact sources, one
+  complete committed output and zero other fixture files, no automatic resume
+  and a notice cleared on the second restart. The checksum-verified public ZIP
+  has exactly the expected four entries and portable marker. Its actual
+  executable reports 0.12.3 and matches the crash application's recorded SHA-256
+  `3697CC319CDA57A94E6A629E191A27E3CF05C1FFC35142C888AF145A9636A555`.
+  This sample does not prove every interruption is free of orphan files.
+
+The original qualification helper stopped on a GitHub workflow-metadata GET
+connection timeout before dispatching macOS. Remote history confirmed no macOS
+or crash run had been created; only those two missing runs were dispatched.
+The first four successful runs were not repeated.
+
+The automatic post-release [Pages 37484163277](https://github.com/Moresyl/metaclean/actions/runs/37484163277)
+passed. Actual GitHub-release and Pages `latest.json` bytes are identical, with
+SHA-256 `e53e259099555e2706f1d8aa897f6cc9ae4ae84d9a911e7fb591def7ebbba039`.
+All five platform URLs and public signature sidecars match; the 19-entry checksum
+inventory covers every asset except the checksum manifest itself. The published
+bilingual release body equals the updater notes and committed release notes.
+
+## v0.12.3 tooltip qualification and failure history — 2026-10-06
+
+The published v0.12.3 tooltip changes pass 455 frontend tests
 across 23 files at 93.99% line coverage, the production build, and 15 design plus
 16 workflow cases on the local Windows native application. The four initial
 interaction/description/placement regressions fail on the previous implementation;
@@ -14,7 +79,8 @@ the prior native binary also fails the new tooltip root-mount assertion.
 The corrected versioned v0.12.3 Windows native binary passes all 31 cases and both
 English/Chinese capture cases. Its 15 PNGs and two five-frame workflow GIFs have
 verified dimensions and frame durations; the current native captures were
-visually reviewed. Remote candidate and publication checks remain pending.
+visually reviewed. Exact-source cross-platform and publication results follow
+below; the earlier failures are retained as separate evidence.
 
 The first remote [CI 37466214822](https://github.com/Moresyl/metaclean/actions/runs/37466214822)
 at `23ac944` passes the main gate and all 30 Windows/Linux desktop cases.
@@ -23,7 +89,8 @@ case fails because `[role=tooltip]` is not displayed within the unchanged
 15-second wait. The driver also records script-evaluation timeouts; their cause
 and relationship to the missing tip are not established. Bounded event and
 insertion/removal diagnostics now record each theme/direction/corner without
-reopening tips, extending waits or relaxing assertions. Publication remains pending.
+reopening tips, extending waits or relaxing assertions. That source did not
+qualify for publication.
 
 The diagnostic [CI 37469681184](https://github.com/Moresyl/metaclean/actions/runs/37469681184)
 at `f1560b6` again passes the main gate and all 30 Windows/Linux desktop cases;
@@ -41,8 +108,8 @@ identity transforms and disabled animation across two themes, three mounts and
 four entrance classes. The previous Windows binary fails its pending-animation
 check; an earlier literal `none` transform comparison was corrected because an
 identity matrix has no displacement. The updated Windows native build passes
-this regression and the complete 31-case desktop suite; cross-platform
-qualification is pending. Normal-motion animations retain their existing rules.
+this regression and the complete 31-case desktop suite. Normal-motion animations
+retain their existing rules.
 Trusted browser Tab and Escape also pass after this correction: normal motion
 executes a finished 140ms fade, while reduced motion shows opacity 1 with no
 animations. Both retain visible keyboard focus, description association and
@@ -67,6 +134,27 @@ normal and reduced motion. Forced-color presentation uses Canvas/CanvasText
 with a visible system-color outline. Temporary fixtures and media overrides
 were removed or restored after these checks.
 These checks do not establish every possible tooltip state or every platform.
+
+The corrected [CI 37477283119](https://github.com/Moresyl/metaclean/actions/runs/37477283119)
+at `9e834cb86b11e4177bf8316a068e1c95f8e443f1` passes its main gate and all
+31 desktop cases on each of Windows, macOS and Linux: 15 design and 16 workflow
+cases. Its Windows main log records 455 frontend tests, 262 Rust tests with
+11 explicitly ignored cases, 92.16% Rust line coverage and 44 release-automation
+tests. Dependency audits pass under the existing policy, with seven previously
+documented Rust maintenance warnings retained. All 24 actual native probe phases
+were inspected: each platform's eight theme/direction/corner combinations retain
+focused controls, visible linked tips and inserted/focused menus without an
+early recorded dismissal.
+
+A targeted second macOS round at that same source passes all 31 cases in
+[job 112327925788](https://github.com/Moresyl/metaclean/actions/runs/37477283119/job/112327925788),
+with all eight actual probe phases checked again. This is one targeted repeat;
+the other completed jobs are not counted as additional executions. Driver
+script-evaluation warnings also occur in successful runs, so their cause is not
+claimed resolved. The earlier context-menu failure's cause remains unconfirmed.
+[Pages 37477283039](https://github.com/Moresyl/metaclean/actions/runs/37477283039)
+passed, and the real browser confirmed that the deployed candidate ledger
+contained this exact source and its corrected runtime evidence before publication.
 
 ## v0.12.2 public packages and post-release regression — 2026-10-06
 
