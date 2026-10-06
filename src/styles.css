@@ -927,14 +927,27 @@
   }
 }
 
-/* Compact viewports also occur when a fixed desktop window is zoomed. */
-@media (max-width: 960px) {
+.workspace-content {
+  container-type: inline-size;
+  container-name: workspace;
+}
+
+/* Available content width also changes with sidebar state and desktop zoom. */
+@container workspace (max-width: 640px) {
   .clean-workspace {
     grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: minmax(180px, 1fr) auto;
+    grid-template-rows: minmax(max-content, 1fr) auto;
     gap: 16px;
     overflow-y: auto;
   }
+
+  .file-queue {
+    min-block-size: 260px;
+    max-block-size: 360px;
+  }
+
+  .queue-actions { gap: 6px; }
+  .queue-actions > [aria-hidden='true'] { display: none; }
 
   .clean-workspace .clean-options {
     border-inline-start: 0;
@@ -947,7 +960,9 @@
   .clean-options > div:first-child {
     max-block-size: 200px;
   }
+}
 
+@media (max-width: 960px) {
   .settings-nav {
     max-inline-size: 100%;
     overflow-x: auto;

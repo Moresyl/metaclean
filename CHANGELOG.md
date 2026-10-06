@@ -15,12 +15,20 @@ All notable changes to MetaClean are documented here. The project follows
   the 4px base corner to 5px in supported renderers and use proportional tick
   and mixed-state strokes while retaining native input semantics.
 
+### Fixed
+
+- Stack the cleaning workspace by its available content width. Keep intake
+  content inside its card, wrap queue actions and reserve visible file-list
+  space in narrow layouts instead of clipping controls or overlapping options.
+
 ### Tests
 
 - Cover native action geometry, disabled colors and focus in both themes, and
   retain form submission, forwarded refs and accessible icon-action behavior.
 - Add a native light/dark regression for unchecked, checked, mixed, disabled,
   and focus-visible states without changing saved cleanup preferences.
+- Exercise narrow empty and populated workspaces without changing the fixed
+  native window size or processing user documents.
 
 ## [0.12.1] - 2026-10-06
 

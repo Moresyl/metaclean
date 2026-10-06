@@ -14,6 +14,82 @@ function assertResolvedColor(actual, expected, message) {
 }
 
 describe("Desktop visual controls", () => {
+  it("keeps queued files and toolbar actions visible in narrow content", async () => {
+    await $(".app-shell").waitForDisplayed();
+    await browser.tauri.execute(() => window.dispatchEvent(new KeyboardEvent("keydown", { key: "1", ctrlKey: true })));
+    try {
+      await browser.tauri.execute(() => {
+        document.querySelector("main > .animate-rise").style.inlineSize = "325px";
+        const transfer = new DataTransfer();
+        transfer.items.add(new File(["Synthetic layout fixture"], "layout-fixture.txt", { type: "text/plain" }));
+        const input = document.querySelector("input[type=file]");
+        input.files = transfer.files;
+        input.dispatchEvent(new Event("change", { bubbles: true }));
+      });
+      await $(".file-queue .file-item").waitForDisplayed();
+      await browser.waitUntil(async () => browser.tauri.execute(() => !document.querySelector("main > .animate-rise")
+        .getAnimations({ subtree: true }).some(animation => animation.pending || animation.playState === "running")));
+      const state = await browser.tauri.execute(() => {
+        const queue = document.querySelector(".file-queue");
+        const bounds = queue.getBoundingClientRect();
+        const file = queue.querySelector(".file-item").getBoundingClientRect();
+        return { height: bounds.height, fileTop: file.top - bounds.top, fileBottom: file.bottom - bounds.top,
+          actions: [...queue.querySelectorAll("header button, header select")].map(action => {
+            const rect = action.getBoundingClientRect();
+            return { left: rect.left - bounds.left, right: rect.right - bounds.left };
+          }), width: bounds.width };
+      });
+      assert.ok(state.height >= 260 && state.height <= 360);
+      assert.ok(state.fileTop >= 0 && state.fileBottom <= state.height, "The first queued file must remain visible");
+      assert.ok(state.actions.length >= 5);
+      for (const action of state.actions) assert.ok(action.left >= 0 && action.right <= state.width + 1,
+        "Every queue toolbar action must fit inside the queue");
+    } finally {
+      await browser.refresh();
+      await $(".app-shell").waitForDisplayed();
+    }
+  });
+
+  it("keeps empty intake content contained when the workspace becomes narrow", async () => {
+    await $(".app-shell").waitForDisplayed();
+    await browser.tauri.execute(() => window.dispatchEvent(new KeyboardEvent("keydown", { key: "1", ctrlKey: true })));
+    await $(".drop-zone").waitForDisplayed();
+    try {
+      await browser.tauri.execute(() => {
+        document.querySelector("main > .animate-rise").style.inlineSize = "325px";
+      });
+      await browser.waitUntil(async () => browser.tauri.execute(() => {
+        const region = document.querySelector("main > .animate-rise");
+        return Math.abs(region.getBoundingClientRect().width - 325) < 1
+          && !region.getAnimations({ subtree: true }).some(animation => animation.pending || animation.playState === "running");
+      }));
+      const bounds = await browser.tauri.execute(() => {
+        const workspace = document.querySelector(".clean-workspace");
+        const intake = workspace.querySelector(".drop-zone");
+        const card = intake.getBoundingClientRect();
+        const options = workspace.querySelector(".clean-options").getBoundingClientRect();
+        return { columns: getComputedStyle(workspace).gridTemplateColumns.split(" ").length,
+          width: workspace.clientWidth, scrollWidth: workspace.scrollWidth,
+          height: card.height, optionsGap: options.top - card.bottom,
+          children: [...intake.children].filter(child => child.tagName === "DIV").map(child => {
+            const rect = child.getBoundingClientRect();
+            return { top: rect.top - card.top, bottom: rect.bottom - card.top, left: rect.left - card.left, right: rect.right - card.left };
+          }), cardWidth: card.width };
+      });
+      assert.equal(bounds.columns, 1, "Narrow content must stack intake and options");
+      assert.ok(bounds.scrollWidth <= bounds.width + 1, "Workspace content must not spill horizontally");
+      assert.ok(bounds.optionsGap >= 15, "Options must follow the complete intake card");
+      for (const child of bounds.children) {
+        assert.ok(child.top >= 0 && child.bottom <= bounds.height + 1, "Intake content must stay inside its card");
+        assert.ok(child.left >= 0 && child.right <= bounds.cardWidth + 1, "Intake content must fit its width");
+      }
+    } finally {
+      await browser.tauri.execute(() => document.querySelector("main > .animate-rise").style.removeProperty("inline-size"));
+      await browser.refresh();
+      await $(".app-shell").waitForDisplayed();
+    }
+  });
+
   it("preserves action geometry, readable disabled states and focus in both themes", async () => {
     await $(".app-shell").waitForDisplayed();
     const previousTheme = await browser.tauri.execute(() => document.documentElement.dataset.theme);

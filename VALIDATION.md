@@ -4,6 +4,33 @@ Last audited: 2026-10-06
 
 This file records evidence, not intent. A row is complete only when the named artifact or runtime check exists.
 
+## Unreleased workspace containment — 2026-10-06
+
+Browser measurements at 390px show empty-intake children extending 59px above
+and below a 212px card. A populated queue also clips its heading, clear action
+and most of the file-list region. A native narrow-content regression fails on
+the preceding binary because intake and options remain in two columns.
+
+The workspace now responds to its named content container rather than only
+the window width. Stacked rows retain their content height, queue toolbar groups
+wrap, and a 260–360px queue bounds the independently scrolling file list. The
+fixed native window, cleanup behavior and file-processing limits are unchanged.
+
+Browser checks cover English/Chinese, light/dark, 1180/390px, all five pages and
+empty/populated queue states: 80 cases, with no horizontal action/content overflow,
+intake-child spill or overlap with the options region. The queue fixture is an
+in-memory browser File; no user document is read or cleaned. Narrow screenshots
+were inspected directly for complete intake details, toolbar actions and the
+first queued file. The complete Windows desktop suite passes all 23 cases,
+including seven design regressions and sixteen workflow cases. Narrow native
+fixtures constrain the real content region without resizing the fixed window;
+the populated fixture uses the same in-memory browser selection path.
+
+The complete frontend suite passes 430 tests with 93.57% line coverage using
+one forked worker. A preceding threaded run fails to start four workers and
+does not qualify the complete suite; its logs are retained. Documentation,
+116-extension and CSP checks and 44 release-automation tests also pass.
+
 ## Unreleased action state alignment — 2026-10-06
 
 Current component defaults and their merged configuration were inspected before
@@ -38,7 +65,8 @@ accessible icon-action states. Documentation/116-extension/CSP checks and all
 44 release-automation cases pass. Twenty browser page/theme/width combinations
 show no horizontal content/action overflow. Visual inspection and measured child
 bounds additionally reveal vertical intake-card spill at 390px in both themes;
-that layout issue remains to be corrected. These action changes are unreleased.
+the subsequent containment work above corrects this measured layout issue.
+These action changes are unreleased.
 
 ## Unreleased checkbox state alignment — 2026-10-06
 

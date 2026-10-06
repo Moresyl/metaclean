@@ -246,12 +246,14 @@ export default function FileQueue({ entries, preserveColorProfile, preserveOrien
   return (
     <>
     <section className="file-queue flex min-h-0 flex-1 flex-col overflow-hidden rounded-panel border border-line bg-canvas">
-      <header className="flex h-[42px] shrink-0 items-center gap-2 border-b border-line px-2.5">
-        <h2 className="text-base font-semibold">{queueLabel}</h2>
-        <span className="rounded-[3px] bg-surface-2 px-1.5 py-px text-xs text-muted tabular-nums">
-          {filtered ? `${visibleEntries.length} / ${entries.length}` : entries.length} {text("个文件", "file(s)")}
-        </span>
-        <span className="flex-1" />
+      <header className="flex min-h-[42px] shrink-0 flex-wrap items-center gap-2 border-b border-line px-2.5 py-1">
+        <div className="mr-auto flex min-w-0 max-w-full items-center gap-2">
+          <h2 className="min-w-0 truncate text-base font-semibold">{queueLabel}</h2>
+          <span className="shrink-0 whitespace-nowrap rounded-[3px] bg-surface-2 px-1.5 py-px text-xs text-muted tabular-nums">
+            {filtered ? `${visibleEntries.length} / ${entries.length}` : entries.length} {text("个文件", "file(s)")}
+          </span>
+        </div>
+        <div className="queue-actions flex flex-wrap items-center gap-2">
 
         {/* Two groups, not four controls in a row.
             What sorts the list and which way it sorts are one decision, so they
@@ -311,6 +313,7 @@ export default function FileQueue({ entries, preserveColorProfile, preserveOrien
           <Trash2 size={14} strokeWidth={2} />
           {text("清空", "Clear")}
         </Button>
+        </div>
       </header>
 
       {entries.length > 0 ? <div className="grid shrink-0 gap-2 border-b border-line p-3">

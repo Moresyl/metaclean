@@ -563,7 +563,7 @@ export default function App() {
         </header>
         {/* Keyed on the page so switching remounts, and the new page rises into
             place instead of appearing mid-scroll where the last one left off. */}
-        <div className="animate-rise min-h-0 flex-1 px-8 pb-6" key={page}>
+        <div className="workspace-content animate-rise min-h-0 flex-1 px-8 pb-6" key={page}>
         <Suspense fallback={<div className="grid h-full place-items-center text-sm text-muted" role="status">{text("正在加载页面…", "Loading page…")}</div>}>
           {page === "clean" ? <div className="clean-workspace grid h-full grid-cols-[minmax(0,1fr)_280px] gap-6">
             <div className="flex min-h-0 flex-col gap-3">

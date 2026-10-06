@@ -58,6 +58,10 @@ form behavior, refs, names and expanded/disabled states remain intact.
   visually hidden accessible labels. Cleanup options move below file intake,
   settings categories scroll horizontally, and modal content stays within the
   viewport with its own scroll area. These rules also support desktop zoom.
+- Cleaning layout follows the content container's width, including sidebar and
+  zoom constraints. Stacked intake keeps its content height; queued files occupy
+  a bounded 260–360px panel with wrapped toolbar groups and an independently
+  scrolling list. Options follow the complete intake/queue region.
 - Confirmation and update overlays render at the document root. Animated page
   containers cannot redefine their fixed-position bounds or clip their actions.
 - `TitleBar` aligns its identity area with the sidebar, reserves its center for
