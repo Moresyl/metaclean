@@ -4,6 +4,40 @@ Last audited: 2026-10-06
 
 This file records evidence, not intent. A row is complete only when the named artifact or runtime check exists.
 
+## Unreleased PNG ancillary privacy coverage — 2026-10-06
+
+The prior parser silently retains unrecognized ancillary payloads. The new
+regression first fails with zero detected findings where one is expected.
+Inspection, cleanup and residual verification now share a classification that
+preserves defined image, color/HDR, APNG and density information plus registered
+layout/calibration and legacy rendering chunks. Known privacy blocks, trailers
+and unrecognized ancillary payloads are removed; unknown critical chunks remain
+refused and ICC retention remains configurable. Public documentation states that
+unknown application extensions can contain editing information that is discarded.
+
+The regression covers public/private and safe/unsafe naming bits, application,
+signature and unspecified ancillary payloads before/after image data, both ICC
+choices, exact retained bytes and residual rejection. A separate HDR/layout
+case remains byte-identical. All 28 image tests and all 250 native tests pass
+with ten external-fixture tests ignored in the ordinary suite; strict Clippy
+and formatting checks pass.
+
+The independent Pillow verifier now seeds eight removed types, including the
+embedded time, and eight preserved HDR/layout extensions. All eight RGBA,
+palette, 16-bit grayscale and APNG cases pass in copy and replacement modes.
+It compares every retained chunk, decoded raw/RGBA pixels, profile, density,
+frame count/timing/controls, source or backup bytes and filesystem timestamps.
+HDR/layout evidence proves exact encoded-chunk retention; it does not establish
+identical tone mapping in every viewer. Historical timestamp-only runs below
+retain their original scope.
+
+The ordinary native build and all twelve design/sixteen workflow desktop cases
+pass after the parser change. Production/documentation builds, 44 release tests,
+116-extension manifests, documentation claims, CSP and supply-chain checks pass.
+The unchanged frontend was qualified with 448 tests and 93.88% line coverage in
+the preceding picker batch. Exact-source remote image/PDF/CI qualification of
+this parser batch remains pending; the changes are unreleased.
+
 ## Unreleased native option pickers — 2026-10-06
 
 Scalar selects now use a styled native top-layer picker where the renderer

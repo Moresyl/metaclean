@@ -78,7 +78,7 @@ read the [architecture](docs/ARCHITECTURE.md), or follow the [contribution guide
 | Format | Extensions | Cleaned |
 | --- | --- | --- |
 | JPEG | `.jpg` `.jpeg` `.jpe` | Private EXIF/GPS, XMP, IPTC, comments, JUMBF/C2PA segments; valid print density is preserved, with optional orientation and ICC retention |
-| PNG | `.png` | EXIF, textual metadata, C2PA/JUMBF chunks; optional ICC profile removal |
+| PNG | `.png` | EXIF, text/time metadata, C2PA and unrecognized ancillary payloads; optional ICC profile removal |
 | WebP | `.webp` | EXIF, XMP, C2PA chunks; optional ICC profile removal |
 | JPEG XL | `.jxl` | Container EXIF, XMP, JUMBF/C2PA, Brotli-wrapped metadata and JPEG reconstruction data are retired in place; naked codestreams are accepted unchanged |
 | GIF | `.gif` | Comments and XMP application metadata without re-encoding frames |

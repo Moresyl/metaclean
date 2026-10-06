@@ -43,6 +43,10 @@ All notable changes to MetaClean are documented here. The project follows
 
 ### Fixed
 
+- Report and remove unrecognized PNG ancillary payloads instead of silently
+  copying application-private data. Retain defined image, color/HDR, APNG,
+  density and registered layout/calibration chunks, with the existing ICC
+  retention choice. Residual verification uses the same classification.
 - Reject PNG files containing unrecognized critical chunks during inspection,
   cleaning and output verification instead of assuming their image semantics
   are safe to preserve.
@@ -57,6 +61,10 @@ All notable changes to MetaClean are documented here. The project follows
 
 ### Tests
 
+- Seed PNG fidelity cases with public/private, safe/unsafe ancillary payloads
+  and application/signature data. Check their removal alongside exact retained
+  HDR/layout chunks, decoded pixels, animation, profiles, source/backup bytes
+  and filesystem timestamps in copy and replacement modes.
 - Cover native picker geometry, selected/disabled options and scalar/listbox
   presentation. Qualify trusted pointer, keyboard, typeahead, form commits,
   focus return and viewport bounds in both themes and layout directions.

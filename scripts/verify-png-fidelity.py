@@ -1,4 +1,4 @@
-"""Verify PNG timestamp removal, decoded pixels and untouched image chunks independently."""
+"""Verify PNG privacy removal, decoded pixels and untouched image chunks independently."""
 import argparse
 import hashlib
 import json
@@ -16,6 +16,13 @@ from PIL import __version__ as pillow_version
 ROOT = Path(__file__).resolve().parent.parent
 SIGNATURE = b"\x89PNG\r\n\x1a\n"
 TIMESTAMP_NS = 1_600_000_000_000_000_000
+PRIVATE_KINDS = (b"uNKn", b"unKn", b"uNKP", b"unKP", b"gIFx", b"dSIG", b"fRAc")
+REMOVED_KINDS = frozenset((b"tIME", *PRIVATE_KINDS))
+
+
+def encode_chunk(kind, payload):
+    body = kind + payload
+    return (kind, struct.pack(">I", len(payload)) + body + struct.pack(">I", zlib.crc32(body)))
 
 
 def chunks(data):
@@ -51,11 +58,26 @@ def make_fixture(path, scenario):
         options.update(save_all=True, append_images=[image.transpose(Image.Transpose.FLIP_LEFT_RIGHT)],
                        duration=[75, 125], loop=3, disposal=[0, 0], blend=[0, 0])
     image.save(path, **options)
-    time = b"tIME" + struct.pack(">H5B", 2026, 10, 1, 12, 34, 56)
-    time_chunk = struct.pack(">I", 7) + time + struct.pack(">I", zlib.crc32(time))
     parts = chunks(path.read_bytes())
+    # Preserve standardized HDR signals and registered layout/calibration
+    # extensions as bytes, in addition to Pillow's actual image/profile/APNG data.
+    protected = [
+        encode_chunk(b"cICP", bytes((9, 16, 0, 1))),
+        encode_chunk(b"mDCV", struct.pack(">8H2I", 34000, 16000, 13250, 34500,
+                                         7500, 3000, 15635, 16450, 10_000_000, 50)),
+        encode_chunk(b"cLLI", struct.pack(">2I", 10_000_000, 4_000_000)),
+        encode_chunk(b"oFFs", struct.pack(">iiB", 12, 24, 0)),
+        encode_chunk(b"sCAL", b"\x011.25\x002.5"),
+        encode_chunk(b"pCAL", b"calibration\0" + struct.pack(">iiBB", 0, 65535, 0, 2)
+                     + b"units\0" + b"0\0" + b"1"),
+        encode_chunk(b"sTER", bytes((0,))),
+        encode_chunk(b"gIFg", bytes((0, 0, 0, 10))),
+    ]
+    parts[1:1] = protected
     index = len(parts) - 1 if scenario in ("gray16", "animation") else 1
-    parts.insert(index, (b"tIME", time_chunk))
+    private = [encode_chunk(b"tIME", struct.pack(">H5B", 2026, 10, 1, 12, 34, 56))]
+    private.extend(encode_chunk(kind, b"private application identity") for kind in PRIVATE_KINDS)
+    parts[index:index] = private
     path.write_bytes(SIGNATURE + b"".join(raw for _, raw in parts))
 
 
@@ -86,7 +108,7 @@ def verify_case(directory, scenario, mode):
     os.utime(source, ns=(TIMESTAMP_NS, TIMESTAMP_NS))
     original = source.read_bytes()
     before_chunks = chunks(original)
-    assert sum(kind == b"tIME" for kind, _ in before_chunks) == 1
+    assert {kind for kind, _ in before_chunks if kind in REMOVED_KINDS} == REMOVED_KINDS
     before = inspect(source)
     assert len(before["frames"]) == (2 if scenario == "animation" else 1)
     result = subprocess.run([
@@ -103,14 +125,18 @@ def verify_case(directory, scenario, mode):
     assert backup.read_bytes() == original, "Source or replacement backup changed"
     assert cleaned.stat().st_mtime_ns == TIMESTAMP_NS, "Filesystem modification time changed"
     after_chunks = chunks(cleaned.read_bytes())
-    assert after_chunks == [(kind, raw) for kind, raw in before_chunks if kind != b"tIME"], \
-        "Chunks other than the private timestamp changed"
+    assert after_chunks == [(kind, raw) for kind, raw in before_chunks if kind not in REMOVED_KINDS], \
+        "Image, animation, color, HDR or registered layout chunks changed"
+    assert not any(kind in REMOVED_KINDS for kind, _ in after_chunks), "Private payload remains"
     after = inspect(cleaned)
     assert before == after, "Pixels, animation, resolution or color profile changed"
     return {"scenario": scenario, "mode": mode, "before": before, "after": after,
             "sourceSha256": hashlib.sha256(original).hexdigest(),
             "outputSha256": hashlib.sha256(cleaned.read_bytes()).hexdigest(),
-            "filesystemMtimePreserved": True, "onlyTimeChunkRemoved": True}
+            "filesystemMtimePreserved": True,
+            "removedChunkTypes": sorted(kind.decode("ascii") for kind in REMOVED_KINDS),
+            "preservedChunkTypes": [kind.decode("ascii") for kind, _ in after_chunks],
+            "allOtherChunksUnchanged": True}
 
 
 def main():
@@ -130,7 +156,7 @@ def main():
             make_fixture(directory / "original.png", scenario)
             for mode in ("copy", "replace"):
                 results.append(verify_case(directory, scenario, mode))
-                print(f"Verified {scenario}/{mode}: timestamp removed, pixels and other chunks unchanged")
+                print(f"Verified {scenario}/{mode}: private chunks removed, pixels and other chunks unchanged")
     finally:
         (output / "results.json").write_text(json.dumps(results, indent=2), encoding="utf-8")
 

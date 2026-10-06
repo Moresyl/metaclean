@@ -94,7 +94,7 @@ jobs:
           if-no-files-found: warn
       - name: Verify JPEG print density and display fidelity
         run: python scripts/verify-jpeg-fidelity.py --output "${{ runner.temp }}/metaclean-jpeg-evidence"
-      - name: Verify PNG timestamp removal, pixels and animation
+      - name: Verify PNG privacy removal, pixels, animation and HDR/layout chunks
         run: python scripts/verify-png-fidelity.py --output "${{ runner.temp }}/metaclean-png-evidence"
       - uses: actions/upload-artifact@v6
         if: always()

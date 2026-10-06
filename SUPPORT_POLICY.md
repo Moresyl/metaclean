@@ -59,6 +59,17 @@ and that malformed input fails closed.
 
 ## Deep embedded payloads
 
+PNG cleanup retains defined image, transparency, color/HDR and APNG chunks,
+print density, and registered offset, calibration, physical-scale and stereo
+layout information. It removes text, EXIF, embedded time, provenance and
+unrecognized ancillary payloads, including application extensions and signature
+data. Unknown critical chunks are refused. Removing unknown ancillary data can
+discard application-specific editing information; use a safe copy or keep the
+replacement backup when that information matters. ICC profile retention remains
+an explicit preference. This is a bounded structural policy, not a guarantee
+that every image application interprets extensions identically or that visible
+image content contains no personal information.
+
 Container-level success is not sufficient when a document can carry another
 privacy-bearing file inside it. MetaClean therefore continues inspection into
 two bounded embedded surfaces:

@@ -544,25 +544,50 @@ fn png_chunks(data: &[u8]) -> Result<Vec<([u8; 4], std::ops::Range<usize>)>> {
 }
 
 fn is_private_png_chunk(kind: &[u8; 4]) -> bool {
-    matches!(
+    // Retain defined image, colour, animation and layout information. An
+    // unrecognized ancillary payload is not evidence that the file is clean.
+    !matches!(
         kind,
-        b"eXIf" | b"tEXt" | b"zTXt" | b"iTXt" | b"tIME" | b"caBX"
-    ) || *kind == PNG_TRAILER
+        b"IHDR"
+            | b"PLTE"
+            | b"IDAT"
+            | b"IEND"
+            | b"tRNS"
+            | b"gAMA"
+            | b"cHRM"
+            | b"iCCP"
+            | b"sBIT"
+            | b"sRGB"
+            | b"cICP"
+            | b"mDCV"
+            | b"cLLI"
+            | b"bKGD"
+            | b"hIST"
+            | b"pHYs"
+            | b"sPLT"
+            | b"acTL"
+            | b"fcTL"
+            | b"fdAT"
+            | b"oFFs"
+            | b"pCAL"
+            | b"sCAL"
+            | b"sTER"
+            | b"gIFg"
+            | b"gIFt"
+    )
 }
 
 pub fn inspect_png(data: &[u8]) -> Result<Vec<Finding>> {
     let chunks = png_chunks(data)?;
     let metadata = chunks
         .iter()
-        .filter(|(kind, _)| {
-            matches!(kind, b"eXIf" | b"tEXt" | b"zTXt" | b"iTXt" | b"tIME") || *kind == PNG_TRAILER
-        })
+        .filter(|(kind, _)| is_private_png_chunk(kind) && kind != b"caBX")
         .count();
     let provenance = chunks.iter().filter(|(kind, _)| kind == b"caBX").count();
     let color_profiles = chunks.iter().filter(|(kind, _)| kind == b"iCCP").count();
     let mut findings = Vec::new();
     if metadata > 0 {
-        findings.push(finding("PNG 文本 / EXIF / 时间元数据", metadata));
+        findings.push(finding("PNG 文本 / EXIF / 时间及附加元数据", metadata));
     }
     if provenance > 0 {
         findings.push(Finding {
@@ -1182,6 +1207,65 @@ mod tests {
                     ));
                 }
             }
+        }
+    }
+
+    #[test]
+    fn reports_and_removes_png_unrecognized_ancillary_payloads() {
+        for kind in [
+            b"uNKn", b"unKn", b"uNKP", b"unKP", b"gIFx", b"dSIG", b"fRAc",
+        ] {
+            for after_pixels in [false, true] {
+                let mut expected = png_start();
+                expected.extend(png_chunk(b"pHYs", &[0, 0, 0x2e, 0x23, 0, 0, 0x17, 0x12, 1]));
+                let mut source = expected.clone();
+                if !after_pixels {
+                    source.extend(png_chunk(kind, b"private application identity"));
+                }
+                source.extend(png_chunk(b"IDAT", b"pixels"));
+                if after_pixels {
+                    source.extend(png_chunk(kind, b"private application identity"));
+                }
+                source.extend(png_chunk(b"IEND", b""));
+                finish_png(&mut expected);
+                let findings = inspect_png(&source).unwrap();
+                assert_eq!(findings.len(), 1, "chunk {kind:?}");
+                assert_eq!(findings[0].category, "image_metadata");
+                assert_eq!(findings[0].count, 1);
+                for preserve_profile in [false, true] {
+                    assert!(verify_png_cleaned(&source, preserve_profile).is_err());
+                    let (cleaned, removed) =
+                        clean_png_with_options(&source, preserve_profile).unwrap();
+                    assert_eq!(cleaned, expected);
+                    assert_eq!(removed, findings);
+                    assert!(inspect_png(&cleaned).unwrap().is_empty());
+                    verify_png_cleaned(&cleaned, preserve_profile).unwrap();
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn preserves_png_hdr_and_registered_layout_chunks() {
+        let mut source = png_start();
+        source.extend(png_chunk(b"cICP", &[9, 16, 0, 1]));
+        source.extend(png_chunk(b"mDCV", &[0; 24]));
+        source.extend(png_chunk(b"cLLI", &[0; 8]));
+        source.extend(png_chunk(b"oFFs", &[0; 9]));
+        source.extend(png_chunk(b"sCAL", b"\x011.25\x002.5"));
+        source.extend(png_chunk(
+            b"pCAL",
+            b"calibration\0\0\0\0\0\0\0\0\x01\0\x02unit\0\x30\0\x31",
+        ));
+        source.extend(png_chunk(b"sTER", &[0]));
+        source.extend(png_chunk(b"gIFg", &[0; 4]));
+        finish_png(&mut source);
+        assert!(inspect_png(&source).unwrap().is_empty());
+        for preserve_profile in [false, true] {
+            let (cleaned, removed) = clean_png_with_options(&source, preserve_profile).unwrap();
+            assert_eq!(cleaned, source);
+            assert!(removed.is_empty());
+            verify_png_cleaned(&cleaned, preserve_profile).unwrap();
         }
     }
 
