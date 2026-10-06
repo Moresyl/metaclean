@@ -4,6 +4,69 @@ Last audited: 2026-10-06
 
 This file records evidence, not intent. A row is complete only when the named artifact or runtime check exists.
 
+## v0.12.2 public packages and post-release regression — 2026-10-06
+
+[Published v0.12.2](https://github.com/Moresyl/metaclean/releases/tag/v0.12.2)
+was published at 2026-10-06T11:26:58Z from immutable source
+`f90e642c834f768dffa0e4acd48660c043d5da52`, with 20 nonempty assets.
+The browser-triggered [Release 37454123215](https://github.com/Moresyl/metaclean/actions/runs/37454123215)
+passed its source gate, five platform builds, applicable package smoke checks
+and finalization. Its Linux source gate records 450 frontend tests at 93.95%
+line coverage, 256 Rust tests with 12 explicitly ignored cases at 91.74% line
+coverage, and 13 design plus 16 workflow cases. These Linux totals are separate
+from the candidate Windows totals below. Ten independent audio cases retain
+identical FFmpeg PCM. Downloaded release-source artifacts also pass actual-byte
+inspection for 42 Office, 16 JPEG, eight PNG, six HEIF/AVIF and six PDF cases,
+with all seven corrupt-evidence Office verifier regressions passing.
+
+All six public qualification workflows passed at that exact tagged source:
+
+- [Assets 37456598874](https://github.com/Moresyl/metaclean/actions/runs/37456598874)
+  verifies all 19 checksum-listed downloads, five updater signatures and five
+  modified-package rejection cases against the tagged public key.
+- [NSIS 37456603069](https://github.com/Moresyl/metaclean/actions/runs/37456603069)
+  covers x64 and x86 with both storage and application-update checks enabled:
+  `0.12.1 → 0.12.2 → 0.12.1`, actual application update-button activation,
+  signed installation/restart, synthetic preferences/history/fingerprints,
+  truncated-installer rejection, registration and executable preservation,
+  and uninstall. Both downloaded four-record artifacts and actual button/update
+  log lines were inspected.
+- [MSI 37456607948](https://github.com/Moresyl/metaclean/actions/runs/37456607948)
+  covers the same version transitions and removal. Deliberate executable damage
+  is repaired to the exact original hash, package registration and successful
+  launch. The current product code is `{E8CED16C-1AD9-447D-8337-6CB742C19B0E}`.
+- [DEB 37456613882](https://github.com/Moresyl/metaclean/actions/runs/37456613882)
+  verifies installed versions, application launch, manual downgrade and removal.
+- [DMG 37456618681](https://github.com/Moresyl/metaclean/actions/runs/37456618681)
+  verifies both package architectures, bundle identity, the three version
+  transitions, six-second launches and removal. Both jobs used arm64 runners;
+  the x86_64 package result does not qualify physical Intel hardware.
+- [Crash 37456623266](https://github.com/Moresyl/metaclean/actions/runs/37456623266)
+  interrupts the actual public portable application mid-batch and checks two
+  restarts. Its inventory records 64 intact sources, two complete committed
+  outputs and zero other fixture files, no automatic resume and a notice cleared
+  on the second restart. Inventory hashes were independently matched to the
+  deterministic synthetic corpus. The executable inside the checksum-verified
+  public x64 ZIP matches the crash application's recorded hash
+  `3B7E736454250C95C2C1687482ED9E05D213B9328A0A29CBDC5765CC373B7407`.
+  This sample does not prove every interruption is free of orphan files.
+
+The post-release [Pages 37456477542](https://github.com/Moresyl/metaclean/actions/runs/37456477542)
+passed. Actual GitHub-release and Pages `latest.json` bytes are identical, with
+SHA-256 `917c574060aa984dfc182ba3e6dfcf8a6e820b606a4413ca8ca94ff5ce9141be`.
+All five platform URLs and public signature sidecars match, and the published
+bilingual release body equals the updater notes and committed release notes.
+
+A separate post-documentation [CI 37454367149](https://github.com/Moresyl/metaclean/actions/runs/37454367149)
+at documentation-only `2ed88e1` passes its main, Windows and Linux jobs. macOS
+passes 12 design cases, both checkbox regressions and all 16 workflows, but
+fails the context-menu case because `[role=menu]` is not displayed within the
+unchanged 15-second wait. Its cause is not established. New native diagnostics
+record menu insertion/removal, focus/blur/resize/input events and final styles
+without reopening the menu, extending waits or weakening geometry/focus checks.
+The diagnostic harness passes all 29 cases on the already-built Windows
+v0.12.2 native application; a fresh exact-source macOS diagnosis remains pending.
+
 ## v0.12.2 candidate and native documentation — 2026-10-06
 
 The first complete candidate round at `0ff8763` passes all four CI jobs,
@@ -20,7 +83,7 @@ transition duration/delay and no transition effects alongside unchanged colors.
 The corrected source `f90e642` passes the first complete round of
 [CI 37450509493](https://github.com/Moresyl/metaclean/actions/runs/37450509493):
 450 frontend tests at 93.95% line coverage, 262 Rust tests with 11 explicitly
-ignored cases at 92.16% line coverage, and 13 design plus 16 workflow cases on
+ignored cases and 92.16% Rust line coverage, and 13 design plus 16 workflow cases on
 each of Windows, macOS and Linux. The same source also passes independent
 [Office 37450594045](https://github.com/Moresyl/metaclean/actions/runs/37450594045),
 [images 37450602702](https://github.com/Moresyl/metaclean/actions/runs/37450602702)
@@ -54,7 +117,7 @@ Version metadata and bilingual release notes are prepared. The browser triggered
 with the full immutable `f90e642c834f768dffa0e4acd48660c043d5da52` source and
 `v0.12.2` version input after both corrected macOS rounds passed. The release
 source gate, package builds and public installation/update/recovery qualification
-are still pending; v0.12.2 has not yet been tagged or published.
+subsequently passed, as recorded above.
 
 The preceding [CI 37441693527](https://github.com/Moresyl/metaclean/actions/runs/37441693527)
 at `6969365` passes its main, Windows and Linux jobs, including all 29 desktop

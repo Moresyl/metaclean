@@ -1,7 +1,7 @@
 # MetaClean capability audit
 
-Audited on 2026-10-06 for the published v0.12.1 release at
-`5c5dfe67befa88a40763c79e1458f3b09d313ee5`.
+Audited on 2026-10-06 for the published v0.12.2 release at
+`f90e642c834f768dffa0e4acd48660c043d5da52`.
 
 This ledger describes implemented behavior, its evidence and its limits.
 Extension counts and passing tests do not establish universal format support,
@@ -15,8 +15,9 @@ application. Detailed run evidence is recorded in `VALIDATION.md`.
 | Cleanup verification | Candidate bytes are re-detected and re-inspected before output allocation and writing. Engine regressions cover residual findings, format changes, truncation and corruption. | Verification covers implemented privacy surfaces; it is not a forensic proof of absence of all information. |
 | Audio preservation | Native Opus/Vorbis comment cleanup preserves page layout, codec setup and audio bytes, while retaining validated numeric playback gains. Ten independent FFmpeg cases cover mono, stereo, 5.1, long comments and chained streams. | Unknown codecs, unsupported extensions and malformed structures fail closed; the cleaner does not fully decode audio. |
 | Document privacy | Native Office/OpenDocument/EPUB and PDF cleaners have structural and residual-data tests; real Office samples were opened and exported with LibreOffice. Post-v0.11.0 WPS 2019 sample tests found and verified a VML comment-shape fix; see VALIDATION.md. | Microsoft Word, newer WPS releases and complex document fidelity remain unverified. The fix is not included in v0.11.0. Legacy binary Office is refused. |
+| Office property fidelity | Package content types and relationships locate relocated, escaped and covered Strict property parts; retained payloads and exact surviving references are independently checked across 42 native copy/replacement cases. Seven corrupt-evidence tests qualify the verifier. | Thirty-two library round trips use direct readers; ten use explicitly recorded relationship views after matching direct-reader limitations. These are not Office application rendering checks. |
 | PDF fidelity | Six synthetic copy/replace cases preserve rendered pages, searchable text, form fields and JPEG pixels while removing document metadata and private embedded JPEG EXIF. Validated JPEG orientation, density and ICC are retained. Independent MuPDF and Poppler rendering, pypdf parsing and Pillow checks pass. | These samples do not qualify arbitrary PDFs, complex forms, XFA, digital signatures or accessibility. |
-| Image fidelity | Six independent HEIF/AVIF cases preserve frames, display pixels, alpha and ICC. Sixteen JPEG cases remove JFIF/JFXX previews and private APP0 payloads while preserving compressed scans, exact EXIF density rationals/units, JFIF display fields, ICC and pixels, with orientation retention enabled and disabled. Eight PNG copy/replace cases remove embedded modification time while preserving retained chunks, pixels, profiles, resolution and APNG controls. | Synthetic cases do not qualify all encoders, print drivers, HDR, gain maps, depth images, arbitrary animation or RAW. |
+| Image fidelity | Six independent HEIF/AVIF cases preserve frames, display pixels, alpha and ICC. Sixteen JPEG cases remove JFIF/JFXX previews and private APP0 payloads while preserving compressed scans, exact EXIF density rationals/units, JFIF display fields, ICC and pixels, with orientation retention enabled and disabled. Eight PNG copy/replace cases remove time and private/unknown ancillary payloads while preserving retained chunks, pixels, profiles, resolution, APNG and defined HDR/layout data; unknown critical chunks are refused. | Exact HDR/layout chunk retention does not qualify tone mapping in all viewers. Synthetic cases do not qualify all encoders, print drivers, gain maps, depth images, arbitrary animation or RAW. Unknown ancillary removal can discard editing information. |
 | Batch isolation | Bounded intake, per-file outcomes, cancellation, count-only progress and source-path identity are tested across Rust and frontend boundaries. | Slow-device cancellation latency and general peak-memory bounds remain unqualified. |
 | Content fingerprints | Successful results, details, history and JSON reports carry source/output SHA-256. Desktop tests independently hash the actual files. | Hashes describe cleanup-time content, exclude filesystem attributes and do not prove metadata removal. |
 | Desktop workflow | Queue search/filtering, safe-copy cleanup, persistent preferences, keyboard navigation, RTL and accessibility checks run on Windows, macOS and Linux. | Automated scenarios do not replace a usability study with representative users. |
@@ -25,15 +26,28 @@ application. Detailed run evidence is recorded in `VALIDATION.md`.
 
 ## Release evidence
 
-- [Candidate CI](https://github.com/Moresyl/metaclean/actions/runs/37383424915)
-  passed the main quality gates and desktop tests on all three operating systems.
-- [Release pipeline](https://github.com/Moresyl/metaclean/actions/runs/37385725038)
+- [Candidate CI](https://github.com/Moresyl/metaclean/actions/runs/37450509493)
+  passed the main quality gates and 29 desktop cases on all three operating
+  systems; a targeted second macOS round also passed at the same source.
+- [Release pipeline](https://github.com/Moresyl/metaclean/actions/runs/37454123215)
   passed source validation, five platform builds, package checks and finalization.
-- [Independent public-asset verification](https://github.com/Moresyl/metaclean/actions/runs/37387791430)
+- [Independent public-asset verification](https://github.com/Moresyl/metaclean/actions/runs/37456598874)
   checked downloaded bytes and signatures against the tagged public key.
-- [Published v0.12.1](https://github.com/Moresyl/metaclean/releases/tag/v0.12.1)
+- [Published v0.12.2](https://github.com/Moresyl/metaclean/releases/tag/v0.12.2)
   contains 20 assets, including the checksum manifest. The public Pages update
   feed was checked against the release's five platform URLs and signatures.
+
+v0.12.2 adds Office property identity/URI handling, PNG privacy classification,
+updated desktop controls, native pickers and menu/command-panel containment.
+All six public qualification workflows passed `0.12.1 → 0.12.2 → 0.12.1`
+where applicable, including both Windows signed application updates and MSI
+repair. The public crash sample preserves 64 sources and two complete outputs,
+with zero other fixture files and no automatic resume. Actual public feed bytes
+match GitHub and Pages. Native documentation captures display v0.12.2.
+Both DMG package checks used arm64 runners, including the x86_64 package.
+The later documentation-only CI exposes an unresolved macOS context-menu
+display failure; it must not be described as a passing latest-master CI.
+Diagnostic qualification and exact public run evidence are in `VALIDATION.md`.
 
 v0.12.1 prevents About content and actions from overflowing narrow containers.
 Its final CI passed nineteen desktop cases on each of three operating systems,
@@ -42,7 +56,7 @@ qualification workflows passed 0.12.0 → 0.12.1 → 0.12.0 transitions where ap
 including real Windows signed update/restart and MSI repair. The public crash
 sample preserved sixty-four sources and seven committed outputs, with no
 additional fixture files or automatic resume. Current native documentation
-captures display v0.12.1. Exact run IDs, records and limits are in `VALIDATION.md`.
+captures for that release display v0.12.1. Exact run IDs, records and limits are in `VALIDATION.md`.
 
 v0.12.0 refreshes the shared desktop design rules, compact layouts and full-window
 dialogs, and pins manual publication to an immutable source. Its final CI passed

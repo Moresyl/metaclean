@@ -211,6 +211,29 @@ describe("Desktop visual controls", () => {
     const previousMenuState = await browser.tauri.execute(() => ({ direction: document.documentElement.dir,
       theme: document.documentElement.dataset.theme }));
     try {
+      await browser.tauri.execute(() => {
+        const probe = { phase: "setup", events: [] };
+        const record = (type, target) => {
+          probe.events.push({ type, time: performance.now(), phase: probe.phase,
+            target: target?.nodeName, role: target?.getAttribute?.("role"), focused: document.hasFocus() });
+          if (probe.events.length > 20) probe.events.shift();
+        };
+        const capture = event => record(event.type, event.target);
+        const types = ["focus", "blur", "resize", "wheel", "pointerdown", "contextmenu", "keydown"];
+        types.forEach(type => window.addEventListener(type, capture, true));
+        const observer = new MutationObserver(mutations => {
+          for (const mutation of mutations) {
+            for (const [nodes, type] of [[mutation.addedNodes, "menu-added"], [mutation.removedNodes, "menu-removed"]]) {
+              for (const node of nodes) {
+                if (node instanceof Element && (node.matches(".menu-layer") || node.querySelector(".menu-layer"))) record(type, node);
+              }
+            }
+          }
+        });
+        observer.observe(document.body, { childList: true, subtree: true });
+        probe.dispose = () => { observer.disconnect(); types.forEach(type => window.removeEventListener(type, capture, true)); };
+        window.__menuGeometryProbe = probe;
+      });
       await $(".sidebar nav button:nth-of-type(1)").click();
       await browser.tauri.execute(() => {
         const input = document.querySelector("input[type=file]");
@@ -226,6 +249,9 @@ describe("Desktop visual controls", () => {
         for (const { direction, corner } of ["ltr", "rtl"].flatMap(direction =>
           ["top-left", "bottom-right"].map(corner => ({ direction, corner })))) {
           const before = await browser.tauri.execute((_, theme, direction, corner) => {
+            window.__menuGeometryProbe.phase = `${theme}/${direction}/${corner}`;
+            window.__menuGeometryProbe.events = [];
+            window.__menuGeometryProbe.focusedBefore = document.hasFocus();
             document.documentElement.dataset.theme = theme;
             document.documentElement.dir = direction;
             document.querySelector(".queue-search-input").focus({ preventScroll: true });
@@ -236,7 +262,24 @@ describe("Desktop visual controls", () => {
                 clientY: corner === "top-left" ? 2 : innerHeight - 2, button: 2 }));
             return scroll;
           }, theme, direction, corner);
-          await $("[role=menu]").waitForDisplayed();
+          await $("[role=menu]").waitForDisplayed().catch(async error => {
+            let diagnostic;
+            try {
+              diagnostic = await browser.tauri.execute(() => {
+                const menu = document.querySelector("[role=menu]");
+                const style = menu && getComputedStyle(menu);
+                return { phase: window.__menuGeometryProbe?.phase, events: window.__menuGeometryProbe?.events,
+                  focused: document.hasFocus(), visibility: document.visibilityState,
+                  theme: document.documentElement.dataset.theme, direction: document.documentElement.dir,
+                  active: { tag: document.activeElement?.tagName, role: document.activeElement?.getAttribute("role") },
+                  menu: menu ? { display: style.display, visibility: style.visibility, opacity: style.opacity,
+                    transform: style.transform, bounds: menu.getBoundingClientRect().toJSON(),
+                    animations: menu.getAnimations().map(animation => ({ state: animation.playState, pending: animation.pending,
+                      time: animation.currentTime, timing: animation.effect?.getComputedTiming() })) } : null };
+              });
+            } catch (diagnosticError) { diagnostic = { unavailable: diagnosticError.message }; }
+            throw new Error(`${theme}/${direction}/${corner} menu was not displayed: ${JSON.stringify(diagnostic)}`, { cause: error });
+          });
           await browser.waitUntil(async () => browser.tauri.execute(() => !document.querySelector("[role=menu]")
             .getAnimations({ subtree: true }).some(animation => animation.pending || animation.playState === "running")));
           const state = await browser.tauri.execute(() => {
@@ -250,7 +293,9 @@ describe("Desktop visual controls", () => {
             command.disabled = true;
             const disabledOpacity = getComputedStyle(command).opacity;
             command.disabled = previousDisabled;
-            return { layer: { left: overlay.left, top: overlay.top, width: overlay.width, height: overlay.height },
+            return { probe: { phase: window.__menuGeometryProbe.phase, focusedBefore: window.__menuGeometryProbe.focusedBefore,
+                events: window.__menuGeometryProbe.events },
+              layer: { left: overlay.left, top: overlay.top, width: overlay.width, height: overlay.height },
               viewport: { width: innerWidth, height: innerHeight }, rootMounted: layer.parentElement === document.body,
               panel: { left: panel.left, top: panel.top, right: panel.right, bottom: panel.bottom },
               contained: panel.left >= 6 && panel.top >= 6 && panel.right <= innerWidth - 6 && panel.bottom <= innerHeight - 6,
@@ -258,6 +303,7 @@ describe("Desktop visual controls", () => {
               commandCursors: [...menu.querySelectorAll("[role=menuitem]")].map(item => getComputedStyle(item).cursor),
               focused: document.activeElement === menu, scroll: { left: main.scrollLeft, top: main.scrollTop } };
           });
+          console.log(`Context-menu state: ${JSON.stringify(state.probe)}`);
           assert.deepEqual(state.layer, { left: 0, top: 0, width: state.viewport.width, height: state.viewport.height });
           assert.equal(state.rootMounted, true);
           assert.equal(state.contained, true, `${direction}/${corner} menu leaves the viewport: ${JSON.stringify(state.panel)}`);
@@ -297,6 +343,8 @@ describe("Desktop visual controls", () => {
       }
     } finally {
       await browser.tauri.execute((_, state) => {
+        window.__menuGeometryProbe?.dispose();
+        delete window.__menuGeometryProbe;
         document.documentElement.dir = state.direction;
         document.documentElement.dataset.theme = state.theme;
       }, previousMenuState);
