@@ -13,6 +13,9 @@ All notable changes to MetaClean are documented here. The project follows
 
 ### Changed
 
+- Align queue search with the current soft-input geometry, typography and
+  theme surfaces. Keep focus on the container, suppress focus/error feedback
+  while disabled and retain native search and Escape reset behavior.
 - Align native selects with their current default geometry: 32px height, an
   8px base corner, 12px gutters and medium-weight 12px labels. Use transparent
   inset borders, theme-aware disabled/error/focus states and a direction
@@ -33,6 +36,9 @@ All notable changes to MetaClean are documented here. The project follows
 
 ### Tests
 
+- Cover native queue-search focus, read-only, disabled and invalid states in
+  both themes. Switch languages through the real settings control during About
+  layout checks instead of reloading between languages.
 - Cover select refs, controlled values, form data, required validity, grouped
   options and disabled exclusion, plus native geometry and focus in both themes.
 - Cover native action geometry, disabled colors and focus in both themes, and

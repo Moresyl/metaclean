@@ -4,6 +4,39 @@ Last audited: 2026-10-06
 
 This file records evidence, not intent. A row is complete only when the named artifact or runtime check exists.
 
+## Unreleased queue-search alignment — 2026-10-06
+
+Current input component defaults and its child rules were read independently
+from select/action rules. The queue uses its soft variant with ordinary corners,
+32px height, 12px gutters, 400-weight 12px text and 18px line height. It retains
+the native search input and its existing filtering and Escape handler.
+
+The final rendered CSS comparison passes all fourteen light/dark combinations:
+normal, focus, read-only focus, disabled, invalid, invalid focus and disabled
+plus invalid. It compares container/input geometry and typography, resolved
+surface/border/text colors, opacity, cursor and gutters. Source focus attributes
+and paired CSS focus pseudo-states explicitly exercise the relevant selectors;
+this is not original-application runtime evidence. Real product-browser input
+events filter the synthetic queue to zero matches; a trusted Escape key restores
+the empty query and one queued file. RTL gutters/adornment offset, forced-color
+boundaries/focus and reduced-motion duration also pass.
+
+The preceding native binary fails the new corner regression at 7.5px versus
+10px. An initial updated run exposes `outline: none` retaining a 3px computed
+width where the input rule specifies `outline: 0`; the implementation now uses
+the exact zero-width declaration. Paired focus-state comparison also reveals
+that disabled controls need an explicit focus guard. Both corrections retain
+the original assertions, and failed logs remain separate from passing evidence.
+The complete frontend suite passes 432 tests with 93.67% line coverage. The
+final Windows build passes all 25 desktop cases: nine design regressions and
+sixteen native workflow cases. This includes the corrected zero input outline,
+input theme/state geometry and About layout checks through the real locale
+control. Production build, all 44 release tests and documentation/format/CSP
+checks also pass. Cross-platform qualification remains pending.
+The browser page review passes all 80 English/Chinese, light/dark, wide/narrow,
+empty/populated and five-page cases, including search/select bounds; narrow
+and wide queue screenshots were inspected. These changes are unreleased.
+
 ## Unreleased native select alignment — 2026-10-06
 
 The current select component's helper configuration was read separately from
@@ -36,7 +69,23 @@ coverage. The final default-layout browser review passes all 80 English/Chinese,
 light/dark, wide/narrow, empty/populated and five-page cases, including select
 bounds; representative narrow screenshots were inspected. Production build,
 44 release tests and documentation/format/CSP checks pass. Cross-platform CI
-for this select change remains pending; these changes are unreleased.
+for the complete change remains pending; these changes are unreleased.
+
+[CI 37401489467](https://github.com/Moresyl/metaclean/actions/runs/37401489467)
+passes the main checks and the complete Windows/Linux desktop suites. The native
+select regression also passes on macOS, but that job fails when the About
+dual-language layout test encounters repeated direct script-execution timeouts.
+No About geometry assertion fails in that run; the complete CI is still a
+failure. The follow-up switches locales through the actual settings select,
+waits for the document language using the published locale-to-HTML mapping,
+and restores the prior interface/storage state
+without reloading between languages. Layout assertions and timeout budgets are
+unchanged; phase messages identify language-selection and layout-verification
+steps. A first local synchronization check incorrectly expected `zh` instead
+of its published `zh-CN` HTML language; that failed run is retained and the
+helper now reads the mapping from the source locale definitions. The complete
+25-case Windows follow-up passes both languages. Its macOS qualification remains
+pending. The documentation run succeeds.
 
 ## Unreleased development dependency security — 2026-10-06
 

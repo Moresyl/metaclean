@@ -26,6 +26,7 @@ consume the same tokens. Their content remains specific to a local file utility.
 | Checkbox | 18px square, 4px base corner, theme-specific neutral borders and disabled combinations, stable selected hover and a 2px focus outline |
 | Actions | 400-weight labels with 1em line height; 12/14/12px type for 28/32/36px heights, 18px icons and separate surface feedback; icon-only actions retain 24/28px squares |
 | Selects | 32px height, 12px gutters, 500-weight 12px labels with 24px line height; transparent surface, 1px inset border, an 8×12px direction indicator and a 2px inset focus ring |
+| Queue search | 32px height, 8px base ordinary corner, 12px gutters, 400-weight 12px text with 18px line height, 8px adornment gap and a soft theme surface |
 | Motion | 150ms control feedback; reduced-motion mode collapses animations and transitions to 0.001ms |
 
 Supported renderers apply a 1.25 corner scale with `superellipse(1.5)` to
@@ -50,6 +51,12 @@ rounded geometry. Disabled borders and ink remain distinct from hover, invalid
 controls use semantic red, and the indicator follows the logical trailing edge.
 Options, keyboard selection, required validity and form data belong to the real
 native select; its decorative indicator adds no separate focus target.
+
+Queue search uses the supplied input's soft variant. Focus draws a 1px inset
+border at 20% foreground opacity; invalid input uses semantic red. Disabled
+input dims the complete control to 50% and suppresses focus/error borders.
+The native input retains its search behavior and has no separate focus outline;
+forced-color mode restores a system-colored container boundary and focus ring.
 
 ## Implemented patterns
 

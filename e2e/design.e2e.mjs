@@ -1,4 +1,9 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+
+const LOCALE_DEFINITIONS = [...readFileSync(new URL("../src/lib/locales.ts", import.meta.url), "utf8")
+  .matchAll(/\{ code: "([^"]+)", nativeName: "[^"]+", htmlLang: "([^"]+)"/gu)]
+  .map(([, code, htmlLang]) => ({ code, htmlLang }));
 
 function assertResolvedColor(actual, expected, message) {
   if (actual === expected) return;
@@ -13,7 +18,104 @@ function assertResolvedColor(actual, expected, message) {
     `${message}: ${actual} / ${expected}`));
 }
 
+async function selectInterfaceLocale(locale) {
+  const expectedLanguage = LOCALE_DEFINITIONS.find(({ code }) => code === locale)?.htmlLang;
+  assert.ok(expectedLanguage, `Missing published locale ${locale}`);
+  const settings = await $(".sidebar nav button:nth-of-type(4)");
+  await settings.waitForDisplayed();
+  await settings.click();
+  await $(".locale-switch select").waitForDisplayed();
+  await browser.tauri.execute((_, locale) => {
+    const select = document.querySelector(".locale-switch select");
+    select.value = locale;
+    select.dispatchEvent(new Event("change", { bubbles: true }));
+  }, locale);
+  await browser.waitUntil(async () => browser.tauri.execute((_, locale, language) => document.documentElement.lang === language
+    && document.querySelector(".locale-switch select").value === locale, locale, expectedLanguage),
+    { timeoutMsg: `Interface locale did not become ${locale}` });
+}
+
 describe("Desktop visual controls", () => {
+  it("preserves queue search geometry and input states in both themes", async () => {
+    await $(".app-shell").waitForDisplayed();
+    const previousTheme = await browser.tauri.execute(() => document.documentElement.dataset.theme);
+    try {
+      await browser.tauri.execute(() => {
+        window.dispatchEvent(new KeyboardEvent("keydown", { key: "1", ctrlKey: true }));
+        const transfer = new DataTransfer();
+        transfer.items.add(new File(["Synthetic search fixture"], "search-fixture.txt", { type: "text/plain" }));
+        const input = document.querySelector("input[type=file]");
+        input.files = transfer.files;
+        input.dispatchEvent(new Event("change", { bubbles: true }));
+      });
+      await $(".file-queue input[type=search]").waitForDisplayed();
+      const initial = await browser.tauri.execute(() => ({ radius: getComputedStyle(document.querySelector(".file-queue input[type=search]").parentElement).borderRadius,
+        cornerScaling: CSS.supports("corner-shape", "superellipse(1.5)") }));
+      assert.equal(initial.radius, initial.cornerScaling ? "10px" : "8px");
+      for (const theme of ["light", "dark"]) {
+        await browser.tauri.execute((_, theme) => document.documentElement.dataset.theme = theme, theme);
+        for (const mode of ["normal", "focus", "readonly", "disabled", "invalid"]) {
+          await browser.tauri.execute((_, mode) => {
+            const input = document.querySelector(".file-queue input[type=search]");
+            input.disabled = mode === "disabled";
+            input.readOnly = mode === "readonly";
+            input.setAttribute("aria-invalid", String(mode === "invalid"));
+            if (["focus", "readonly", "invalid"].includes(mode)) input.focus(); else input.blur();
+          }, mode);
+          await browser.waitUntil(async () => browser.tauri.execute(() => {
+            const container = document.querySelector(".file-queue input[type=search]").parentElement;
+            void getComputedStyle(container).boxShadow;
+            return !container.getAnimations({ subtree: true }).some(animation => animation.pending || animation.playState === "running");
+          }));
+          const state = await browser.tauri.execute((_, theme, mode) => {
+            const input = document.querySelector(".file-queue input[type=search]");
+            const style = getComputedStyle(input);
+            const shell = getComputedStyle(input.parentElement);
+            const icon = getComputedStyle(input.previousElementSibling);
+            const probe = document.createElement("span");
+            probe.style.backgroundColor = theme === "light" ? "color-mix(in oklab, #1a1c1f 2%, transparent)" : "color-mix(in oklab, #ffffff 3%, transparent)";
+            if (["focus", "readonly", "invalid"].includes(mode)) probe.style.boxShadow = `inset 0 0 0 1px ${mode === "invalid"
+              ? theme === "light" ? "#e02e2a" : "#ba2623"
+              : `color-mix(in oklab, ${theme === "light" ? "#1a1c1f" : "#dfdfdf"} 20%, transparent)`}`;
+            document.body.append(probe);
+            const expected = getComputedStyle(probe);
+            const result = { height: style.height, font: style.fontSize, weight: style.fontWeight, line: style.lineHeight,
+              leading: style.paddingInlineStart, trailing: style.paddingInlineEnd, gutter: shell.paddingInlineStart,
+              gap: shell.columnGap, opacity: shell.opacity, cursor: shell.cursor, iconOffset: icon.marginInlineStart,
+              background: shell.backgroundColor, expectedBackground: expected.backgroundColor,
+              border: shell.boxShadow, expectedBorder: expected.boxShadow,
+              focused: document.activeElement === input, inputOutline: style.outlineWidth };
+            probe.remove();
+            return result;
+          }, theme, mode);
+          assert.equal(state.height, "32px");
+          assert.equal(state.font, "12px");
+          assert.equal(state.weight, "400");
+          assert.equal(state.line, "18px");
+          assert.equal(state.leading, "0px");
+          assert.equal(state.trailing, "12px");
+          assert.equal(state.gutter, "12px");
+          assert.equal(state.gap, "8px");
+          assert.equal(state.iconOffset, "-2px");
+          assert.equal(state.opacity, mode === "disabled" ? "0.5" : "1");
+          assert.equal(state.cursor, mode === "disabled" ? "not-allowed" : "text");
+          assertResolvedColor(state.background, state.expectedBackground, `${theme}/${mode} search surface`);
+          if (state.expectedBorder === "none") assert.equal(state.border, "none");
+          else {
+            const color = value => value.match(/(?:oklab|color|rgba?)\([^)]*\)/)?.[0];
+            assertResolvedColor(color(state.border), color(state.expectedBorder), `${theme}/${mode} search border`);
+          }
+          assert.equal(state.focused, ["focus", "readonly", "invalid"].includes(mode));
+          if (state.focused) assert.equal(state.inputOutline, "0px");
+        }
+      }
+    } finally {
+      await browser.tauri.execute((_, previousTheme) => document.documentElement.dataset.theme = previousTheme, previousTheme);
+      await browser.refresh();
+      await $(".app-shell").waitForDisplayed();
+    }
+  });
+
   it("preserves native select geometry, disabled ink and keyboard focus in both themes", async () => {
     await $(".app-shell").waitForDisplayed();
     const previousTheme = await browser.tauri.execute(() => document.documentElement.dataset.theme);
@@ -359,11 +461,13 @@ describe("Desktop visual controls", () => {
   });
 
   it("keeps About actions inside a narrow content area in both languages", async () => {
-    const previousLocale = await browser.tauri.execute(() => localStorage.getItem("metaclean.locale"));
+    const previous = await browser.tauri.execute(() => ({ language: document.documentElement.lang, stored: localStorage.getItem("metaclean.locale") }));
+    const previousLocale = LOCALE_DEFINITIONS.find(({ htmlLang }) => htmlLang === previous.language)?.code;
+    assert.ok(previousLocale, `Missing published language ${previous.language}`);
     try {
       for (const locale of ["en", "zh"]) {
-        await browser.tauri.execute((_, locale) => localStorage.setItem("metaclean.locale", locale), locale);
-        await browser.refresh();
+        console.log(`About layout: select ${locale}`);
+        await selectInterfaceLocale(locale);
         await $(".sidebar nav button:nth-of-type(5)").waitForDisplayed();
         await $(".sidebar nav button:nth-of-type(5)").click();
         const content = $("main .animate-rise > section");
@@ -392,6 +496,7 @@ describe("Desktop visual controls", () => {
             }),
           };
         });
+        console.log(`About layout: verify ${locale}`);
         assert.ok(state.scrollWidth <= state.clientWidth + 1, `About overflow in ${locale}: ${state.scrollWidth}/${state.clientWidth}`);
         assert.ok(state.actions.length >= 8, "Expected update, diagnostic, community and project actions");
         for (const action of state.actions) {
@@ -399,11 +504,12 @@ describe("Desktop visual controls", () => {
         }
       }
     } finally {
-      await browser.tauri.execute((_, previousLocale) => {
-        if (previousLocale === null) localStorage.removeItem("metaclean.locale");
-        else localStorage.setItem("metaclean.locale", previousLocale);
-      }, previousLocale);
-      await browser.refresh();
+      await selectInterfaceLocale(previousLocale);
+      await browser.tauri.execute((_, stored) => {
+        if (stored === null) localStorage.removeItem("metaclean.locale");
+        else localStorage.setItem("metaclean.locale", stored);
+      }, previous.stored);
+      await $(".sidebar nav button:nth-of-type(1)").click();
       await $(".app-shell").waitForDisplayed();
     }
   });

@@ -318,10 +318,10 @@ export default function FileQueue({ entries, preserveColorProfile, preserveOrien
 
       {entries.length > 0 ? <div className="grid shrink-0 gap-2 border-b border-line p-3">
         <div className="flex min-w-0 items-center gap-2">
-          <label className="flex min-w-0 flex-1 items-center gap-2 rounded-control bg-surface px-2.5 focus-within:ring-1 focus-within:ring-focus">
+          <label className="queue-search flex min-w-0 flex-1 items-center">
             <Search size={14} className="shrink-0 text-muted" aria-hidden="true" />
             <input type="search" value={query} maxLength={512} aria-label={labels[0]} placeholder={labels[0]}
-              className="h-8 min-w-0 flex-1 bg-transparent text-sm outline-none"
+              className="queue-search-input min-w-0 flex-1"
               onChange={(event) => setQuery(event.target.value)}
               onKeyDown={(event) => { if (event.key === "Escape") { event.stopPropagation(); resetFilters(); } }} />
           </label>

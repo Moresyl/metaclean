@@ -71,6 +71,7 @@
   --color-field-border: color-mix(in oklab, #ffffff 16%, transparent);
   --color-field-hover: color-mix(in oklab, #dfdfdf 30%, transparent);
   --color-field-invalid: #ba2623;
+  --color-input-soft: color-mix(in oklab, #ffffff 3%, transparent);
 
   /* Brand ink stays neutral; semantic success, warning and danger colours are
      independent so an ordinary selected control never looks like a status. */
@@ -277,6 +278,7 @@
     --color-field-border: color-mix(in oklab, #1a1c1f 12%, transparent);
     --color-field-hover: color-mix(in oklab, #1a1c1f 25%, transparent);
     --color-field-invalid: #e02e2a;
+    --color-input-soft: color-mix(in oklab, #1a1c1f 2%, transparent);
 
     --color-brand: #0d0d0d;
     --color-ok: #1e8a3e;
@@ -328,6 +330,7 @@
   --color-field-border: color-mix(in oklab, #1a1c1f 12%, transparent);
   --color-field-hover: color-mix(in oklab, #1a1c1f 25%, transparent);
   --color-field-invalid: #e02e2a;
+  --color-input-soft: color-mix(in oklab, #1a1c1f 2%, transparent);
 
   --color-brand: #0d0d0d;
   --color-ok: #1e8a3e;
@@ -756,6 +759,46 @@
     color: var(--color-faint);
   }
 
+  .queue-search {
+    gap: 8px;
+    padding-inline-start: 12px;
+    border-radius: calc(8px * var(--corner-radius-scale));
+    corner-shape: round;
+    background-color: var(--color-input-soft);
+    color: var(--color-text);
+    font-size: var(--text-sm);
+    font-weight: var(--font-weight-normal);
+    line-height: 1.5;
+    cursor: text;
+    transition: color var(--transition-duration-basic) var(--ease-out-soft),
+      box-shadow var(--transition-duration-basic) var(--ease-out-soft),
+      background-color var(--transition-duration-basic) var(--ease-out-soft);
+  }
+
+  .queue-search > svg { margin-inline-start: -2px; }
+  .queue-search:focus-within:not(:has(input:disabled)) { box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--color-text) 20%, transparent); }
+  .queue-search:has(input[aria-invalid='true']):not(:has(input:disabled)) { box-shadow: inset 0 0 0 1px var(--color-field-invalid); }
+  .queue-search:has(input:disabled) { opacity: 0.5; cursor: not-allowed; }
+
+  .queue-search-input {
+    width: 100%;
+    height: var(--control-size-md);
+    padding: 0;
+    padding-inline-end: 12px;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    color: inherit;
+    font-size: inherit;
+    font-weight: inherit;
+    line-height: inherit;
+  }
+
+  .queue-search-input:focus { outline: 0; }
+  .queue-search-input:disabled { cursor: not-allowed; }
+  .queue-search-input::placeholder { color: var(--color-faint); }
+
   /* Native semantics with a compact, theme-aware visual state. */
   .check {
     appearance: none;
@@ -1099,4 +1142,6 @@
   .action::before { background: ButtonFace; box-shadow: none; }
   .action:focus-visible::after { outline-color: Highlight; }
   .action:disabled { color: GrayText; }
+  .queue-search { border: 1px solid ButtonText; }
+  .queue-search:focus-within:not(:has(input:disabled)) { outline: 2px solid Highlight; outline-offset: -1px; }
 }
