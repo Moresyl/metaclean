@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 
 /**
@@ -29,11 +29,6 @@ export interface MenuAnchor {
 /** Distance the flyout keeps from the window edge when it has to be nudged. */
 const MARGIN = 8;
 
-const ITEM = [
-  "flex w-full items-center gap-2.5 rounded-[4px] px-2 py-[5px] text-left text-base",
-  "transition-colors duration-75 disabled:pointer-events-none disabled:opacity-40",
-].join(" ");
-
 function isCommand(entry: MenuEntry): entry is MenuCommand {
   return entry !== "separator";
 }
@@ -50,10 +45,27 @@ export default function ContextMenu({
   onClose: () => void;
 }) {
   const surface = useRef<HTMLDivElement>(null);
+  const optionId = useId();
   const [position, setPosition] = useState<MenuAnchor>(anchor);
   const [active, setActive] = useState(-1);
   const commands = entries.filter(isCommand);
-  const activeCommand = commands[active];
+  const enabledIndexes = commands.map((command, index) => (command.disabled ? -1 : index)).filter((index) => index >= 0);
+  const activeCommand = commands[active]?.disabled ? undefined : commands[active];
+
+  useLayoutEffect(() => {
+    const previous = document.activeElement;
+    const menu = surface.current;
+    return () => {
+      const focused = document.activeElement;
+      if (focused !== document.body && focused !== menu && !menu?.contains(focused)) return;
+      if (previous instanceof HTMLElement && previous !== document.body && document.contains(previous)
+        && !previous.matches(":disabled,[aria-disabled='true']")) {
+        previous.focus({ preventScroll: true });
+      } else {
+        document.querySelector<HTMLElement>("main[tabindex='-1']")?.focus({ preventScroll: true });
+      }
+    };
+  }, []);
 
   // Use layout dimensions before paint: animation transforms must not shrink
   // the measured flyout, and localized labels determine its actual width.
@@ -90,12 +102,11 @@ export default function ContextMenu({
 
   const step = useCallback((delta: number) => {
     setActive((current) => {
-      const enabled = commands.map((command, index) => (command.disabled ? -1 : index)).filter((index) => index >= 0);
-      if (!enabled.length) return current;
-      const at = enabled.indexOf(current);
-      return enabled[(((at < 0 ? (delta > 0 ? -1 : 0) : at) + delta) % enabled.length + enabled.length) % enabled.length];
+      if (!enabledIndexes.length) return -1;
+      const at = enabledIndexes.indexOf(current);
+      return enabledIndexes[(((at < 0 ? (delta > 0 ? -1 : 0) : at) + delta) % enabledIndexes.length + enabledIndexes.length) % enabledIndexes.length];
     });
-  }, [commands]);
+  }, [enabledIndexes]);
 
   const choose = (command: MenuCommand) => {
     if (command.disabled) return;
@@ -113,53 +124,49 @@ export default function ContextMenu({
         // No scrim behind it. A right-click menu is a continuation of the thing
         // that was clicked, not a mode the window enters, and dimming the whole
         // app for four commands says otherwise.
-        className="animate-pop absolute grid min-w-[190px] gap-px rounded-panel border border-line-strong bg-surface p-1 shadow-lift outline-none"
+        className="context-menu absolute grid outline-none"
         role="menu"
         aria-label={label}
-        aria-activedescendant={activeCommand ? `context-menu-option-${active}` : undefined}
+        aria-activedescendant={activeCommand ? `${optionId}-${active}` : undefined}
         ref={surface}
         tabIndex={-1}
         style={{ left: `${position.x}px`, top: `${position.y}px` }}
         onPointerDown={(event) => event.stopPropagation()}
         onKeyDown={(event) => {
           if (event.key === "Escape") { event.preventDefault(); onClose(); return; }
+          if (event.key === "Tab") { event.preventDefault(); onClose(); return; }
           if (event.key === "ArrowDown") { event.preventDefault(); step(1); return; }
           if (event.key === "ArrowUp") { event.preventDefault(); step(-1); return; }
+          if (event.key === "Home" || event.key === "End") {
+            event.preventDefault();
+            setActive((event.key === "Home" ? enabledIndexes[0] : enabledIndexes.at(-1)) ?? -1);
+            return;
+          }
           if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
             const command = commands[active];
-            if (command) { event.preventDefault(); choose(command); }
+            if (command) choose(command);
           }
         }}
       >
         {entries.map((entry, index) => {
-          if (entry === "separator") return <hr className="my-1 h-px border-0 bg-line" key={`separator-${index}`} />;
+          if (entry === "separator") return <hr className="menu-separator" key={`separator-${index}`} />;
           const selected = commands.indexOf(entry) === active;
           return (
             <button
               key={entry.id}
               type="button"
               role="menuitem"
-              id={`context-menu-option-${commands.indexOf(entry)}`}
+              id={`${optionId}-${commands.indexOf(entry)}`}
               disabled={entry.disabled}
-              // `active` stays a bare token: the pointer and the arrow keys share
-              // one highlight, so it cannot be left to :hover.
-              //
-              // The same mint ground the palette gives its cursor, because these
-              // are the same object in two places — a list of commands with one
-              // of them under the pointer — and a window that highlights the one
-              // in grey and the other in mint is a window assembled from parts.
-              // Destructive entries keep their own red ground: it is the one case
-              // where the highlight has to say something the accent cannot.
-              className={[
-                ITEM,
-                entry.danger ? "text-danger" : "text-text",
-                selected ? `active ${entry.danger ? "bg-danger/14" : "bg-brand/12"}` : "",
-              ].join(" ")}
-              onPointerEnter={() => setActive(commands.indexOf(entry))}
+              tabIndex={-1}
+              data-danger={entry.danger || undefined}
+              className={`menu-command${selected ? " active" : ""}`}
+              onPointerEnter={() => { if (!entry.disabled) setActive(commands.indexOf(entry)); }}
               onClick={() => choose(entry)}
             >
               <span
-                className={`grid size-[15px] shrink-0 place-items-center ${entry.danger ? "text-danger" : selected ? "text-brand" : "text-muted"}`}
+                className="menu-command-icon grid size-[15px] shrink-0 place-items-center"
                 aria-hidden="true"
               >
                 {entry.icon}

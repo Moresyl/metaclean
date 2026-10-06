@@ -4,6 +4,61 @@ Last audited: 2026-10-06
 
 This file records evidence, not intent. A row is complete only when the named artifact or runtime check exists.
 
+## Unreleased desktop scope and PNG rejection — 2026-10-06
+
+The current startup selects the desktop window scope. Rechecking the source CSS
+in the native renderer exposes a scope error in earlier fixtures: their generic
+main scope uses 12px small type, while the actual desktop scope uses 13px. The
+source also declares 430-weight UI body text and a default arrow cursor for
+actions. Loading the select component's separate stylesheet confirms that selects
+and small/large actions also resolve their control type to 13px. The product now
+uses those independently verified desktop declarations. Earlier comparison rows
+below remain historical evidence for the explicitly tested scope and source
+revision, and do not qualify the corrected desktop scope.
+
+The prior committed batch at 5fba504 has now passed exact-source CI, including
+eleven design and sixteen workflow cases on Windows, Linux and macOS. Actual
+logs also confirm ten identical FFmpeg decoded outputs and the macOS extended
+attribute test. The observer ended on a TLS retrieval failure; the completed
+run metadata and full final logs establish success.
+
+The new menu unit cases first fail on the previous implementation, then pass
+after focus return, Tab dismissal, Home/End, disabled-entry guards and unique
+active-descendant IDs are added. The embedded driver's key mapping omits
+Home/End, so its original key-input failure does not prove a product defect.
+After delivering the correct keys to the renderer, the previous ordinary native
+binary still fails the End boundary regression, and the corrected product passes
+all eleven design and sixteen workflow cases. This renderer dispatch is synthetic.
+Separate native CDP qualification passes twelve light/dark and LTR/RTL cases:
+Home/End reach enabled boundaries, arrows wrap, and Escape/Tab/Shift+Tab dismiss
+without moving workspace scroll or losing the preceding search focus. All sixty
+recorded keydown events have isTrusted=true. Menu opening in that fixture remains
+synthetic; the evidence qualifies the actual product key handlers, not the source
+application runtime. The updated frontend passes 448 tests and all
+coverage thresholds, with 93.88% line coverage.
+
+PNG parsing now refuses unrecognized critical chunks at inspection, cleanup
+and residual-verification boundaries. The old implementation fails the new
+regression. Tests cover public/private chunk names before/after image data and
+both profile choices. All 248 Windows native tests pass, strict Clippy passes,
+and eight independently generated Pillow cases retain exact image chunks,
+decoded pixels, profiles, resolution, animation, source/backup bytes and file
+modification times while removing the embedded timestamp.
+
+Corrected source CSS comparisons pass twelve segment states, forty-eight action
+states, two selects and both shared-menu themes in the native renderer. The
+select comparison includes its separate component stylesheet, and action sizes
+resolve to 13/14/13px in the actual desktop scope. Shared-menu evidence does not
+establish the source context-menu-specific call chain. Oklab comparisons retain
+the existing 0.0001 component bound and exact alpha; geometry is exact.
+The ordinary desktop build and all twenty-seven native cases pass. Trusted-key
+qualification also passes. The ordinary configuration was rebuilt after the
+private CDP check, with no research CSS or private debug argument in the binary.
+Production frontend build, local-only CSP checks, supply-chain verification,
+release tests, format manifests, documentation checks/build and the official
+npm-registry audit pass. Exact-source remote qualification for this new batch
+and the broader release work remain pending. These changes are unreleased.
+
 ## Unreleased settings segments and context-menu placement — 2026-10-06
 
 Settings categories and theme choices now share an independent segmented

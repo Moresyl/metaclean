@@ -22,12 +22,13 @@ consume the same tokens. Their content remains specific to a local file utility.
 | Brand and status | Neutral primary actions and checked controls; blue focus; green, orange and red for semantic status |
 | Text | Dark `#dfdfdf`, light `#1a1c1f`; secondary ink resolves from 70% foreground opacity |
 | Geometry | 12px panels, 6px shared control corners, 8px native-select base corners, a 24px intake surface, 1px hairlines and shared 28/32/36px pill actions |
-| Type | System UI font stack, 14px body with 1.5 line height, 500/600 weights; Microsoft YaHei UI, PingFang SC and Noto Sans SC fallbacks |
+| Type | System UI font stack, 14px body at 430 weight with 1.5 line height, 13px small text and 500/600 emphasis; Microsoft YaHei UI, PingFang SC and Noto Sans SC fallbacks |
 | Checkbox | 18px square, 4px base corner, theme-specific neutral borders and disabled combinations, stable selected hover and a 2px focus outline |
-| Actions | 400-weight labels with 1em line height; 12/14/12px type for 28/32/36px heights, 18px icons and separate surface feedback; icon-only actions retain 24/28px squares |
-| Selects | 32px height, 12px gutters, 500-weight 12px labels with 24px line height; transparent surface, 1px inset border, an 8×12px direction indicator and a 2px inset focus ring |
-| Queue search | 32px height, 8px base ordinary corner, 12px gutters, 400-weight 12px text with 18px line height, 8px adornment gap and a soft theme surface |
-| Segmented choices | 32px track, 2px padding/gap, 8px base ordinary corner, 28px options, 12px gutters and 600-weight 12px labels; a neutral raised selected thumb |
+| Actions | 400-weight labels with 1em line height; 13/14/13px type for 28/32/36px heights, 18px icons, default arrow cursor and separate surface feedback; icon-only actions retain 24/28px squares |
+| Selects | 32px height, 12px gutters, 500-weight 13px labels with 24px line height; transparent surface, 1px inset border, an 8×12px direction indicator and a 2px inset focus ring |
+| Queue search | 32px height, 8px base ordinary corner, 12px gutters, 400-weight 13px text with 19.5px line height, 8px adornment gap and a soft theme surface |
+| Segmented choices | 32px track, 2px padding/gap, 8px base ordinary corner, 28px options, 12px gutters and 600-weight 13px labels; a neutral raised selected thumb |
+| Context menus | 4px gutter, opaque canvas surface, 16px panel/12px row base corners, 13px/430 text, 5px/8px row padding, 6px gaps and hairline/spread shadows |
 | Motion | 150ms control feedback; reduced-motion mode collapses animations and transitions to 0.001ms |
 
 Supported renderers apply a 1.25 corner scale with `superellipse(1.5)` to
@@ -69,6 +70,19 @@ Native buttons expose their pressed state; a single keyboard entry point,
 non-wrapping arrows, Home/End and disabled-option skipping preserve navigation.
 Focus movement alone does not change the preference. Thumb movement uses a
 300ms entering curve; reduced-motion and forced-color rules remain active.
+
+The current desktop startup selects its desktop window scope. Earlier fixtures
+used a different scope, which changed small-text sizing, body weight, action
+cursors and shared menu variables. Current rules use the verified desktop
+declarations; native selects and small/large actions resolve their shared control
+type size to 13px in that scope. Shared menu visual rules are reused independently, without claiming that
+every source context-menu call site has identical configuration.
+
+Context menus use one keyboard entry point and unique active-descendant IDs.
+Arrows skip disabled items, Home/End reach enabled boundaries and Tab/Escape
+close the flyout. Closing returns focus without scrolling when focus is still
+inside the menu; an independently focused control keeps its focus. Theme and
+forced-color rules preserve the active command and destructive-action meaning.
 
 ## Implemented patterns
 

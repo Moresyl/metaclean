@@ -55,6 +55,7 @@ describe("Desktop visual controls", () => {
         for (const corner of ["top-left", "bottom-right"]) {
           const before = await browser.tauri.execute((_, direction, corner) => {
             document.documentElement.dir = direction;
+            document.querySelector(".queue-search-input").focus({ preventScroll: true });
             const main = document.querySelector("main");
             const scroll = { left: main.scrollLeft, top: main.scrollTop };
             document.querySelector(".file-queue .file-item").dispatchEvent(new MouseEvent("contextmenu",
@@ -82,8 +83,29 @@ describe("Desktop visual controls", () => {
           assert.equal(state.contained, true, `${direction}/${corner} menu leaves the viewport: ${JSON.stringify(state.panel)}`);
           assert.equal(state.focused, true);
           assert.deepEqual(state.scroll, before, `${direction}/${corner} menu scrolls its workspace`);
+          for (const key of ["End", "Home"]) {
+            // The embedded driver omits WebDriver Home/End mappings. Deliver
+            // the actual keys to the native renderer's existing handlers.
+            await browser.tauri.execute((_, key) => document.activeElement.dispatchEvent(new KeyboardEvent("keydown",
+              { key, code: key, bubbles: true, cancelable: true })), key);
+            const selection = await browser.tauri.execute((_, key) => {
+              const menu = document.querySelector("[role=menu]");
+              const enabled = [...menu.querySelectorAll("[role=menuitem]:not(:disabled)")];
+              return { active: menu.getAttribute("aria-activedescendant"),
+                expected: (key === "Home" ? enabled[0] : enabled.at(-1)).id,
+                singleEntry: [...menu.querySelectorAll("[role=menuitem]")].every(item => item.tabIndex === -1) };
+            }, key);
+            assert.equal(selection.active, selection.expected, `${key} does not reach the enabled menu boundary`);
+            assert.equal(selection.singleEntry, true);
+          }
           await browser.keys("Escape");
           await $("[role=menu]").waitForDisplayed({ reverse: true });
+          const returned = await browser.tauri.execute(() => ({
+            focused: document.activeElement === document.querySelector(".queue-search-input"),
+            scroll: { left: document.querySelector("main").scrollLeft, top: document.querySelector("main").scrollTop },
+          }));
+          assert.equal(returned.focused, true, "Menu dismissal loses the previous queue-search focus");
+          assert.deepEqual(returned.scroll, before, "Returning menu focus scrolls the workspace");
         }
       }
     } finally {
@@ -130,12 +152,12 @@ describe("Desktop visual controls", () => {
         assert.equal(state.gap, "2px");
         assert.equal(state.padding, "2px");
         assert.equal(state.radius, state.scaled ? "10px" : "8px");
-        assert.equal(state.font, "12px");
+        assert.equal(state.font, "13px");
         assert.equal(state.weight, "600");
         assert.equal(state.itemHeight, "28px");
         assert.equal(state.itemRadius, state.scaled ? "8px" : "6px");
         assert.equal(state.gutter, "12px");
-        assert.equal(state.line, "12px");
+        assert.equal(state.line, "13px");
         assert.equal(state.surface, theme === "light" ? "rgb(237, 237, 237)" : "rgb(13, 13, 13)");
         assert.equal(state.thumbColor, theme === "light" ? "rgb(255, 255, 255)" : "rgb(48, 48, 48)");
         assert.equal(state.shadow, "rgba(0, 0, 0, 0.2) 0px 1px 4px -1px");
@@ -243,9 +265,9 @@ describe("Desktop visual controls", () => {
             return result;
           }, theme, mode);
           assert.equal(state.height, "32px");
-          assert.equal(state.font, "12px");
+          assert.equal(state.font, "13px");
           assert.equal(state.weight, "400");
-          assert.equal(state.line, "18px");
+          assert.equal(state.line, "19.5px");
           assert.equal(state.leading, "0px");
           assert.equal(state.trailing, "12px");
           assert.equal(state.gutter, "12px");
@@ -276,7 +298,7 @@ describe("Desktop visual controls", () => {
     try {
       await browser.tauri.execute(() => window.dispatchEvent(new KeyboardEvent("keydown", { key: "4", ctrlKey: true })));
       await $(".locale-switch select").waitForDisplayed();
-      assert.equal(await browser.tauri.execute(() => getComputedStyle(document.querySelector(".locale-switch select")).fontSize), "12px");
+      assert.equal(await browser.tauri.execute(() => getComputedStyle(document.querySelector(".locale-switch select")).fontSize), "13px");
       await browser.tauri.execute(() => {
         const host = document.createElement("div");
         host.id = "select-regression";
@@ -317,7 +339,7 @@ describe("Desktop visual controls", () => {
           }, theme, mode);
           assert.equal(state.height, "32px");
           assert.equal(state.radius, state.cornerScaling ? "10px" : "8px");
-          assert.equal(state.font, "12px");
+          assert.equal(state.font, "13px");
           assert.equal(state.weight, "500");
           assert.equal(state.lineHeight, "24px");
           assert.equal(state.gutter, "12px");
@@ -512,12 +534,12 @@ describe("Desktop visual controls", () => {
           for (const state of states) {
             assert.equal(state.height, { sm: "28px", md: "32px", lg: "36px" }[state.size]);
             assert.equal(state.radius, "9999px");
-            assert.equal(state.font, state.size === "md" ? "14px" : "12px");
+            assert.equal(state.font, state.size === "md" ? "14px" : "13px");
             assert.equal(state.lineHeight, state.font);
             assert.equal(state.weight, "400");
             assert.equal(state.gap, state.size === "sm" ? "4px" : "6px");
             assert.equal(state.gutter, state.size === "sm" ? "13.3px" : "15.96px");
-            assert.equal(state.cursor, disabled ? "not-allowed" : "pointer");
+            assert.equal(state.cursor, disabled ? "not-allowed" : "default");
             assert.equal(state.opacity, disabled && state.variant === "ghost" ? "0.4" : "1");
             assert.equal(state.surfaceOpacity, state.variant === "ghost" ? "0" : "1");
             assert.equal(state.transform, "none");

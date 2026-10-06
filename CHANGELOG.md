@@ -13,6 +13,10 @@ All notable changes to MetaClean are documented here. The project follows
 
 ### Changed
 
+- Apply the actual desktop scope to shared typography: 13px small text,
+  430-weight body text and the default arrow cursor on actions. Apply the
+  13px desktop control scale to selects and small/large actions. Restyle context menus
+  with opaque theme surfaces, scaled corners, compact rows and hairline shadows.
 - Unify settings categories and theme choices as compact segmented controls,
   with a moving selected thumb, resize tracking and visible overflow selection.
   Retain native buttons and add one keyboard entry point, non-wrapping arrow
@@ -21,7 +25,7 @@ All notable changes to MetaClean are documented here. The project follows
   theme surfaces. Keep focus on the container, suppress focus/error feedback
   while disabled and retain native search and Escape reset behavior.
 - Align native selects with their current default geometry: 32px height, an
-  8px base corner, 12px gutters and medium-weight 12px labels. Use transparent
+  8px base corner, 12px gutters and medium-weight 13px labels. Use transparent
   inset borders, theme-aware disabled/error/focus states and a direction
   indicator that follows right-to-left layout while retaining native options.
 - Align shared actions with the current pill shape, 400-weight labels, size-specific
@@ -34,6 +38,11 @@ All notable changes to MetaClean are documented here. The project follows
 
 ### Fixed
 
+- Reject PNG files containing unrecognized critical chunks during inspection,
+  cleaning and output verification instead of assuming their image semantics
+  are safe to preserve.
+- Return context-menu focus without scrolling, dismiss on Tab, support enabled
+  Home/End boundaries and isolate active-descendant IDs between menu instances.
 - Mount context menus outside transformed and clipped workspaces. Keep focus
   from scrolling the workspace, measure unscaled layout dimensions and retain
   the 8px viewport margin at both leading and trailing corners, including RTL.
@@ -43,6 +52,11 @@ All notable changes to MetaClean are documented here. The project follows
 
 ### Tests
 
+- Reproduce unknown-critical PNG rejection and menu keyboard failures on the
+  previous implementation; cover critical chunk placement/profile choices,
+  disabled menu entries, focus return and multiple menu instances.
+- Qualify menu boundaries, arrow wrapping and Escape/Tab/Shift+Tab dismissal
+  with trusted native keyboard events in both themes and layout directions.
 - Cover context-menu portal focus, fractional layout dimensions and viewport
   edges; check native LTR/RTL corners without changing workspace scroll.
 - Cover controlled segment selection, disabled choices, keyboard boundaries,

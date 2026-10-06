@@ -105,7 +105,7 @@ describe("context menu", () => {
     fireEvent.keyDown(menu, { key: "ArrowDown" });
     // Two steps land on the third item, because the disabled second is skipped.
     expect(screen.getByRole("menuitem", { name: /第三项/ })).toHaveClass("active");
-    expect(menu).toHaveAttribute("aria-activedescendant", "context-menu-option-2");
+    expect(menu).toHaveAttribute("aria-activedescendant", screen.getByRole("menuitem", { name: /第三项/ }).id);
     fireEvent.keyDown(menu, { key: "ArrowUp" });
     fireEvent.keyDown(menu, { key: "Enter" });
     expect(run).toHaveBeenCalled();
@@ -118,6 +118,74 @@ describe("context menu", () => {
     expect(onClose).toHaveBeenCalledTimes(1);
     fireEvent.pointerDown(screen.getByRole("menu").parentElement!);
     expect(onClose).toHaveBeenCalledTimes(2);
+  });
+
+  it("returns focus to its opener without scrolling after Escape", () => {
+    const focus = vi.spyOn(HTMLElement.prototype, "focus");
+    wrap(<Harness />);
+    const host = screen.getByRole("button", { name: "宿主" });
+    host.focus();
+    fireEvent.contextMenu(host, { clientX: 20, clientY: 20 });
+    fireEvent.keyDown(screen.getByRole("menu"), { key: "Escape" });
+    expect(host).toHaveFocus();
+    expect(focus).toHaveBeenLastCalledWith({ preventScroll: true });
+  });
+
+  it.each(["Tab", "Shift+Tab"])("dismisses on %s and restores the keyboard entry point", (key) => {
+    wrap(<Harness />);
+    const host = screen.getByRole("button", { name: "宿主" });
+    host.focus();
+    fireEvent.contextMenu(host, { clientX: 20, clientY: 20 });
+    const menu = screen.getByRole("menu");
+    expect(within(menu).getAllByRole("menuitem").every((item) => item.tabIndex === -1)).toBe(true);
+    fireEvent.keyDown(menu, { key: "Tab", shiftKey: key === "Shift+Tab" });
+    expect(screen.queryByRole("menu")).not.toBeInTheDocument();
+    expect(host).toHaveFocus();
+  });
+
+  it("uses Home and End to reach enabled boundaries and ignores disabled pointer entries", () => {
+    wrap(<ContextMenu entries={build(vi.fn())} anchor={{ x: 10, y: 10 }} label="测试菜单" onClose={vi.fn()} />);
+    const menu = screen.getByRole("menu");
+    const first = screen.getByRole("menuitem", { name: "第一项" });
+    const last = screen.getByRole("menuitem", { name: /第三项/ });
+    fireEvent.keyDown(menu, { key: "End" });
+    expect(last).toHaveClass("active");
+    fireEvent.keyDown(menu, { key: "Home" });
+    expect(first).toHaveClass("active");
+    fireEvent.pointerEnter(screen.getByRole("menuitem", { name: "第二项" }));
+    expect(menu).toHaveAttribute("aria-activedescendant", first.id);
+  });
+
+  it("keeps an all-disabled menu inactive and never runs its commands", () => {
+    const run = vi.fn();
+    wrap(<ContextMenu entries={[{ id: "disabled", label: "禁用", disabled: true, run }]}
+      anchor={{ x: 10, y: 10 }} label="测试菜单" onClose={vi.fn()} />);
+    const menu = screen.getByRole("menu");
+    for (const key of ["Home", "End", "ArrowDown", "ArrowUp", "Enter", " "]) fireEvent.keyDown(menu, { key });
+    expect(menu).not.toHaveAttribute("aria-activedescendant");
+    expect(run).not.toHaveBeenCalled();
+  });
+
+  it("assigns separate active-descendant IDs to simultaneous menu instances", () => {
+    wrap(<>
+      <ContextMenu entries={build(vi.fn())} anchor={{ x: 10, y: 10 }} label="第一菜单" onClose={vi.fn()} />
+      <ContextMenu entries={build(vi.fn())} anchor={{ x: 30, y: 30 }} label="第二菜单" onClose={vi.fn()} />
+    </>);
+    const items = screen.getAllByRole("menuitem");
+    expect(new Set(items.map((item) => item.id)).size).toBe(items.length);
+  });
+
+  it("does not take focus back from another control when it unmounts", () => {
+    const outside = document.createElement("button");
+    document.body.append(outside);
+    try {
+      const { unmount } = wrap(<ContextMenu entries={build(vi.fn())} anchor={{ x: 10, y: 10 }} label="测试菜单" onClose={vi.fn()} />);
+      outside.focus();
+      unmount();
+      expect(outside).toHaveFocus();
+    } finally {
+      outside.remove();
+    }
   });
 
   it("escapes transformed and clipped hosts without scrolling them when focused", () => {
