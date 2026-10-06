@@ -14,6 +14,9 @@ All notable changes to MetaClean are documented here. The project follows
   timing, blend/disposal controls and the existing ICC retention choice.
 - Reject truncated or conflicting animation frames, invalid padding, reserved
   frame bits and frames outside the declared canvas before writing.
+- Validate VP8/VP8L coded-image signatures, supported header versions and nonzero
+  dimensions. Reject image dimensions that disagree with the declared canvas or
+  animation frame before creating a cleaned copy or replacement backup.
 
 ### Tests
 

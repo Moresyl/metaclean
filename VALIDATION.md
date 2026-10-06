@@ -6,7 +6,35 @@ This file records evidence, not intent. A row is complete only when the named ar
 
 ## v0.12.5 candidate qualification — 2026-10-07
 
-The versioned candidate separately repeats 281 Rust tests with 12 ignored,
+Additional actual Windows inspection of four bounded malformed WebP samples
+found one false-success cleanup at source
+`5ed260f7cd7bb47bef52ca84906b0a0cea9ace02`: its VP8 image declared width zero,
+and independent decoding rejected both source and output. Three other samples
+were refused. Follow-up source `cc14454d8fc2c3827cd01390e57e9d8eca0e024d`
+validates coded-image signatures, supported header versions and dimensions
+against the canvas/frame. Two before-fix regressions failed; all eleven focused
+WebP tests and 285 full Rust tests with 12 ignored now pass. Strict Clippy and
+formatting pass. The rebuilt actual Windows application refuses all four original
+damaged samples in copy and replacement modes: eight operations preserve all
+source hashes and create no outputs, backups or other files. Independent
+reinspection verifies the actual native reports, complete directories, binary
+hash and qualified source-file hashes.
+
+All 24 valid WebP fidelity cases repeat successfully at the follow-up source,
+including 36 decoded frames, 240 removed private blocks, exact compressed/control
+bytes and source/backup hashes. The checker retains all seven passing regression
+cases. The full ordinary Windows desktop suite separately passes 15 design plus
+16 workflow cases, and all eight probe phases are inspected. An initial helper
+selected only the design suite; it is not counted as full desktop evidence. The
+subsequent explicit two-suite run supplies the complete 31-case result. Release
+44, format/documentation checks, documentation and production builds, and CSP
+checks pass. Final follow-up remote qualification and publication remain pending.
+An initial compile attempt failed on Windows virtual-memory exhaustion; a
+single-job retry passed without changing assertions. Coded-header validation is
+not full entropy-stream decoding.
+
+The earlier versioned candidate at
+`5ed260f7cd7bb47bef52ca84906b0a0cea9ace02` separately repeats 281 Rust tests with 12 ignored,
 455 frontend tests at 93.99% line coverage, all 44 release checks and 31 ordinary
 Windows desktop cases. Format, documentation, production-build and CSP gates
 pass. Two native capture scenarios verify visible version 0.12.5, actual
@@ -25,8 +53,16 @@ pass. Downloaded artifacts and completed native logs were independently checked:
 Office reinspection repeats 32 direct and ten explicit relationship-view library
 round trips. HDR source/output rendering matches on each host; recorded
 three-channel floating-point hashes can differ between Windows and Linux.
-These are backend-source checks; final versioned-source remote qualification
-and browser publication remain pending.
+These are backend-source checks. The earlier versioned source also passes
+[CI 37532609298](https://github.com/Moresyl/metaclean/actions/runs/37532609298),
+[images 37532670013](https://github.com/Moresyl/metaclean/actions/runs/37532670013),
+[Office 37532674922](https://github.com/Moresyl/metaclean/actions/runs/37532674922)
+and [PDF 37532679557](https://github.com/Moresyl/metaclean/actions/runs/37532679557).
+Downloaded completed native logs and actual artifact bytes are independently
+inspected for all the same format cases and three native 31-case suites/24 probe
+phases. Its Windows main records 92.72% Rust line coverage and 93.99% frontend
+line coverage. That completed qualification predates the additional malformed-
+header finding above and is not substituted for the follow-up source gate.
 
 The actual prior native application reported successful cleanup for five WebP
 fixtures while retaining 23 private application chunks at the container and

@@ -40,6 +40,14 @@ may discard application editing information; the samples do not qualify every
 encoder or viewer. Image and release source workflows now require the expanded
 WebP gate.
 
+Additional coded-header checks refuse invalid VP8/VP8L signatures, unsupported
+header versions, zero dimensions and conflicts with the declared canvas/frame.
+All four original malformed regression files are refused by the actual rebuilt
+Windows application in copy and replacement modes, with source hashes unchanged
+and no outputs or backups. The 24 valid fidelity cases and 285 full Rust tests
+pass after this correction. These bounded header checks are not full entropy-
+stream decoding; final remote qualification and publication remain pending.
+
 Six actual Windows native rendered-font observations additionally identify
 Noto Sans SC for measured Chinese text and Segoe UI family faces for Latin text.
 They do not establish every node, other operating systems or the original
