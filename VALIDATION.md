@@ -16,6 +16,15 @@ English/Chinese capture cases. Its 15 PNGs and two five-frame workflow GIFs have
 verified dimensions and frame durations; the current native captures were
 visually reviewed. Remote candidate and publication checks remain pending.
 
+The first remote [CI 37466214822](https://github.com/Moresyl/metaclean/actions/runs/37466214822)
+at `23ac944` passes the main gate and all 30 Windows/Linux desktop cases.
+macOS passes the other 13 design cases and all 16 workflows, but the new tooltip
+case fails because `[role=tooltip]` is not displayed within the unchanged
+15-second wait. The driver also records script-evaluation timeouts; their cause
+and relationship to the missing tip are not established. Bounded event and
+insertion/removal diagnostics now record each theme/direction/corner without
+reopening tips, extending waits or relaxing assertions. Publication remains pending.
+
 An independent browser comparison renders the supplied current stylesheet with
 its actual desktop scope and ordinary tooltip defaults. All 12 inspected style
 fields match in both light and dark themes. Visible descriptions are linked to

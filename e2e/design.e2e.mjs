@@ -212,6 +212,27 @@ describe("Desktop visual controls", () => {
       direction: document.documentElement.dir }));
     try {
       await browser.tauri.execute(() => {
+        const probe = { phase: "setup", events: [] };
+        const record = (type, target, trusted) => {
+          probe.events.push({ type, time: performance.now(), phase: probe.phase,
+            target: target?.nodeName, id: target?.id, trusted, focused: document.hasFocus() });
+          if (probe.events.length > 24) probe.events.shift();
+        };
+        const capture = event => record(event.type, event.target, event.isTrusted);
+        const types = ["focus", "blur", "focusin", "focusout", "resize", "wheel", "pointerover", "pointerout", "pointerdown", "keydown"];
+        types.forEach(type => window.addEventListener(type, capture, true));
+        const observer = new MutationObserver(mutations => {
+          for (const mutation of mutations) {
+            for (const [nodes, type] of [[mutation.addedNodes, "tooltip-added"], [mutation.removedNodes, "tooltip-removed"]]) {
+              for (const node of nodes) {
+                if (node instanceof Element && (node.matches("[role=tooltip]") || node.querySelector("[role=tooltip]"))) record(type, node);
+              }
+            }
+          }
+        });
+        observer.observe(document.body, { childList: true, subtree: true });
+        probe.dispose = () => { observer.disconnect(); types.forEach(type => window.removeEventListener(type, capture, true)); };
+        window.__tooltipGeometryProbe = probe;
         const host = document.createElement("button");
         host.id = "tooltip-regression-host";
         host.type = "button";
@@ -222,15 +243,40 @@ describe("Desktop visual controls", () => {
       for (const theme of ["light", "dark"]) {
         for (const direction of ["ltr", "rtl"]) {
           for (const corner of ["top-left", "bottom-right"]) {
-            await browser.tauri.execute((_, theme, direction, corner) => {
+            const opening = await browser.tauri.execute((_, theme, direction, corner) => {
+              const probe = window.__tooltipGeometryProbe;
+              probe.phase = `${theme}/${direction}/${corner}`;
+              probe.events = [];
+              probe.focusedBefore = document.hasFocus();
               document.documentElement.dataset.theme = theme;
               document.documentElement.dir = direction;
               const host = document.querySelector("#tooltip-regression-host");
               host.style.cssText = `position:fixed;left:${corner === "top-left" ? 2 : innerWidth - 2}px;top:${corner === "top-left" ? 2 : innerHeight - 2}px;width:1px;height:1px;overflow:hidden`;
               host.focus({ preventScroll: true });
               host.dispatchEvent(new PointerEvent("pointerover", { bubbles: true }));
+              return { phase: probe.phase, focusedBefore: probe.focusedBefore, focusedAfter: document.hasFocus(),
+                hostFocused: document.activeElement === host, events: probe.events };
             }, theme, direction, corner);
-            await $("[role=tooltip]").waitForDisplayed();
+            console.log(`Tooltip opening: ${JSON.stringify(opening)}`);
+            await $("[role=tooltip]").waitForDisplayed().catch(async error => {
+              let diagnostic;
+              try {
+                diagnostic = await browser.tauri.execute(() => {
+                  const tip = document.querySelector("[role=tooltip]");
+                  const host = document.querySelector("#tooltip-regression-host");
+                  const style = tip ? getComputedStyle(tip) : null;
+                  const probe = window.__tooltipGeometryProbe;
+                  return { phase: probe.phase, events: probe.events, focused: document.hasFocus(),
+                    hostConnected: host?.isConnected, hostFocused: document.activeElement === host,
+                    describedBy: host?.getAttribute("aria-describedby"), tip: tip ? { id: tip.id,
+                      display: style.display, visibility: style.visibility, opacity: style.opacity,
+                      transform: style.transform, bounds: tip.getBoundingClientRect().toJSON(),
+                      animations: tip.getAnimations().map(animation => ({ state: animation.playState, pending: animation.pending,
+                        time: animation.currentTime, timing: animation.effect?.getComputedTiming() })) } : null };
+                });
+              } catch (diagnosticError) { diagnostic = { unavailable: diagnosticError.message }; }
+              throw new Error(`${theme}/${direction}/${corner} tooltip was not displayed: ${JSON.stringify(diagnostic)}`, { cause: error });
+            });
             await browser.waitUntil(async () => browser.tauri.execute(() => !document.querySelector("[role=tooltip]")
               .getAnimations().some(animation => animation.pending || animation.playState === "running")));
             const state = await browser.tauri.execute(() => {
@@ -243,13 +289,15 @@ describe("Desktop visual controls", () => {
               const context = canvas.getContext("2d");
               context.fillStyle = style.backgroundColor;
               context.fillRect(0, 0, 1, 1);
-              return { rootMounted: tip.parentElement === document.body, linked: host.getAttribute("aria-describedby") === tip.id,
+              return { probe: { phase: window.__tooltipGeometryProbe.phase, events: window.__tooltipGeometryProbe.events },
+                rootMounted: tip.parentElement === document.body, linked: host.getAttribute("aria-describedby") === tip.id,
                 id: tip.id, focused: document.activeElement === host, font: style.fontSize, weight: style.fontWeight,
                 line: parseFloat(style.lineHeight), padding: style.padding, radius: style.borderRadius, border: style.borderTopWidth,
                 scaled: CSS.supports("corner-shape", "superellipse(1.5)"), background: [...context.getImageData(0, 0, 1, 1).data],
                 contained: bounds.left >= 15 && bounds.top >= 15 && bounds.right <= innerWidth - 15 && bounds.bottom <= innerHeight - 15,
                 width: bounds.width, viewport: innerWidth };
             });
+            console.log(`Tooltip state: ${JSON.stringify(state.probe)}`);
             assert.equal(state.rootMounted, true);
             assert.equal(state.linked, true);
             assert.notEqual(state.id, "");
@@ -274,6 +322,8 @@ describe("Desktop visual controls", () => {
       }
     } finally {
       await browser.tauri.execute((_, previous) => {
+        window.__tooltipGeometryProbe?.dispose();
+        delete window.__tooltipGeometryProbe;
         document.body.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
         document.getElementById("tooltip-regression-host")?.remove();
         document.documentElement.dataset.theme = previous.theme;
