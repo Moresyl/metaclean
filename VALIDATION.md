@@ -6,12 +6,12 @@ This file records evidence, not intent. A row is complete only when the named ar
 
 ## Unreleased OOXML property identity coverage — 2026-10-06
 
-The repeatable [Office verifier](scripts/verify-office-fidelity.py) now passes
+The repeatable [Office verifier](https://github.com/Moresyl/metaclean/blob/master/scripts/verify-office-fidelity.py) now passes
 all 42 generated Windows engine cases in copy and replacement modes: 30 property
 identity cases plus 12 URI alias cases. Thirty-two cases open/save/reopen directly
 with independent document libraries; ten retain the same direct-reader error
 before and after cleaning and pass through the explicit relationship view below.
-The [checker regressions](scripts/test-office-fidelity.py) pass seven cases,
+The [checker regressions](https://github.com/Moresyl/metaclean/blob/master/scripts/test-office-fidelity.py) pass seven cases,
 including rejection of changed visible XML, residual private values, deleted
 unrelated relationships and missing content parts. Local full Rust tests pass
 262 cases with eleven ignored, including the new externally driven OOXML hook;
