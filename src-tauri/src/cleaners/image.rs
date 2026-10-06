@@ -496,6 +496,9 @@ fn png_chunks(data: &[u8]) -> Result<Vec<([u8; 4], std::ops::Range<usize>)>> {
         if !kind.iter().all(u8::is_ascii_alphabetic) || !kind[2].is_ascii_uppercase() {
             return Err(CleanError::InvalidFormat("PNG 块类型码无效".into()));
         }
+        if kind[0].is_ascii_uppercase() && !matches!(&kind, b"IHDR" | b"PLTE" | b"IDAT" | b"IEND") {
+            return Err(CleanError::InvalidFormat("PNG 包含不支持的关键块".into()));
+        }
         let expected_crc = u32::from_be_bytes(data[end - 4..end].try_into().unwrap());
         if png_crc32(&data[offset + 4..end - 4]) != expected_crc {
             return Err(CleanError::InvalidFormat("PNG 块 CRC 校验失败".into()));
@@ -1148,6 +1151,38 @@ mod tests {
         assert!(!cleaned.windows(7).any(|window| window == b"private"));
         assert_eq!(cleaned.len(), clean_length);
         verify_png_cleaned(&cleaned, true).unwrap();
+    }
+
+    #[test]
+    fn rejects_unrecognized_critical_png_chunks() {
+        for kind in [b"VpAg", b"VPAG"] {
+            for after_pixels in [false, true] {
+                let mut source = png_start();
+                if after_pixels {
+                    source.extend(png_chunk(b"IDAT", b"pixels"));
+                }
+                source.extend(png_chunk(kind, b"unsupported image interpretation"));
+                if after_pixels {
+                    source.extend(png_chunk(b"IEND", b""));
+                } else {
+                    finish_png(&mut source);
+                }
+                assert!(matches!(
+                    inspect_png(&source),
+                    Err(CleanError::InvalidFormat(_))
+                ));
+                for preserve_profile in [false, true] {
+                    assert!(matches!(
+                        clean_png_with_options(&source, preserve_profile),
+                        Err(CleanError::InvalidFormat(_))
+                    ));
+                    assert!(matches!(
+                        verify_png_cleaned(&source, preserve_profile),
+                        Err(CleanError::InvalidFormat(_))
+                    ));
+                }
+            }
+        }
     }
 
     #[test]
