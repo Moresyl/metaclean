@@ -1023,7 +1023,11 @@ mod tests {
 
         let mut webp = b"RIFF\0\0\0\0WEBP".to_vec();
         webp.extend_from_slice(b"EXIF\x04\0\0\0data");
-        webp.extend(chunk(b"VP8 ", b"image", false));
+        webp.extend(chunk(
+            b"VP8 ",
+            b"\x30\0\0\x9d\x01\x2a\x01\0\x01\0image",
+            false,
+        ));
         let webp_size = (webp.len() - 8) as u32;
         webp[4..8].copy_from_slice(&webp_size.to_le_bytes());
 
@@ -2235,6 +2239,48 @@ mod tests {
             assert!(result.integrity.is_none());
             assert_eq!(fs::read(&source).unwrap(), original);
             assert_eq!(fs::read_dir(directory.path()).unwrap().count(), 1);
+        }
+    }
+
+    #[test]
+    fn rejects_invalid_webp_coded_headers_before_creating_output_or_backup() {
+        for (kind, payload) in [
+            (b"VP8 ", b"\x30\0\0\x9d\x01\x2a\0\0\x10\0pixels".as_slice()),
+            (b"VP8 ", b"\x30\0\0\x9d\x01\x2a\x10\0\0\0pixels".as_slice()),
+            (b"VP8 ", b"\x30\0\0\0\x01\x2a\x10\0\x10\0pixels".as_slice()),
+            (b"VP8L", b"\x2f\0\0\0\x20pixels".as_slice()),
+        ] {
+            let directory = tempfile::tempdir().unwrap();
+            let source = directory.path().join("invalid.webp");
+            let mut original = b"RIFF\0\0\0\0WEBP".to_vec();
+            original.extend(kind);
+            original.extend((payload.len() as u32).to_le_bytes());
+            original.extend(payload);
+            if payload.len() % 2 == 1 {
+                original.push(0);
+            }
+            let riff_size = (original.len() - 8) as u32;
+            original[4..8].copy_from_slice(&riff_size.to_le_bytes());
+            fs::write(&source, &original).unwrap();
+            let report = scan_file(&source);
+            assert!(!report.supported && report.error.is_some());
+            for mode in [OutputMode::Copy, OutputMode::Replace] {
+                for preserve_profile in [false, true] {
+                    let result = clean_file_with_options(
+                        &source,
+                        &mode,
+                        true,
+                        true,
+                        preserve_profile,
+                        false,
+                    );
+                    assert!(!result.success && result.error.is_some());
+                    assert!(result.output_path.is_none() && result.backup_path.is_none());
+                    assert!(result.integrity.is_none());
+                    assert_eq!(fs::read(&source).unwrap(), original);
+                    assert_eq!(fs::read_dir(directory.path()).unwrap().count(), 1);
+                }
+            }
         }
     }
 
