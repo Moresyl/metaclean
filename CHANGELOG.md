@@ -7,6 +7,9 @@ All notable changes to MetaClean are documented here. The project follows
 
 ### Changed
 
+- Align shared actions with the current pill shape, 400-weight labels, size-specific
+  gutters and icons. Apply hover and pressed feedback to the surface, keep labels
+  stable, and use dedicated disabled fills and variant-specific focus rings.
 - Align checkbox borders, disabled fills, pointer feedback and focus rings with
   the current desktop theme rules. Keep selected colors stable on hover, scale
   the 4px base corner to 5px in supported renderers and use proportional tick
@@ -14,6 +17,8 @@ All notable changes to MetaClean are documented here. The project follows
 
 ### Tests
 
+- Cover native action geometry, disabled colors and focus in both themes, and
+  retain form submission, forwarded refs and accessible icon-action behavior.
 - Add a native light/dark regression for unchecked, checked, mixed, disabled,
   and focus-visible states without changing saved cleanup preferences.
 

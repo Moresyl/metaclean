@@ -1,12 +1,8 @@
-import { forwardRef, type ButtonHTMLAttributes, type ReactNode } from "react";
+import { Children, forwardRef, type ButtonHTMLAttributes, type ReactNode } from "react";
 
 /**
- * The one button in the window.
- *
- * Four variants and three heights, and nothing outside this file decides what a
- * button looks like. That is the whole point: a window with six shades of
- * "secondary" reads as six programs, and the drift starts the first time a
- * screen needs a button one pixel shorter than the last one did.
+ * Shared native actions with four variants and three heights. Surface and
+ * content rules live in the common stylesheet; callers supply behavior and labels.
  */
 export type ButtonVariant = "primary" | "secondary" | "ghost" | "danger";
 
@@ -14,53 +10,16 @@ export type ButtonVariant = "primary" | "secondary" | "ghost" | "danger";
  *  for the one full-width action that commits a screen's worth of decisions. */
 export type ButtonSize = "sm" | "md" | "lg";
 
-const BASE =
-  "inline-flex shrink-0 items-center justify-center gap-1.5 rounded-control font-medium " +
-  "whitespace-nowrap transition duration-150 ease-[var(--ease-out-soft)] select-none " +
-  "enabled:active:scale-[0.98]";
-
-/* What a button that cannot be pressed looks like — and it is not that button
-   at 40% opacity.
- *
- * Fading a filled accent leaves the accent: mint at 0.4 over a near-black
- * ground is a muddy green slab carrying ink that was chosen to sit on mint,
- * which reads as a rendering fault rather than as a disabled control. So a
- * disabled fill gives up being a fill and becomes the flat grey every desktop
- * toolkit uses for the state. A ghost button goes the other way and gives up
- * nothing, because it had no box to lose — growing one when it stops working
- * would draw the eye to the one control on screen that cannot be used. */
-const OFF: Record<ButtonVariant, string> = {
-  primary: "disabled:bg-surface-2 disabled:text-faint",
-  secondary: "disabled:bg-transparent disabled:border-line disabled:text-faint",
-  ghost: "disabled:text-faint",
-  danger: "disabled:bg-surface-2 disabled:text-faint",
-};
-
-/* Default buttons align with 32px fields; compact and primary actions use
-   the adjacent 28px and 36px steps. */
-const SIZES: Record<ButtonSize, string> = {
-  sm: "h-[var(--control-size-sm)] px-2 text-sm",
-  md: "h-[var(--control-size-md)] px-3 text-base",
-  lg: "h-[var(--control-size-lg)] px-4 text-base",
-};
-
-const VARIANTS: Record<ButtonVariant, string> = {
-  // Filled with the accent, which is why there is at most one of these on
-  // screen at a time: two would each be asking to be the answer.
-  primary: "bg-brand text-on-brand enabled:hover:brightness-[1.08] enabled:active:brightness-95",
-  secondary:
-    "border border-line-strong bg-transparent text-text enabled:hover:border-faint " +
-    "enabled:hover:bg-surface-2 enabled:active:brightness-95",
-  // No box until it is pointed at — for the icon rows a card wears in its
-  // header, where six outlined buttons would out-shout the list below them.
-  ghost: "px-2 text-muted enabled:hover:bg-surface-2 enabled:hover:text-text",
-  danger: "bg-danger text-on-danger enabled:hover:brightness-[1.08] enabled:active:brightness-95",
-};
-
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: ButtonVariant;
   size?: ButtonSize;
   children?: ReactNode;
+}
+
+function ActionContent({ children }: { children: ReactNode }) {
+  return <span className="action-content">{Children.map(children, child =>
+    typeof child === "string" || typeof child === "number" ? <span>{child}</span> : child,
+  )}</span>;
 }
 
 const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button({
@@ -72,8 +31,8 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button({
   ...rest
 }, ref) {
   return (
-    <button ref={ref} type={type} className={`${BASE} ${SIZES[size]} ${VARIANTS[variant]} ${OFF[variant]} ${className}`} {...rest}>
-      {children}
+    <button ref={ref} type={type} className={`action ${className}`} data-variant={variant} data-size={size} {...rest}>
+      <ActionContent>{children}</ActionContent>
     </button>
   );
 });
@@ -89,14 +48,15 @@ export function IconButton({
   children,
   ...rest
 }: ButtonProps) {
-  const box = size === "sm" ? "size-[24px]" : "size-[28px]";
   return (
     <button
       type={type}
-      className={`${BASE} ${box} p-0 ${VARIANTS[variant]} ${OFF[variant]} ${className}`}
+      className={`action action-icon ${className}`}
+      data-variant={variant}
+      data-size={size}
       {...rest}
     >
-      {children}
+      <ActionContent>{children}</ActionContent>
     </button>
   );
 }

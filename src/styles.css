@@ -58,6 +58,16 @@
   --color-check-disabled-ink: #181818;
   --color-check-ring: color-mix(in oklab, #339cff 70%, transparent);
 
+  --color-action-solid: #dfdfdf;
+  --color-action-hover: #ededed;
+  --color-action-active: #dcdcdc;
+  --color-action-ink: #181818;
+  --color-action-outline-hover: color-mix(in oklab, #dfdfdf 4%, transparent);
+  --color-action-outline-active: color-mix(in oklab, #dfdfdf 6%, transparent);
+  --color-action-border-hover: color-mix(in oklab, #dfdfdf 30%, transparent);
+  --color-action-ghost-hover: color-mix(in oklab, #ffffff 8%, transparent);
+  --color-action-ghost-active: color-mix(in oklab, #dfdfdf 16%, transparent);
+
   /* Brand ink stays neutral; semantic success, warning and danger colours are
      independent so an ordinary selected control never looks like a status. */
   --color-brand: #f4f4f4;
@@ -250,6 +260,16 @@
     --color-check-disabled-ink: #ffffff;
     --color-check-ring: #339cff;
 
+    --color-action-solid: #1a1c1f;
+    --color-action-hover: #303030;
+    --color-action-active: #414141;
+    --color-action-ink: #ffffff;
+    --color-action-outline-hover: color-mix(in oklab, #1a1c1f 2%, transparent);
+    --color-action-outline-active: color-mix(in oklab, #1a1c1f 4%, transparent);
+    --color-action-border-hover: color-mix(in oklab, #1a1c1f 20%, transparent);
+    --color-action-ghost-hover: color-mix(in oklab, #1a1c1f 5%, transparent);
+    --color-action-ghost-active: color-mix(in oklab, #1a1c1f 12%, transparent);
+
     --color-brand: #0d0d0d;
     --color-ok: #1e8a3e;
     --color-warn: #b65d00;
@@ -286,6 +306,16 @@
   --color-check-ink: #ffffff;
   --color-check-disabled-ink: #ffffff;
   --color-check-ring: #339cff;
+
+  --color-action-solid: #1a1c1f;
+  --color-action-hover: #303030;
+  --color-action-active: #414141;
+  --color-action-ink: #ffffff;
+  --color-action-outline-hover: color-mix(in oklab, #1a1c1f 2%, transparent);
+  --color-action-outline-active: color-mix(in oklab, #1a1c1f 4%, transparent);
+  --color-action-border-hover: color-mix(in oklab, #1a1c1f 20%, transparent);
+  --color-action-ghost-hover: color-mix(in oklab, #1a1c1f 5%, transparent);
+  --color-action-ghost-active: color-mix(in oklab, #1a1c1f 12%, transparent);
 
   --color-brand: #0d0d0d;
   --color-ok: #1e8a3e;
@@ -502,13 +532,165 @@
     font-variant-numeric: tabular-nums;
   }
 
-  /* One shell for every control a value is chosen or typed into.
-   *
-   * 32px, which is what default buttons beside them measure, because a toolbar where
-   * the select is a pixel taller than the button next to it is the specific kind
-   * of wrong that nobody can name and everybody sees. The caller adds nothing but
-   * width — height, border, ground, ink and type all come from here, so a new
-   * control cannot quietly invent its own. */
+  /* Action surfaces change independently of their labels and icons. */
+  .action {
+    --action-height: var(--control-size-md);
+    --action-gutter: calc(0.75rem * 1.33);
+    --action-gap: 6px;
+    --action-font: 0.875rem;
+    --action-fill: transparent;
+    --action-fill-hover: var(--color-action-outline-hover);
+    --action-fill-active: var(--color-action-outline-active);
+    --action-ring: var(--color-check-ring);
+    --action-ring-offset: -1px;
+    display: inline-flex;
+    position: relative;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    gap: var(--action-gap);
+    height: var(--action-height);
+    padding: 0 var(--action-gutter);
+    border: 0;
+    border-radius: 9999px;
+    background: transparent;
+    color: var(--color-text);
+    font-size: var(--action-font);
+    font-weight: 400;
+    line-height: 1;
+    white-space: nowrap;
+    user-select: none;
+    -webkit-app-region: no-drag;
+    transition: color var(--transition-duration-basic) ease,
+      opacity var(--transition-duration-basic) ease;
+  }
+
+  .action[data-size='sm'] {
+    --action-height: var(--control-size-sm);
+    --action-gutter: calc(0.625rem * 1.33);
+    --action-gap: 4px;
+    --action-font: 0.75rem;
+  }
+
+  .action[data-size='lg'] {
+    --action-height: var(--control-size-lg);
+    --action-font: 0.75rem;
+  }
+
+  .action-icon {
+    --action-height: var(--control-size-sm);
+    width: var(--action-height);
+    padding: 0;
+  }
+
+  .action-icon[data-size='sm'] { --action-height: 24px; }
+  .action-icon[data-size='lg'] { --action-height: var(--control-size-sm); }
+
+  .action-content {
+    display: flex;
+    position: relative;
+    align-items: center;
+    justify-content: center;
+    gap: inherit;
+    width: 100%;
+    height: 100%;
+  }
+
+  .action-content svg:not([data-no-autosize]) { width: 18px; height: 18px; }
+  .action-content svg:not([data-no-autosize]):first-child:not(:only-child) { margin-left: -1px; }
+  .action-content svg:not([data-no-autosize]):last-child:not(:only-child) { margin-right: -1px; }
+  .action-icon[data-size='sm'] svg:not([data-no-autosize]) { width: 16px; height: 16px; }
+  .action-icon svg:not([data-no-autosize]) { margin: 0; }
+
+  .action::before, .action::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+  }
+
+  .action::before {
+    background-color: var(--action-fill);
+    transition: background-color var(--transition-duration-basic) ease,
+      box-shadow var(--transition-duration-basic) ease,
+      opacity var(--transition-duration-basic) ease;
+  }
+
+  .action:focus { outline: none; }
+  .action:focus-visible::after {
+    outline: 2px solid var(--action-ring);
+    outline-offset: var(--action-ring-offset);
+  }
+
+  .action[data-variant='primary'], .action[data-variant='danger'] {
+    --action-fill: var(--color-action-solid);
+    --action-fill-hover: var(--color-action-hover);
+    --action-fill-active: var(--color-action-active);
+    --action-ring-offset: 2px;
+    color: var(--color-action-ink);
+  }
+
+  .action[data-variant='danger'] {
+    --action-fill: #e02e2a;
+    --action-fill-hover: #ba2623;
+    --action-fill-active: #ba2623;
+    --action-ring: #ff8583;
+    color: #ffffff;
+  }
+
+  .action[data-variant='secondary']::before {
+    box-shadow: inset 0 0 0 1px var(--color-line-strong);
+  }
+
+  .action[data-variant='ghost'] {
+    --action-fill: var(--color-action-ghost-hover);
+    --action-fill-hover: var(--color-action-ghost-hover);
+    --action-fill-active: var(--color-action-ghost-active);
+  }
+
+  .action[data-variant='ghost']::before { opacity: 0; }
+
+  .action:enabled[aria-expanded='true']::before {
+    background-color: var(--action-fill-hover);
+  }
+
+  .action[data-variant='secondary']:enabled[aria-expanded='true']::before {
+    box-shadow: inset 0 0 0 1px var(--color-action-border-hover);
+  }
+
+  .action[data-variant='ghost']:enabled[aria-expanded='true']::before { opacity: 0.6; }
+
+  @media (hover: hover) {
+    .action:enabled:hover::before {
+      background-color: var(--action-fill-hover);
+      opacity: 1;
+    }
+
+    .action[data-variant='secondary']:enabled:hover::before {
+      box-shadow: inset 0 0 0 1px var(--color-action-border-hover);
+    }
+  }
+
+  .action:enabled:active::before {
+    background-color: var(--action-fill-active);
+    opacity: 1;
+  }
+
+  .action:disabled {
+    --action-fill: color-mix(in oklab, var(--color-text) 5%, transparent);
+    color: var(--color-faint);
+    cursor: not-allowed;
+  }
+
+  .action[data-variant='secondary']:disabled::before {
+    background: transparent;
+    box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--color-text) 6%, transparent);
+  }
+
+  .action[data-variant='ghost']:disabled { opacity: 0.4; }
+
+  /* Value controls share the default 32px toolbar height. */
   .field {
     height: var(--control-size-md);
     padding-inline: 10px;
@@ -858,4 +1040,9 @@
   [aria-disabled='true'] {
     color: GrayText;
   }
+
+  .action { border: 1px solid ButtonText; }
+  .action::before { background: ButtonFace; box-shadow: none; }
+  .action:focus-visible::after { outline-color: Highlight; }
+  .action:disabled { color: GrayText; }
 }

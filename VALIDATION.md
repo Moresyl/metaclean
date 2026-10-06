@@ -4,6 +4,42 @@ Last audited: 2026-10-06
 
 This file records evidence, not intent. A row is complete only when the named artifact or runtime check exists.
 
+## Unreleased action state alignment — 2026-10-06
+
+Current component defaults and their merged configuration were inspected before
+constructing the CSS comparison: pill enabled, squircle disabled for pills, and
+pressable scaling disabled. The fixture retains the original stylesheet layer
+order and the label/icon structure implied by the inspected component. No
+extracted JavaScript is executed. The product fixture renders its actual React
+action components through the development server.
+
+All 192 light/dark combinations pass for four variants, three heights and eight
+states: normal, hover, active, hover plus active, focus, expanded, disabled and
+disabled plus hover/active. Compared properties include typography, geometry,
+icon dimensions/offsets, resolved surface/text colors, opacity, cursor, transform,
+easing and focus color/width/offset. These are rendered CSS pseudo-state checks,
+not evidence of the original installed application's runtime or trusted pointer
+interaction.
+
+The native regression fails on the preceding binary's 500-weight label where
+the current rule requires 400. Initial updated runs expose test precision issues
+after color transitions: translucent Oklab canvas conversions differ by two
+8-bit channels, and completed transitions retain coefficients differing by up
+to 0.000046 from the directly resolved declaration. The regression now compares
+resolved Oklab components within 0.0001 while requiring exact alpha; geometry,
+opaque colors and semantics retain exact assertions. All five native design
+cases pass after this correction. The complete Windows desktop suite passes all
+21 cases: five design regressions and sixteen native workflow cases.
+Cross-platform qualification for the new action implementation is still pending.
+
+Frontend verification passes all 430 tests with 93.57% line coverage, including
+native form submission/default type, disabled activation, forwarded refs and
+accessible icon-action states. Documentation/116-extension/CSP checks and all
+44 release-automation cases pass. Twenty browser page/theme/width combinations
+show no horizontal content/action overflow. Visual inspection and measured child
+bounds additionally reveal vertical intake-card spill at 390px in both themes;
+that layout issue remains to be corrected. These action changes are unreleased.
+
 ## Unreleased checkbox state alignment — 2026-10-06
 
 A direct browser comparison loads the supplied current theme and checkbox CSS
@@ -32,7 +68,10 @@ The corrected Windows run passed all twenty desktop cases: four design
 regressions and sixteen workflow cases. Frontend verification passed all
 428 tests with 93.58% line coverage; documentation/116-extension/CSP checks,
 44 release-automation cases and the documentation build also passed.
-Cross-platform qualification is pending. These changes are not yet included
+[CI 37394121429](https://github.com/Moresyl/metaclean/actions/runs/37394121429)
+completed successfully at source `212e558`: all three operating systems passed
+four design and sixteen workflow cases, with 428 frontend tests, 93.58% frontend
+line coverage and 91.82% Rust line coverage. These changes are not yet included
 in published v0.12.1 packages.
 
 ## Published v0.12.1 About layout correction — 2026-10-06

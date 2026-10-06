@@ -1,6 +1,147 @@
 import assert from "node:assert/strict";
 
+function assertResolvedColor(actual, expected, message) {
+  if (actual === expected) return;
+  // Finished color transitions can retain an Oklab round trip with a few
+  // extra decimal places. Keep alpha exact and bound each color component.
+  assert.ok(actual.startsWith("oklab(") && expected.startsWith("oklab("), message);
+  const components = value => value.match(/[-+]?(?:\d*\.?\d+)(?:e[-+]?\d+)?/giu).map(Number);
+  const left = components(actual);
+  const right = components(expected);
+  assert.equal(left.length, right.length);
+  left.forEach((channel, index) => assert.ok(Math.abs(channel - right[index]) <= (index === 3 ? 0 : 0.0001),
+    `${message}: ${actual} / ${expected}`));
+}
+
 describe("Desktop visual controls", () => {
+  it("preserves action geometry, readable disabled states and focus in both themes", async () => {
+    await $(".app-shell").waitForDisplayed();
+    const previousTheme = await browser.tauri.execute(() => document.documentElement.dataset.theme);
+    try {
+      await browser.tauri.execute(() => window.dispatchEvent(new KeyboardEvent("keydown", { key: "1", ctrlKey: true })));
+      await $(".scan-button").waitForDisplayed();
+      assert.equal(await browser.tauri.execute(() => getComputedStyle(document.querySelector(".scan-button")).fontWeight), "400");
+      await browser.tauri.execute(() => {
+        const host = document.createElement("div");
+        host.id = "action-regression";
+        host.style.cssText = "position:fixed;top:80px;left:80px;display:flex;flex-wrap:wrap;width:600px;gap:8px;pointer-events:none;z-index:9999";
+        for (const variant of ["primary", "secondary", "ghost", "danger"]) {
+          for (const size of ["sm", "md", "lg"]) {
+            const action = document.querySelector(".scan-button").cloneNode(true);
+            action.className = "action";
+            action.dataset.variant = variant;
+            action.dataset.size = size;
+            action.disabled = false;
+            host.append(action);
+          }
+        }
+        document.body.append(host);
+      });
+      for (const theme of ["light", "dark"]) {
+        await browser.tauri.execute((_, theme) => document.documentElement.dataset.theme = theme, theme);
+        for (const disabled of [false, true]) {
+          await browser.tauri.execute((_, disabled) => {
+            document.querySelectorAll("#action-regression button").forEach(action => { action.disabled = disabled; });
+          }, disabled);
+          await browser.waitUntil(async () => browser.tauri.execute((_, theme, disabled) => {
+            if (document.querySelector("#action-regression").getAnimations({ subtree: true })
+              .some(animation => animation.pending || animation.playState === "running")) return false;
+            const action = document.querySelector("#action-regression button");
+            const paint = getComputedStyle(action, "::before").backgroundColor;
+            if (disabled) {
+              const canvas = document.createElement("canvas"); canvas.width = canvas.height = 1;
+              const context = canvas.getContext("2d"); context.fillStyle = paint; context.fillRect(0, 0, 1, 1);
+              return context.getImageData(0, 0, 1, 1).data[3] === 13;
+            }
+            return paint === (theme === "light" ? "rgb(26, 28, 31)" : "rgb(223, 223, 223)");
+          }, theme, disabled), { timeoutMsg: "Action theme and disabled transitions did not settle" });
+          const states = await browser.tauri.execute(() => [...document.querySelectorAll("#action-regression button")].map(action => {
+            const style = getComputedStyle(action);
+            const surface = getComputedStyle(action, "::before");
+            const canvas = document.createElement("canvas"); canvas.width = canvas.height = 1;
+            const context = canvas.getContext("2d");
+            const paint = value => {
+              context.clearRect(0, 0, 1, 1); context.fillStyle = value; context.fillRect(0, 0, 1, 1);
+              return [...context.getImageData(0, 0, 1, 1).data];
+            };
+            const probe = document.createElement("span");
+            probe.style.color = document.documentElement.dataset.theme === "light"
+              ? "color-mix(in oklab, #1a1c1f 50%, transparent)"
+              : "color-mix(in oklab, #ffffff 50%, transparent)";
+            document.body.append(probe);
+            const disabledColor = getComputedStyle(probe).color;
+            probe.remove();
+            return { variant: action.dataset.variant, size: action.dataset.size,
+              height: style.height, radius: style.borderRadius, font: style.fontSize,
+              weight: style.fontWeight, lineHeight: style.lineHeight, gap: style.columnGap,
+              gutter: style.paddingLeft, opacity: style.opacity, cursor: style.cursor,
+              color: style.color, fill: surface.backgroundColor, surfaceOpacity: surface.opacity,
+              fillPaint: paint(surface.backgroundColor),
+              disabledColor,
+              borderPaint: paint(surface.boxShadow.match(/(?:oklab|color|rgba?)\([^)]*\)/)?.[0] ?? "transparent"),
+              transform: style.transform, scale: style.scale };
+          }));
+          assert.equal(states.length, 12);
+          for (const state of states) {
+            assert.equal(state.height, { sm: "28px", md: "32px", lg: "36px" }[state.size]);
+            assert.equal(state.radius, "9999px");
+            assert.equal(state.font, state.size === "md" ? "14px" : "12px");
+            assert.equal(state.lineHeight, state.font);
+            assert.equal(state.weight, "400");
+            assert.equal(state.gap, state.size === "sm" ? "4px" : "6px");
+            assert.equal(state.gutter, state.size === "sm" ? "13.3px" : "15.96px");
+            assert.equal(state.cursor, disabled ? "not-allowed" : "pointer");
+            assert.equal(state.opacity, disabled && state.variant === "ghost" ? "0.4" : "1");
+            assert.equal(state.surfaceOpacity, state.variant === "ghost" ? "0" : "1");
+            assert.equal(state.transform, "none");
+            assert.equal(state.scale, "none");
+            if (disabled) {
+              assertResolvedColor(state.color, state.disabledColor,
+                `${theme}/${state.variant}/${state.size} disabled ink differs from the specified color`);
+              if (state.variant === "secondary") {
+                assert.equal(state.fill, "rgba(0, 0, 0, 0)");
+                assert.equal(state.borderPaint[3], 15);
+              } else assert.equal(state.fillPaint[3], 13);
+            } else if (state.variant === "primary") {
+              assert.equal(state.fill, theme === "light" ? "rgb(26, 28, 31)" : "rgb(223, 223, 223)");
+              assert.equal(state.color, theme === "light" ? "rgb(255, 255, 255)" : "rgb(24, 24, 24)");
+            } else if (state.variant === "danger") {
+              assert.equal(state.fill, "rgb(224, 46, 42)");
+              assert.equal(state.color, "rgb(255, 255, 255)");
+            } else assert.equal(state.color, theme === "light" ? "rgb(26, 28, 31)" : "rgb(223, 223, 223)");
+          }
+        }
+        await browser.tauri.execute(() => document.querySelectorAll("#action-regression button").forEach(action => { action.disabled = false; }));
+        await browser.keys("Tab");
+        for (const variant of ["primary", "secondary", "ghost", "danger"]) {
+          const focus = await browser.tauri.execute((_, variant) => {
+            const action = document.querySelector(`#action-regression [data-variant=${variant}]`);
+            action.focus();
+            const ring = getComputedStyle(action, "::after");
+            const probe = document.createElement("span");
+            probe.style.color = variant === "danger" ? "#ff8583"
+              : document.documentElement.dataset.theme === "light" ? "#339cff" : "color-mix(in oklab, #339cff 70%, transparent)";
+            document.body.append(probe);
+            const expected = getComputedStyle(probe).color;
+            probe.remove();
+            return { visible: action.matches(":focus-visible"), width: ring.outlineWidth, offset: ring.outlineOffset, color: ring.outlineColor, expected };
+          }, variant);
+          assert.equal(focus.visible, true);
+          assert.equal(focus.width, "2px");
+          assert.equal(focus.offset, ["primary", "danger"].includes(variant) ? "2px" : "-1px");
+          assertResolvedColor(focus.color, focus.expected, `${theme}/${variant} focus color`);
+        }
+      }
+    } finally {
+      await browser.tauri.execute((_, previousTheme) => {
+        document.querySelector("#action-regression")?.remove();
+        document.documentElement.dataset.theme = previousTheme;
+      }, previousTheme);
+      await browser.refresh();
+      await $(".app-shell").waitForDisplayed();
+    }
+  });
+
   it("covers the complete viewport when a confirmation opens from animated content", async () => {
     const previous = await browser.tauri.execute(() => localStorage.getItem("metaclean.history"));
     try {

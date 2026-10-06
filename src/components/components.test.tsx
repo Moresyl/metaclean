@@ -1,6 +1,7 @@
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { StrictMode, useState } from "react";
+import { createRef, StrictMode, useState } from "react";
+import Button, { IconButton } from "./Button";
 import CleanOptions from "./CleanOptions";
 import DropZone from "./DropZone";
 import FileQueue from "./FileQueue";
@@ -40,6 +41,54 @@ vi.mock("../lib/update", () => ({
 }));
 
 const wrap = (node: React.ReactNode) => render(<StrictMode><ThemeProvider initialMode="light"><I18nProvider><UpdateProvider>{node}</UpdateProvider></I18nProvider></ThemeProvider></StrictMode>);
+
+describe("Shared actions", () => {
+  it("retains native form behavior, forwarding and disabled activation", () => {
+    const ref = createRef<HTMLButtonElement>();
+    const submit = vi.fn(event => event.preventDefault());
+    const click = vi.fn();
+    const view = render(<form onSubmit={submit}>
+      <Button ref={ref} onClick={click}><span>Run cleanup</span></Button>
+    </form>);
+    const action = screen.getByRole("button", { name: "Run cleanup" });
+    expect(ref.current).toBe(action);
+    action.focus();
+    expect(action).toHaveFocus();
+    fireEvent.click(action);
+    expect(click).toHaveBeenCalledTimes(1);
+    expect(submit).not.toHaveBeenCalled();
+    view.rerender(<form onSubmit={submit}>
+      <Button ref={ref} type="submit" name="operation" value="clean" onClick={click} disabled>Run cleanup</Button>
+    </form>);
+    fireEvent.click(screen.getByRole("button", { name: "Run cleanup" }));
+    expect(click).toHaveBeenCalledTimes(1);
+    expect(submit).not.toHaveBeenCalled();
+    view.rerender(<form onSubmit={submit}>
+      <Button ref={ref} type="submit" name="operation" value="clean" onClick={click}>Run cleanup</Button>
+    </form>);
+    fireEvent.click(screen.getByRole("button", { name: "Run cleanup" }));
+    expect(submit).toHaveBeenCalledTimes(1);
+    expect(ref.current).toHaveAttribute("name", "operation");
+    expect(ref.current).toHaveAttribute("value", "clean");
+  });
+
+  it("keeps icon actions named and exposes their expanded and disabled states", () => {
+    const click = vi.fn();
+    const view = render(<IconButton aria-label="Toggle details" aria-expanded={false} onClick={click}>
+      <svg aria-hidden="true" />
+    </IconButton>);
+    fireEvent.click(screen.getByRole("button", { name: "Toggle details" }));
+    expect(click).toHaveBeenCalledTimes(1);
+    view.rerender(<IconButton aria-label="Toggle details" aria-expanded disabled onClick={click}>
+      <svg aria-hidden="true" />
+    </IconButton>);
+    const action = screen.getByRole("button", { name: "Toggle details" });
+    expect(action).toHaveAttribute("aria-expanded", "true");
+    expect(action).toBeDisabled();
+    fireEvent.click(action);
+    expect(click).toHaveBeenCalledTimes(1);
+  });
+});
 
 function UpdateDialogHarness() {
   const update = useUpdate();

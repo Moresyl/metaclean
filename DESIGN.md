@@ -21,9 +21,10 @@ consume the same tokens. Their content remains specific to a local file utility.
 | Surface | Neutral `#212121` / `#ffffff` panels and `#303030` / `#ededed` raised controls |
 | Brand and status | Neutral primary actions and checked controls; blue focus; green, orange and red for semantic status |
 | Text | Dark `#dfdfdf`, light `#1a1c1f`; secondary ink resolves from 70% foreground opacity |
-| Geometry | 12px panels, 6px controls, a 24px intake surface, 1px hairlines, shared 28/32/36px buttons and 32px fields |
+| Geometry | 12px panels, 6px value controls, a 24px intake surface, 1px hairlines, shared 28/32/36px pill actions and 32px fields |
 | Type | System UI font stack, 14px body with 1.5 line height, 500/600 weights; Microsoft YaHei UI, PingFang SC and Noto Sans SC fallbacks |
 | Checkbox | 18px square, 4px base corner, theme-specific neutral borders and disabled combinations, stable selected hover and a 2px focus outline |
+| Actions | 400-weight labels with 1em line height; 12/14/12px type for 28/32/36px heights, 18px icons and separate surface feedback; icon-only actions retain 24/28px squares |
 | Motion | 150ms control feedback; reduced-motion mode collapses animations and transitions to 0.001ms |
 
 Supported renderers apply a 1.25 corner scale with `superellipse(1.5)` to
@@ -33,6 +34,13 @@ ordinary rounded geometry. Its border, disabled fill and focus ring use
 dedicated tokens rather than text-opacity tokens. Font fallbacks are
 implementation choices; a declared stack alone does not prove which font
 renders a Chinese glyph on a particular machine.
+
+Actions follow the current component's default pill configuration. Their surfaces
+carry theme-specific normal, hover, pressed and disabled colors; labels and icons
+remain stable. Outlined and ghost actions place the focus ring 1px inside the
+edge, while primary and danger actions place it 2px outside. Danger uses its own
+red focus ring. Pressed actions do not scale the content. Native button semantics,
+form behavior, refs, names and expanded/disabled states remain intact.
 
 ## Implemented patterns
 
