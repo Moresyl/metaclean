@@ -100,7 +100,8 @@ describe("Desktop visual controls", () => {
 
   it("keeps context menus inside the viewport without scrolling their animated workspace", async () => {
     await $(".app-shell").waitForDisplayed();
-    const previousDirection = await browser.tauri.execute(() => document.documentElement.dir);
+    const previousMenuState = await browser.tauri.execute(() => ({ direction: document.documentElement.dir,
+      theme: document.documentElement.dataset.theme }));
     try {
       await $(".sidebar nav button:nth-of-type(1)").click();
       await browser.tauri.execute(() => {
@@ -113,9 +114,11 @@ describe("Desktop visual controls", () => {
       await $(".file-queue .file-item").waitForDisplayed();
       await browser.waitUntil(async () => browser.tauri.execute(() => !document.querySelector(".workspace-content")
         .getAnimations({ subtree: true }).some(animation => animation.pending || animation.playState === "running")));
-      for (const direction of ["ltr", "rtl"]) {
-        for (const corner of ["top-left", "bottom-right"]) {
-          const before = await browser.tauri.execute((_, direction, corner) => {
+      for (const theme of ["light", "dark"]) {
+        for (const { direction, corner } of ["ltr", "rtl"].flatMap(direction =>
+          ["top-left", "bottom-right"].map(corner => ({ direction, corner })))) {
+          const before = await browser.tauri.execute((_, theme, direction, corner) => {
+            document.documentElement.dataset.theme = theme;
             document.documentElement.dir = direction;
             document.querySelector(".queue-search-input").focus({ preventScroll: true });
             const main = document.querySelector("main");
@@ -124,7 +127,7 @@ describe("Desktop visual controls", () => {
               { bubbles: true, cancelable: true, clientX: corner === "top-left" ? 2 : innerWidth - 2,
                 clientY: corner === "top-left" ? 2 : innerHeight - 2, button: 2 }));
             return scroll;
-          }, direction, corner);
+          }, theme, direction, corner);
           await $("[role=menu]").waitForDisplayed();
           await browser.waitUntil(async () => browser.tauri.execute(() => !document.querySelector("[role=menu]")
             .getAnimations({ subtree: true }).some(animation => animation.pending || animation.playState === "running")));
@@ -134,15 +137,29 @@ describe("Desktop visual controls", () => {
             const menu = layer.querySelector("[role=menu]");
             const panel = menu.getBoundingClientRect();
             const main = document.querySelector("main");
+            const command = menu.querySelector("[role=menuitem]");
+            const previousDisabled = command.disabled;
+            command.disabled = true;
+            const disabledOpacity = getComputedStyle(command).opacity;
+            command.disabled = previousDisabled;
             return { layer: { left: overlay.left, top: overlay.top, width: overlay.width, height: overlay.height },
               viewport: { width: innerWidth, height: innerHeight }, rootMounted: layer.parentElement === document.body,
               panel: { left: panel.left, top: panel.top, right: panel.right, bottom: panel.bottom },
-              contained: panel.left >= 8 && panel.top >= 8 && panel.right <= innerWidth - 8 && panel.bottom <= innerHeight - 8,
+              contained: panel.left >= 6 && panel.top >= 6 && panel.right <= innerWidth - 6 && panel.bottom <= innerHeight - 6,
+              minimum: panel.width >= Math.min(180, innerWidth - 12), disabledOpacity,
+              commandCursors: [...menu.querySelectorAll("[role=menuitem]")].map(item => getComputedStyle(item).cursor),
               focused: document.activeElement === menu, scroll: { left: main.scrollLeft, top: main.scrollTop } };
           });
           assert.deepEqual(state.layer, { left: 0, top: 0, width: state.viewport.width, height: state.viewport.height });
           assert.equal(state.rootMounted, true);
           assert.equal(state.contained, true, `${direction}/${corner} menu leaves the viewport: ${JSON.stringify(state.panel)}`);
+          if (corner === "top-left") {
+            assert.equal(state.panel.left, 6);
+            assert.equal(state.panel.top, 6);
+          }
+          assert.equal(state.minimum, true);
+          assert.equal(state.disabledOpacity, "0.5");
+          assert.ok(state.commandCursors.every(cursor => cursor === "default"));
           assert.equal(state.focused, true);
           assert.deepEqual(state.scroll, before, `${direction}/${corner} menu scrolls its workspace`);
           for (const key of ["End", "Home"]) {
@@ -171,7 +188,10 @@ describe("Desktop visual controls", () => {
         }
       }
     } finally {
-      await browser.tauri.execute((_, direction) => { document.documentElement.dir = direction; }, previousDirection);
+      await browser.tauri.execute((_, state) => {
+        document.documentElement.dir = state.direction;
+        document.documentElement.dataset.theme = state.theme;
+      }, previousMenuState);
       await browser.refresh();
       await $(".app-shell").waitForDisplayed();
     }
@@ -865,6 +885,10 @@ describe("Desktop visual controls", () => {
         return [...context.getImageData(0, 0, 1, 1).data];
       };
       return { border: color(style.borderTopColor), fill: color(style.backgroundColor), ring: color(style.outlineColor),
+        borderCss: style.borderTopColor, fillCss: style.backgroundColor,
+        theme: document.documentElement.dataset.theme,
+        checked: check.checked, indeterminate: check.indeterminate, disabled: check.disabled,
+        transitions: check.getAnimations().map(animation => ({ pending: animation.pending, state: animation.playState })),
         width: style.width, height: style.height, radius: style.borderRadius, borderWidth: style.borderTopWidth,
         cursor: style.cursor, outline: style.outlineWidth, offset: style.outlineOffset,
         focus: check.matches(":focus-visible"),
@@ -872,10 +896,15 @@ describe("Desktop visual controls", () => {
     });
     const sameColor = (actual, expected) => actual.every((channel, index) => Math.abs(channel - expected[index]) <= 1);
     const expectColors = async (border, fill, message) => {
-      await browser.waitUntil(async () => {
-        const actual = await readStyle();
-        return sameColor(actual.border, border) && sameColor(actual.fill, fill);
-      }, { timeoutMsg: message });
+      let actual;
+      try {
+        await browser.waitUntil(async () => {
+          actual = await readStyle();
+          return sameColor(actual.border, border) && sameColor(actual.fill, fill);
+        }, { timeoutMsg: message });
+      } catch (error) {
+        throw new Error(`${message}: ${JSON.stringify({ expected: { border, fill }, actual })}`, { cause: error });
+      }
     };
     try {
       await browser.tauri.execute(() => {

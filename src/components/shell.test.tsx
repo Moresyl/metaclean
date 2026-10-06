@@ -216,8 +216,8 @@ describe("context menu", () => {
     vi.spyOn(HTMLElement.prototype, "offsetHeight", "get").mockReturnValue(120);
     wrap(<ContextMenu entries={build(vi.fn())} anchor={{ x: 2, y: 2 }} label="测试菜单" onClose={vi.fn()} />);
     const menu = screen.getByRole("menu");
-    expect(menu.style.left).toBe("8px");
-    expect(menu.style.top).toBe("8px");
+    expect(menu.style.left).toBe("6px");
+    expect(menu.style.top).toBe("6px");
   });
 
   it("uses fractional layout bounds rather than the entering animation's scaled bounds", () => {
@@ -233,8 +233,8 @@ describe("context menu", () => {
     stubRect(Element.prototype, { width: 180.45, height: 108.45 });
     wrap(<ContextMenu entries={build(vi.fn())} anchor={{ x: innerWidth - 2, y: innerHeight - 2 }} label="测试菜单" onClose={vi.fn()} />);
     const menu = screen.getByRole("menu");
-    expect(menu.style.left).toBe(`${innerWidth - 208.5}px`);
-    expect(menu.style.top).toBe(`${innerHeight - 128.5}px`);
+    expect(menu.style.left).toBe(`${innerWidth - 206.5}px`);
+    expect(menu.style.top).toBe(`${innerHeight - 126.5}px`);
   });
 
   it("anchors on the focused control when the keyboard opens it", async () => {

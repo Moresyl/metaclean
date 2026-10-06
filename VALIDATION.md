@@ -4,6 +4,25 @@ Last audited: 2026-10-06
 
 This file records evidence, not intent. A row is complete only when the named artifact or runtime check exists.
 
+## Unreleased file context-menu fallback — 2026-10-06
+
+The supplied file-menu trigger now has a verified static call chain into the
+shared menu wrapper. Its desktop branch prefers the system menu; the web fallback
+uses a 180px minimum width and 6px collision padding. Our web implementation now
+uses those bounds with the shared default arrow cursor and 50% disabled opacity.
+The previous implementation fails both unit and actual native edge assertions
+at 8px. All 34 shell tests, 448 frontend tests with 93.88% line coverage and all
+28 ordinary Windows desktop cases pass after the change. The native menu case
+checks light/dark themes, LTR/RTL and leading/trailing corners, including focus
+return, unchanged scroll, pointer states and disabled opacity. Source menus
+backed by the operating system remain outside this web rendering comparison.
+The earlier URI candidate [CI 37431871697](https://github.com/Moresyl/metaclean/actions/runs/37431871697)
+passes the main, Windows and Linux jobs but fails the macOS dark disabled
+checkbox color wait. The fixture now reports its actual CSS/RGBA colors, theme,
+checked/disabled state and pending transitions on failure without changing the
+color assertions. Its macOS diagnosis and the current source qualification remain
+open; this does not support publishing the candidate yet.
+
 ## Unreleased OOXML property identity coverage — 2026-10-06
 
 The repeatable [Office verifier](https://github.com/Moresyl/metaclean/blob/master/scripts/verify-office-fidelity.py) now passes
@@ -22,7 +41,12 @@ Run `python scripts/test-office-fidelity.py` and
 installing `python-docx==1.2.0`, `openpyxl==3.1.5` and `python-pptx==1.0.2` and
 building the frontend. A new independent Office workflow and release source
 step run these same checks and upload sources, outputs, backups, native logs,
-tool versions and JSON results. Their remote qualification is still outstanding.
+tool versions and JSON results. [Office CI 37433241566](https://github.com/Moresyl/metaclean/actions/runs/37433241566)
+passes all 42 cases and seven checker regressions on Linux at `977f021`; its
+downloaded JSON evidence has 32 direct library cases and ten relationship-view
+cases. The accompanying main/docs runs fail on two new relative script links;
+those links are corrected and the full documentation build passes locally.
+Remote main/docs qualification of the correction remains outstanding.
 
 An additional ordinary-native regression rejects valid property relationships
 with URI aliases before the follow-up fix. Internal relationships now resolve

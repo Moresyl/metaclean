@@ -29,7 +29,7 @@ consume the same tokens. Their content remains specific to a local file utility.
 | Select pickers | Supporting scalar controls use a trigger-width panel, 4px gutter, opaque canvas surface, 16px base ordinary corner, 5px/8px rows, 13px/430 labels and a leading 16px checkmark |
 | Queue search | 32px height, 8px base ordinary corner, 12px gutters, 400-weight 13px text with 19.5px line height, 8px adornment gap and a soft theme surface |
 | Segmented choices | 32px track, 2px padding/gap, 8px base ordinary corner, 28px options, 12px gutters and 600-weight 13px labels; a neutral raised selected thumb |
-| Context menus | 4px gutter, opaque canvas surface, 16px panel/12px row base corners, 13px/430 text, 5px/8px row padding, 6px gaps and hairline/spread shadows |
+| Context menus | 180px minimum width, 6px viewport margin, 4px gutter, opaque canvas surface, 16px panel/12px row base corners, 13px/430 text, 5px/8px row padding, 6px gaps, arrow cursor and 50% disabled opacity |
 | Motion | 150ms control feedback; reduced-motion mode collapses animations and transitions to 0.001ms |
 
 Supported renderers apply a 1.25 corner scale with `superellipse(1.5)` to
@@ -90,8 +90,11 @@ The current desktop startup selects its desktop window scope. Earlier fixtures
 used a different scope, which changed small-text sizing, body weight, action
 cursors and shared menu variables. Current rules use the verified desktop
 declarations; native selects and small/large actions resolve their shared control
-type size to 13px in that scope. Shared menu visual rules are reused independently, without claiming that
-every source context-menu call site has identical configuration.
+type size to 13px in that scope. The file context-menu trigger and shared wrapper
+have now been traced: the source desktop branch prefers a system menu, while its
+web fallback uses a 180px minimum width and 6px collision padding. Our web menu
+adopts that fallback geometry and shared desktop pointer/disabled states; native
+system-menu rendering remains platform-specific.
 
 Context menus use one keyboard entry point and unique active-descendant IDs.
 Arrows skip disabled items, Home/End reach enabled boundaries and Tab/Escape
@@ -121,7 +124,7 @@ forced-color rules preserve the active command and destructive-action meaning.
   scrolling list. Options follow the complete intake/queue region.
 - Confirmation, update and context-menu overlays render at the document root.
   Animated page containers cannot redefine their fixed-position bounds or clip
-  their actions. Context menus measure unscaled layout bounds, keep an 8px
+  their actions. Context menus measure unscaled layout bounds, keep a 6px
   viewport margin and focus without scrolling the workspace.
 - `TitleBar` aligns its identity area with the sidebar, reserves its center for
   command search and keeps native caption actions fixed to the right edge.

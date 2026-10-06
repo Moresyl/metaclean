@@ -13,6 +13,9 @@ All notable changes to MetaClean are documented here. The project follows
 
 ### Changed
 
+- Align web context menus with the file-menu fallback: a 180px minimum width,
+  6px viewport margin, default arrow cursor and 50% disabled opacity. Cover
+  light/dark themes, both layout directions and leading/trailing viewport corners.
 - Style scalar native option pickers in supporting renderers with compact rows,
   leading checkmarks, theme-aware opaque surfaces and separate enter/exit
   feedback. Retain native selection and form behavior, with system-color and
@@ -105,6 +108,8 @@ All notable changes to MetaClean are documented here. The project follows
 - Wait for queue-search focus selectors, final theme colors and completed
   transitions before desktop snapshots, retaining the existing color tolerance
   and final-state assertions across renderers.
+- Include actual CSS/RGBA colors, theme, checkbox flags and transition state in
+  native checkbox color-wait failures, keeping the existing color assertions.
 - Cover select refs, controlled values, form data, required validity, grouped
   options and disabled exclusion, plus native geometry and focus in both themes.
 - Cover native action geometry, disabled colors and focus in both themes, and

@@ -27,7 +27,7 @@ export interface MenuAnchor {
 }
 
 /** Distance the flyout keeps from the window edge when it has to be nudged. */
-const MARGIN = 8;
+const MARGIN = 6;
 
 function isCommand(entry: MenuEntry): entry is MenuCommand {
   return entry !== "separator";

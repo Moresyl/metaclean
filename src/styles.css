@@ -477,9 +477,9 @@
 
 @layer components {
   .context-menu {
-    min-inline-size: min(190px, calc(100vw - 16px));
-    max-inline-size: calc(100vw - 16px);
-    max-block-size: calc(100dvh - 16px);
+    min-inline-size: min(180px, calc(100vw - 12px));
+    max-inline-size: calc(100vw - 12px);
+    max-block-size: calc(100dvh - 12px);
     overflow: auto;
     padding: 4px;
     border-radius: calc(16px * var(--corner-radius-scale));
@@ -509,7 +509,7 @@
     color: inherit;
     text-align: start;
     font: inherit;
-    cursor: pointer;
+    cursor: default;
   }
 
   .menu-command::before {
@@ -532,7 +532,7 @@
   .menu-command[data-danger] { color: var(--color-danger); }
   .menu-command[data-danger]::before { background: color-mix(in oklab, var(--color-danger) 14%, transparent); }
   .menu-command[data-danger] .menu-command-icon { color: inherit; }
-  .menu-command:disabled { pointer-events: none; opacity: 0.4; }
+  .menu-command:disabled { pointer-events: none; opacity: 0.5; }
   .menu-separator { height: 1px; margin: 4px 8px; border: 0; background: var(--color-line); }
 
   .segmented-control {
