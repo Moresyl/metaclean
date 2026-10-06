@@ -4,6 +4,34 @@ Last audited: 2026-10-06
 
 This file records evidence, not intent. A row is complete only when the named artifact or runtime check exists.
 
+## Unreleased command-panel layout and selection — 2026-10-06
+
+The supplied global command caller uses the 440px list-height override, a
+520px panel-width cap and 92% viewport width. The ordinary native regression
+measures the previous panel at 560px and fails before the layout change. The
+panel now derives its list height and position from available space and keeps
+16px vertical margins even when the viewport is shorter than the normal minimum.
+
+Browser review also reproduces two selection defects: a selected command can
+become hidden when the open panel shrinks, and scrolling can move another row
+beneath a stationary pointer and replace the keyboard selection. Resize tracking
+keeps the selected command visible; actual pointer movement changes selection,
+while pointer entry caused by scrolling leaves keyboard selection intact. Both
+new unit regressions fail before their respective fixes. All 36 shell tests,
+450 frontend tests with 93.95% line coverage and all 29 ordinary Windows desktop
+cases pass afterward. Native checks cover both themes and layout directions,
+geometry, list shrinking, Home/End boundaries and focus return.
+
+Twelve real browser layout cases pass across 1180x720, 590x360 and 360x240
+viewports, both themes and both layout directions. Eight Chrome Home/End cases
+use CDP keyboard input with recorded trusted events and keep the selected enabled
+command visible under a stationary pointer. A separate open-panel resize sequence
+retains the last selected command across all three viewport sizes. The Windows
+embedded driver inserts Home/End's private-use key code into an input, so the
+native fixture dispatches their DOM key events; the separate browser checks
+qualify trusted input rather than treating that driver behavior as a product bug.
+Cross-platform qualification of this new panel change remains outstanding.
+
 ## Unreleased file context-menu fallback — 2026-10-06
 
 The supplied file-menu trigger now has a verified static call chain into the
@@ -20,8 +48,12 @@ The earlier URI candidate [CI 37431871697](https://github.com/Moresyl/metaclean/
 passes the main, Windows and Linux jobs but fails the macOS dark disabled
 checkbox color wait. The fixture now reports its actual CSS/RGBA colors, theme,
 checked/disabled state and pending transitions on failure without changing the
-color assertions. Its macOS diagnosis and the current source qualification remain
-open; this does not support publishing the candidate yet.
+color assertions. Subsequent [CI 37433713119](https://github.com/Moresyl/metaclean/actions/runs/37433713119)
+and [CI 37434830085](https://github.com/Moresyl/metaclean/actions/runs/37434830085)
+pass all four jobs, with 12 design and 16 workflow cases on each of Windows,
+Linux and macOS. The earlier timeout does not recur in those runs; diagnostics
+remain available without weakening the assertions. These runs qualify the
+file-menu and Office source, preceding the newer command-panel change above.
 
 ## Unreleased OOXML property identity coverage — 2026-10-06
 
@@ -46,7 +78,9 @@ passes all 42 cases and seven checker regressions on Linux at `977f021`; its
 downloaded JSON evidence has 32 direct library cases and ten relationship-view
 cases. The accompanying main/docs runs fail on two new relative script links;
 those links are corrected and the full documentation build passes locally.
-Remote main/docs qualification of the correction remains outstanding.
+The correction's main and all three desktop jobs pass in CI 37433713119, and
+its documentation deployment passes in run 37433713160. The subsequent source
+also passes CI 37434830085 and documentation run 37434830067.
 
 An additional ordinary-native regression rejects valid property relationships
 with URI aliases before the follow-up fix. Internal relationships now resolve

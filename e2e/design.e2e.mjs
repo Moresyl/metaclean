@@ -36,6 +36,108 @@ async function selectInterfaceLocale(locale) {
 }
 
 describe("Desktop visual controls", () => {
+  it("sizes the command panel to the viewport and scrolls keyboard selection into view", async () => {
+    await $(".app-shell").waitForDisplayed();
+    const previous = await browser.tauri.execute(() => ({ theme: document.documentElement.dataset.theme, dir: document.documentElement.dir }));
+    try {
+      for (const theme of ["light", "dark"]) {
+        for (const dir of ["ltr", "rtl"]) {
+          await browser.tauri.execute((_, theme, dir) => {
+            document.documentElement.dataset.theme = theme;
+            document.documentElement.dir = dir;
+            const opener = document.querySelector(".titlebar > button[data-tip]");
+            opener.focus();
+            opener.click();
+          }, theme, dir);
+          await $(".palette-layer [role=dialog]").waitForDisplayed();
+          await browser.waitUntil(async () => browser.tauri.execute(() => !document.querySelector(".palette-layer")
+            .getAnimations({ subtree: true }).some(animation => animation.pending || animation.playState === "running")));
+          const geometry = await browser.tauri.execute(() => {
+            const panel = document.querySelector(".palette-layer [role=dialog]");
+            const list = panel.querySelector("[role=listbox]");
+            const bounds = panel.getBoundingClientRect();
+            const style = getComputedStyle(list);
+            return { left: bounds.left, top: bounds.top, right: bounds.right, bottom: bounds.bottom, width: bounds.width,
+              viewportWidth: innerWidth, viewportHeight: innerHeight,
+              listMaxHeight: parseFloat(style.maxHeight), overscroll: style.overscrollBehaviorY,
+              focused: panel.querySelector("[role=combobox]") === document.activeElement };
+          });
+          const listMaxHeight = Math.min(440, Math.max(120, geometry.viewportHeight * 0.9 - 64));
+          const panelMaxHeight = Math.min(listMaxHeight + 64, geometry.viewportHeight - 32);
+          assert.ok(Math.abs(geometry.width - Math.min(520, geometry.viewportWidth * 0.92)) <= 1,
+            `${theme}/${dir} command width: ${JSON.stringify(geometry)}`);
+          assert.ok(Math.abs(geometry.left - (geometry.viewportWidth - geometry.width) / 2) <= 1);
+          assert.ok(Math.abs(geometry.top - Math.max(16, (geometry.viewportHeight - panelMaxHeight) / 2)) <= 1);
+          assert.ok(geometry.left >= 0 && geometry.top >= 16 && geometry.right <= geometry.viewportWidth
+            && geometry.bottom <= geometry.viewportHeight - 16);
+          assert.ok(Math.abs(geometry.listMaxHeight - listMaxHeight) <= 1);
+          assert.equal(geometry.overscroll, "contain");
+          assert.equal(geometry.focused, true);
+          // The embedded driver inserts Home/End's WebDriver private-use code
+          // into inputs. Dispatch the DOM key here; browser review covers trusted keys.
+          await browser.tauri.execute(() => document.querySelector(".palette-layer [role=combobox]")
+            .dispatchEvent(new KeyboardEvent("keydown", { key: "End", bubbles: true })));
+          let lastSelection;
+          await browser.waitUntil(async () => {
+            lastSelection = await browser.tauri.execute(() => {
+              const list = document.querySelector(".palette-layer [role=listbox]");
+              const field = document.querySelector(".palette-layer [role=combobox]");
+              const enabled = [...list.querySelectorAll("[role=option]:not(:disabled)")];
+              const selected = list.querySelector("[aria-selected=true]");
+              const item = selected?.getBoundingClientRect();
+              const bounds = list.getBoundingClientRect();
+              return { selected: selected?.id, last: enabled.at(-1)?.id, activeDescendant: field.getAttribute("aria-activedescendant"),
+                query: field.value, focused: field === document.activeElement, scrollTop: list.scrollTop,
+                itemTop: item?.top, itemBottom: item?.bottom, listTop: bounds.top, listBottom: bounds.bottom,
+                visible: Boolean(item && item.top >= bounds.top && item.bottom <= bounds.bottom + 1) };
+            });
+            return lastSelection.selected === lastSelection.last && lastSelection.activeDescendant === lastSelection.selected && lastSelection.visible;
+          }, { timeoutMsg: `${theme}/${dir} last enabled command was not scrolled into view` }).catch(error => {
+            throw new Error(`${theme}/${dir} command selection: ${JSON.stringify(lastSelection)}`, { cause: error });
+          });
+          await browser.tauri.execute(() => {
+            const list = document.querySelector(".palette-layer [role=listbox]");
+            const second = list.querySelectorAll("[role=option]:not(:disabled)")[1];
+            second.dispatchEvent(new PointerEvent("pointerover", { bubbles: true }));
+          });
+          assert.equal(await browser.tauri.execute(() => {
+            const list = document.querySelector(".palette-layer [role=listbox]");
+            return list.querySelector("[aria-selected=true]") === [...list.querySelectorAll("[role=option]:not(:disabled)")].at(-1);
+          }), true, `${theme}/${dir} pointer entry replaced the keyboard selection`);
+          await browser.tauri.execute(() => {
+            document.querySelector(".palette-layer [role=listbox]").style.maxHeight = "120px";
+          });
+          await browser.waitUntil(async () => browser.tauri.execute(() => {
+            const list = document.querySelector(".palette-layer [role=listbox]");
+            const item = list.querySelector("[aria-selected=true]").getBoundingClientRect();
+            const bounds = list.getBoundingClientRect();
+            return list.clientHeight === 120 && item.top >= bounds.top && item.bottom <= bounds.bottom + 1;
+          }), { timeoutMsg: `${theme}/${dir} selection became hidden after the scroll area shrank` });
+          await browser.tauri.execute(() => {
+            document.querySelector(".palette-layer [role=listbox]").style.maxHeight = "";
+          });
+          await browser.tauri.execute(() => document.querySelector(".palette-layer [role=combobox]")
+            .dispatchEvent(new KeyboardEvent("keydown", { key: "Home", bubbles: true })));
+          await browser.waitUntil(async () => browser.tauri.execute(() => {
+            const list = document.querySelector(".palette-layer [role=listbox]");
+            const selected = list.querySelector("[aria-selected=true]");
+            return selected === list.querySelector("[role=option]:not(:disabled)") && selected.getBoundingClientRect().top >= list.getBoundingClientRect().top;
+          }), { timeoutMsg: `${theme}/${dir} first enabled command was not scrolled into view` });
+          await browser.keys("Escape");
+          await $(".palette-layer").waitForDisplayed({ reverse: true });
+          assert.equal(await browser.tauri.execute(() => document.activeElement === document.querySelector(".titlebar > button[data-tip]")), true);
+        }
+      }
+    } finally {
+      await browser.tauri.execute((_, previous) => {
+        document.documentElement.dataset.theme = previous.theme;
+        document.documentElement.dir = previous.dir;
+      }, previous);
+      await browser.refresh();
+      await $(".app-shell").waitForDisplayed();
+    }
+  });
+
   it("styles the native option picker while retaining scalar and listbox semantics", async () => {
     await $(".app-shell").waitForDisplayed();
     const previousTheme = await browser.tauri.execute(() => document.documentElement.dataset.theme);

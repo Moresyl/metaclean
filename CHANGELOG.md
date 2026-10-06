@@ -13,6 +13,9 @@ All notable changes to MetaClean are documented here. The project follows
 
 ### Changed
 
+- Size the command panel within a 520px width cap and 92% of the viewport.
+  Derive list height and panel position from available space, retain vertical
+  margins in short viewports and keep selected commands visible after resizing.
 - Align web context menus with the file-menu fallback: a 180px minimum width,
   6px viewport margin, default arrow cursor and 50% disabled opacity. Cover
   light/dark themes, both layout directions and leading/trailing viewport corners.
@@ -46,6 +49,9 @@ All notable changes to MetaClean are documented here. The project follows
 
 ### Fixed
 
+- Keep command-panel keyboard selection intact when automatic scrolling brings
+  another row under a stationary pointer; retain mouse movement and disabled-item
+  behavior.
 - Discover DOCX/XLSX/PPTX core, extended and custom property parts from package
   content types and root relationships, including relocated, escaped and Strict
   property targets. Clear identified property payloads while retaining valid
@@ -67,7 +73,7 @@ All notable changes to MetaClean are documented here. The project follows
   Home/End boundaries and isolate active-descendant IDs between menu instances.
 - Mount context menus outside transformed and clipped workspaces. Keep focus
   from scrolling the workspace, measure unscaled layout dimensions and retain
-  the 8px viewport margin at both leading and trailing corners, including RTL.
+  the 6px viewport margin at both leading and trailing corners, including RTL.
 - Stack the cleaning workspace by its available content width. Keep intake
   content inside its card, wrap queue actions and reserve visible file-list
   space in narrow layouts instead of clipping controls or overlapping options.

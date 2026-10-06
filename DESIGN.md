@@ -126,6 +126,12 @@ forced-color rules preserve the active command and destructive-action meaning.
   Animated page containers cannot redefine their fixed-position bounds or clip
   their actions. Context menus measure unscaled layout bounds, keep a 6px
   viewport margin and focus without scrolling the workspace.
+- The command panel uses a 520px width cap within 92% of the viewport. Its
+  list is capped at 440px and shrinks with available height; the panel reserves
+  16px vertical margins even in short viewports. Selection stays visible when
+  the list or window resizes, with Home/End navigation and focus return intact.
+  Mouse movement changes selection; rows entering beneath a stationary pointer
+  during scrolling leave the keyboard selection intact.
 - `TitleBar` aligns its identity area with the sidebar, reserves its center for
   command search and keeps native caption actions fixed to the right edge.
 - `CleanOptions` owns the one commit action. The queue toolbar remains secondary

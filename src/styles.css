@@ -1151,6 +1151,23 @@
     border-color: var(--color-check-disabled-ink);
   }
 
+  .palette-layer {
+    --palette-list-max-height: min(440px, max(120px, calc(90dvh - 64px)));
+    --palette-panel-max-height: min(calc(var(--palette-list-max-height) + 64px), calc(100dvh - 32px));
+    padding-block-start: max(16px, calc((100dvh - var(--palette-panel-max-height)) / 2));
+  }
+
+  .palette-panel {
+    inline-size: min(520px, 92vw);
+    max-block-size: var(--palette-panel-max-height);
+  }
+
+  .palette-results {
+    max-block-size: var(--palette-list-max-height);
+    overscroll-behavior: contain;
+    scroll-padding-block-start: 32px;
+  }
+
   .dialog-panel {
     max-block-size: calc(100dvh - 48px);
     overflow-y: auto;

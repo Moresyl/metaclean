@@ -117,7 +117,17 @@ export default function CommandPalette({ commands, onClose }: { commands: Comman
   }, []);
 
   useEffect(() => {
-    list.current?.querySelector<HTMLElement>("[aria-selected='true']")?.scrollIntoView({ block: "nearest" });
+    const current = list.current;
+    if (!current) return;
+    const keepSelectedVisible = () => current.querySelector<HTMLElement>("[aria-selected='true']")?.scrollIntoView({ block: "nearest" });
+    keepSelectedVisible();
+    const observer = typeof ResizeObserver === "undefined" ? undefined : new ResizeObserver(keepSelectedVisible);
+    observer?.observe(current);
+    window.addEventListener("resize", keepSelectedVisible);
+    return () => {
+      observer?.disconnect();
+      window.removeEventListener("resize", keepSelectedVisible);
+    };
   }, [active, matches]);
 
   const step = (delta: number) => {
@@ -138,13 +148,11 @@ export default function CommandPalette({ commands, onClose }: { commands: Comman
   let heading: string | undefined;
   return (
     <div
-      // Sits high rather than centred: the palette is answered by typing, and a
-      // box in the middle of the window pushes the answer below the eye line.
-      className="palette-layer animate-fade fixed inset-0 z-50 flex justify-center bg-canvas-deep/55 pt-[12vh] backdrop-blur-[2px]"
+      className="palette-layer animate-fade fixed inset-0 z-50 flex justify-center bg-canvas-deep/55 backdrop-blur-[2px]"
       onPointerDown={onClose}
     >
       <div
-        className="animate-pop flex h-fit max-h-[62vh] w-[min(560px,88vw)] flex-col overflow-hidden rounded-panel border border-line-strong bg-surface shadow-lift"
+        className="palette-panel animate-pop flex h-fit flex-col overflow-hidden rounded-panel border border-line-strong bg-surface shadow-lift"
         role="dialog"
         aria-modal="true"
         aria-label={text("命令", "Commands")}
@@ -179,7 +187,7 @@ export default function CommandPalette({ commands, onClose }: { commands: Comman
           <kbd className="kbd hidden sm:block">Esc</kbd>
         </div>
         <div
-          className="min-h-0 flex-1 overflow-y-auto p-1.5"
+          className="palette-results min-h-0 flex-1 overflow-y-auto p-1.5"
           id="palette-results"
           role="listbox"
           aria-label={text("命令", "Commands")}
@@ -222,7 +230,7 @@ export default function CommandPalette({ commands, onClose }: { commands: Comman
                       index === active && !command.disabled ? "active bg-brand/12" : "",
                     ].join(" ")}
                     disabled={command.disabled}
-                    onPointerEnter={() => setActive(index)}
+                    onPointerMove={() => { if (!command.disabled) setActive(index); }}
                     onClick={() => choose(command)}
                   >
                     <span

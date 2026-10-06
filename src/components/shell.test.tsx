@@ -342,6 +342,49 @@ describe("command palette", () => {
     fireEvent.keyDown(last, { key: "Tab" });
     expect(field).toHaveFocus();
   });
+
+  it("keeps the active command visible when its scroll area resizes", () => {
+    const callbacks: (() => void)[] = [];
+    const disconnect = vi.fn();
+    const observe = vi.fn();
+    vi.stubGlobal("ResizeObserver", class {
+      constructor(callback: () => void) { callbacks.push(callback); }
+      observe = observe;
+      disconnect = disconnect;
+    });
+    try {
+      const { unmount } = wrap(<CommandPalette commands={commands} onClose={vi.fn()} />);
+      const selected = screen.getByRole("option", { name: "选择文件" });
+      const scroll = vi.spyOn(selected, "scrollIntoView");
+      fireEvent.keyDown(screen.getByRole("combobox"), { key: "End" });
+      expect(selected).toHaveAttribute("aria-selected", "true");
+      scroll.mockClear();
+      act(() => callbacks.at(-1)?.());
+      expect(scroll).toHaveBeenCalledOnce();
+      expect(scroll).toHaveBeenCalledWith({ block: "nearest" });
+      expect(observe).toHaveBeenCalledWith(screen.getByRole("listbox"));
+      const disconnected = disconnect.mock.calls.length;
+      unmount();
+      expect(disconnect).toHaveBeenCalledTimes(disconnected + 1);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("retains keyboard selection when scrolling brings a row under a stationary pointer", () => {
+    wrap(<CommandPalette commands={commands} onClose={vi.fn()} />);
+    const field = screen.getByRole("combobox");
+    const selected = screen.getByRole("option", { name: "选择文件" });
+    const hovered = screen.getByRole("option", { name: /处理记录/ });
+    fireEvent.keyDown(field, { key: "End" });
+    expect(selected).toHaveAttribute("aria-selected", "true");
+    fireEvent.pointerEnter(hovered);
+    expect(selected).toHaveAttribute("aria-selected", "true");
+    fireEvent.pointerMove(hovered, { clientX: 20, clientY: 50 });
+    expect(hovered).toHaveAttribute("aria-selected", "true");
+    fireEvent.pointerMove(screen.getByRole("option", { name: "确认并开始清理" }));
+    expect(hovered).toHaveAttribute("aria-selected", "true");
+  });
 });
 
 describe("tooltip host", () => {
