@@ -1,0 +1,26 @@
+diff --git a/dist/cjs/index.js b/dist/cjs/index.js
+index c14f1e3d83824dbc24a130c7aab60572036650be..b920d656ce37e2bea40130d9ca5db61f55e13f0a 100644
+--- a/dist/cjs/index.js
++++ b/dist/cjs/index.js
+@@ -1690,7 +1690,7 @@ async function findMsEdgeDriver() {
+                     encoding: 'utf8',
+                     timeout: 5000,
+                 });
+-                const match = versionOutput.match(/MSEdgeDriver ([\d.]+)/);
++                const match = versionOutput.match(/(?:MSEdgeDriver|Microsoft Edge WebDriver) ([\d.]+)/);
+                 if (match) {
+                     log$7.debug(`Found msedgedriver ${match[1]} at ${driverPath}`);
+                     return { path: driverPath, version: match[1] };
+diff --git a/dist/esm/index.js b/dist/esm/index.js
+index 7f49bdefae0380e164bfb2c8a149288cc80193ad..d260e272ec454c818dbc0208b06181277b2d1bd0 100644
+--- a/dist/esm/index.js
++++ b/dist/esm/index.js
+@@ -1686,7 +1686,7 @@ async function findMsEdgeDriver() {
+                     encoding: 'utf8',
+                     timeout: 5000,
+                 });
+-                const match = versionOutput.match(/MSEdgeDriver ([\d.]+)/);
++                const match = versionOutput.match(/(?:MSEdgeDriver|Microsoft Edge WebDriver) ([\d.]+)/);
+                 if (match) {
+                     log$7.debug(`Found msedgedriver ${match[1]} at ${driverPath}`);
+                     return { path: driverPath, version: match[1] };
