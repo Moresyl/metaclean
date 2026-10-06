@@ -53,6 +53,9 @@ All notable changes to MetaClean are documented here. The project follows
 
 ### Fixed
 
+- Disable transitions when reduced motion is requested, including native option
+  pickers, so completed micro-duration transitions cannot retain a checkbox's
+  previous theme or disabled colors in WebKit.
 - Keep command-panel keyboard selection intact when automatic scrolling brings
   another row under a stationary pointer; retain mouse movement and disabled-item
   behavior.

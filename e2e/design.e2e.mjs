@@ -165,7 +165,9 @@ describe("Desktop visual controls", () => {
           const result = { supported, appearance: style.appearance, height: style.height,
             font: style.fontSize, value: new FormData(select.form).get("mode"), options,
             picker: picker ? { padding: picker.padding, radius: picker.borderRadius, font: picker.fontSize,
-              weight: picker.fontWeight, maxHeight: picker.maxHeight, corner: picker.cornerShape } : null,
+              weight: picker.fontWeight, maxHeight: picker.maxHeight, corner: picker.cornerShape,
+              transition: picker.transitionDuration, delay: picker.transitionDelay } : null,
+            reduced: matchMedia("(prefers-reduced-motion: reduce)").matches,
             scaled: CSS.supports("corner-shape", "superellipse(1.5)") };
           select.multiple = true;
           result.multipleAppearance = getComputedStyle(select).appearance;
@@ -187,6 +189,10 @@ describe("Desktop visual controls", () => {
           assert.equal(state.picker.corner, "superellipse(1)");
           assert.equal(state.picker.font, "13px");
           assert.equal(state.picker.weight, "430");
+          if (state.reduced) {
+            assert.ok(state.picker.transition.split(",").every(value => Number.parseFloat(value) === 0));
+            assert.ok(state.picker.delay.split(",").every(value => Number.parseFloat(value) === 0));
+          }
           assert.deepEqual(state.options.map(option => option.weight), ["600", "430", "430"]);
           assert.equal(state.options[1].opacity, "0.5");
           assert.ok(state.options.every(option => option.padding === "5px 8px"));
@@ -951,7 +957,7 @@ describe("Desktop visual controls", () => {
         assert.equal(state.actionHeight, "36px");
         assert.equal(state.focus, true);
         assert.equal(state.outline, "2px");
-        assert.ok(state.transition.split(", ").every(value => Number.parseFloat(value) === (state.reduced ? 0.000001 : 0.15)));
+        assert.ok(state.transition.split(", ").every(value => Number.parseFloat(value) === (state.reduced ? 0 : 0.15)));
         assert.equal(state.background, !state.checked ? "rgba(0, 0, 0, 0)"
           : theme === "light" ? "rgb(24, 24, 24)" : "rgb(237, 237, 237)");
       }
@@ -994,8 +1000,11 @@ describe("Desktop visual controls", () => {
         selectors: { checked: check.matches(":checked"), indeterminate: check.matches(":indeterminate"), disabled: check.matches(":disabled") },
         tokens: Object.fromEntries(["--color-check-border", "--color-check-disabled-border", "--color-check-disabled-selected", "--color-control-active"]
           .map(name => [name, { root: root.getPropertyValue(name), control: style.getPropertyValue(name) }])),
-        rendering: { visibility: document.visibilityState, focused: document.hasFocus(), colorScheme: root.colorScheme },
+        rendering: { visibility: document.visibilityState, focused: document.hasFocus(), colorScheme: root.colorScheme,
+          reduced: matchMedia("(prefers-reduced-motion: reduce)").matches,
+          transitionDuration: style.transitionDuration, transitionDelay: style.transitionDelay },
         transitions: check.getAnimations().map(animation => ({ pending: animation.pending, state: animation.playState,
+          property: animation.transitionProperty ?? null,
           currentTime: animation.currentTime, timelineTime: animation.timeline?.currentTime,
           timing: animation.effect?.getComputedTiming(), keyframes: animation.effect?.getKeyframes() })),
         width: style.width, height: style.height, radius: style.borderRadius, borderWidth: style.borderTopWidth,
@@ -1050,6 +1059,11 @@ describe("Desktop visual controls", () => {
           const fill = disabled ? checked ? palette.disabledSelected : palette.disabledFill : selected ? palette.selected : [0, 0, 0, 0];
           await expectColors(border, fill, `${theme}/${state} checkbox colors did not settle`);
           const actual = await readStyle();
+          if (actual.rendering.reduced) {
+            assert.ok(actual.rendering.transitionDuration.split(",").every(value => Number.parseFloat(value) === 0));
+            assert.ok(actual.rendering.transitionDelay.split(",").every(value => Number.parseFloat(value) === 0));
+            assert.equal(actual.transitions.filter(animation => animation.property !== null).length, 0);
+          }
           assert.equal(actual.width, "18px");
           assert.equal(actual.height, "18px");
           assert.equal(actual.borderWidth, "1px");

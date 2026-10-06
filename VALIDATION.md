@@ -6,6 +6,28 @@ This file records evidence, not intent. A row is complete only when the named ar
 
 ## v0.12.2 candidate and native documentation — 2026-10-06
 
+The first complete candidate round at `0ff8763` passes all four CI jobs,
+with 13 design and 16 workflow cases on every desktop platform. Its independent
+Office, image and PDF runs also pass; downloaded source/backup/output hashes and
+all 42 Office, 16 JPEG, eight PNG, six HEIF/AVIF and six PDF records were inspected.
+The same CI's targeted macOS repeat (attempt 2) reproduces the checkbox failure.
+The new diagnostics show correct dark tokens and enabled/unchecked pseudo-states,
+but finished 0.001ms transitions whose computed colors still reflect their old
+light disabled keyframes after about 15 seconds. Thus the first green round is
+insufficient for release. The reduced-motion rules now disable transitions
+entirely, including native picker overlays; native assertions require zero
+transition duration/delay and no transition effects alongside unchanged colors.
+This correction still requires fresh exact-source cross-platform qualification.
+The real Chrome reduced-motion regression fails before the correction because
+its computed duration remains `1e-06s`. After reloading the updated stylesheet,
+all 12 theme/state combinations have zero duration/delay, no transition effects
+and exact final checkbox colors. Twelve additional samples confirm the normal
+150ms checkbox durations, and the supported native option picker also reports
+zero duration/delay under reduced motion. These browser checks do not substitute
+for the pending native macOS repeat.
+The correction also passes all 450 frontend tests (93.95% line coverage) and
+29 ordinary Windows desktop cases after rebuilding the actual v0.12.2 binary.
+
 The candidate uses the supplied desktop defaults for the platform UI and
 monospace font stacks without adding bundled font assets. Its ordinary Windows
 native build passes all 13 design and 16 workflow cases. Both English and Chinese

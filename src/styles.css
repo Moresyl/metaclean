@@ -1390,11 +1390,11 @@
   *::after {
     animation-duration: 0.001ms !important;
     animation-iteration-count: 1 !important;
-    transition-duration: 0.001ms !important;
+    transition: none !important;
   }
 
   @supports selector(select::picker(select)) {
-    select.field::picker(select) { transition-duration: 0.001ms !important; }
+    select.field::picker(select) { transition: none !important; }
   }
 }
 
