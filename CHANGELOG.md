@@ -5,6 +5,8 @@ All notable changes to MetaClean are documented here. The project follows
 
 ## [Unreleased]
 
+## [0.12.2] - 2026-10-06
+
 ### Security
 
 - Pin development-toolchain dependencies `source-map-js` to 1.2.2 and `smol-toml`
@@ -13,6 +15,8 @@ All notable changes to MetaClean are documented here. The project follows
 
 ### Changed
 
+- Use the verified desktop platform font stacks for UI and monospace text,
+  retaining system font fallback without adding bundled font assets.
 - Size the command panel within a 520px width cap and 92% of the viewport.
   Derive list height and panel position from available space, retain vertical
   margins in short viewports and keep selected commands visible after resizing.

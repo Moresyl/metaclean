@@ -22,7 +22,7 @@ consume the same tokens. Their content remains specific to a local file utility.
 | Brand and status | Neutral primary actions and checked controls; blue focus; green, orange and red for semantic status |
 | Text | Dark `#dfdfdf`, light `#1a1c1f`; secondary ink resolves from 70% foreground opacity |
 | Geometry | 12px panels, 6px shared control corners, 8px native-select base corners, a 24px intake surface, 1px hairlines and shared 28/32/36px pill actions |
-| Type | System UI font stack, 14px body at 430 weight with 1.5 line height, 13px small text and 500/600 emphasis; Microsoft YaHei UI, PingFang SC and Noto Sans SC fallbacks |
+| Type | System UI font stack, 14px body at 430 weight with 1.5 line height, 13px small text and 500/600 emphasis; platform sans-serif and monospace fallbacks |
 | Checkbox | 18px square, 4px base corner, theme-specific neutral borders and disabled combinations, stable selected hover and a 2px focus outline |
 | Actions | 400-weight labels with 1em line height; 13/14/13px type for 28/32/36px heights, 18px icons, default arrow cursor and separate surface feedback; icon-only actions retain 24/28px squares |
 | Selects | 32px height, 12px gutters, 500-weight 13px labels with 24px line height; transparent surface, 1px inset border, an 8×12px direction indicator and a 2px inset focus ring |
@@ -36,9 +36,10 @@ Supported renderers apply a 1.25 corner scale with `superellipse(1.5)` to
 shared panel/control shapes. Other renderers use the unscaled radius. The
 checkbox scales its 4px base corner to 5px in supported renderers and keeps
 ordinary rounded geometry. Its border, disabled fill and focus ring use
-dedicated tokens rather than text-opacity tokens. Font fallbacks are
-implementation choices; a declared stack alone does not prove which font
-renders a Chinese glyph on a particular machine.
+dedicated tokens rather than text-opacity tokens. UI and monospace stacks use
+the supplied desktop platform defaults. Generic fallbacks remain platform
+dependent; a declared stack alone does not prove which font renders a Chinese
+glyph on a particular machine.
 
 Actions follow the current component's default pill configuration. Their surfaces
 carry theme-specific normal, hover, pressed and disabled colors; labels and icons

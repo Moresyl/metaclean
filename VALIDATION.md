@@ -4,6 +4,27 @@ Last audited: 2026-10-06
 
 This file records evidence, not intent. A row is complete only when the named artifact or runtime check exists.
 
+## v0.12.2 candidate and native documentation — 2026-10-06
+
+The candidate uses the supplied desktop defaults for the platform UI and
+monospace font stacks without adding bundled font assets. Its ordinary Windows
+native build passes all 13 design and 16 workflow cases. Both English and Chinese
+documentation captures pass against the actual v0.12.2 binary. Fifteen 1180x720
+PNGs were inspected through both contact sheets and full-resolution settings and
+cleanup views; two five-frame 944x576 GIFs retain their existing frame durations.
+Version metadata and bilingual release notes are prepared, but v0.12.2 has not
+been tagged or published. The final source still requires cross-platform and
+independent file-fidelity qualification before browser-triggered publication.
+
+The preceding [CI 37441693527](https://github.com/Moresyl/metaclean/actions/runs/37441693527)
+at `6969365` passes its main, Windows and Linux jobs, including all 29 desktop
+cases on those two platforms. macOS passes the new command-panel case and all
+16 workflows, but fails the unchecked dark checkbox sample: the control reports
+enabled/unchecked and the root reports dark, while the border remains the light
+disabled value. This is not a completed cross-platform qualification. Additional
+root/control token, pseudo-state and animation diagnostics preserve the same
+color assertions so the discrepancy can be investigated on the native renderer.
+
 ## Unreleased command-panel layout and selection — 2026-10-06
 
 The supplied global command caller uses the 440px list-height override, a

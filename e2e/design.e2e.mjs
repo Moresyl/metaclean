@@ -977,6 +977,7 @@ describe("Desktop visual controls", () => {
     const readStyle = async () => browser.tauri.execute(() => {
       const check = document.querySelector("#checkbox-state-regression");
       const style = getComputedStyle(check);
+      const root = getComputedStyle(document.documentElement);
       const canvas = document.createElement("canvas");
       canvas.width = canvas.height = 1;
       const context = canvas.getContext("2d");
@@ -990,7 +991,13 @@ describe("Desktop visual controls", () => {
         borderCss: style.borderTopColor, fillCss: style.backgroundColor,
         theme: document.documentElement.dataset.theme,
         checked: check.checked, indeterminate: check.indeterminate, disabled: check.disabled,
-        transitions: check.getAnimations().map(animation => ({ pending: animation.pending, state: animation.playState })),
+        selectors: { checked: check.matches(":checked"), indeterminate: check.matches(":indeterminate"), disabled: check.matches(":disabled") },
+        tokens: Object.fromEntries(["--color-check-border", "--color-check-disabled-border", "--color-check-disabled-selected", "--color-control-active"]
+          .map(name => [name, { root: root.getPropertyValue(name), control: style.getPropertyValue(name) }])),
+        rendering: { visibility: document.visibilityState, focused: document.hasFocus(), colorScheme: root.colorScheme },
+        transitions: check.getAnimations().map(animation => ({ pending: animation.pending, state: animation.playState,
+          currentTime: animation.currentTime, timelineTime: animation.timeline?.currentTime,
+          timing: animation.effect?.getComputedTiming(), keyframes: animation.effect?.getKeyframes() })),
         width: style.width, height: style.height, radius: style.borderRadius, borderWidth: style.borderTopWidth,
         cursor: style.cursor, outline: style.outlineWidth, offset: style.outlineOffset,
         focus: check.matches(":focus-visible"),
