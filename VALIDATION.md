@@ -4,6 +4,29 @@ Last audited: 2026-10-06
 
 This file records evidence, not intent. A row is complete only when the named artifact or runtime check exists.
 
+## Unreleased development dependency security — 2026-10-06
+
+[CI 37398711713](https://github.com/Moresyl/metaclean/actions/runs/37398711713)
+and [CI 37399120400](https://github.com/Moresyl/metaclean/actions/runs/37399120400)
+fail at the dependency-audit gate, before the desktop matrix. They do not
+qualify the workspace fix or the macOS action-focus synchronization.
+
+The upstream [source-map-js 1.2.2 release](https://github.com/7rulnik/source-map-js/releases/tag/v1.2.2)
+fixes GHSA-68fv-2mgg-jv7q, and the upstream
+[smol-toml advisory](https://github.com/squirrelchat/smol-toml/security/advisories/GHSA-r4xh-jqrq-34v2)
+identifies 1.9.0 as its patched version. Both are development-toolchain
+dependencies. Overrides and the frozen lockfile now resolve those versions;
+the lockfile diff changes only the two packages and their consumers.
+
+After a frozen install, the official npm registry audit returns zero advisories
+at every severity and no muted advisories. The configured mirror does not
+provide the audit endpoint; that initial endpoint error is retained separately
+and is not treated as a clean audit. Post-update verification passes all 430
+frontend tests with 93.57% line coverage, all 23 Windows desktop cases, all 44
+release tests, documentation/format/CSP/archive-extractor checks, and production
+and documentation builds. No audit exceptions were added. Cross-platform CI
+for this dependency fix remains pending.
+
 ## Unreleased workspace containment — 2026-10-06
 
 Browser measurements at 390px show empty-intake children extending 59px above

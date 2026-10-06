@@ -5,6 +5,12 @@ All notable changes to MetaClean are documented here. The project follows
 
 ## [Unreleased]
 
+### Security
+
+- Pin development-toolchain dependencies `source-map-js` to 1.2.2 and `smol-toml`
+  to 1.9.0, fixing indexed source-map and TOML key-parsing denial-of-service
+  advisories without adding audit exceptions.
+
 ### Changed
 
 - Align shared actions with the current pill shape, 400-weight labels, size-specific
