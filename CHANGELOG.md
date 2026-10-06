@@ -13,6 +13,11 @@ All notable changes to MetaClean are documented here. The project follows
 
 ### Changed
 
+- Style scalar native option pickers in supporting renderers with compact rows,
+  leading checkmarks, theme-aware opaque surfaces and separate enter/exit
+  feedback. Retain native selection and form behavior, with system-color and
+  reduced-motion support; unsupported renderers and listboxes retain their
+  existing native presentation.
 - Apply the actual desktop scope to shared typography: 13px small text,
   430-weight body text and the default arrow cursor on actions. Apply the
   13px desktop control scale to selects and small/large actions. Restyle context menus
@@ -52,6 +57,9 @@ All notable changes to MetaClean are documented here. The project follows
 
 ### Tests
 
+- Cover native picker geometry, selected/disabled options and scalar/listbox
+  presentation. Qualify trusted pointer, keyboard, typeahead, form commits,
+  focus return and viewport bounds in both themes and layout directions.
 - Reproduce unknown-critical PNG rejection and menu keyboard failures on the
   previous implementation; cover critical chunk placement/profile choices,
   disabled menu entries, focus return and multiple menu instances.

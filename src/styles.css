@@ -77,6 +77,7 @@
   --color-segment-hover: #303030;
   --color-menu-border: color-mix(in oklab, #ffffff 8%, transparent);
   --color-menu-hover: color-mix(in oklab, #ffffff 8%, transparent);
+  --shadow-select-menu: 0 10px 15px -3px rgb(0 0 0 / 20%), 0 4px 6px -4px rgb(0 0 0 / 20%), 0 0 0 0.5px rgb(0 0 0 / 10%);
   --color-segment-ink: color-mix(in srgb, var(--color-text) 65%, transparent);
 
   /* Brand ink stays neutral; semantic success, warning and danger colours are
@@ -292,6 +293,7 @@
     --color-segment-hover: #cdcdcd;
     --color-menu-border: color-mix(in oklab, var(--color-text) 8%, transparent);
     --color-menu-hover: color-mix(in oklab, var(--color-text) 5%, transparent);
+    --shadow-select-menu: 0 10px 15px -3px rgb(0 0 0 / 10%), 0 4px 6px -4px rgb(0 0 0 / 10%), 0 0 0 0.5px rgb(0 0 0 / 10%);
 
     --color-brand: #0d0d0d;
     --color-ok: #1e8a3e;
@@ -349,6 +351,7 @@
   --color-segment-hover: #cdcdcd;
   --color-menu-border: color-mix(in oklab, var(--color-text) 8%, transparent);
   --color-menu-hover: color-mix(in oklab, var(--color-text) 5%, transparent);
+  --shadow-select-menu: 0 10px 15px -3px rgb(0 0 0 / 10%), 0 4px 6px -4px rgb(0 0 0 / 10%), 0 0 0 0.5px rgb(0 0 0 / 10%);
 
   --color-brand: #0d0d0d;
   --color-ok: #1e8a3e;
@@ -901,6 +904,120 @@
     padding-inline-end: calc(var(--field-gutter) + 16px);
   }
 
+  @supports (appearance: base-select) and selector(select::picker(select)) {
+    select.field:not([multiple]):is(:not([size]), [size='1']) {
+      appearance: base-select;
+      padding-block: 0;
+      white-space: nowrap;
+
+      &::picker-icon { display: none; }
+
+      &::picker(select) {
+        appearance: base-select;
+        width: anchor-size(self-inline);
+        min-inline-size: 0;
+        max-inline-size: calc(100vw - 24px);
+        max-block-size: min(400px, calc(100dvh - 60px));
+        margin-block: 5px;
+        margin-inline: 0;
+        padding: 4px;
+        border: 0;
+        border-radius: calc(16px * var(--corner-radius-scale));
+        corner-shape: round;
+        background: var(--color-canvas);
+        box-shadow: var(--shadow-select-menu);
+        color: var(--color-text);
+        font-size: var(--text-sm);
+        font-weight: var(--font-ui-weight);
+        line-height: var(--text-sm--line-height);
+        white-space: normal;
+        overflow: auto;
+        user-select: none;
+        opacity: 0;
+        transform: scale(0.95);
+        transform-origin: top;
+        transition: opacity 200ms cubic-bezier(0.8, 0, 0.4, 1),
+          transform 200ms cubic-bezier(0.8, 0, 0.4, 1),
+          display 200ms allow-discrete, overlay 200ms allow-discrete;
+      }
+
+      &:open::picker(select) {
+        opacity: 1;
+        transform: scale(1);
+        transition-duration: 300ms;
+        transition-timing-function: cubic-bezier(0.19, 1, 0.22, 1);
+      }
+
+      @starting-style {
+        &:open::picker(select) { opacity: 0; transform: scale(0.95); }
+      }
+
+      & option {
+        position: relative;
+        isolation: isolate;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        padding: 5px 8px;
+        border: 0;
+        border-radius: calc(16px * var(--corner-radius-scale) - 4px);
+        background: transparent;
+        color: inherit;
+        font-size: var(--text-sm);
+        font-weight: var(--font-ui-weight);
+        line-height: var(--text-sm--line-height);
+        text-align: start;
+        white-space: normal;
+        overflow-wrap: anywhere;
+        scroll-margin: 15px 0;
+        cursor: pointer;
+      }
+
+      & option::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        z-index: -1;
+        border-radius: inherit;
+        background: var(--color-menu-hover);
+        opacity: 0;
+        transform: scale(0.98);
+        transition: opacity 150ms cubic-bezier(0.19, 1, 0.22, 1),
+          transform 150ms cubic-bezier(0.19, 1, 0.22, 1);
+        pointer-events: none;
+      }
+
+      & option:checked { font-weight: 600; }
+      & option:focus-visible { outline: none; }
+      & option:is(:hover, :focus-visible):not(:disabled)::before { opacity: 1; transform: scale(1); }
+      & option:active:not(:disabled)::before { transform: scale(0.98); }
+      & option:disabled { opacity: 0.5; cursor: not-allowed; }
+      & option:disabled::before { display: none; }
+
+      & option::checkmark {
+        content: '';
+        display: block;
+        order: -1;
+        flex: none;
+        width: 16px;
+        height: 16px;
+        margin: 0;
+        background: currentColor;
+        mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='m3 8 3 3 7-7' fill='none' stroke='black' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / contain no-repeat;
+        opacity: 0;
+      }
+
+      & option:checked::checkmark { opacity: 1; }
+
+      @media (forced-colors: active) {
+        &::picker(select) { background: Canvas; color: CanvasText; border: 1px solid CanvasText; box-shadow: none; }
+        & option { color: CanvasText; }
+        & option:is(:hover, :focus-visible):not(:disabled) { color: HighlightText; }
+        & option:is(:hover, :focus-visible):not(:disabled)::before { background: Highlight; forced-color-adjust: none; }
+      }
+    }
+  }
+
   .select-indicator {
     width: 8px;
     height: 12px;
@@ -1258,6 +1375,10 @@
     animation-duration: 0.001ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;
+  }
+
+  @supports selector(select::picker(select)) {
+    select.field::picker(select) { transition-duration: 0.001ms !important; }
   }
 }
 

@@ -4,6 +4,48 @@ Last audited: 2026-10-06
 
 This file records evidence, not intent. A row is complete only when the named artifact or runtime check exists.
 
+## Unreleased native option pickers — 2026-10-06
+
+Scalar selects now use a styled native top-layer picker where the renderer
+supports both base-select appearance and the picker pseudo-element. The previous
+ordinary binary fails the new appearance regression. Source-call inspection
+establishes that the ordinary block select follows its trigger width with an
+automatic minimum; the standalone 300px CSS fallback is not its actual caller
+configuration. Twelve source measurements pass after correcting layer order and
+using CSSOM styles under the unchanged production CSP. Extracted JavaScript is
+not executed.
+
+Eight native product comparisons pass for selected, disabled and ordinary rows
+in both themes: geometry, typography, checkmark slots, feedback and shadows use
+the measured select rules. Visual review exposes underlying text through the
+source select's translucent surface. The final surface independently reuses the
+separately qualified opaque desktop-menu rule; the original translucent reference,
+failed screenshots and corrected comparisons remain separate. Final light/dark
+screenshots were inspected. This qualifies the configured product composition,
+not every original application's select call site or runtime behavior.
+
+Separate private native CDP checks open the actual product-select clone with
+trusted mouse input. Eight theme/direction/corner cases pass native arrow-key
+disabled skipping, Enter commits, mouse hover/press/release, typeahead without
+early commitment, Escape cancellation, one input/change pair, form values, focus
+and unchanged workspace scroll. Every recorded event has isTrusted=true. Each
+fresh entry has nine sampled intermediate opacity frames under normal motion.
+An initial animation assertion fails when reopening during the preceding exit;
+the fixture now waits for actual display:none before measuring a fresh entry,
+without changing the product or weakening the intermediate-frame assertion.
+System canvas/highlight rules and reduced-motion duration also pass.
+
+The ordinary Windows configuration was rebuilt after private input qualification.
+The full desktop suite passes twelve design and sixteen workflow cases; the
+frontend suite passes 448 tests with 93.88% line coverage and all configured
+thresholds. All 44 release tests, 116-extension manifests, documentation claims,
+CSP and supply-chain checks pass. Production and documentation builds pass, and
+the official npm-registry audit reports zero vulnerabilities. The ordinary
+binary and production assets contain no private debug argument or reference
+probe markers. Unsupported renderers, multiple selects and listboxes retain
+native semantics and existing presentation. Their popup visuals and exact-source
+remote qualification of this batch remain pending; these changes are unreleased.
+
 ## Unreleased desktop scope and PNG rejection — 2026-10-06
 
 The current startup selects the desktop window scope. Rechecking the source CSS
@@ -56,8 +98,12 @@ qualification also passes. The ordinary configuration was rebuilt after the
 private CDP check, with no research CSS or private debug argument in the binary.
 Production frontend build, local-only CSP checks, supply-chain verification,
 release tests, format manifests, documentation checks/build and the official
-npm-registry audit pass. Exact-source remote qualification for this new batch
-and the broader release work remain pending. These changes are unreleased.
+npm-registry audit pass. The committed batch at 4d7d41e subsequently passes all
+four exact-source CI jobs, including eleven design and sixteen workflow cases
+on all three systems, ten identical decoded audio outputs and macOS extended
+attributes. Independent image/PDF workflows and documentation publication also
+pass, with actual final logs inspected. The broader release work remains pending.
+These changes are unreleased.
 
 ## Unreleased settings segments and context-menu placement — 2026-10-06
 

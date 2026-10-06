@@ -26,6 +26,7 @@ consume the same tokens. Their content remains specific to a local file utility.
 | Checkbox | 18px square, 4px base corner, theme-specific neutral borders and disabled combinations, stable selected hover and a 2px focus outline |
 | Actions | 400-weight labels with 1em line height; 13/14/13px type for 28/32/36px heights, 18px icons, default arrow cursor and separate surface feedback; icon-only actions retain 24/28px squares |
 | Selects | 32px height, 12px gutters, 500-weight 13px labels with 24px line height; transparent surface, 1px inset border, an 8×12px direction indicator and a 2px inset focus ring |
+| Select pickers | Supporting scalar controls use a trigger-width panel, 4px gutter, opaque canvas surface, 16px base ordinary corner, 5px/8px rows, 13px/430 labels and a leading 16px checkmark |
 | Queue search | 32px height, 8px base ordinary corner, 12px gutters, 400-weight 13px text with 19.5px line height, 8px adornment gap and a soft theme surface |
 | Segmented choices | 32px track, 2px padding/gap, 8px base ordinary corner, 28px options, 12px gutters and 600-weight 13px labels; a neutral raised selected thumb |
 | Context menus | 4px gutter, opaque canvas surface, 16px panel/12px row base corners, 13px/430 text, 5px/8px row padding, 6px gaps and hairline/spread shadows |
@@ -53,6 +54,20 @@ rounded geometry. Disabled borders and ink remain distinct from hover, invalid
 controls use semantic red, and the indicator follows the logical trailing edge.
 Options, keyboard selection, required validity and form data belong to the real
 native select; its decorative indicator adds no separate focus target.
+
+Where `appearance: base-select` and `::picker(select)` are supported, scalar
+selects use a styled native top-layer picker. Its geometry, option feedback,
+selected weight and checkmark position follow the supplied select rules. The
+surface reuses the separately verified opaque desktop-menu rule: a translucent
+surface in the native picker allowed underlying text to show through during
+visual review. This is an independent composition of supplied desktop rules,
+not a claim that every original select call site has the same surface.
+The panel follows the trigger width, scrolls within the viewport and uses
+300ms entering and 200ms exiting curves. Native keyboard navigation, typeahead,
+disabled-option skipping, focus and form commits remain browser behavior.
+Forced-color mode uses system canvas/highlight colors; reduced motion collapses
+the transitions. Unsupported renderers, multiple selects and listboxes retain
+their existing native presentation and require separate visual qualification.
 
 Queue search uses the supplied input's soft variant. Focus draws a 1px inset
 border at 20% foreground opacity; invalid input uses semantic red. Disabled

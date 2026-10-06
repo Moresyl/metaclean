@@ -36,6 +36,68 @@ async function selectInterfaceLocale(locale) {
 }
 
 describe("Desktop visual controls", () => {
+  it("styles the native option picker while retaining scalar and listbox semantics", async () => {
+    await $(".app-shell").waitForDisplayed();
+    const previousTheme = await browser.tauri.execute(() => document.documentElement.dataset.theme);
+    try {
+      await browser.tauri.execute(() => {
+        const host = document.createElement("form");
+        host.id = "picker-regression";
+        host.style.cssText = "position:fixed;left:450px;top:100px;width:160px";
+        const select = document.createElement("select");
+        select.className = "field";
+        select.name = "mode";
+        select.innerHTML = '<option value="copy">Safe copy</option><option value="disabled" disabled>Unavailable</option><option value="replace">Replace with backup</option>';
+        host.append(select);
+        document.body.append(host);
+      });
+      for (const theme of ["light", "dark"]) {
+        const state = await browser.tauri.execute((_, theme) => {
+          document.documentElement.dataset.theme = theme;
+          const select = document.querySelector("#picker-regression select");
+          const style = getComputedStyle(select);
+          const supported = CSS.supports("appearance", "base-select") && CSS.supports("selector(select::picker(select))");
+          const picker = supported ? getComputedStyle(select, "::picker(select)") : null;
+          const options = [...select.options].map(option => ({ weight: getComputedStyle(option).fontWeight,
+            opacity: getComputedStyle(option).opacity, padding: getComputedStyle(option).padding }));
+          const result = { supported, appearance: style.appearance, height: style.height,
+            font: style.fontSize, value: new FormData(select.form).get("mode"), options,
+            picker: picker ? { padding: picker.padding, radius: picker.borderRadius, font: picker.fontSize,
+              weight: picker.fontWeight, maxHeight: picker.maxHeight, corner: picker.cornerShape } : null,
+            scaled: CSS.supports("corner-shape", "superellipse(1.5)") };
+          select.multiple = true;
+          result.multipleAppearance = getComputedStyle(select).appearance;
+          select.multiple = false;
+          select.size = 3;
+          result.listboxAppearance = getComputedStyle(select).appearance;
+          select.removeAttribute("size");
+          return result;
+        }, theme);
+        assert.equal(state.appearance, state.supported ? "base-select" : "none");
+        assert.equal(state.height, "32px");
+        assert.equal(state.font, "13px");
+        assert.equal(state.value, "copy");
+        assert.equal(state.multipleAppearance, "none");
+        assert.equal(state.listboxAppearance, "none");
+        if (state.supported) {
+          assert.equal(state.picker.padding, "4px");
+          assert.equal(state.picker.radius, state.scaled ? "20px" : "16px");
+          assert.equal(state.picker.corner, "superellipse(1)");
+          assert.equal(state.picker.font, "13px");
+          assert.equal(state.picker.weight, "430");
+          assert.deepEqual(state.options.map(option => option.weight), ["600", "430", "430"]);
+          assert.equal(state.options[1].opacity, "0.5");
+          assert.ok(state.options.every(option => option.padding === "5px 8px"));
+        }
+      }
+    } finally {
+      await browser.tauri.execute((_, theme) => {
+        document.getElementById("picker-regression")?.remove();
+        document.documentElement.dataset.theme = theme;
+      }, previousTheme);
+    }
+  });
+
   it("keeps context menus inside the viewport without scrolling their animated workspace", async () => {
     await $(".app-shell").waitForDisplayed();
     const previousDirection = await browser.tauri.execute(() => document.documentElement.dir);
