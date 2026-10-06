@@ -1,9 +1,8 @@
 # MetaClean capability audit
 
-Audited on 2026-10-07. The public stable version remains v0.12.3 at
-`9e834cb86b11e4177bf8316a068e1c95f8e443f1`; current 0.12.4 metadata is a
-candidate, not a published release. The table below records the published
-baseline; the candidate section records newer qualified behavior.
+Audited on 2026-10-07. The public stable version is v0.12.4 at
+`007cb6384f5c7d2d4181bb9ac89cf9a317daa705`. The table below records the
+published baseline; the release evidence retains earlier qualification scopes.
 
 This ledger describes implemented behavior, its evidence and its limits.
 Extension counts and passing tests do not establish universal format support,
@@ -19,30 +18,50 @@ application. Detailed run evidence is recorded in `VALIDATION.md`.
 | Document privacy | Native Office/OpenDocument/EPUB and PDF cleaners have structural and residual-data tests; real Office samples were opened and exported with LibreOffice. Post-v0.11.0 WPS 2019 sample tests found and verified a VML comment-shape fix; see VALIDATION.md. | Microsoft Word, newer WPS releases and complex document fidelity remain unverified. The fix is not included in v0.11.0. Legacy binary Office is refused. |
 | Office property fidelity | Package content types and relationships locate relocated, escaped and covered Strict property parts; retained payloads and exact surviving references are independently checked across 42 native copy/replacement cases. Seven corrupt-evidence tests qualify the verifier. | Thirty-two library round trips use direct readers; ten use explicitly recorded relationship views after matching direct-reader limitations. These are not Office application rendering checks. |
 | PDF fidelity | Six synthetic copy/replace cases preserve rendered pages, searchable text, form fields and JPEG pixels while removing document metadata and private embedded JPEG EXIF. Validated JPEG orientation, density and ICC are retained. Independent MuPDF and Poppler rendering, pypdf parsing and Pillow checks pass. | These samples do not qualify arbitrary PDFs, complex forms, XFA, digital signatures or accessibility. |
-| Image fidelity | Six independent HEIF/AVIF cases preserve frames, display pixels, alpha and ICC. Sixteen JPEG cases remove JFIF/JFXX previews and private APP0 payloads while preserving compressed scans, exact EXIF density rationals/units, JFIF display fields, ICC and pixels, with orientation retention enabled and disabled. Eight PNG copy/replace cases remove time and private/unknown ancillary payloads while preserving retained chunks, pixels, profiles, resolution, APNG and defined HDR/layout data; unknown critical chunks are refused. | Exact HDR/layout chunk retention does not qualify tone mapping in all viewers. Synthetic cases do not qualify all encoders, print drivers, gain maps, depth images, arbitrary animation or RAW. Unknown ancillary removal can discard editing information. |
+| Image fidelity | Six independent HEIF/AVIF cases preserve frames, display pixels, alpha and ICC. Forty JPEG copy/replace cases remove previews and private APP0/APP2/APP14 payloads while preserving compressed scans, density, colors, ICC and pixels; validated MPF indexes and HDR XMP resource/display fields are rebuilt. Four separate actual HDR samples retain byte-identical complete decoded output. Eight PNG cases remove time and private/unknown ancillary payloads while preserving chunks, pixels, profiles, resolution, APNG and defined HDR/layout data; unknown critical chunks are refused. | Exact chunk retention does not qualify tone mapping in all viewers. The covered samples do not qualify all encoders, print drivers, gain maps, depth images, multi-picture layouts, animation or RAW. Unknown ancillary removal can discard editing information. |
 | Batch isolation | Bounded intake, per-file outcomes, cancellation, count-only progress and source-path identity are tested across Rust and frontend boundaries. | Slow-device cancellation latency and general peak-memory bounds remain unqualified. |
 | Content fingerprints | Successful results, details, history and JSON reports carry source/output SHA-256. Desktop tests independently hash the actual files. | Hashes describe cleanup-time content, exclude filesystem attributes and do not prove metadata removal. |
 | Desktop workflow | Queue search/filtering, safe-copy cleanup, persistent preferences, keyboard navigation, RTL and accessibility checks run on Windows, macOS and Linux. | Automated scenarios do not replace a usability study with representative users. |
 | Localization | All 32 published locale catalogs are checked for completeness; supported-scope counts are checked in every translated locale. | Catalog completeness does not establish independent linguistic review. |
 | Release integrity | The five-platform release matrix runs applicable package smoke tests. Independent public downloads verify all 19 checksum-listed assets, five updater signatures and rejection of modified package bytes. | Updater signatures are separate from OS code signing; Apple signing/notarization remains unavailable. |
 
-## Candidate JPEG qualification
+## Published JPEG qualification
 
-Backend source `29b33f83e7f06eadba9f81e8591e738901c0be96` passes three-platform
-desktop CI and independent image/PDF workflows. Forty JPEG copy/replacement
+Published source `007cb6384f5c7d2d4181bb9ac89cf9a317daa705` passes three-platform
+desktop CI and independent image/PDF and release-source workflows. Forty JPEG copy/replacement
 cases retain compressed scans, pixels and defined display fields while removing
 private APP2/APP14 data. Validated MPF indexes clean every indexed JPEG and
 rebuild lengths/offsets; defined HDR XMP fields and resource associations are
 reconstructed without identity metadata. A separate local decoder verifies
 byte-identical HDR output for two ISO and two legacy XMP samples. Malformed or
 conflicting structures fail closed. This evidence does not qualify arbitrary
-gain maps, depth images, encoders, viewers or multi-picture layouts. Candidate
-metadata and refreshed captures pass local release/documentation gates and 31
-Windows desktop tests. Two native documentation scenarios produce 17 visually
-reviewed assets displaying 0.12.4. Exact-commit remote qualification and public
-packages remain pending.
+gain maps, depth images, encoders, viewers or multi-picture layouts. Version
+metadata and refreshed captures pass release/documentation gates and 31 desktop
+tests on each of three operating systems. Two native documentation scenarios
+produce 17 visually reviewed assets displaying 0.12.4; three deployed capture
+assets were independently downloaded and matched against committed bytes.
 
 ## Release evidence
+
+- [v0.12.4 CI](https://github.com/Moresyl/metaclean/actions/runs/37512901175)
+  passes main checks and all three desktop jobs after a targeted Linux retry
+  for an APT repository HTTP 403. Windows Rust coverage is 92.74%; the release's
+  Linux source coverage is separately 92.38%.
+- [v0.12.4 release](https://github.com/Moresyl/metaclean/actions/runs/37518116349)
+  passes source validation, five builds, package smoke checks and finalization.
+- [v0.12.4 public assets](https://github.com/Moresyl/metaclean/actions/runs/37520670305)
+  verifies 19 checksum-listed files and five signatures/tamper-rejection cases.
+- [Published v0.12.4](https://github.com/Moresyl/metaclean/releases/tag/v0.12.4)
+  has 20 assets. All six public verification workflows pass applicable
+  0.12.3 → 0.12.4 → 0.12.3 transitions, including both Windows signed application
+  updates and MSI repair. The independently hashed crash inventory preserves
+  64 sources and two committed outputs with zero other fixture files and no
+  automatic resume. The public portable executable matches the crash binary.
+  Actual GitHub/Pages feeds, release notes, platform URLs and signatures agree.
+  Both DMG jobs use arm64 runners, including the x86_64 package. Exact run IDs,
+  warnings, original failures and qualification limits remain in `VALIDATION.md`.
+
+Earlier v0.12.3 evidence:
 
 - [Qualified CI](https://github.com/Moresyl/metaclean/actions/runs/37477283119)
   passed the main quality gates and 31 desktop cases on all three operating

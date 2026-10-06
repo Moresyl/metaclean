@@ -24,9 +24,9 @@ description: 面向用户、贡献者和发布维护者的 MetaClean 事实文�
     <div class="proof-metrics" aria-label="当前能力摘要">
       <div><b>116</b><span>格式入口</span></div>
       <div><b>32</b><span>界面语言</span></div>
-      <div><b>92.16%</b><span>Rust 行覆盖率</span></div>
+      <div><b>92.74%</b><span>Rust 行覆盖率</span></div>
     </div>
-    <a href="https://github.com/Moresyl/metaclean/actions/runs/37477283119">v0.12.3 Windows CI · 2026-10-06</a>
+    <a href="https://github.com/Moresyl/metaclean/actions/runs/37512901175">v0.12.4 Windows CI · 2026-10-07</a>
   </div>
 </div>
 

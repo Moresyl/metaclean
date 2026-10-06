@@ -4,13 +4,90 @@ Last audited: 2026-10-07
 
 This file records evidence, not intent. A row is complete only when the named artifact or runtime check exists.
 
-## v0.12.4 candidate — source qualification, 2026-10-07
+## v0.12.4 public packages — 2026-10-07
 
-The current package metadata is 0.12.4; this candidate has not been published.
-The public stable release remains v0.12.3. The following completed qualification
-uses backend source `29b33f83e7f06eadba9f81e8591e738901c0be96`, whose metadata
-still reported 0.12.3. Candidate metadata and captures require a new exact-commit
-remote qualification before publication.
+[Published v0.12.4](https://github.com/Moresyl/metaclean/releases/tag/v0.12.4)
+was published at 2026-10-06T19:39:14Z (2026-10-07 in Asia/Shanghai) from
+immutable source `007cb6384f5c7d2d4181bb9ac89cf9a317daa705`, with 20 nonempty
+assets. The actual browser submitted the publication form once after exact-source
+qualification. [Release 37518116349](https://github.com/Moresyl/metaclean/actions/runs/37518116349)
+passed all seven jobs: source validation, five platform builds with applicable
+package smoke checks, and finalization. The workflow created the source-pinned
+tag only after the builds and package checks passed.
+
+Exact-source qualification and downloaded evidence:
+
+- [CI 37512901175](https://github.com/Moresyl/metaclean/actions/runs/37512901175)
+  passed all four jobs after one targeted Linux retry. The main Windows job
+  records 278 Rust tests with 11 ignored cases and 92.74% Rust line coverage;
+  frontend checks record 455 tests at 93.99% line coverage and 86.10% branch
+  coverage. Each of Windows, macOS and Linux passes 15 design plus 16 workflow
+  cases. All 24 actual theme/direction/corner probe phases were independently
+  inspected for geometry, focus, lifecycle and description assertions.
+- The first Linux job failed while installing prerequisites: the runner's
+  configured Microsoft Ubuntu repository returned HTTP 403 for InRelease,
+  causing APT exit 100 before the application, audio or desktop checks ran.
+  One failed-job retry at the same source passed; the already successful main,
+  Windows and macOS jobs were retained. No source changes or signature-check
+  exceptions were used to bypass the failure. Original logs remain recorded.
+- [Images 37512944694](https://github.com/Moresyl/metaclean/actions/runs/37512944694)
+  and [PDF 37512950210](https://github.com/Moresyl/metaclean/actions/runs/37512950210)
+  passed. Downloaded native logs and actual source/backup/output bytes were
+  independently inspected for 40 JPEG, eight PNG, six HEIF/AVIF and six PDF
+  cases, including decoded pixels, compressed scans, profiles, frame indexes,
+  HDR resource associations, rendered PDF pages and document structure.
+- The release's Linux source gate separately records 272 Rust tests with 12
+  ignored cases at 92.38% Rust line coverage, 455 frontend tests at 93.99% line
+  coverage and 86.14% branch coverage, ten identical FFmpeg PCM cases, and seven
+  passing corrupt-Office-evidence tests. Its 15 design and 16 workflow cases
+  and all eight native probe phases were inspected. These Linux totals are
+  separate from the Windows totals and local 87.14% Rust coverage.
+- Release-source artifacts independently pass 42 Office, 40 JPEG, eight PNG,
+  six HEIF/AVIF and six PDF checks. Office payloads, property roots and exact
+  surviving references are verified; independent library round trips comprise
+  32 direct cases and ten explicitly recorded relationship views. Extracted
+  artifact timestamps are not treated as original native filesystem evidence.
+  Synthetic HDR before/after renders match on each host; three-channel
+  floating-point render hashes can differ between Windows and Linux and are
+  recorded separately. Four actual local HDR decoder samples retain identical
+  complete decoded output within their distinct sample scope.
+
+All six public workflows passed at the exact tagged source. Their completed
+logs and downloaded installation/recovery artifacts were independently checked:
+
+| Public qualification | Verified result | Boundary |
+| --- | --- | --- |
+| [Assets 37520670305](https://github.com/Moresyl/metaclean/actions/runs/37520670305) | All 19 checksum-listed files and five updater signatures pass; altered package bytes are rejected. | Updater signatures do not establish OS code signing. This workflow records evidence in its log, without an uploaded artifact. |
+| [Windows NSIS 37520675425](https://github.com/Moresyl/metaclean/actions/runs/37520675425) | Both x64 and x86 pass 0.12.3 → 0.12.4 → 0.12.3, actual application Install update clicks, signed installation/restart, synthetic settings/history/fingerprint preservation, truncated-installer rejection and uninstall. | x86 runs on a 64-bit hosted machine; arbitrary user migrations and installation interruption remain unqualified. |
+| [Windows MSI 37520680616](https://github.com/Moresyl/metaclean/actions/runs/37520680616) | Installation, upgrade, manual downgrade, registration, launch and repair pass; repair restores the exact executable hash. | The qualified new ProductCode is `{767D2EFD-D1BF-468D-8D38-292BFC8EB91C}`. |
+| [Linux DEB 37520685488](https://github.com/Moresyl/metaclean/actions/runs/37520685488) | All three version transitions, installed-version checks, timed launches and removal pass. | The expected launch timeout status 124 records the bounded smoke check. |
+| [macOS DMG 37520690949](https://github.com/Moresyl/metaclean/actions/runs/37520690949) | Both package architectures pass copy, replacement, rollback, version/bundle checks, six-second launches and removal. | Both jobs used arm64 runners, including the x86_64 package; physical Intel hardware is unqualified. Apple signing/notarization remains unavailable. |
+| [Crash recovery 37520696287](https://github.com/Moresyl/metaclean/actions/runs/37520696287) | Independently derived hashes verify all 64 synthetic sources and two complete committed outputs, with zero other fixture files. Two restarts verify no automatic resume and notice consumption. | This is forced process termination, not physical power loss or every possible failure timing. |
+
+The independently downloaded public x64 portable ZIP matches its checksum,
+contains exactly the four expected entries and the portable marker, and reports
+0.12.4. Its executable matches the actual crash application's SHA-256:
+`6e65bc37d06a6473896aa97007fa02d55e1d264c0bfc6e82a326220a6c876bd2`.
+Actual GitHub and Pages update-feed bytes are identical, SHA-256
+`343d4c14a29a7bb03d1366f4cceded39df2544eeef69e14e44e1c1f7408a2812`.
+All five platform URLs, downloaded signature files, 19 checksum entries and
+the bilingual notes agree with the release and committed version notes.
+
+The exact-source documentation deployment passed. Seventeen native captures
+display 0.12.4; three deployed screenshot/scan/GIF assets were downloaded and
+matched against their actual committed bytes. Previously observed driver
+window-state, script-timeout and mock-store warnings remain recorded; passing
+checks do not establish their cause. Rust audit retains seven explicitly
+allowed warnings. These samples do not qualify all encoders, viewers, layouts,
+complex Office/PDF documents, original UI runtime states or universal competitive
+superiority.
+
+## v0.12.4 backend qualification before publication — 2026-10-07
+
+The following earlier qualification uses backend source
+`29b33f83e7f06eadba9f81e8591e738901c0be96`, whose metadata still reported 0.12.3.
+The later 0.12.4 metadata/capture commit and published packages are qualified
+separately above; this earlier evidence is retained with its original scope.
 
 - [CI 37508070761](https://github.com/Moresyl/metaclean/actions/runs/37508070761)
   passed all four jobs: main checks and Windows, macOS and Linux desktop checks.
