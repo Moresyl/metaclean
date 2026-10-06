@@ -4,8 +4,15 @@ use crate::{
 };
 use std::ops::Range;
 
+#[path = "jpeg_gainmap.rs"]
+mod gainmap;
+#[path = "jpeg_mpf.rs"]
+mod mpf;
+
 const PNG_SIGNATURE: &[u8] = b"\x89PNG\r\n\x1a\n";
 const PNG_TRAILER: [u8; 4] = [0; 4];
+const JPEG_ADOBE_HEADER_LEN: usize = 12;
+const JPEG_GAINMAP_NAMESPACE: &[u8] = b"urn:iso:std:iso:ts:21496:-1\0";
 type JpegSegment<'a> = (u8, &'a [u8], Range<usize>);
 
 pub(crate) fn png_crc32(bytes: &[u8]) -> u32 {
@@ -70,12 +77,76 @@ fn is_private_jpeg_marker(marker: u8) -> bool {
     matches!(marker, 0x00 | 0xE1 | 0xE3..=0xED | 0xEF | 0xFE)
 }
 
-fn is_private_jpeg_segment(marker: u8, payload: &[u8]) -> bool {
-    is_private_jpeg_marker(marker)
+fn jpeg_gainmap_metadata_length(payload: &[u8]) -> Result<Option<usize>> {
+    let Some(metadata) = payload.strip_prefix(JPEG_GAINMAP_NAMESPACE) else {
+        return Ok(None);
+    };
+    let invalid = || CleanError::InvalidFormat("JPEG HDR 增益图显示参数无效或版本不受支持".into());
+    if metadata.get(..4) != Some(&[0, 0, 0, 0]) {
+        return Err(invalid());
+    }
+    // A primary-image declaration contains only the two version fields.
+    if metadata.len() == 4 {
+        return Ok(Some(payload.len()));
+    }
+    let flags = metadata[4];
+    if flags & !0xcc != 0 {
+        return Err(invalid());
+    }
+    let channels = if flags & 0x80 != 0 { 3 } else { 1 };
+    let common_denominator = flags & 0x08 != 0;
+    let length = if common_denominator {
+        17 + channels * 20
+    } else {
+        21 + channels * 40
+    };
+    let display = metadata.get(..length).ok_or_else(invalid)?;
+    if common_denominator {
+        if display[5..9] == [0, 0, 0, 0] {
+            return Err(invalid());
+        }
+    } else if display[5..]
+        .chunks_exact(8)
+        .any(|fraction| fraction[4..] == [0, 0, 0, 0])
+    {
+        return Err(invalid());
+    }
+    Ok(Some(JPEG_GAINMAP_NAMESPACE.len() + length))
+}
+
+fn is_private_jpeg_segment(marker: u8, payload: &[u8]) -> Result<bool> {
+    if marker == 0xe1 {
+        if let Some(metadata) = gainmap::parse(payload)? {
+            return Ok(metadata.serialize()? != payload);
+        }
+    }
+    let private_app2 = if marker == 0xE2
+        && !is_jpeg_icc_profile(marker, payload)
+        && !payload.starts_with(b"MPF\0")
+    {
+        match jpeg_gainmap_metadata_length(payload)? {
+            Some(length) => payload.len() > length,
+            None => true,
+        }
+    } else {
+        false
+    };
+    Ok(is_private_jpeg_marker(marker)
         || (marker == 0xE0 && (!payload.starts_with(b"JFIF\0") || payload.len() > 14))
+        || (marker == 0xEE
+            && (!payload.starts_with(b"Adobe") || payload.len() > JPEG_ADOBE_HEADER_LEN))
+        || private_app2)
 }
 
 pub fn inspect_jpeg(data: &[u8]) -> Result<Vec<Finding>> {
+    if let Some(container) = mpf::parse(data)? {
+        return container.inspect(data);
+    }
+    gainmap::validate_single(data)?;
+    inspect_single_jpeg(data)
+}
+
+fn inspect_single_jpeg(data: &[u8]) -> Result<Vec<Finding>> {
     let segments = jpeg_segments(data)?;
     let mut exif = 0;
     let mut xmp = 0;
@@ -89,13 +160,18 @@ pub fn inspect_jpeg(data: &[u8]) -> Result<Vec<Finding>> {
                 orientations += usize::from(display.orientation.is_some());
                 continue;
             }
+            if let Some(metadata) = gainmap::parse(payload)? {
+                xmp += usize::from(metadata.serialize()? != payload);
+                continue;
+            }
         }
         match marker {
             0xE1 if payload.starts_with(b"Exif\0\0") => exif += 1,
             0xE1 => xmp += 1,
             0xE2 if is_jpeg_icc_profile(marker, payload) => color_profiles += 1,
+            0xE2 if payload.starts_with(b"MPF\0") => comments += mpf::privacy_count(payload)?,
             0xEB => provenance += 1,
-            marker if is_private_jpeg_segment(marker, payload) => comments += 1,
+            marker if is_private_jpeg_segment(marker, payload)? => comments += 1,
             _ => {}
         }
     }
@@ -177,6 +253,15 @@ fn jpeg_segments(data: &[u8]) -> Result<Vec<JpegSegment<'_>>> {
             return Err(CleanError::InvalidFormat("JPEG 段越界".into()));
         }
         let payload = &data[offset + 2..offset + length];
+        if marker == 0xE2 {
+            jpeg_gainmap_metadata_length(payload)?;
+        }
+        if marker == 0xEE && payload.starts_with(b"Adobe") && payload.len() < JPEG_ADOBE_HEADER_LEN
+        {
+            return Err(CleanError::InvalidFormat(
+                "JPEG Adobe 色彩信息被截断".into(),
+            ));
+        }
         if marker == 0xE0 && payload.starts_with(b"JFIF\0") {
             if payload.len() < 14 {
                 return Err(CleanError::InvalidFormat("JPEG JFIF 显示信息被截断".into()));
@@ -226,7 +311,19 @@ pub fn clean_jpeg_with_options(
     preserve_orientation: bool,
     preserve_color_profile: bool,
 ) -> Result<(Vec<u8>, Vec<Finding>)> {
-    let findings = inspect_jpeg(data)?
+    if let Some(container) = mpf::parse(data)? {
+        return container.clean(data, preserve_orientation, preserve_color_profile);
+    }
+    gainmap::validate_single(data)?;
+    clean_single_jpeg(data, preserve_orientation, preserve_color_profile)
+}
+
+fn clean_single_jpeg(
+    data: &[u8],
+    preserve_orientation: bool,
+    preserve_color_profile: bool,
+) -> Result<(Vec<u8>, Vec<Finding>)> {
+    let findings = inspect_single_jpeg(data)?
         .into_iter()
         .filter(|finding| match finding.category.as_str() {
             "color_profile" => !preserve_color_profile,
@@ -242,16 +339,43 @@ pub fn clean_jpeg_with_options(
     let mut output = Vec::with_capacity(data.len());
     let mut cursor = 0;
     for (marker, payload, range) in segments {
-        let remove = is_private_jpeg_segment(marker, payload)
-            || (!preserve_color_profile && is_jpeg_icc_profile(marker, payload));
+        let mpf_payload = if marker == 0xE2 && payload.starts_with(b"MPF\0") {
+            Some(mpf::clean_metadata(payload)?)
+        } else {
+            None
+        };
+        let remove = is_private_jpeg_segment(marker, payload)?
+            || (!preserve_color_profile && is_jpeg_icc_profile(marker, payload))
+            || mpf_payload.is_some();
         if remove {
             output.extend_from_slice(&data[cursor..range.start]);
-            if marker == 0xE0 && payload.starts_with(b"JFIF\0") {
+            if marker == 0xe1 {
+                if let Some(metadata) = gainmap::parse(payload)? {
+                    let payload = metadata.serialize()?;
+                    output.extend_from_slice(&[0xff, 0xe1]);
+                    output.extend_from_slice(&((payload.len() + 2) as u16).to_be_bytes());
+                    output.extend(payload);
+                }
+            } else if marker == 0xE0 && payload.starts_with(b"JFIF\0") {
                 // Keep version, density and pixel aspect ratio; retire only the
                 // preview and any trailing application data, never the main image.
                 output.extend_from_slice(&[0xff, 0xe0, 0, 16]);
                 output.extend_from_slice(&payload[..12]);
                 output.extend_from_slice(&[0, 0]);
+            } else if marker == 0xEE && payload.starts_with(b"Adobe") {
+                // The fixed header controls RGB/CMYK/YCCK interpretation. Keep
+                // its version, flags and transform exactly, without private tails.
+                output.extend_from_slice(&[0xff, 0xee, 0, 14]);
+                output.extend_from_slice(&payload[..JPEG_ADOBE_HEADER_LEN]);
+            } else if marker == 0xE2 && payload.starts_with(JPEG_GAINMAP_NAMESPACE) {
+                let length = jpeg_gainmap_metadata_length(payload)?.unwrap();
+                output.extend_from_slice(&[0xff, 0xe2]);
+                output.extend_from_slice(&((length + 2) as u16).to_be_bytes());
+                output.extend_from_slice(&payload[..length]);
+            } else if let Some(payload) = mpf_payload {
+                output.extend_from_slice(&[0xff, 0xe2]);
+                output.extend_from_slice(&((payload.len() + 2) as u16).to_be_bytes());
+                output.extend_from_slice(&payload);
             }
             cursor = range.end;
         }
@@ -268,6 +392,18 @@ pub fn verify_jpeg_cleaned(
     preserve_orientation: bool,
     preserve_color_profile: bool,
 ) -> Result<()> {
+    if let Some(container) = mpf::parse(data)? {
+        return container.verify(data, preserve_orientation, preserve_color_profile);
+    }
+    gainmap::validate_single(data)?;
+    verify_single_jpeg(data, preserve_orientation, preserve_color_profile)
+}
+
+fn verify_single_jpeg(
+    data: &[u8],
+    preserve_orientation: bool,
+    preserve_color_profile: bool,
+) -> Result<()> {
     let segments = jpeg_segments(data)?;
     let mut display_segments = 0;
     for (marker, payload, _) in segments {
@@ -279,8 +415,9 @@ pub fn verify_jpeg_cleaned(
                 }
             }
         }
-        if is_private_jpeg_segment(marker, payload)
+        if is_private_jpeg_segment(marker, payload)?
             || (!preserve_color_profile && is_jpeg_icc_profile(marker, payload))
+            || marker == 0xE2 && payload.starts_with(b"MPF\0") && mpf::privacy_count(payload)? != 0
         {
             return Err(CleanError::Verification(
                 "JPEG 中仍存在应移除的元数据段".into(),
@@ -785,6 +922,46 @@ mod tests {
     }
 
     #[test]
+    fn preserves_hdr_xmp_display_values_without_identity_fields() {
+        let xml = concat!(
+            "http://ns.adobe.com/xap/1.0/\0",
+            "<x:xmpmeta xmlns:x='adobe:ns:meta/' x:xmptk='private toolkit'>",
+            "<r:RDF xmlns:r='http://www.w3.org/1999/02/22-rdf-syntax-ns#'>",
+            "<r:Description xmlns:h='http://ns.adobe.com/hdr-gain-map/1.0/' ",
+            "xmlns:d='http://purl.org/dc/elements/1.1/' d:creator='private author' ",
+            "h:Version='1.0' h:GainMapMin='-0.12500000000000001' ",
+            "h:GainMapMax='3.25000000000000001' h:HDRCapacityMax='4.5' ",
+            "h:Gamma='1' h:BaseRenditionIsHDR='False'/></r:RDF></x:xmpmeta>"
+        );
+        let source = [
+            vec![0xff, 0xd8],
+            jpeg_segment(0xe1, xml.as_bytes()),
+            vec![0xff, 0xd9],
+        ]
+        .concat();
+        for orientation in [false, true] {
+            for profile in [false, true] {
+                let (output, findings) =
+                    clean_jpeg_with_options(&source, orientation, profile).unwrap();
+                assert!(output.windows(10).any(|bytes| bytes == b"GainMapMax"));
+                for value in [b"-0.12500000000000001".as_slice(), b"3.25000000000000001"] {
+                    assert!(output.windows(value.len()).any(|bytes| bytes == value));
+                }
+                assert!(!output.windows(7).any(|bytes| bytes == b"private"));
+                assert_eq!(findings.len(), 1);
+                assert!(inspect_jpeg(&output).unwrap().is_empty());
+                verify_jpeg_cleaned(&output, orientation, profile).unwrap();
+                assert_eq!(
+                    clean_jpeg_with_options(&output, orientation, profile)
+                        .unwrap()
+                        .0,
+                    output
+                );
+            }
+        }
+    }
+
+    #[test]
     fn removes_jpeg_app0_previews_and_private_data_without_changing_density() {
         let header = b"JFIF\0\x01\x02\x02\x00\x76\x00\x3b";
         let mut preview = header.to_vec();
@@ -850,6 +1027,178 @@ mod tests {
                 source
             );
             verify_jpeg_cleaned(&source, true, true).unwrap();
+        }
+    }
+
+    #[test]
+    fn removes_unknown_app2_payloads_and_gainmap_tails_without_changing_display_data() {
+        for flags in [0, 0x80, 0x08, 0x88, 0xcc] {
+            let mut hdr = JPEG_GAINMAP_NAMESPACE.to_vec();
+            hdr.extend_from_slice(&[0, 0, 0, 0, flags]);
+            let channels = if flags & 0x80 != 0 { 3 } else { 1 };
+            if flags & 8 != 0 {
+                hdr.extend_from_slice(&1u32.to_be_bytes());
+                hdr.extend_from_slice(&0u32.to_be_bytes());
+                hdr.extend_from_slice(&2u32.to_be_bytes());
+                for _ in 0..channels {
+                    for value in [-1i32, 3, 1, 0, 0] {
+                        hdr.extend_from_slice(&value.to_be_bytes());
+                    }
+                }
+            } else {
+                for numerator in [0i32, 2] {
+                    hdr.extend_from_slice(&numerator.to_be_bytes());
+                    hdr.extend_from_slice(&1u32.to_be_bytes());
+                }
+                for _ in 0..channels {
+                    for numerator in [-1i32, 3, 1, 0, 0] {
+                        hdr.extend_from_slice(&numerator.to_be_bytes());
+                        hdr.extend_from_slice(&1u32.to_be_bytes());
+                    }
+                }
+            }
+            let mut extended = hdr.clone();
+            extended.extend_from_slice(b"private gain map tail");
+            let profile = b"ICC_PROFILE\0\x01\x01profile";
+            let declaration = [JPEG_GAINMAP_NAMESPACE, &[0, 0, 0, 0]].concat();
+            let mut source = vec![0xff, 0xd8];
+            source.extend(jpeg_segment(0xe2, b"private editor identity"));
+            source.extend(jpeg_segment(0xe2, b"FPXR\0private preview"));
+            source.extend(jpeg_segment(0xe2, &declaration));
+            source.extend(jpeg_segment(0xe2, &extended));
+            source.extend(jpeg_segment(0xe2, profile));
+            source.extend_from_slice(&[0xff, 0xd9]);
+            assert_eq!(
+                inspect_jpeg(&source)
+                    .unwrap()
+                    .iter()
+                    .filter(|item| item.severity == FindingSeverity::Privacy)
+                    .map(|item| item.count)
+                    .sum::<usize>(),
+                3
+            );
+            assert!(verify_jpeg_cleaned(&source, true, true).is_err());
+            for orientation in [false, true] {
+                for keep_profile in [false, true] {
+                    let mut expected = vec![0xff, 0xd8];
+                    expected.extend(jpeg_segment(0xe2, &declaration));
+                    expected.extend(jpeg_segment(0xe2, &hdr));
+                    if keep_profile {
+                        expected.extend(jpeg_segment(0xe2, profile));
+                    }
+                    expected.extend_from_slice(&[0xff, 0xd9]);
+                    let (cleaned, _) =
+                        clean_jpeg_with_options(&source, orientation, keep_profile).unwrap();
+                    assert_eq!(cleaned, expected);
+                    verify_jpeg_cleaned(&cleaned, orientation, keep_profile).unwrap();
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn rejects_incomplete_unsupported_and_zero_denominator_gainmap_headers() {
+        let mut valid = JPEG_GAINMAP_NAMESPACE.to_vec();
+        valid.extend_from_slice(&[0, 0, 0, 0, 0]);
+        for _ in 0..7 {
+            valid.extend_from_slice(&0u32.to_be_bytes());
+            valid.extend_from_slice(&1u32.to_be_bytes());
+        }
+        let header = JPEG_GAINMAP_NAMESPACE.len();
+        let mut invalid_payloads = vec![valid[..header + 3].to_vec(), valid[..header + 5].to_vec()];
+        for position in [header, header + 2, header + 4, header + 12, header + 28] {
+            let mut corrupt = valid.clone();
+            corrupt[position] = if position < header + 5 { 1 } else { 0 };
+            invalid_payloads.push(corrupt);
+        }
+        for payload in invalid_payloads {
+            let source = [
+                vec![0xff, 0xd8],
+                jpeg_segment(0xe2, &payload),
+                vec![0xff, 0xd9],
+            ]
+            .concat();
+            assert!(inspect_jpeg(&source).is_err());
+            assert!(clean_jpeg_with_options(&source, true, true).is_err());
+            assert!(verify_jpeg_cleaned(&source, true, true).is_err());
+        }
+    }
+
+    #[test]
+    fn removes_private_app14_data_and_preserves_adobe_color_interpretation() {
+        for transform in [0, 1, 2] {
+            let mut header = b"Adobe\x00\x64\x12\x34\x56\x78\x00".to_vec();
+            header[11] = transform;
+            let mut extended = header.clone();
+            extended.extend_from_slice(b"private editor identity");
+            let scan = [
+                0xff, 0xda, 0, 8, 1, 1, 0, 0, 0x3f, 0, 0x11, 0xff, 0x00, 0x22,
+            ];
+            let mut source = vec![0xff, 0xd8];
+            source.extend(jpeg_segment(0xee, &extended));
+            source.extend_from_slice(&scan);
+            source.extend(jpeg_segment(0xee, b"editor\0private identity"));
+            source.extend(jpeg_segment(0xee, b"Adob"));
+            source.extend_from_slice(&[0xff, 0xd9]);
+            let mut expected = vec![0xff, 0xd8];
+            expected.extend(jpeg_segment(0xee, &header));
+            expected.extend_from_slice(&scan);
+            expected.extend_from_slice(&[0xff, 0xd9]);
+            assert_eq!(
+                inspect_jpeg(&source)
+                    .unwrap()
+                    .iter()
+                    .map(|item| item.count)
+                    .sum::<usize>(),
+                3
+            );
+            assert!(verify_jpeg_cleaned(&source, true, true).is_err());
+            for orientation in [false, true] {
+                for profile in [false, true] {
+                    let (cleaned, findings) =
+                        clean_jpeg_with_options(&source, orientation, profile).unwrap();
+                    assert_eq!(cleaned, expected);
+                    assert_eq!(findings[0].count, 3);
+                    assert!(inspect_jpeg(&cleaned).unwrap().is_empty());
+                    verify_jpeg_cleaned(&cleaned, orientation, profile).unwrap();
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn preserves_complete_adobe_app14_headers_exactly() {
+        for transform in [0, 1, 2, 255] {
+            let mut payload = b"Adobe\x00\x65\xab\xcd\xef\x01\x00".to_vec();
+            payload[11] = transform;
+            let mut source = vec![0xff, 0xd8];
+            source.extend(jpeg_segment(0xee, &payload));
+            source.extend_from_slice(&[0xff, 0xd9]);
+            assert!(inspect_jpeg(&source).unwrap().is_empty());
+            for orientation in [false, true] {
+                for profile in [false, true] {
+                    assert_eq!(
+                        clean_jpeg_with_options(&source, orientation, profile)
+                            .unwrap()
+                            .0,
+                        source
+                    );
+                    verify_jpeg_cleaned(&source, orientation, profile).unwrap();
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn rejects_truncated_adobe_app14_color_headers() {
+        let header = b"Adobe\x00\x64\x00\x00\x00\x00\x02";
+        for length in 5..header.len() {
+            let mut source = vec![0xff, 0xd8];
+            source.extend(jpeg_segment(0xee, &header[..length]));
+            source.extend_from_slice(&[0xff, 0xd9]);
+            assert!(inspect_jpeg(&source).is_err());
+            assert!(clean_jpeg_with_options(&source, true, true).is_err());
+            assert!(verify_jpeg_cleaned(&source, true, true).is_err());
         }
     }
 

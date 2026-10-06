@@ -102,7 +102,7 @@ jobs:
           name: release-heif-fidelity-evidence
           path: ${{ runner.temp }}/metaclean-heif-evidence
           if-no-files-found: warn
-      - name: Verify JPEG print density and display fidelity
+      - name: Verify JPEG privacy, indexed images and display fidelity
         run: python scripts/verify-jpeg-fidelity.py --output "${{ runner.temp }}/metaclean-jpeg-evidence"
       - name: Verify PNG privacy removal, pixels, animation and HDR/layout chunks
         run: python scripts/verify-png-fidelity.py --output "${{ runner.temp }}/metaclean-png-evidence"
