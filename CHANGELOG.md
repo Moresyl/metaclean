@@ -47,6 +47,9 @@ All notable changes to MetaClean are documented here. The project follows
   content types and root relationships, including relocated, escaped and Strict
   property targets. Clear identified property payloads while retaining valid
   roots and namespace bindings. Refuse ambiguous, external or unreadable targets.
+- Resolve internal Office relationship URI aliases, query/fragment references
+  and self-fragments separately from strict part-name validation. Keep original
+  relationship text while locating and clearing the referenced property parts.
 - Prune Office manifest and relationship records by the actual removed part
   targets. Retain declared property parts even when their paths resemble comment
   or custom-XML locations, without deleting unrelated references by name.

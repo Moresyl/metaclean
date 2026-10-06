@@ -6,6 +6,23 @@ This file records evidence, not intent. A row is complete only when the named ar
 
 ## Unreleased OOXML property identity coverage — 2026-10-06
 
+An additional ordinary-native regression rejects valid property relationships
+with URI aliases before the follow-up fix. Internal relationships now resolve
+query/fragment references, unreserved escapes, dot segments and self-fragments
+separately from strict declared part-name validation. The complete Rust suite
+passes 262 tests with ten ignored; strict all-target Clippy and the ordinary
+native build pass. Twelve actual Windows copy/replacement cases retain exact
+surviving payloads and relationship text, clear properties, preserve source or
+backup bytes and timestamps, and pass clean reinspection.
+
+For ten of these twelve alias cases, `python-docx` cannot directly open either
+the original or the cleaned package because it treats the URI target as a
+literal ZIP name. Both packages pass paragraph/table and save/reopen checks
+through an explicitly normalized in-memory relationship view. Actual files
+are not rewritten by that adapter; their original relationships are checked
+separately. These results qualify URI resolution and content preservation,
+not direct interoperability of the aliased packages with that library.
+
 The ordinary native application reports an author in the default property
 location but incorrectly reports a valid relocated core-property part as clean.
 The new Rust regression also fails before implementation. Property identity is
@@ -43,8 +60,11 @@ design and sixteen workflow desktop cases pass on the ordinary Windows build.
 The search fixture waits for both the intended focus selector and the final
 surface, using the same color tolerance as its unchanged snapshot assertions;
 the earlier strict-string wait failed on a tiny renderer color-conversion
-difference and was corrected. macOS verification remains outstanding. Exact-source
-remote qualification and the broader UI/release work remain outstanding.
+difference and was corrected. [CI 37427904955](https://github.com/Moresyl/metaclean/actions/runs/37427904955)
+passes at `7c6a83f` with all 28 desktop cases on Windows, macOS and Linux, 261
+Rust tests, 448 frontend tests and 92.21% Rust line coverage. This qualifies the
+property discovery and search wait changes; remote qualification of the URI
+follow-up and broader UI/release work remain outstanding.
 
 ## Unreleased PNG ancillary privacy coverage — 2026-10-06
 

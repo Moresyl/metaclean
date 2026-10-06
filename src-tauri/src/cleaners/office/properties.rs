@@ -189,10 +189,25 @@ fn records(xml: &str, root: &[u8], children: &[&[u8]], namespace: &[u8]) -> Resu
     Ok(output)
 }
 
-fn target_name(value: &str, relative: bool) -> Result<String> {
+fn escaped_byte(bytes: &[u8], index: usize) -> Result<u8> {
+    let digits = bytes
+        .get(index + 1..index + 3)
+        .ok_or_else(|| invalid("属性 URI 转义无效"))?;
+    let hex = |value: u8| (value as char).to_digit(16).map(|value| value as u8);
+    let (Some(high), Some(low)) = (hex(digits[0]), hex(digits[1])) else {
+        return Err(invalid("属性 URI 转义无效"));
+    };
+    Ok(high * 16 + low)
+}
+
+fn unreserved(byte: u8) -> bool {
+    byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'_' | b'.' | b'~')
+}
+
+fn part_name(value: &str) -> Result<String> {
     if value.is_empty()
         || value.starts_with("//")
-        || (!relative && !value.starts_with('/'))
+        || !value.starts_with('/')
         || value.bytes().any(|byte| {
             byte.is_ascii_whitespace()
                 || byte.is_ascii_control()
@@ -211,18 +226,8 @@ fn target_name(value: &str, relative: bool) -> Result<String> {
     let mut index = 0;
     while index < bytes.len() {
         if bytes[index] == b'%' {
-            let digits = bytes
-                .get(index + 1..index + 3)
-                .ok_or_else(|| invalid("属性 URI 转义无效"))?;
-            let hex = |value: u8| (value as char).to_digit(16).map(|value| value as u8);
-            let (Some(high), Some(low)) = (hex(digits[0]), hex(digits[1])) else {
-                return Err(invalid("属性 URI 转义无效"));
-            };
-            let byte = high * 16 + low;
-            if byte.is_ascii_alphanumeric()
-                || matches!(byte, b'-' | b'_' | b'.' | b'~' | b'/' | b'\\')
-                || byte.is_ascii_control()
-            {
+            let byte = escaped_byte(bytes, index)?;
+            if unreserved(byte) || matches!(byte, b'/' | b'\\') || byte.is_ascii_control() {
                 return Err(invalid("属性 URI 包含不允许的转义"));
             }
             decoded.push(byte);
@@ -233,42 +238,80 @@ fn target_name(value: &str, relative: bool) -> Result<String> {
         }
     }
     std::str::from_utf8(&decoded).map_err(|_| invalid("属性 URI 编码无效"))?;
-    let mut segments = Vec::new();
     for segment in value.trim_start_matches('/').split('/') {
-        match segment {
-            "." if relative => {}
-            ".." if relative => {
-                segments
-                    .pop()
-                    .ok_or_else(|| invalid("属性 URI 越过包根目录"))?;
+        if matches!(segment, "" | "." | "..") || segment.ends_with('.') {
+            return Err(invalid("属性 URI 路径无效"));
+        }
+    }
+    // OPC ZIP item names retain URI escaping; only the leading slash is omitted.
+    Ok(value[1..].to_ascii_lowercase())
+}
+
+fn relative_target(value: &str, source: &str) -> Result<String> {
+    if value.starts_with("//")
+        || value
+            .bytes()
+            .any(|byte| byte.is_ascii_whitespace() || byte.is_ascii_control() || byte == b'\\')
+    {
+        return Err(invalid("属性目标不是有效的包内部件 URI"));
+    }
+    // A relationship is a URI reference, not a part name. Resolve only its path;
+    // query/fragment components do not identify a different ZIP item.
+    let path = value.split(['?', '#']).next().unwrap_or_default();
+    let bytes = path.as_bytes();
+    let mut normalized = Vec::with_capacity(bytes.len());
+    let mut index = 0;
+    while index < bytes.len() {
+        if bytes[index] == b'%' {
+            let byte = escaped_byte(bytes, index)?;
+            if unreserved(byte) {
+                normalized.push(byte);
+            } else {
+                normalized.extend_from_slice(&bytes[index..index + 3]);
             }
-            "" | "." | ".." => return Err(invalid("属性 URI 路径无效")),
-            _ if segment.ends_with('.') => return Err(invalid("属性 URI 路径不能以点结束")),
+            index += 3;
+        } else {
+            normalized.push(bytes[index]);
+            index += 1;
+        }
+    }
+    let path = String::from_utf8(normalized).map_err(|_| invalid("属性 URI 编码无效"))?;
+    if !path.is_empty()
+        && path
+            .rsplit('/')
+            .next()
+            .is_some_and(|part| matches!(part, "" | "." | ".."))
+    {
+        return Err(invalid("属性关系指向目录而非部件"));
+    }
+    if path
+        .trim_start_matches('/')
+        .split('/')
+        .next()
+        .is_some_and(|part| part.contains(':'))
+    {
+        return Err(invalid("属性目标不能指向包外部"));
+    }
+    let joined = if path.is_empty() {
+        source.to_owned()
+    } else if path.starts_with('/') {
+        path
+    } else {
+        source
+            .rsplit_once('/')
+            .map_or_else(|| path.clone(), |(base, _)| format!("{base}/{path}"))
+    };
+    let mut segments = Vec::new();
+    for segment in joined.trim_start_matches('/').split('/') {
+        match segment {
+            "." => {}
+            ".." => {
+                segments.pop();
+            }
             _ => segments.push(segment),
         }
     }
-    if segments.is_empty() {
-        return Err(invalid("属性 URI 不指向部件"));
-    }
-    // OPC ZIP item names retain URI escaping; only the leading slash is omitted.
-    Ok(segments.join("/").to_ascii_lowercase())
-}
-
-fn relative_target(value: &str, base: &str) -> Result<String> {
-    if value.starts_with('/') || base.is_empty() {
-        target_name(value, true)
-    } else {
-        // Validate the reference before adding the source directory so a scheme
-        // cannot become a seemingly relative path after joining.
-        if value
-            .split('/')
-            .next()
-            .is_some_and(|part| part.contains(':'))
-        {
-            return Err(invalid("属性目标不是有效的包内部件 URI"));
-        }
-        target_name(&format!("{base}/{value}"), true)
-    }
+    part_name(&format!("/{}", segments.join("/")))
 }
 
 pub(super) fn remove_references(
@@ -287,12 +330,24 @@ pub(super) fn remove_references(
             RELATIONSHIPS_NAMESPACE,
         )
     };
-    let base = if lower == "_rels/.rels" || is_types {
-        ""
-    } else if let Some((directory, _)) = lower.rsplit_once("/_rels/") {
-        directory
+    let source = if lower == "_rels/.rels" || is_types {
+        String::new()
     } else {
-        return Err(invalid("包关系部件路径无效"));
+        let (directory, relationship) = if let Some(relationship) = lower.strip_prefix("_rels/") {
+            ("", relationship)
+        } else {
+            lower
+                .rsplit_once("/_rels/")
+                .ok_or_else(|| invalid("包关系部件路径无效"))?
+        };
+        let part = relationship
+            .strip_suffix(".rels")
+            .ok_or_else(|| invalid("包关系部件路径无效"))?;
+        if directory.is_empty() {
+            part.to_owned()
+        } else {
+            format!("{directory}/{part}")
+        }
     };
     let mut output = String::with_capacity(xml.len());
     let mut copied = 0;
@@ -301,7 +356,7 @@ pub(super) fn remove_references(
             record
                 .attributes
                 .get("PartName")
-                .map(|value| target_name(value, false))
+                .map(|value| part_name(value))
         } else if record
             .attributes
             .get("TargetMode")
@@ -312,7 +367,7 @@ pub(super) fn remove_references(
             record
                 .attributes
                 .get("Target")
-                .map(|value| relative_target(value, base))
+                .map(|value| relative_target(value, &source))
         };
         if target
             .transpose()?
@@ -375,12 +430,11 @@ pub(super) fn discover(
                 .ok_or_else(|| invalid("默认内容类型缺少扩展名"))?
                 .to_ascii_lowercase()
         } else {
-            target_name(
+            part_name(
                 record
                     .attributes
                     .get("PartName")
                     .ok_or_else(|| invalid("内容类型缺少部件名"))?,
-                false,
             )?
         };
         let map = if record.name == "Default" {
@@ -440,12 +494,12 @@ pub(super) fn discover(
         {
             return Err(invalid("属性关系不能指向包外部"));
         }
-        let name = target_name(
+        let name = relative_target(
             record
                 .attributes
                 .get("Target")
                 .ok_or_else(|| invalid("属性关系缺少目标"))?,
-            true,
+            "",
         )?;
         if !names.contains(&name) {
             return Err(invalid("属性关系目标不存在"));
@@ -609,16 +663,12 @@ mod tests {
                 "/Properties/Private%20Author.props",
                 "properties/private%20author.props",
             ),
-            (
-                "properties/./folder/../private.props",
-                "properties/private.props",
-            ),
-            ("properties/%E4%B8%AD.props", "properties/%e4%b8%ad.props"),
+            ("/properties/%E4%B8%AD.props", "properties/%e4%b8%ad.props"),
         ] {
-            assert_eq!(target_name(uri, true).unwrap(), expected);
+            assert_eq!(part_name(uri).unwrap(), expected);
         }
         assert_eq!(
-            relative_target("../private.props", "word/subdir").unwrap(),
+            relative_target("../private.props", "word/subdir/document.xml").unwrap(),
             "word/private.props"
         );
         for uri in [
@@ -627,24 +677,36 @@ mod tests {
             "https://host/file",
             "../private.props",
             "/",
-            "file\\part",
-            "file#part",
-            "file?part",
-            "file name",
-            "file%",
-            "file%zz",
-            "file%2Fpart",
-            "file%5cpart",
-            "file%2Eprops",
-            "file%00",
-            "file%ff",
-            "file.",
+            "/file\\part",
+            "/file#part",
+            "/file?part",
+            "/file name",
+            "/file%",
+            "/file%zz",
+            "/file%2Fpart",
+            "/file%5cpart",
+            "/file%2Eprops",
+            "/file%00",
+            "/file%ff",
+            "/file.",
         ] {
-            assert!(target_name(uri, true).is_err(), "{uri}");
+            assert!(part_name(uri).is_err(), "{uri}");
         }
-        assert!(target_name("properties/./private.props", false).is_err());
-        assert!(target_name("/properties/../private.props", false).is_err());
+        assert!(part_name("/properties/./private.props").is_err());
+        assert!(part_name("/properties/../private.props").is_err());
         assert!(relative_target("https://host/file", "word").is_err());
+        for target in [
+            "/",
+            "properties/",
+            "properties/.",
+            "properties/..",
+            "properties/%2e",
+        ] {
+            assert!(
+                relative_target(target, "word/document.xml").is_err(),
+                "{target}"
+            );
+        }
     }
 
     #[test]
@@ -771,6 +833,49 @@ mod tests {
     }
 
     #[test]
+    fn resolves_relationship_aliases_without_changing_property_part_names() {
+        let types = format!(
+            r#"<Types><Override PartName="/properties/private.props" ContentType="{CORE_TYPE}"/></Types>"#
+        );
+        for target in [
+            "properties/private.props#creator",
+            "properties/private.props?version=1",
+            "properties/private.props?version=1#creator",
+            "properties/%70rivate.props",
+            "../properties/private.props",
+        ] {
+            let rels = format!(
+                r#"<Relationships><Relationship Id="p" Type="{CORE_REL}" Target="{target}"/></Relationships>"#
+            );
+            let source = package(
+                &types,
+                &rels,
+                &[("properties/private.props", CORE_XML.as_bytes())],
+            );
+            let (cleaned, _) = super::super::clean(&source, "docx").unwrap();
+            assert!(
+                super::super::inspect(&cleaned, "docx").unwrap().is_empty(),
+                "{target}"
+            );
+            let mut archive = ZipArchive::new(Cursor::new(&cleaned)).unwrap();
+            let mut relationships = String::new();
+            archive
+                .by_name("_rels/.rels")
+                .unwrap()
+                .read_to_string(&mut relationships)
+                .unwrap();
+            assert_eq!(relationships, rels);
+            assert!(archive.by_name("properties/private.props").is_ok());
+        }
+        let fragment =
+            r##"<Relationships><Relationship Id="bookmark" Target="#bookmark"/></Relationships>"##;
+        assert_eq!(
+            remove_references(fragment, "word/_rels/document.xml.rels", &HashSet::new()).unwrap(),
+            fragment
+        );
+    }
+
+    #[test]
     fn refuses_ambiguous_missing_external_and_unreadable_properties() {
         let declaration =
             format!(r#"<Override PartName="/private.props" ContentType="{CORE_TYPE}"/>"#);
@@ -807,7 +912,7 @@ mod tests {
             ),
             (
                 types.clone(),
-                rels.replace("private.props", "../private.props"),
+                rels.replace("private.props", "https://host/private.props"),
                 vec![("private.props", CORE_XML.as_bytes())],
             ),
         ] {

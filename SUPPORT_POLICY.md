@@ -68,6 +68,9 @@ an empty root with its namespace binding remains in the package. References to
 removed comments and custom XML are pruned by their resolved part targets.
 Conflicting identities, external property targets, missing parts, malformed XML
 and unreadable property text are refused before output creation.
+Relationship targets are resolved as URI references, including dot segments,
+unreserved escaping and query/fragment components; the original relationship
+text is preserved. This differs from the stricter validation of declared part names.
 
 This does not redact visible document content. Custom properties used by fields
 or downstream applications will no longer have their original values after
