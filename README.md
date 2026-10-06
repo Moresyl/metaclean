@@ -26,6 +26,10 @@ Photos carry GPS coordinates. Word documents carry your name, your employer, and
 
 MetaClean scans supported formats for these traces and removes them locally.
 
+Current source is the **0.12.5 candidate**, adding WebP application-data cleanup
+inside animation frames. The published stable release remains **v0.12.4** while
+the candidate completes cross-platform qualification.
+
 ## Why
 
 - **Your files never leave your computer.** No upload API, telemetry, or cloud processing. The optional signed update check requests only MetaClean's official GitHub-hosted feeds and can be disabled.
@@ -79,7 +83,7 @@ read the [architecture](docs/ARCHITECTURE.md), or follow the [contribution guide
 | --- | --- | --- |
 | JPEG | `.jpg` `.jpeg` `.jpe` | Private EXIF/GPS, XMP, IPTC, comments, JUMBF/C2PA and unknown application payloads; valid density, color interpretation and validated multi-picture/HDR display structures are preserved, with optional orientation and ICC retention |
 | PNG | `.png` | EXIF, text/time metadata, C2PA and unrecognized ancillary payloads; optional ICC profile removal |
-| WebP | `.webp` | EXIF, XMP, C2PA chunks; optional ICC profile removal |
+| WebP | `.webp` | EXIF, XMP, C2PA and private/unknown application chunks, including animation frames; optional ICC profile removal |
 | JPEG XL | `.jxl` | Container EXIF, XMP, JUMBF/C2PA, Brotli-wrapped metadata and JPEG reconstruction data are retired in place; naked codestreams are accepted unchanged |
 | GIF | `.gif` | Comments and XMP application metadata without re-encoding frames |
 | BMP | `.bmp` `.dib` | The reserved header words editors write IDs into, V5 embedded ICC profiles, and EXIF or XMP stapled past the last pixel where no viewer shows it |

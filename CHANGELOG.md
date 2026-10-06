@@ -5,6 +5,8 @@ All notable changes to MetaClean are documented here. The project follows
 
 ## [Unreleased]
 
+## [0.12.5] - 2026-10-07
+
 ### Security
 
 - Remove private and unrecognized WebP application chunks at the container level

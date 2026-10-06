@@ -25,7 +25,7 @@ application. Detailed run evidence is recorded in `VALIDATION.md`.
 | Localization | All 32 published locale catalogs are checked for completeness; supported-scope counts are checked in every translated locale. | Catalog completeness does not establish independent linguistic review. |
 | Release integrity | The five-platform release matrix runs applicable package smoke tests. Independent public downloads verify all 19 checksum-listed assets, five updater signatures and rejection of modified package bytes. | Updater signatures are separate from OS code signing; Apple signing/notarization remains unavailable. |
 
-## Unreleased WebP qualification
+## v0.12.5 candidate WebP qualification
 
 Current source removes private application chunks at the WebP container and
 animation-frame levels. Twenty-four independent local engine cases cover

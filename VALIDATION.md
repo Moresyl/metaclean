@@ -4,7 +4,29 @@ Last audited: 2026-10-07
 
 This file records evidence, not intent. A row is complete only when the named artifact or runtime check exists.
 
-## Unreleased WebP qualification — 2026-10-07
+## v0.12.5 candidate qualification — 2026-10-07
+
+The versioned candidate separately repeats 281 Rust tests with 12 ignored,
+455 frontend tests at 93.99% line coverage, all 44 release checks and 31 ordinary
+Windows desktop cases. Format, documentation, production-build and CSP gates
+pass. Two native capture scenarios verify visible version 0.12.5, actual
+English/Chinese processing and source preservation; all 17 generated assets
+have checked dimensions, frame durations and hashes, and both contact sheets
+were visually reviewed. Backend source remains the original fix in
+`18f2b299f4cc65875d49429b34b1cc493f2fb716`; local backend Rust line coverage is
+87.35% in its recorded scope. The published stable version remains v0.12.4.
+
+At that backend source, completed
+[images 37530629825](https://github.com/Moresyl/metaclean/actions/runs/37530629825),
+[Office 37530629771](https://github.com/Moresyl/metaclean/actions/runs/37530629771)
+and [PDF 37530629812](https://github.com/Moresyl/metaclean/actions/runs/37530629812)
+pass. Downloaded artifacts and completed native logs were independently checked:
+24 WebP, 40 JPEG, eight PNG, six HEIF/AVIF, six PDF and 42 Office cases. The
+Office reinspection repeats 32 direct and ten explicit relationship-view library
+round trips. HDR source/output rendering matches on each host; recorded
+three-channel floating-point hashes can differ between Windows and Linux.
+These are backend-source checks; final versioned-source remote qualification
+and browser publication remain pending.
 
 The actual prior native application reported successful cleanup for five WebP
 fixtures while retaining 23 private application chunks at the container and
