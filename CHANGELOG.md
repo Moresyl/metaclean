@@ -13,6 +13,10 @@ All notable changes to MetaClean are documented here. The project follows
 
 ### Changed
 
+- Align native selects with their current default geometry: 32px height, an
+  8px base corner, 12px gutters and medium-weight 12px labels. Use transparent
+  inset borders, theme-aware disabled/error/focus states and a direction
+  indicator that follows right-to-left layout while retaining native options.
 - Align shared actions with the current pill shape, 400-weight labels, size-specific
   gutters and icons. Apply hover and pressed feedback to the surface, keep labels
   stable, and use dedicated disabled fills and variant-specific focus rings.
@@ -29,6 +33,8 @@ All notable changes to MetaClean are documented here. The project follows
 
 ### Tests
 
+- Cover select refs, controlled values, form data, required validity, grouped
+  options and disabled exclusion, plus native geometry and focus in both themes.
 - Cover native action geometry, disabled colors and focus in both themes, and
   retain form submission, forwarded refs and accessible icon-action behavior.
 - Add a native light/dark regression for unchecked, checked, mixed, disabled,

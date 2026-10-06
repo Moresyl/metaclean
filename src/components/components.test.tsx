@@ -2,6 +2,7 @@ import { act, fireEvent, render, screen, waitFor, within } from "@testing-librar
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createRef, StrictMode, useState } from "react";
 import Button, { IconButton } from "./Button";
+import Select from "./Select";
 import CleanOptions from "./CleanOptions";
 import DropZone from "./DropZone";
 import FileQueue from "./FileQueue";
@@ -87,6 +88,42 @@ describe("Shared actions", () => {
     expect(action).toBeDisabled();
     fireEvent.click(action);
     expect(click).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("Shared selects", () => {
+  it("forwards focus and retains controlled values and native form data", () => {
+    const ref = createRef<HTMLSelectElement>();
+    const change = vi.fn();
+    const view = render(<form aria-label="Selection form"><Select ref={ref} aria-label="Output mode" name="mode" value="copy" onChange={change}>
+      <option value="copy">Safe copy</option><option value="replace">Replace with backup</option>
+    </Select></form>);
+    const select = screen.getByRole("combobox", { name: "Output mode" });
+    expect(ref.current).toBe(select);
+    ref.current?.focus();
+    expect(select).toHaveFocus();
+    fireEvent.change(select, { target: { value: "replace" } });
+    expect(change).toHaveBeenCalledOnce();
+    view.rerender(<form aria-label="Selection form"><Select ref={ref} aria-label="Output mode" name="mode" value="replace" onChange={change}>
+      <option value="copy">Safe copy</option><option value="replace">Replace with backup</option>
+    </Select></form>);
+    expect(select).toHaveValue("replace");
+    expect(new FormData(screen.getByRole("form") as HTMLFormElement).get("mode")).toBe("replace");
+    expect(select.parentElement?.querySelector("svg")).toHaveAttribute("aria-hidden", "true");
+  });
+
+  it("retains required validity, grouped options and disabled form exclusion", () => {
+    const view = render(<form aria-label="Selection form"><Select aria-label="Format" name="format" required defaultValue="" aria-invalid="true">
+      <option value="">Choose format</option><optgroup label="Images"><option value="png">PNG</option></optgroup>
+    </Select></form>);
+    const select = screen.getByRole("combobox", { name: "Format" });
+    expect(select).toBeInvalid();
+    expect(screen.getByRole("group", { name: "Images" })).toBeInTheDocument();
+    view.rerender(<form aria-label="Selection form"><Select aria-label="Format" name="format" disabled defaultValue="png">
+      <option value="png">PNG</option>
+    </Select></form>);
+    expect(select).toBeDisabled();
+    expect(new FormData(screen.getByRole("form") as HTMLFormElement).has("format")).toBe(false);
   });
 });
 

@@ -68,6 +68,10 @@
   --color-action-ghost-hover: color-mix(in oklab, #ffffff 8%, transparent);
   --color-action-ghost-active: color-mix(in oklab, #dfdfdf 16%, transparent);
 
+  --color-field-border: color-mix(in oklab, #ffffff 16%, transparent);
+  --color-field-hover: color-mix(in oklab, #dfdfdf 30%, transparent);
+  --color-field-invalid: #ba2623;
+
   /* Brand ink stays neutral; semantic success, warning and danger colours are
      independent so an ordinary selected control never looks like a status. */
   --color-brand: #f4f4f4;
@@ -210,7 +214,7 @@
     --corner-radius-scale: 1.25;
   }
 
-  .rounded-control, .rounded-panel, .field {
+  .rounded-control, .rounded-panel {
     corner-shape: superellipse(1.5);
   }
 }
@@ -270,6 +274,10 @@
     --color-action-ghost-hover: color-mix(in oklab, #1a1c1f 5%, transparent);
     --color-action-ghost-active: color-mix(in oklab, #1a1c1f 12%, transparent);
 
+    --color-field-border: color-mix(in oklab, #1a1c1f 12%, transparent);
+    --color-field-hover: color-mix(in oklab, #1a1c1f 25%, transparent);
+    --color-field-invalid: #e02e2a;
+
     --color-brand: #0d0d0d;
     --color-ok: #1e8a3e;
     --color-warn: #b65d00;
@@ -316,6 +324,10 @@
   --color-action-border-hover: color-mix(in oklab, #1a1c1f 20%, transparent);
   --color-action-ghost-hover: color-mix(in oklab, #1a1c1f 5%, transparent);
   --color-action-ghost-active: color-mix(in oklab, #1a1c1f 12%, transparent);
+
+  --color-field-border: color-mix(in oklab, #1a1c1f 12%, transparent);
+  --color-field-hover: color-mix(in oklab, #1a1c1f 25%, transparent);
+  --color-field-invalid: #e02e2a;
 
   --color-brand: #0d0d0d;
   --color-ok: #1e8a3e;
@@ -690,31 +702,58 @@
 
   .action[data-variant='ghost']:disabled { opacity: 0.4; }
 
-  /* Value controls share the default 32px toolbar height. */
+  /* Native value controls retain their own typography and inset surface. */
   .field {
+    --field-border: var(--color-field-border);
+    --field-gutter: 12px;
     height: var(--control-size-md);
-    padding-inline: 10px;
-    border: 1px solid var(--color-line-strong);
-    border-radius: var(--radius-control);
-    background-color: var(--color-surface);
+    padding-inline: var(--field-gutter);
+    border: 0;
+    border-radius: calc(8px * var(--corner-radius-scale));
+    corner-shape: round;
+    background-color: transparent;
+    box-shadow: inset 0 0 0 1px var(--field-border);
     color: var(--color-text);
-    font-size: var(--text-base);
-    line-height: 1;
-    transition:
-      border-color var(--transition-duration-basic) var(--ease-out-soft),
-      background-color var(--transition-duration-basic) var(--ease-out-soft);
+    font-size: var(--text-sm);
+    font-weight: var(--font-weight-medium);
+    line-height: 24px;
+    cursor: pointer;
+    transition: color var(--transition-duration-basic) var(--ease-out-soft),
+      box-shadow var(--transition-duration-basic) var(--ease-out-soft);
   }
 
-  .field:hover:not(:disabled) {
-    border-color: var(--color-faint);
+  @media (hover: hover) and (pointer: fine) {
+    .field:hover:not(:disabled) { --field-border: var(--color-field-hover); }
+    .field:hover:not(:disabled) + .select-indicator { opacity: 1; }
   }
 
-  /* The webview's own dropdown arrow is drawn at the system's size in the
-     system's grey and cannot be reached; the caller draws a lucide chevron over
-     this gutter instead, so the arrow matches every other icon in the window. */
+  .field[aria-invalid='true']:not(:disabled) { --field-border: var(--color-field-invalid); }
+
+  .field:focus { outline: none; }
+  .field:focus-visible { outline: 2px solid var(--color-check-ring); outline-offset: -1px; }
+  .field[aria-invalid='true']:focus-visible { outline-color: #ff8583; }
+
+  .field:disabled {
+    --field-border: color-mix(in oklab, var(--color-text) 6%, transparent);
+    color: var(--color-faint);
+    cursor: not-allowed;
+  }
+
   select.field {
     appearance: none;
-    padding-inline-end: 24px;
+    padding-inline-end: calc(var(--field-gutter) + 16px);
+  }
+
+  .select-indicator {
+    width: 8px;
+    height: 12px;
+    inset-inline-end: 12px;
+    color: color-mix(in srgb, var(--color-text) 65%, transparent);
+    opacity: 0.75;
+  }
+
+  .field:disabled + .select-indicator {
+    color: var(--color-faint);
   }
 
   /* Native semantics with a compact, theme-aware visual state. */

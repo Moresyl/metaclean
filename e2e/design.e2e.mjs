@@ -14,6 +14,101 @@ function assertResolvedColor(actual, expected, message) {
 }
 
 describe("Desktop visual controls", () => {
+  it("preserves native select geometry, disabled ink and keyboard focus in both themes", async () => {
+    await $(".app-shell").waitForDisplayed();
+    const previousTheme = await browser.tauri.execute(() => document.documentElement.dataset.theme);
+    try {
+      await browser.tauri.execute(() => window.dispatchEvent(new KeyboardEvent("keydown", { key: "4", ctrlKey: true })));
+      await $(".locale-switch select").waitForDisplayed();
+      assert.equal(await browser.tauri.execute(() => getComputedStyle(document.querySelector(".locale-switch select")).fontSize), "12px");
+      await browser.tauri.execute(() => {
+        const host = document.createElement("div");
+        host.id = "select-regression";
+        host.style.cssText = "position:fixed;top:80px;left:80px;pointer-events:none;z-index:9999";
+        host.append(document.querySelector(".locale-switch select").parentElement.cloneNode(true));
+        document.body.append(host);
+      });
+      for (const theme of ["light", "dark"]) {
+        await browser.tauri.execute((_, theme) => document.documentElement.dataset.theme = theme, theme);
+        for (const mode of ["normal", "disabled", "invalid"]) {
+          await browser.tauri.execute((_, mode) => {
+            const select = document.querySelector("#select-regression select");
+            select.disabled = mode === "disabled";
+            select.setAttribute("aria-invalid", String(mode === "invalid"));
+          }, mode);
+          await browser.waitUntil(async () => browser.tauri.execute(() => !document.querySelector("#select-regression")
+            .getAnimations({ subtree: true }).some(animation => animation.pending || animation.playState === "running")));
+          const state = await browser.tauri.execute((_, theme, mode) => {
+            const select = document.querySelector("#select-regression select");
+            const style = getComputedStyle(select);
+            const icon = getComputedStyle(select.nextElementSibling);
+            const probe = document.createElement("span");
+            const ink = theme === "light" ? "#1a1c1f" : "#dfdfdf";
+            probe.style.color = mode === "disabled" ? `color-mix(in oklab, ${theme === "light" ? ink : "#ffffff"} 50%, transparent)` : ink;
+            const border = mode === "disabled" ? `color-mix(in oklab, ${ink} 6%, transparent)` : mode === "invalid"
+              ? theme === "light" ? "#e02e2a" : "#ba2623"
+              : theme === "light" ? "color-mix(in oklab, #1a1c1f 12%, transparent)" : "color-mix(in oklab, #ffffff 16%, transparent)";
+            probe.style.boxShadow = `inset 0 0 0 1px ${border}`;
+            document.body.append(probe);
+            const expected = getComputedStyle(probe);
+            const result = { height: style.height, radius: style.borderRadius, font: style.fontSize, weight: style.fontWeight,
+              lineHeight: style.lineHeight, gutter: style.paddingInlineStart, background: style.backgroundColor,
+              color: style.color, expectedColor: expected.color, border: style.boxShadow, expectedBorder: expected.boxShadow,
+              cursor: style.cursor, cornerScaling: CSS.supports("corner-shape", "superellipse(1.5)"),
+              icon: { width: icon.width, height: icon.height, opacity: icon.opacity, color: icon.color } };
+            probe.remove();
+            return result;
+          }, theme, mode);
+          assert.equal(state.height, "32px");
+          assert.equal(state.radius, state.cornerScaling ? "10px" : "8px");
+          assert.equal(state.font, "12px");
+          assert.equal(state.weight, "500");
+          assert.equal(state.lineHeight, "24px");
+          assert.equal(state.gutter, "12px");
+          assert.equal(state.background, "rgba(0, 0, 0, 0)");
+          assert.equal(state.cursor, mode === "disabled" ? "not-allowed" : "pointer");
+          assertResolvedColor(state.color, state.expectedColor, `${theme}/${mode} select ink`);
+          const color = value => value.match(/(?:oklab|color|rgba?)\([^)]*\)/)?.[0];
+          assertResolvedColor(color(state.border), color(state.expectedBorder), `${theme}/${mode} select border`);
+          assert.equal(state.icon.width, "8px");
+          assert.equal(state.icon.height, "12px");
+          assert.equal(state.icon.opacity, "0.75");
+          if (mode === "disabled") assertResolvedColor(state.icon.color, state.expectedColor, `${theme} disabled select indicator`);
+        }
+        await browser.keys("Tab");
+        for (const invalid of [false, true]) {
+          await browser.tauri.execute((_, invalid) => {
+            const select = document.querySelector("#select-regression select");
+            select.setAttribute("aria-invalid", String(invalid));
+            select.focus();
+          }, invalid);
+          await browser.waitUntil(async () => browser.tauri.execute(() => {
+            const select = document.querySelector("#select-regression select");
+            return select.matches(":focus-visible") && getComputedStyle(select).outlineWidth === "2px";
+          }), { timeoutMsg: `${theme}/${invalid} select focus did not settle` });
+          const ring = await browser.tauri.execute((_, theme, invalid) => {
+            const style = getComputedStyle(document.querySelector("#select-regression select"));
+            const probe = document.createElement("span");
+            probe.style.color = invalid ? "#ff8583" : theme === "light" ? "#339cff" : "color-mix(in oklab, #339cff 70%, transparent)";
+            document.body.append(probe);
+            const result = { color: style.outlineColor, expected: getComputedStyle(probe).color, offset: style.outlineOffset };
+            probe.remove();
+            return result;
+          }, theme, invalid);
+          assertResolvedColor(ring.color, ring.expected, `${theme}/${invalid} select ring`);
+          assert.equal(ring.offset, "-1px");
+        }
+      }
+    } finally {
+      await browser.tauri.execute((_, previousTheme) => {
+        document.querySelector("#select-regression")?.remove();
+        document.documentElement.dataset.theme = previousTheme;
+      }, previousTheme);
+      await browser.refresh();
+      await $(".app-shell").waitForDisplayed();
+    }
+  });
+
   it("keeps queued files and toolbar actions visible in narrow content", async () => {
     await $(".app-shell").waitForDisplayed();
     await browser.tauri.execute(() => window.dispatchEvent(new KeyboardEvent("keydown", { key: "1", ctrlKey: true })));

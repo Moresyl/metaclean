@@ -21,10 +21,11 @@ consume the same tokens. Their content remains specific to a local file utility.
 | Surface | Neutral `#212121` / `#ffffff` panels and `#303030` / `#ededed` raised controls |
 | Brand and status | Neutral primary actions and checked controls; blue focus; green, orange and red for semantic status |
 | Text | Dark `#dfdfdf`, light `#1a1c1f`; secondary ink resolves from 70% foreground opacity |
-| Geometry | 12px panels, 6px value controls, a 24px intake surface, 1px hairlines, shared 28/32/36px pill actions and 32px fields |
+| Geometry | 12px panels, 6px shared control corners, 8px native-select base corners, a 24px intake surface, 1px hairlines and shared 28/32/36px pill actions |
 | Type | System UI font stack, 14px body with 1.5 line height, 500/600 weights; Microsoft YaHei UI, PingFang SC and Noto Sans SC fallbacks |
 | Checkbox | 18px square, 4px base corner, theme-specific neutral borders and disabled combinations, stable selected hover and a 2px focus outline |
 | Actions | 400-weight labels with 1em line height; 12/14/12px type for 28/32/36px heights, 18px icons and separate surface feedback; icon-only actions retain 24/28px squares |
+| Selects | 32px height, 12px gutters, 500-weight 12px labels with 24px line height; transparent surface, 1px inset border, an 8×12px direction indicator and a 2px inset focus ring |
 | Motion | 150ms control feedback; reduced-motion mode collapses animations and transitions to 0.001ms |
 
 Supported renderers apply a 1.25 corner scale with `superellipse(1.5)` to
@@ -41,6 +42,14 @@ remain stable. Outlined and ghost actions place the focus ring 1px inside the
 edge, while primary and danger actions place it 2px outside. Danger uses its own
 red focus ring. Pressed actions do not scale the content. Native button semantics,
 form behavior, refs, names and expanded/disabled states remain intact.
+
+Native selects use their independently verified ordinary-corner default rather
+than inheriting the action pill configuration. Their 8px base corner scales to
+10px where the shared corner-scaling rule is supported while keeping ordinary
+rounded geometry. Disabled borders and ink remain distinct from hover, invalid
+controls use semantic red, and the indicator follows the logical trailing edge.
+Options, keyboard selection, required validity and form data belong to the real
+native select; its decorative indicator adds no separate focus target.
 
 ## Implemented patterns
 

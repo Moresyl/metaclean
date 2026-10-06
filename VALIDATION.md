@@ -4,6 +4,40 @@ Last audited: 2026-10-06
 
 This file records evidence, not intent. A row is complete only when the named artifact or runtime check exists.
 
+## Unreleased native select alignment — 2026-10-06
+
+The current select component's helper configuration was read separately from
+the shared action configuration. Its default is outline/md with ordinary
+corners, not a pill. Earlier comparison fixtures exercise the optional pill
+rules and are retained as diagnostics, not as default-configuration evidence.
+The final fixture preserves the original stylesheet layer order and current
+main-window scope, and renders the product's actual React select. No extracted
+JavaScript is executed and no reference code or assets enter the product.
+
+All sixteen default-configuration light/dark comparisons pass: normal, hover,
+pressed, hover plus pressed, focus-visible, disabled, disabled plus hover/pressed
+and invalid. Measured properties include height, radius/corner shape, leading
+gutter, type, resolved text and inset-border colors, background, cursor, opacity,
+indicator dimensions/color/opacity and focus width/color/offset. This is CSS
+rendering evidence, not the original installed application's runtime.
+
+Additional product-browser checks use real CDP pointer and keyboard events:
+hover feedback appears, ArrowDown changes the native selection and React
+receives a trusted change event, and FormData contains the selected value.
+RTL indicator placement, forced-color boundaries/focus and reduced-motion
+duration also pass. Frontend tests additionally cover forwarded focus, controlled
+values, required validity, grouped options and disabled form exclusion.
+
+The native regression fails on the preceding binary's 14px label. The final
+Windows build passes all 24 desktop cases, including eight design regressions
+and sixteen workflow cases. Both ordinary and invalid focus rings are checked
+in both themes. The complete frontend suite passes 432 tests with 93.58% line
+coverage. The final default-layout browser review passes all 80 English/Chinese,
+light/dark, wide/narrow, empty/populated and five-page cases, including select
+bounds; representative narrow screenshots were inspected. Production build,
+44 release tests and documentation/format/CSP checks pass. Cross-platform CI
+for this select change remains pending; these changes are unreleased.
+
 ## Unreleased development dependency security — 2026-10-06
 
 [CI 37398711713](https://github.com/Moresyl/metaclean/actions/runs/37398711713)
@@ -24,8 +58,12 @@ provide the audit endpoint; that initial endpoint error is retained separately
 and is not treated as a clean audit. Post-update verification passes all 430
 frontend tests with 93.57% line coverage, all 23 Windows desktop cases, all 44
 release tests, documentation/format/CSP/archive-extractor checks, and production
-and documentation builds. No audit exceptions were added. Cross-platform CI
-for this dependency fix remains pending.
+and documentation builds. No audit exceptions were added.
+[CI 37399834162](https://github.com/Moresyl/metaclean/actions/runs/37399834162)
+passes all four jobs on source `e549329e949227246ccbec45d5117968d92c60d5`,
+including the clean dependency audit, all 430 frontend tests and all 23 desktop
+cases on each of Windows, Linux and macOS. Its documentation pipeline also
+passes. This run qualifies the preceding workspace and action-focus fixes.
 
 ## Unreleased workspace containment — 2026-10-06
 
@@ -80,7 +118,7 @@ resolved Oklab components within 0.0001 while requiring exact alpha; geometry,
 opaque colors and semantics retain exact assertions. All five native design
 cases pass after this correction. The complete Windows desktop suite passes all
 21 cases: five design regressions and sixteen native workflow cases.
-Cross-platform qualification for the new action implementation is still pending.
+Subsequent cross-platform qualification is recorded below.
 
 [CI 37397170260](https://github.com/Moresyl/metaclean/actions/runs/37397170260)
 passes the main checks and Windows/Linux desktop cases, but macOS fails when
@@ -88,8 +126,11 @@ the action focus test reads a 3px pseudo-element outline immediately after
 focusing; the expected ring is 2px. The follow-up separates focus activation
 from inspection and waits for the actual 2px focus-visible ring before retaining
 the exact width, offset and color assertions. The Windows design suite passes
-all seven cases with this synchronization. macOS qualification remains pending;
-the failed run is not represented as a cross-platform pass.
+all seven cases with this synchronization. Subsequent
+[CI 37399834162](https://github.com/Moresyl/metaclean/actions/runs/37399834162)
+passes all seven design and sixteen workflow cases on each of Windows, Linux
+and macOS, including this exact focus assertion. The initial failed run remains
+recorded rather than being represented as a cross-platform pass.
 
 Frontend verification passes all 430 tests with 93.57% line coverage, including
 native form submission/default type, disabled activation, forwarded refs and
