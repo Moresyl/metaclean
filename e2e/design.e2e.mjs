@@ -206,6 +206,82 @@ describe("Desktop visual controls", () => {
     }
   });
 
+  it("preserves tooltip styling, viewport bounds and accessible descriptions in both themes", async () => {
+    await $(".app-shell").waitForDisplayed();
+    const previous = await browser.tauri.execute(() => ({ theme: document.documentElement.dataset.theme,
+      direction: document.documentElement.dir }));
+    try {
+      await browser.tauri.execute(() => {
+        const host = document.createElement("button");
+        host.id = "tooltip-regression-host";
+        host.type = "button";
+        host.textContent = "Tip";
+        host.dataset.tip = "Synthetic tooltip description ".repeat(4);
+        document.body.append(host);
+      });
+      for (const theme of ["light", "dark"]) {
+        for (const direction of ["ltr", "rtl"]) {
+          for (const corner of ["top-left", "bottom-right"]) {
+            await browser.tauri.execute((_, theme, direction, corner) => {
+              document.documentElement.dataset.theme = theme;
+              document.documentElement.dir = direction;
+              const host = document.querySelector("#tooltip-regression-host");
+              host.style.cssText = `position:fixed;left:${corner === "top-left" ? 2 : innerWidth - 2}px;top:${corner === "top-left" ? 2 : innerHeight - 2}px;width:1px;height:1px;overflow:hidden`;
+              host.focus({ preventScroll: true });
+              host.dispatchEvent(new PointerEvent("pointerover", { bubbles: true }));
+            }, theme, direction, corner);
+            await $("[role=tooltip]").waitForDisplayed();
+            await browser.waitUntil(async () => browser.tauri.execute(() => !document.querySelector("[role=tooltip]")
+              .getAnimations().some(animation => animation.pending || animation.playState === "running")));
+            const state = await browser.tauri.execute(() => {
+              const tip = document.querySelector("[role=tooltip]");
+              const host = document.querySelector("#tooltip-regression-host");
+              const style = getComputedStyle(tip);
+              const bounds = tip.getBoundingClientRect();
+              const canvas = document.createElement("canvas");
+              canvas.width = canvas.height = 1;
+              const context = canvas.getContext("2d");
+              context.fillStyle = style.backgroundColor;
+              context.fillRect(0, 0, 1, 1);
+              return { rootMounted: tip.parentElement === document.body, linked: host.getAttribute("aria-describedby") === tip.id,
+                id: tip.id, focused: document.activeElement === host, font: style.fontSize, weight: style.fontWeight,
+                line: parseFloat(style.lineHeight), padding: style.padding, radius: style.borderRadius, border: style.borderTopWidth,
+                scaled: CSS.supports("corner-shape", "superellipse(1.5)"), background: [...context.getImageData(0, 0, 1, 1).data],
+                contained: bounds.left >= 15 && bounds.top >= 15 && bounds.right <= innerWidth - 15 && bounds.bottom <= innerHeight - 15,
+                width: bounds.width, viewport: innerWidth };
+            });
+            assert.equal(state.rootMounted, true);
+            assert.equal(state.linked, true);
+            assert.notEqual(state.id, "");
+            assert.equal(state.focused, true);
+            assert.equal(state.font, "14px");
+            assert.equal(state.weight, "400");
+            assert.ok(Math.abs(state.line - 20.3) <= 0.1);
+            assert.equal(state.padding, "12px 16px");
+            assert.equal(state.radius, state.scaled ? "10px" : "8px");
+            assert.equal(state.border, "0px");
+            const expectedBackground = theme === "light" ? [255, 255, 255, 179] : [33, 33, 33, 245];
+            state.background.forEach((channel, index) => assert.ok(Math.abs(channel - expectedBackground[index]) <= 1,
+              `${theme} tooltip background: ${JSON.stringify(state.background)}`));
+            assert.equal(state.contained, true, `${theme}/${direction}/${corner} tooltip leaves the viewport`);
+            assert.ok(state.width <= Math.min(300, state.viewport - 30) + 1);
+            await browser.keys("Escape");
+            await $("[role=tooltip]").waitForDisplayed({ reverse: true });
+            assert.equal(await browser.tauri.execute(() => document.querySelector("#tooltip-regression-host")
+              .hasAttribute("aria-describedby")), false);
+          }
+        }
+      }
+    } finally {
+      await browser.tauri.execute((_, previous) => {
+        document.body.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
+        document.getElementById("tooltip-regression-host")?.remove();
+        document.documentElement.dataset.theme = previous.theme;
+        document.documentElement.dir = previous.direction;
+      }, previous);
+    }
+  });
+
   it("keeps context menus inside the viewport without scrolling their animated workspace", async () => {
     await $(".app-shell").waitForDisplayed();
     const previousMenuState = await browser.tauri.execute(() => ({ direction: document.documentElement.dir,

@@ -406,6 +406,94 @@ describe("tooltip host", () => {
     act(() => void vi.advanceTimersByTime(500));
     expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
   });
+
+  it("dismisses visible and pending tips on Escape without consuming the key", () => {
+    vi.useFakeTimers();
+    render(<><button type="button" data-tip="提示文本">宿主</button><TooltipHost /></>);
+    const host = screen.getByRole("button");
+    fireEvent.pointerOver(host);
+    fireEvent.keyDown(host, { key: "Escape" });
+    act(() => void vi.advanceTimersByTime(500));
+    expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
+    fireEvent.pointerOver(host);
+    act(() => void vi.advanceTimersByTime(500));
+    expect(screen.getByRole("tooltip")).toBeInTheDocument();
+    const event = new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true });
+    act(() => void host.dispatchEvent(event));
+    expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
+    expect(event.defaultPrevented).toBe(false);
+  });
+
+  it("links the visible description and retains descriptions owned by other controls", () => {
+    vi.useFakeTimers();
+    const { unmount } = render(<><button type="button" data-tip="提示文本" aria-describedby="existing">宿主</button><TooltipHost /></>);
+    const host = screen.getByRole("button");
+    fireEvent.pointerOver(host);
+    act(() => void vi.advanceTimersByTime(500));
+    const tip = screen.getByRole("tooltip");
+    expect(tip.id).not.toBe("");
+    expect(host.getAttribute("aria-describedby")?.split(/\s+/)).toEqual(["existing", tip.id]);
+    host.setAttribute("aria-describedby", `existing ${tip.id} later`);
+    fireEvent.pointerDown(document.body);
+    expect(host).toHaveAttribute("aria-describedby", "existing later");
+    fireEvent.pointerOver(host);
+    act(() => void vi.advanceTimersByTime(500));
+    unmount();
+    expect(host).toHaveAttribute("aria-describedby", "existing later");
+  });
+
+  it("cancels tips when their host is left or detached and when the window resizes", () => {
+    vi.useFakeTimers();
+    const { rerender } = render(<><button type="button" data-tip="提示文本">宿主</button><TooltipHost /></>);
+    const host = screen.getByRole("button");
+    fireEvent.pointerOver(host);
+    fireEvent.pointerOut(host, { relatedTarget: document.body });
+    act(() => void vi.advanceTimersByTime(500));
+    expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
+    fireEvent.pointerOver(host);
+    rerender(<TooltipHost />);
+    act(() => void vi.advanceTimersByTime(500));
+    expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
+    rerender(<><button type="button" data-tip="提示文本">宿主</button><TooltipHost /></>);
+    fireEvent.pointerOver(screen.getByRole("button"));
+    act(() => void vi.advanceTimersByTime(500));
+    fireEvent(window, new Event("resize"));
+    expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
+  });
+
+  it("uses unscaled layout bounds and escapes transformed hosts near viewport edges", () => {
+    vi.useFakeTimers();
+    vi.spyOn(HTMLElement.prototype, "offsetWidth", "get").mockReturnValue(120);
+    vi.spyOn(HTMLElement.prototype, "offsetHeight", "get").mockReturnValue(40);
+    const { container } = render(<div style={{ transform: "translateY(0)", overflow: "hidden" }}>
+      <button type="button" data-tip="提示文本">宿主</button><TooltipHost />
+    </div>);
+    stubRect(screen.getByRole("button"), { left: innerWidth - 20, top: innerHeight - 30, bottom: innerHeight - 10, width: 20 });
+    stubRect(Element.prototype, { width: 108, height: 36 });
+    fireEvent.pointerOver(screen.getByRole("button"));
+    act(() => void vi.advanceTimersByTime(500));
+    const tip = screen.getByRole("tooltip");
+    expect(tip.parentElement).toBe(document.body);
+    expect(container).not.toContainElement(tip);
+    expect(tip.style.left).toBe(`${innerWidth - 135}px`);
+    expect(tip.style.top).toBe(`${innerHeight - 75}px`);
+  });
+
+  it("keeps keyboard focus and hides a displayed tip when its control disappears", async () => {
+    vi.useFakeTimers();
+    const { rerender } = render(<><button type="button" data-tip="提示文本">宿主</button><TooltipHost /></>);
+    const host = screen.getByRole("button");
+    const matches = host.matches.bind(host);
+    vi.spyOn(host, "matches").mockImplementation(selector => selector === ":focus-visible" || matches(selector));
+    act(() => host.focus());
+    act(() => void vi.advanceTimersByTime(100));
+    expect(screen.getByRole("tooltip")).toHaveTextContent("提示文本");
+    expect(host).toHaveFocus();
+    expect(host.getAttribute("aria-describedby")).toBe(screen.getByRole("tooltip").id);
+    rerender(<TooltipHost />);
+    await act(async () => {});
+    expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
+  });
 });
 
 describe("queue row details", () => {

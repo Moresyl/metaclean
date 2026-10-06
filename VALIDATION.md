@@ -4,6 +4,30 @@ Last audited: 2026-10-06
 
 This file records evidence, not intent. A row is complete only when the named artifact or runtime check exists.
 
+## v0.12.3 tooltip candidate — 2026-10-06
+
+v0.12.3 is an unpublished candidate. Its tooltip changes pass 455 frontend tests
+across 23 files at 93.99% line coverage, the production build, and 14 design plus
+16 workflow cases on the local Windows native application. The four initial
+interaction/description/placement regressions fail on the previous implementation;
+the prior native binary also fails the new tooltip root-mount assertion.
+The versioned v0.12.3 Windows native binary also passes all 30 cases and both
+English/Chinese capture cases. Its 15 PNGs and two five-frame workflow GIFs have
+verified dimensions and frame durations; the current native captures were
+visually reviewed. Remote candidate and publication checks remain pending.
+
+An independent browser comparison renders the supplied current stylesheet with
+its actual desktop scope and ordinary tooltip defaults. All 12 inspected style
+fields match in both light and dark themes. Visible descriptions are linked to
+the real control, and Escape removes both the tip and its own reference.
+Native checks additionally cover both layout directions and viewport corners,
+retained control focus, background pixels and trusted Escape dismissal.
+Trusted browser Tab and Escape retain focus and link/dismiss descriptions in
+normal and reduced motion. Forced-color presentation uses Canvas/CanvasText
+with a visible system-color outline. Temporary fixtures and media overrides
+were removed or restored after these checks.
+These checks do not establish every possible tooltip state or every platform.
+
 ## v0.12.2 public packages and post-release regression — 2026-10-06
 
 [Published v0.12.2](https://github.com/Moresyl/metaclean/releases/tag/v0.12.2)
@@ -65,7 +89,14 @@ unchanged 15-second wait. Its cause is not established. New native diagnostics
 record menu insertion/removal, focus/blur/resize/input events and final styles
 without reopening the menu, extending waits or weakening geometry/focus checks.
 The diagnostic harness passes all 29 cases on the already-built Windows
-v0.12.2 native application; a fresh exact-source macOS diagnosis remains pending.
+v0.12.2 native application. Fresh [CI 37459674651](https://github.com/Moresyl/metaclean/actions/runs/37459674651)
+at `0616533` passes its main job and all 29 desktop cases on each operating
+system. All eight macOS menu probes show a focused document, menu insertion and
+menu focus, without a window blur, resize or wheel dismissal. The earlier cause
+is still unconfirmed. A targeted second macOS round at that exact source also
+passes all 29 cases in [job 112264705779](https://github.com/Moresyl/metaclean/actions/runs/37459674651/job/112264705779),
+with eight focused insertion/focus probes and no recorded dismissal event.
+The diagnostics have not been claimed to fix the original failure.
 
 ## v0.12.2 candidate and native documentation — 2026-10-06
 

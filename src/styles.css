@@ -77,6 +77,7 @@
   --color-segment-hover: #303030;
   --color-menu-border: color-mix(in oklab, #ffffff 8%, transparent);
   --color-menu-hover: color-mix(in oklab, #ffffff 8%, transparent);
+  --color-tooltip-surface: color-mix(in oklab, #212121 96%, transparent);
   --shadow-select-menu: 0 10px 15px -3px rgb(0 0 0 / 20%), 0 4px 6px -4px rgb(0 0 0 / 20%), 0 0 0 0.5px rgb(0 0 0 / 10%);
   --color-segment-ink: color-mix(in srgb, var(--color-text) 65%, transparent);
 
@@ -292,6 +293,7 @@
     --color-segment-hover: #cdcdcd;
     --color-menu-border: color-mix(in oklab, var(--color-text) 8%, transparent);
     --color-menu-hover: color-mix(in oklab, var(--color-text) 5%, transparent);
+    --color-tooltip-surface: color-mix(in oklab, #ffffff 70%, transparent);
     --shadow-select-menu: 0 10px 15px -3px rgb(0 0 0 / 10%), 0 4px 6px -4px rgb(0 0 0 / 10%), 0 0 0 0.5px rgb(0 0 0 / 10%);
 
     --color-brand: #0d0d0d;
@@ -350,6 +352,7 @@
   --color-segment-hover: #cdcdcd;
   --color-menu-border: color-mix(in oklab, var(--color-text) 8%, transparent);
   --color-menu-hover: color-mix(in oklab, var(--color-text) 5%, transparent);
+  --color-tooltip-surface: color-mix(in oklab, #ffffff 70%, transparent);
   --shadow-select-menu: 0 10px 15px -3px rgb(0 0 0 / 10%), 0 4px 6px -4px rgb(0 0 0 / 10%), 0 0 0 0.5px rgb(0 0 0 / 10%);
 
   --color-brand: #0d0d0d;
@@ -475,6 +478,20 @@
 }
 
 @layer components {
+  .tooltip {
+    max-inline-size: min(300px, calc(100vw - 30px));
+    padding: 12px 16px;
+    border-radius: calc(8px * var(--corner-radius-scale));
+    corner-shape: round;
+    background: var(--color-tooltip-surface);
+    box-shadow: var(--shadow-select-menu);
+    color: var(--color-text);
+    font-size: var(--text-base);
+    font-weight: var(--font-weight-normal);
+    line-height: 1.45;
+    overflow-wrap: anywhere;
+  }
+
   .context-menu {
     min-inline-size: min(180px, calc(100vw - 12px));
     max-inline-size: calc(100vw - 12px);
@@ -1402,6 +1419,7 @@
    palette. Restore the boundaries and the selected-state meaning that colour
    mixing alone cannot carry once the operating system becomes the authority. */
 @media (forced-colors: active) {
+  .tooltip { background: Canvas; color: CanvasText; outline: 1px solid CanvasText; }
   .context-menu { background: Canvas; color: CanvasText; outline: 1px solid CanvasText; }
   .menu-command.active { color: HighlightText; }
   .menu-command.active::before { background: Highlight; forced-color-adjust: none; }

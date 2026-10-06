@@ -5,6 +5,35 @@ All notable changes to MetaClean are documented here. The project follows
 
 ## [Unreleased]
 
+## [0.12.3] - 2026-10-06
+
+### Changed
+
+- Align ordinary tooltips with the current desktop rules: a viewport-bounded
+  300px width cap, 12px/16px gutters, scaled 8px round corners, 14px text at
+  400 weight, a 1.45 line height and theme-aware elevated surfaces and shadows.
+- Use a 150ms hover delay, a 5px anchor gap and 15px viewport collision margins.
+  Retain keyboard focus, reduced-motion behavior and system-color presentation.
+
+### Fixed
+
+- Dismiss visible and pending tooltips on Escape without consuming the key.
+  Cancel when the pointer leaves the control or the window resizes, and hide
+  detached controls' descriptions instead of leaving stale overlays behind.
+- Link each visible tooltip through a unique accessible description ID, preserving
+  pre-existing descriptions and removing only the tooltip's own association.
+- Mount tooltips at the document root and use unscaled layout dimensions for
+  placement, keeping animated tips inside viewport margins at both corners.
+
+### Tests
+
+- Add tooltip interaction, description-lifetime, detached-control and transformed
+  host regressions. Four new regressions fail on the previous implementation.
+- Cover native light/dark tooltip typography, colors, geometry, LTR/RTL corners,
+  description association, focus retention and real Escape dismissal.
+- Retain native context-menu event diagnostics without reopening menus, extending
+  waits or relaxing geometry and focus assertions.
+
 ## [0.12.2] - 2026-10-06
 
 ### Security
