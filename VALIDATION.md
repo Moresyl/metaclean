@@ -6,6 +6,24 @@ This file records evidence, not intent. A row is complete only when the named ar
 
 ## Unreleased OOXML property identity coverage — 2026-10-06
 
+The repeatable [Office verifier](scripts/verify-office-fidelity.py) now passes
+all 42 generated Windows engine cases in copy and replacement modes: 30 property
+identity cases plus 12 URI alias cases. Thirty-two cases open/save/reopen directly
+with independent document libraries; ten retain the same direct-reader error
+before and after cleaning and pass through the explicit relationship view below.
+The [checker regressions](scripts/test-office-fidelity.py) pass seven cases,
+including rejection of changed visible XML, residual private values, deleted
+unrelated relationships and missing content parts. Local full Rust tests pass
+262 cases with eleven ignored, including the new externally driven OOXML hook;
+strict all-target Clippy passes.
+
+Run `python scripts/test-office-fidelity.py` and
+`python scripts/verify-office-fidelity.py --output <new-evidence-directory>` after
+installing `python-docx==1.2.0`, `openpyxl==3.1.5` and `python-pptx==1.0.2` and
+building the frontend. A new independent Office workflow and release source
+step run these same checks and upload sources, outputs, backups, native logs,
+tool versions and JSON results. Their remote qualification is still outstanding.
+
 An additional ordinary-native regression rejects valid property relationships
 with URI aliases before the follow-up fix. Internal relationships now resolve
 query/fragment references, unreserved escapes, dot segments and self-fragments

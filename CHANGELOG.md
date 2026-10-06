@@ -71,6 +71,12 @@ All notable changes to MetaClean are documented here. The project follows
 
 ### Tests
 
+- Add a repeatable Office fidelity gate to independent CI and release source
+  validation: 42 library-generated copy/replacement cases cover relocated,
+  Strict, escaped and colliding property parts plus relationship URI aliases.
+  Verify exact surviving payloads, source/backup bytes, timestamps and document
+  content round trips. Record direct-reader limitations and explicit in-memory
+  relationship views separately; seven corruption checks qualify the verifier.
 - Cover relocated property roles across all three OOXML formats, both identity
   declarations, Strict namespaces, URI escaping, conflicting declarations,
   malformed XML and property/comment path collisions. Verify real native copy

@@ -1,0 +1,56 @@
+name: Verify independent Office fidelity
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - src-tauri/src/engine.rs
+      - src-tauri/src/cleaners/office.rs
+      - src-tauri/src/cleaners/office/**
+      - scripts/verify-office-fidelity.py
+      - scripts/test-office-fidelity.py
+      - .github/workflows/verify-office-fidelity.yml
+
+permissions:
+  contents: read
+
+jobs:
+  office:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - run: corepack enable
+      - run: corepack prepare pnpm@10.32.1 --activate
+      - run: rustup default stable
+      - uses: actions/cache@v5
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            src-tauri/target
+          key: rust-e2e-${{ runner.os }}-${{ hashFiles('src-tauri/Cargo.lock') }}
+          restore-keys: rust-e2e-${{ runner.os }}-
+      - name: Install independent document libraries and system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential libssl-dev libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev
+          python -m pip install python-docx==1.2.0 openpyxl==3.1.5 python-pptx==1.0.2
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - name: Verify that evidence checks reject corrupted outputs
+        run: python scripts/test-office-fidelity.py
+      - name: Verify properties, package payloads and document library round trips
+        run: python scripts/verify-office-fidelity.py --output "${{ runner.temp }}/metaclean-office-evidence"
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: office-fidelity-evidence
+          path: ${{ runner.temp }}/metaclean-office-evidence
+          if-no-files-found: error

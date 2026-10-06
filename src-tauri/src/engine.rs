@@ -2347,6 +2347,20 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "requires METACLEAN_OOXML_SAMPLE_PATH with a generated document fixture"]
+    fn cleans_external_ooxml_sample_with_verified_output() {
+        let source = PathBuf::from(
+            std::env::var_os("METACLEAN_OOXML_SAMPLE_PATH").expect("OOXML sample path is required"),
+        );
+        let mode = match std::env::var("METACLEAN_OOXML_OUTPUT_MODE").as_deref() {
+            Ok("copy") => OutputMode::Copy,
+            Ok("replace") => OutputMode::Replace,
+            _ => panic!("OOXML output mode must be copy or replace"),
+        };
+        assert_external_cleanup_integrity(&source, &mode, true);
+    }
+
+    #[test]
     #[ignore = "requires METACLEAN_OFFICE_SAMPLE_DIR with DOCX/XLSX/PPTX/ODT fixtures"]
     fn cleans_external_office_validation_samples() {
         let root = PathBuf::from(
