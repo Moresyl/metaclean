@@ -93,6 +93,9 @@ All notable changes to MetaClean are documented here. The project follows
 - Cover native queue-search focus, read-only, disabled and invalid states in
   both themes. Switch languages through the real settings control during About
   layout checks instead of reloading between languages.
+- Wait for queue-search focus selectors, final theme colors and completed
+  transitions before desktop snapshots, retaining the existing color tolerance
+  and final-state assertions across renderers.
 - Cover select refs, controlled values, form data, required validity, grouped
   options and disabled exclusion, plus native geometry and focus in both themes.
 - Cover native action geometry, disabled colors and focus in both themes, and

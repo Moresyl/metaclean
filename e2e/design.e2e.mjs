@@ -300,11 +300,41 @@ describe("Desktop visual controls", () => {
             input.setAttribute("aria-invalid", String(mode === "invalid"));
             if (["focus", "readonly", "invalid"].includes(mode)) input.focus(); else input.blur();
           }, mode);
-          await browser.waitUntil(async () => browser.tauri.execute(() => {
-            const container = document.querySelector(".file-queue input[type=search]").parentElement;
-            void getComputedStyle(container).boxShadow;
-            return !container.getAnimations({ subtree: true }).some(animation => animation.pending || animation.playState === "running");
-          }));
+          await browser.waitUntil(async () => {
+            const sample = await browser.tauri.execute((_, theme, mode) => {
+              const input = document.querySelector(".file-queue input[type=search]");
+              const container = input.parentElement;
+              const focused = ["focus", "readonly", "invalid"].includes(mode);
+              if ((document.activeElement === input) !== focused
+                || container.matches(":focus-within") !== focused) return false;
+              // A renderer can expose the previous computed value before it
+              // registers the new transition. Require the actual final surface
+              // as well as completed animations before taking the snapshot.
+              const probe = document.createElement("span");
+              probe.style.backgroundColor = theme === "light" ? "color-mix(in oklab, #1a1c1f 2%, transparent)" : "color-mix(in oklab, #ffffff 3%, transparent)";
+              if (focused) probe.style.boxShadow = `inset 0 0 0 1px ${mode === "invalid"
+                ? theme === "light" ? "#e02e2a" : "#ba2623"
+                : `color-mix(in oklab, ${theme === "light" ? "#1a1c1f" : "#dfdfdf"} 20%, transparent)`}`;
+              document.body.append(probe);
+              const expected = getComputedStyle(probe);
+              const actual = getComputedStyle(container);
+              const settled = { border: actual.boxShadow, expectedBorder: expected.boxShadow,
+                background: actual.backgroundColor, expectedBackground: expected.backgroundColor,
+                running: container.getAnimations({ subtree: true }).some(animation => animation.pending || animation.playState === "running") };
+              probe.remove();
+              return settled;
+            }, theme, mode);
+            if (!sample || sample.running) return false;
+            try {
+              assertResolvedColor(sample.background, sample.expectedBackground, "Search surface settlement");
+              if (sample.expectedBorder === "none") return sample.border === "none";
+              const color = value => value.match(/(?:oklab|color|rgba?)\([^)]*\)/)?.[0];
+              assertResolvedColor(color(sample.border), color(sample.expectedBorder), "Search border settlement");
+              return true;
+            } catch {
+              return false;
+            }
+          }, { timeoutMsg: `${theme}/${mode} search focus and final surface did not settle` });
           const state = await browser.tauri.execute((_, theme, mode) => {
             const input = document.querySelector(".file-queue input[type=search]");
             const style = getComputedStyle(input);
