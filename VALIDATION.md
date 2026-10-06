@@ -17,14 +17,29 @@ light disabled keyframes after about 15 seconds. Thus the first green round is
 insufficient for release. The reduced-motion rules now disable transitions
 entirely, including native picker overlays; native assertions require zero
 transition duration/delay and no transition effects alongside unchanged colors.
-This correction still requires fresh exact-source cross-platform qualification.
+The corrected source `f90e642` passes the first complete round of
+[CI 37450509493](https://github.com/Moresyl/metaclean/actions/runs/37450509493):
+450 frontend tests at 93.95% line coverage, 262 Rust tests with 11 explicitly
+ignored cases at 92.16% line coverage, and 13 design plus 16 workflow cases on
+each of Windows, macOS and Linux. The same source also passes independent
+[Office 37450594045](https://github.com/Moresyl/metaclean/actions/runs/37450594045),
+[images 37450602702](https://github.com/Moresyl/metaclean/actions/runs/37450602702)
+and [PDF 37450609901](https://github.com/Moresyl/metaclean/actions/runs/37450609901).
+Downloaded evidence was checked against actual source, backup and output bytes:
+42 unique Office cases, 16 JPEG, eight PNG, six HEIF/AVIF and six PDF cases.
+Office evidence distinguishes 32 direct library round trips from ten explicit
+relationship-view round trips; all seven corrupt-evidence checker regressions
+also pass. A targeted second macOS round at this same source also passes all
+13 design and 16 workflow cases, including both checkbox state/color regressions.
+The driver reports window-state query timeout warnings in both rounds, but the
+actual test assertions and both complete spec files pass without being skipped.
 The real Chrome reduced-motion regression fails before the correction because
 its computed duration remains `1e-06s`. After reloading the updated stylesheet,
 all 12 theme/state combinations have zero duration/delay, no transition effects
 and exact final checkbox colors. Twelve additional samples confirm the normal
 150ms checkbox durations, and the supported native option picker also reports
 zero duration/delay under reduced motion. These browser checks do not substitute
-for the pending native macOS repeat.
+for the independently completed native macOS repeat.
 The correction also passes all 450 frontend tests (93.95% line coverage) and
 29 ordinary Windows desktop cases after rebuilding the actual v0.12.2 binary.
 
@@ -34,9 +49,12 @@ native build passes all 13 design and 16 workflow cases. Both English and Chines
 documentation captures pass against the actual v0.12.2 binary. Fifteen 1180x720
 PNGs were inspected through both contact sheets and full-resolution settings and
 cleanup views; two five-frame 944x576 GIFs retain their existing frame durations.
-Version metadata and bilingual release notes are prepared, but v0.12.2 has not
-been tagged or published. The final source still requires cross-platform and
-independent file-fidelity qualification before browser-triggered publication.
+Version metadata and bilingual release notes are prepared. The browser triggered
+[Release 37454123215](https://github.com/Moresyl/metaclean/actions/runs/37454123215)
+with the full immutable `f90e642c834f768dffa0e4acd48660c043d5da52` source and
+`v0.12.2` version input after both corrected macOS rounds passed. The release
+source gate, package builds and public installation/update/recovery qualification
+are still pending; v0.12.2 has not yet been tagged or published.
 
 The preceding [CI 37441693527](https://github.com/Moresyl/metaclean/actions/runs/37441693527)
 at `6969365` passes its main, Windows and Linux jobs, including all 29 desktop

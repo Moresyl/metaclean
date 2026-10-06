@@ -30,7 +30,7 @@ consume the same tokens. Their content remains specific to a local file utility.
 | Queue search | 32px height, 8px base ordinary corner, 12px gutters, 400-weight 13px text with 19.5px line height, 8px adornment gap and a soft theme surface |
 | Segmented choices | 32px track, 2px padding/gap, 8px base ordinary corner, 28px options, 12px gutters and 600-weight 13px labels; a neutral raised selected thumb |
 | Context menus | 180px minimum width, 6px viewport margin, 4px gutter, opaque canvas surface, 16px panel/12px row base corners, 13px/430 text, 5px/8px row padding, 6px gaps, arrow cursor and 50% disabled opacity |
-| Motion | 150ms control feedback; reduced-motion mode collapses animations and transitions to 0.001ms |
+| Motion | 150ms control feedback; reduced-motion mode disables transitions and limits animations to 0.001ms |
 
 Supported renderers apply a 1.25 corner scale with `superellipse(1.5)` to
 shared panel/control shapes. Other renderers use the unscaled radius. The
@@ -66,7 +66,7 @@ not a claim that every original select call site has the same surface.
 The panel follows the trigger width, scrolls within the viewport and uses
 300ms entering and 200ms exiting curves. Native keyboard navigation, typeahead,
 disabled-option skipping, focus and form commits remain browser behavior.
-Forced-color mode uses system canvas/highlight colors; reduced motion collapses
+Forced-color mode uses system canvas/highlight colors; reduced motion disables
 the transitions. Unsupported renderers, multiple selects and listboxes retain
 their existing native presentation and require separate visual qualification.
 
