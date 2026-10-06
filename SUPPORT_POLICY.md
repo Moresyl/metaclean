@@ -59,6 +59,22 @@ and that malformed input fails closed.
 
 ## Deep embedded payloads
 
+DOCX/XLSX/PPTX property parts are identified by package content types and root
+relationships, including non-default locations and supported Strict property
+namespaces. Identified core, extended and custom properties are cleared as
+metadata: this includes arbitrary custom values, application information and
+document statistics. Each nonempty property part contributes one finding count;
+an empty root with its namespace binding remains in the package. References to
+removed comments and custom XML are pruned by their resolved part targets.
+Conflicting identities, external property targets, missing parts, malformed XML
+and unreadable property text are refused before output creation.
+
+This does not redact visible document content. Custom properties used by fields
+or downstream applications will no longer have their original values after
+cleanup; use safe-copy mode or retain the replacement backup when needed.
+Document-library round trips establish bounded structural and semantic evidence,
+not universal Microsoft Office/WPS layout compatibility.
+
 PNG cleanup retains defined image, transparency, color/HDR and APNG chunks,
 print density, and registered offset, calibration, physical-scale and stereo
 layout information. It removes text, EXIF, embedded time, provenance and

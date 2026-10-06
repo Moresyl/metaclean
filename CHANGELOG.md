@@ -43,6 +43,13 @@ All notable changes to MetaClean are documented here. The project follows
 
 ### Fixed
 
+- Discover DOCX/XLSX/PPTX core, extended and custom property parts from package
+  content types and root relationships, including relocated, escaped and Strict
+  property targets. Clear identified property payloads while retaining valid
+  roots and namespace bindings. Refuse ambiguous, external or unreadable targets.
+- Prune Office manifest and relationship records by the actual removed part
+  targets. Retain declared property parts even when their paths resemble comment
+  or custom-XML locations, without deleting unrelated references by name.
 - Report and remove unrecognized PNG ancillary payloads instead of silently
   copying application-private data. Retain defined image, color/HDR, APNG,
   density and registered layout/calibration chunks, with the existing ICC
@@ -61,6 +68,10 @@ All notable changes to MetaClean are documented here. The project follows
 
 ### Tests
 
+- Cover relocated property roles across all three OOXML formats, both identity
+  declarations, Strict namespaces, URI escaping, conflicting declarations,
+  malformed XML and property/comment path collisions. Verify real native copy
+  and replacement with independent document libraries and exact payload hashes.
 - Seed PNG fidelity cases with public/private, safe/unsafe ancillary payloads
   and application/signature data. Check their removal alongside exact retained
   HDR/layout chunks, decoded pixels, animation, profiles, source/backup bytes

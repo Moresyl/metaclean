@@ -4,6 +4,48 @@ Last audited: 2026-10-06
 
 This file records evidence, not intent. A row is complete only when the named artifact or runtime check exists.
 
+## Unreleased OOXML property identity coverage — 2026-10-06
+
+The ordinary native application reports an author in the default property
+location but incorrectly reports a valid relocated core-property part as clean.
+The new Rust regression also fails before implementation. Property identity is
+now read from content types and root relationships for DOCX/XLSX/PPTX core,
+extended and custom property parts. The implementation validates namespaces,
+internal URI targets and conflicting declarations, supports the documented Strict
+extended/custom namespaces, and retains empty property roots after clearing their
+payloads. Counts describe nonempty identified parts, rather than individual tags.
+
+Thirty Office tests pass, including 27 format/role/declaration combinations,
+default types, escaped names, Strict relationships, missing/external targets,
+unreadable text, malformed XML, arbitrary custom values and property/comment
+path collisions. Manifest and relationship cleanup now removes records by their
+resolved targets in the actual removed-part set. Unrelated names containing
+`comments` and retained property targets are preserved. The complete native
+suite passes 261 tests with ten external-fixture tests ignored; strict all-target
+Clippy and the ordinary native build pass.
+
+Thirty independent library-generated cases pass through actual Windows native
+scan, copy/replacement cleanup and reinspection: nine format/role combinations,
+two Strict property roles, one escaped target and three custom-XML path
+collisions, each in both modes. Python document, spreadsheet and presentation
+libraries open, save and reopen the cleaned outputs, retaining paragraph/table
+text, numeric cells/formulas and slide text. ZIP CRCs, exact unrelated payloads,
+source/backup hashes, output integrity fingerprints and filesystem timestamps
+are checked. Standard Word templates also contain three custom-XML parts that
+the existing policy removes; the verifier checks those deletions and precisely
+pruned references separately from preserved payloads. The original overly broad
+all-part-name assertion is retained as failed evidence, not a product defect.
+
+These library round trips do not establish every Office/WPS layout or field
+recalculation behavior. Cleared custom properties and statistics can affect
+downstream consumers; public documentation states this boundary. All twelve
+design and sixteen workflow desktop cases pass on the ordinary Windows build.
+The search fixture waits for both the intended focus selector and the final
+surface, using the same color tolerance as its unchanged snapshot assertions;
+the earlier strict-string wait failed on a tiny renderer color-conversion
+difference and was corrected. macOS verification remains outstanding. Exact-source
+remote qualification and the broader UI/release work remain outstanding.
+
 ## Unreleased PNG ancillary privacy coverage — 2026-10-06
 
 The prior parser silently retains unrecognized ancillary payloads. The new
@@ -35,8 +77,11 @@ The ordinary native build and all twelve design/sixteen workflow desktop cases
 pass after the parser change. Production/documentation builds, 44 release tests,
 116-extension manifests, documentation claims, CSP and supply-chain checks pass.
 The unchanged frontend was qualified with 448 tests and 93.88% line coverage in
-the preceding picker batch. Exact-source remote image/PDF/CI qualification of
-this parser batch remains pending; the changes are unreleased.
+the preceding picker batch. Exact-source image/PDF workflows succeed and their
+actual artifacts/logs are inspected. CI 37422267475 passes its main, Windows and
+Linux jobs, but its macOS queue-search focus snapshot fails. That failure remains
+open while the fixture is corrected and the next exact source is qualified;
+the changes are unreleased.
 
 ## Unreleased native option pickers — 2026-10-06
 

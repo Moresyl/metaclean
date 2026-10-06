@@ -13,6 +13,8 @@ use crate::{
     models::{Finding, FindingSeverity},
 };
 
+mod properties;
+
 const MAX_ENTRIES: usize = 10_000;
 const MAX_UNCOMPRESSED: u64 = 512 * 1024 * 1024;
 const MAX_XML_BYTES: u64 = 64 * 1024 * 1024;
@@ -709,6 +711,7 @@ fn private_relationship_pattern() -> &'static Regex {
 pub fn inspect(data: &[u8], extension: &str) -> Result<Vec<Finding>> {
     validate_container(data, extension)?;
     let mut archive = read_archive(data)?;
+    let property_parts = properties::discover(&mut archive, extension)?;
     let mut metadata = 0;
     let mut comments = 0;
     let mut revisions = 0;
@@ -721,16 +724,21 @@ pub fn inspect(data: &[u8], extension: &str) -> Result<Vec<Finding>> {
             return Err(CleanError::InvalidFormat("Office 文件解压后过大".into()));
         }
         let name = file.name().to_owned();
-        let lower = name.to_ascii_lowercase();
-        if is_comment_part(&name) {
+        let lower = name.replace('\\', "/").to_ascii_lowercase();
+        let property_kind = property_parts.get(&lower).copied();
+        if property_kind.is_none() && is_comment_part(&lower) {
             comments += 1;
             continue;
         }
-        if is_reader_part(&name) {
+        if property_kind.is_none() && is_reader_part(&lower) {
             publication += 1;
             continue;
         }
-        if !lower.ends_with(".xml") && !is_package_document(&lower) && !is_vml_part(&lower) {
+        if property_kind.is_none()
+            && !lower.ends_with(".xml")
+            && !is_package_document(&lower)
+            && !is_vml_part(&lower)
+        {
             continue;
         }
         if file.size() > MAX_XML_BYTES {
@@ -741,10 +749,14 @@ pub fn inspect(data: &[u8], extension: &str) -> Result<Vec<Finding>> {
         let xml = match read_utf8_bounded(&mut file, MAX_XML_BYTES, &format!("文档 XML：{name}"))
         {
             Ok(xml) => xml,
-            Err(_) if !requires_xml_rewrite(&name) => continue,
+            Err(_) if property_kind.is_none() && !requires_xml_rewrite(&name) => continue,
             Err(error) => return Err(error),
         };
         validate_xml(&xml, &name)?;
+        if let Some(kind) = property_kind {
+            metadata += properties::scrub(&xml, kind)?.1;
+            continue;
+        }
         if is_vml_part(&lower) {
             comments += strip_vml_notes(&xml)?.1;
             continue;
@@ -785,18 +797,26 @@ pub fn inspect(data: &[u8], extension: &str) -> Result<Vec<Finding>> {
 pub fn clean(data: &[u8], extension: &str) -> Result<(Vec<u8>, Vec<Finding>)> {
     let findings = inspect(data, extension)?;
     let mut archive = read_archive(data)?;
+    let property_parts = properties::discover(&mut archive, extension)?;
     let cursor = Cursor::new(Vec::with_capacity(data.len()));
     let mut writer = ZipWriter::new(cursor);
     let deflated =
         SimpleFileOptions::default().compression_method(zip::CompressionMethod::Deflated);
     let stored = SimpleFileOptions::default().compression_method(zip::CompressionMethod::Stored);
+    let removed_parts: HashSet<String> = archive
+        .file_names()
+        .map(|name| name.replace('\\', "/").to_ascii_lowercase())
+        .filter(|name| {
+            !property_parts.contains_key(name) && (is_comment_part(name) || is_reader_part(name))
+        })
+        .collect();
     let private_relation = private_relationship_pattern();
     let mut expanded = 0u64;
     for index in 0..archive.len() {
         let mut file = archive.by_index(index)?;
         let name = file.name().to_owned();
-        let lower = name.to_ascii_lowercase();
-        if is_comment_part(&name) || is_reader_part(&name) {
+        let lower = name.replace('\\', "/").to_ascii_lowercase();
+        if removed_parts.contains(&lower) {
             continue;
         }
         if file.is_dir() {
@@ -807,7 +827,9 @@ pub fn clean(data: &[u8], extension: &str) -> Result<(Vec<u8>, Vec<Finding>)> {
         if expanded > MAX_UNCOMPRESSED {
             return Err(CleanError::InvalidFormat("Office 文件解压后过大".into()));
         }
-        let rewrite = lower.ends_with(".xml")
+        let property_kind = property_parts.get(&lower).copied();
+        let rewrite = property_kind.is_some()
+            || lower.ends_with(".xml")
             || lower.ends_with(".rels")
             || is_package_document(&lower)
             || is_vml_part(&lower);
@@ -829,6 +851,11 @@ pub fn clean(data: &[u8], extension: &str) -> Result<(Vec<u8>, Vec<Finding>)> {
         }
         let xml = read_utf8_bounded(&mut file, MAX_XML_BYTES, &format!("文档 XML：{name}"))?;
         validate_xml(&xml, &name)?;
+        if let Some(kind) = property_kind {
+            let (cleaned, _) = properties::scrub(&xml, kind)?;
+            writer.write_all(cleaned.as_bytes())?;
+            continue;
+        }
         let mut cleaned = xml;
         if is_vml_part(&lower) {
             cleaned = strip_vml_notes(&cleaned)?.0;
@@ -847,7 +874,11 @@ pub fn clean(data: &[u8], extension: &str) -> Result<(Vec<u8>, Vec<Finding>)> {
             cleaned = accept_word_revisions(&cleaned)?.0;
         }
         if lower.ends_with(".rels") || lower == "[content_types].xml" {
-            cleaned = private_relation.replace_all(&cleaned, "").into_owned();
+            cleaned = if matches!(extension, "docx" | "xlsx" | "pptx") {
+                properties::remove_references(&cleaned, &lower, &removed_parts)?
+            } else {
+                private_relation.replace_all(&cleaned, "").into_owned()
+            };
         }
         validate_xml(&cleaned, &name)?;
         writer.write_all(cleaned.as_bytes())?;
@@ -954,6 +985,125 @@ mod tests {
         writer.start_file("word/comments.xml", options).unwrap();
         writer.write_all(b"secret").unwrap();
         writer.finish().unwrap().into_inner()
+    }
+
+    fn relocated_property_package(extension: &str, role: &str, declaration: &str) -> Vec<u8> {
+        let (main, main_xml) = match extension {
+            "docx" => ("word/document.xml", r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:r><w:t>Visible creator and Company text</w:t></w:r></w:p></w:body></w:document>"#),
+            "xlsx" => ("xl/workbook.xml", "<workbook><definedNames><definedName>Visible formula</definedName></definedNames></workbook>"),
+            "pptx" => ("ppt/presentation.xml", "<presentation><slide>Visible content</slide></presentation>"),
+            _ => unreachable!(),
+        };
+        let (content_type, relationship, property_xml) = match role {
+            "core" => (
+                "application/vnd.openxmlformats-package.core-properties+xml",
+                "http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties",
+                r#"<p:coreProperties xmlns:p="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:d="http://purl.org/dc/elements/1.1/"><d:creator>Synthetic private author</d:creator></p:coreProperties>"#,
+            ),
+            "extended" => (
+                "application/vnd.openxmlformats-officedocument.extended-properties+xml",
+                "http://schemas.openxmlformats.org/officeDocument/2006/relationships/extended-properties",
+                r#"<p:Properties xmlns:p="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties"><p:Company>Synthetic private author</p:Company><p:Manager>Private manager</p:Manager></p:Properties>"#,
+            ),
+            "custom" => (
+                "application/vnd.openxmlformats-officedocument.custom-properties+xml",
+                "http://schemas.openxmlformats.org/officeDocument/2006/relationships/custom-properties",
+                r#"<p:Properties xmlns:p="http://schemas.openxmlformats.org/officeDocument/2006/custom-properties" xmlns:v="http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes"><p:property fmtid="{D5CDD505-2E9C-101B-9397-08002B2CF9AE}" pid="2" name="ProjectSecret"><v:lpwstr>Synthetic private author</v:lpwstr></p:property></p:Properties>"#,
+            ),
+            _ => unreachable!(),
+        };
+        let types = format!(
+            r#"<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="xml" ContentType="application/xml"/>{}</Types>"#,
+            if declaration == "relationship" {
+                String::new()
+            } else {
+                format!(
+                    r#"<Override PartName="/properties/private.props" ContentType="{content_type}"/>"#
+                )
+            },
+        );
+        let rels = format!(
+            r#"<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">{}</Relationships>"#,
+            if declaration == "content_type" {
+                String::new()
+            } else {
+                format!(
+                    r#"<Relationship Id="properties" Type="{relationship}" Target="properties/private.props"/>"#
+                )
+            },
+        );
+        let mut writer = ZipWriter::new(Cursor::new(Vec::new()));
+        for (name, xml) in [
+            ("[Content_Types].xml", types.as_str()),
+            ("_rels/.rels", rels.as_str()),
+            (main, main_xml),
+            ("properties/private.props", property_xml),
+            ("payload/display.xml", "<visible><creator>Keep visible creator</creator><Company>Keep Company</Company></visible>"),
+        ] {
+            writer.start_file(name, stored_options()).unwrap();
+            writer.write_all(xml.as_bytes()).unwrap();
+        }
+        writer.finish().unwrap().into_inner()
+    }
+
+    #[test]
+    fn cleans_relocated_core_extended_and_custom_properties() {
+        for extension in ["docx", "xlsx", "pptx"] {
+            for role in ["core", "extended", "custom"] {
+                for declaration in ["content_type", "relationship", "both"] {
+                    let source = relocated_property_package(extension, role, declaration);
+                    let findings = inspect(&source, extension).unwrap();
+                    assert!(
+                        findings
+                            .iter()
+                            .any(|finding| finding.category == "office_metadata"
+                                && finding.count > 0),
+                        "{extension}/{role}/{declaration} must report private properties"
+                    );
+                    let (cleaned, removed) = clean(&source, extension).unwrap();
+                    assert_eq!(removed, findings);
+                    assert!(inspect(&cleaned, extension).unwrap().is_empty());
+                    let mut before = read_archive(&source).unwrap();
+                    let mut after = read_archive(&cleaned).unwrap();
+                    let main = match extension {
+                        "docx" => "word/document.xml",
+                        "xlsx" => "xl/workbook.xml",
+                        "pptx" => "ppt/presentation.xml",
+                        _ => unreachable!(),
+                    };
+                    for name in [
+                        "[Content_Types].xml",
+                        "_rels/.rels",
+                        "payload/display.xml",
+                        main,
+                    ] {
+                        let mut original = Vec::new();
+                        let mut output = Vec::new();
+                        before
+                            .by_name(name)
+                            .unwrap()
+                            .read_to_end(&mut original)
+                            .unwrap();
+                        after
+                            .by_name(name)
+                            .unwrap()
+                            .read_to_end(&mut output)
+                            .unwrap();
+                        assert_eq!(output, original, "{name}");
+                    }
+                    let mut properties = String::new();
+                    after
+                        .by_name("properties/private.props")
+                        .unwrap()
+                        .read_to_string(&mut properties)
+                        .unwrap();
+                    validate_xml(&properties, "properties").unwrap();
+                    assert!(!properties.contains("Synthetic private author"));
+                    assert!(!properties.contains("Private manager"));
+                    assert!(!properties.contains("ProjectSecret"));
+                }
+            }
+        }
     }
     #[test]
     fn scans_and_cleans_docx() {

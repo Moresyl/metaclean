@@ -97,6 +97,13 @@ read the [architecture](docs/ARCHITECTURE.md), or follow the [contribution guide
 | PDF | `.pdf` | Info dictionary, XMP and metadata inside embedded JPEG images, then a full reserialization that discards metadata stranded in incremental-update history |
 | Text & markup | `.txt` `.md` `.markdown` `.html` `.htm` `.xhtml` `.svg` `.xml` `.json` `.csv` `.tsv` `.yaml` `.yml` `.log` `.srt` `.vtt` `.css` `.scss` `.less` `.ini` `.conf` `.cfg` `.toml` `.properties` | Invisible Unicode, generator/author metadata in Markdown front matter, HTML/XHTML and SVG, plus metadata inside embedded image data URIs |
 
+The development branch also identifies DOCX/XLSX/PPTX core, extended and custom
+property parts through content types and package relationships, including
+non-default locations. Identified property values, application information and
+statistics are cleared while retaining valid empty property roots. Custom
+properties referenced by fields or other applications lose their original values;
+keep a safe copy or replacement backup when those values matter.
+
 For TIFF/RAW, HEIF/AVIF, JPEG XL, AVI, Matroska/WebM and ASF/WMV containers that
 depend on absolute positions, MetaClean does not move the media payload:
 metadata is compacted in place, zeroed or replaced by a format-defined padding
