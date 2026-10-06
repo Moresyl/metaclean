@@ -1,7 +1,9 @@
 # MetaClean capability audit
 
-Audited on 2026-10-06 for the published v0.12.3 release at
-`9e834cb86b11e4177bf8316a068e1c95f8e443f1`.
+Audited on 2026-10-07. The public stable version remains v0.12.3 at
+`9e834cb86b11e4177bf8316a068e1c95f8e443f1`; current 0.12.4 metadata is a
+candidate, not a published release. The table below records the published
+baseline; the candidate section records newer qualified behavior.
 
 This ledger describes implemented behavior, its evidence and its limits.
 Extension counts and passing tests do not establish universal format support,
@@ -24,6 +26,22 @@ application. Detailed run evidence is recorded in `VALIDATION.md`.
 | Localization | All 32 published locale catalogs are checked for completeness; supported-scope counts are checked in every translated locale. | Catalog completeness does not establish independent linguistic review. |
 | Release integrity | The five-platform release matrix runs applicable package smoke tests. Independent public downloads verify all 19 checksum-listed assets, five updater signatures and rejection of modified package bytes. | Updater signatures are separate from OS code signing; Apple signing/notarization remains unavailable. |
 
+## Candidate JPEG qualification
+
+Backend source `29b33f83e7f06eadba9f81e8591e738901c0be96` passes three-platform
+desktop CI and independent image/PDF workflows. Forty JPEG copy/replacement
+cases retain compressed scans, pixels and defined display fields while removing
+private APP2/APP14 data. Validated MPF indexes clean every indexed JPEG and
+rebuild lengths/offsets; defined HDR XMP fields and resource associations are
+reconstructed without identity metadata. A separate local decoder verifies
+byte-identical HDR output for two ISO and two legacy XMP samples. Malformed or
+conflicting structures fail closed. This evidence does not qualify arbitrary
+gain maps, depth images, encoders, viewers or multi-picture layouts. Candidate
+metadata and refreshed captures pass local release/documentation gates and 31
+Windows desktop tests. Two native documentation scenarios produce 17 visually
+reviewed assets displaying 0.12.4. Exact-commit remote qualification and public
+packages remain pending.
+
 ## Release evidence
 
 - [Qualified CI](https://github.com/Moresyl/metaclean/actions/runs/37477283119)
@@ -42,7 +60,8 @@ description association, cancellation and root-mounted positioning. Reduced
 motion disables entrance animations so surfaces immediately reach their final
 state. Native regression checks cover both themes, repeated mounts and four
 entrance classes; actual normal-motion and reduced-motion browser keyboard
-checks also pass. Current native documentation captures display v0.12.3.
+checks also pass. Documentation captures originally displayed v0.12.3; the
+current candidate refresh displays v0.12.4 and is qualified separately above.
 All six public qualification workflows passed `0.12.2 → 0.12.3 → 0.12.2`
 where applicable, including both Windows signed application updates and MSI
 repair. The independently hashed public crash inventory preserves 64 sources

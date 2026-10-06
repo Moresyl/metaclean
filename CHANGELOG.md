@@ -5,6 +5,43 @@ All notable changes to MetaClean are documented here. The project follows
 
 ## [Unreleased]
 
+## [0.12.4] - 2026-10-07
+
+### Added
+
+- Clean every image in validated multi-picture JPEG indexes, rebuilding sizes
+  and offsets while retaining physical image order, types, dependencies and
+  defined view geometry.
+
+### Security
+
+- Remove unknown JPEG APP2/APP14 application data, private tails after known
+  display structures, MPF identifiers and unindexed private data. Retain required
+  color interpretation and validated ISO HDR parameters; ICC retention remains
+  controlled by the existing option.
+- Reconstruct defined HDR XMP rendering fields without author, toolkit, resource
+  labels or unrelated metadata. Bound XML parsing and reject unsafe, conflicting
+  or incomplete structures before writing.
+
+### Fixed
+
+- Preserve secondary indexed JPEG images previously discarded as trailing data.
+- Preserve legacy XMP HDR gain parameters required for continued HDR decoding.
+  Retain numeric precision and channel order and rebuild resource associations
+  from cleaned images, including shared resources and differing index/storage
+  order.
+- Recognize the current Windows desktop driver's version branding without
+  changing runtime product dependencies.
+
+### Tests
+
+- Expand independent JPEG qualification from 16 to 40 copy/replacement cases,
+  covering RGB/CMYK application markers, two/three-image indexes, scalar and
+  three-channel XMP parameters, pixels, scans, profiles and source/backup integrity.
+- Separately qualify four actual local HDR samples with an independent decoder:
+  two ISO and two legacy XMP samples retain byte-identical complete HDR output.
+  These samples do not qualify every encoder or viewer.
+
 ## [0.12.3] - 2026-10-06
 
 ### Changed

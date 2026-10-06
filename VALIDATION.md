@@ -1,8 +1,60 @@
 # MetaClean validation status
 
-Last audited: 2026-10-06
+Last audited: 2026-10-07
 
 This file records evidence, not intent. A row is complete only when the named artifact or runtime check exists.
+
+## v0.12.4 candidate — source qualification, 2026-10-07
+
+The current package metadata is 0.12.4; this candidate has not been published.
+The public stable release remains v0.12.3. The following completed qualification
+uses backend source `29b33f83e7f06eadba9f81e8591e738901c0be96`, whose metadata
+still reported 0.12.3. Candidate metadata and captures require a new exact-commit
+remote qualification before publication.
+
+- [CI 37508070761](https://github.com/Moresyl/metaclean/actions/runs/37508070761)
+  passed all four jobs: main checks and Windows, macOS and Linux desktop checks.
+  Actual logs record 278 Rust tests with 11 ignored cases and 92.74% Windows
+  Rust line coverage in the workflow's configured scope. Frontend checks pass
+  455 tests at 93.99% line coverage. Each desktop job passes 15 design and 16
+  workflow cases; all 24 theme/direction/corner probe phases were inspected for
+  tooltip and context-menu lifecycle, geometry and focus assertions.
+- [Images 37508070910](https://github.com/Moresyl/metaclean/actions/runs/37508070910)
+  and [PDF 37508071064](https://github.com/Moresyl/metaclean/actions/runs/37508071064)
+  pass. Downloaded evidence was independently decoded and inspected: 40 JPEG,
+  eight PNG, six HEIF/AVIF and six PDF source/output pairs, including compressed
+  scans, pixels, profiles, frame indexes, resource associations, source/backup
+  hashes and actual PDF render bytes and structure.
+- JPEG cases now include RGB/CMYK APP2/APP14 privacy, two/three-picture MPF
+  indexes and scalar/three-channel HDR XMP. Synthetic HDR cases independently
+  decode both JPEG resources and retain exact fields and linear HDR results.
+  Host-specific floating-point render hashes are recorded separately; matching
+  each before/after pair does not claim bit identity across operating systems.
+- A separate local independent HDR decoder verifies two ISO and two legacy
+  XMP samples with byte-identical complete 12,288-byte HDR output after cleanup.
+  Legacy encoder channel requests do not establish three-channel legacy output;
+  the synthetic three-channel XMP cases have a separate, explicit scope.
+- Local Rust coverage is 87.14% in its own report scope, with 95.00% for HDR
+  XMP and 96.98% for MPF. Strict Clippy, format, release, security, supply-chain,
+  documentation and production-build gates pass. The JavaScript audit finds
+  zero known vulnerabilities; Rust retains seven explicitly allowed warnings.
+
+The local candidate binary reports 0.12.4 and passes all 31 Windows desktop
+cases. Two native documentation scenarios check the candidate's visible version,
+English/Chinese intake, scan, search, cleanup and settings, source preservation
+and actual synthetic cleaned files. All 17 refreshed assets were inspected:
+15 PNGs at 1180 × 720 and two five-frame GIFs at 944 × 576, with recorded frame
+durations and a finite loop count. Both language contact sheets were visually
+reviewed for clipping, theme surfaces and state transitions. Frozen dependency
+installation, all 44 release tests, format/security/supply-chain checks, Rust
+formatting and documentation build pass for the current candidate worktree.
+
+Validated JPEG display structures retain numeric precision, channel/image
+order, types and dependencies while unknown application payloads, identifiers,
+private tails and unrelated XMP are removed. Unsafe or conflicting structures
+are refused before writing. These checks do not qualify every HDR encoder,
+viewer, depth image or multi-picture layout. Full original UI runtime coverage
+and universal competitive superiority have not been established.
 
 ## v0.12.3 public packages — 2026-10-06
 
