@@ -59,6 +59,15 @@ cases pass after this correction. The complete Windows desktop suite passes all
 21 cases: five design regressions and sixteen native workflow cases.
 Cross-platform qualification for the new action implementation is still pending.
 
+[CI 37397170260](https://github.com/Moresyl/metaclean/actions/runs/37397170260)
+passes the main checks and Windows/Linux desktop cases, but macOS fails when
+the action focus test reads a 3px pseudo-element outline immediately after
+focusing; the expected ring is 2px. The follow-up separates focus activation
+from inspection and waits for the actual 2px focus-visible ring before retaining
+the exact width, offset and color assertions. The Windows design suite passes
+all seven cases with this synchronization. macOS qualification remains pending;
+the failed run is not represented as a cross-platform pass.
+
 Frontend verification passes all 430 tests with 93.57% line coverage, including
 native form submission/default type, disabled activation, forwarded refs and
 accessible icon-action states. Documentation/116-extension/CSP checks and all

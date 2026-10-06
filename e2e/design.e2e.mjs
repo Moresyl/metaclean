@@ -190,9 +190,13 @@ describe("Desktop visual controls", () => {
         await browser.tauri.execute(() => document.querySelectorAll("#action-regression button").forEach(action => { action.disabled = false; }));
         await browser.keys("Tab");
         for (const variant of ["primary", "secondary", "ghost", "danger"]) {
+          await browser.tauri.execute((_, variant) => document.querySelector(`#action-regression [data-variant=${variant}]`).focus(), variant);
+          await browser.waitUntil(async () => browser.tauri.execute((_, variant) => {
+            const action = document.querySelector(`#action-regression [data-variant=${variant}]`);
+            return action.matches(":focus-visible") && getComputedStyle(action, "::after").outlineWidth === "2px";
+          }, variant), { timeoutMsg: `${theme}/${variant} action focus ring did not settle` });
           const focus = await browser.tauri.execute((_, variant) => {
             const action = document.querySelector(`#action-regression [data-variant=${variant}]`);
-            action.focus();
             const ring = getComputedStyle(action, "::after");
             const probe = document.createElement("span");
             probe.style.color = variant === "danger" ? "#ff8583"
