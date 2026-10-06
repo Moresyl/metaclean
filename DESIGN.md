@@ -23,12 +23,14 @@ consume the same tokens. Their content remains specific to a local file utility.
 | Text | Dark `#dfdfdf`, light `#1a1c1f`; secondary ink resolves from 70% foreground opacity |
 | Geometry | 12px panels, 6px controls, a 24px intake surface, 1px hairlines, shared 28/32/36px buttons and 32px fields |
 | Type | System UI font stack, 14px body with 1.5 line height, 500/600 weights; Microsoft YaHei UI, PingFang SC and Noto Sans SC fallbacks |
-| Checkbox | 18px square, 4px corner, neutral checked and indeterminate states, 2px focus outline, distinct disabled combinations |
+| Checkbox | 18px square, 4px base corner, theme-specific neutral borders and disabled combinations, stable selected hover and a 2px focus outline |
 | Motion | 150ms control feedback; reduced-motion mode collapses animations and transitions to 0.001ms |
 
 Supported renderers apply a 1.25 corner scale with `superellipse(1.5)` to
 shared panel/control shapes. Other renderers use the unscaled radius. The
-checkbox keeps its explicit 4px corner in both cases. Font fallbacks are
+checkbox scales its 4px base corner to 5px in supported renderers and keeps
+ordinary rounded geometry. Its border, disabled fill and focus ring use
+dedicated tokens rather than text-opacity tokens. Font fallbacks are
 implementation choices; a declared stack alone does not prove which font
 renders a Chinese glyph on a particular machine.
 

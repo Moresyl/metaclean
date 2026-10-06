@@ -32,7 +32,7 @@ assert.match(docsIndex, /ARCHITECTURE\.md/u);
 assert.match(architecture, /Non-negotiable invariants/u);
 assert.match(architecture, /pathIdentity/u);
 assert.match(design, /Current theme declarations, selector scopes and control rules/u);
-assert.match(design, /18px square, 4px corner/u);
+assert.match(design, /18px square, 4px base corner/u);
 assert.match(design, /System UI font stack, 14px body/u);
 assert.match(plan, /Word 与 WPS/u);
 assert.match(docsConfig, /defineConfig/u);

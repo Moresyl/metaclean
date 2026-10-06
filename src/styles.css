@@ -49,6 +49,15 @@
   --color-control-active: #ededed;
   --color-on-control: #181818;
 
+  --color-check-border: #5d5d5d;
+  --color-check-hover: #8f8f8f;
+  --color-check-disabled-border: #303030;
+  --color-check-disabled-fill: #212121;
+  --color-check-disabled-selected: #212121;
+  --color-check-ink: #0d0d0d;
+  --color-check-disabled-ink: #181818;
+  --color-check-ring: color-mix(in oklab, #339cff 70%, transparent);
+
   /* Brand ink stays neutral; semantic success, warning and danger colours are
      independent so an ordinary selected control never looks like a status. */
   --color-brand: #f4f4f4;
@@ -117,6 +126,7 @@
 
   --radius-panel: calc(0.75rem * var(--corner-radius-scale));
   --radius-control: calc(0.375rem * var(--corner-radius-scale));
+  --radius-checkbox: calc(0.25rem * var(--corner-radius-scale));
 
   --shadow-panel: 0 1px 2px #0000000a;
   --shadow-lift: 0 6px 18px -8px #000000a6;
@@ -231,6 +241,15 @@
     --color-control-active: #181818;
     --color-on-control: #ffffff;
 
+    --color-check-border: #cdcdcd;
+    --color-check-hover: #afafaf;
+    --color-check-disabled-border: #dfdfdf;
+    --color-check-disabled-fill: #fcfcfc;
+    --color-check-disabled-selected: #afafaf;
+    --color-check-ink: #ffffff;
+    --color-check-disabled-ink: #ffffff;
+    --color-check-ring: #339cff;
+
     --color-brand: #0d0d0d;
     --color-ok: #1e8a3e;
     --color-warn: #b65d00;
@@ -258,6 +277,15 @@
   --color-focus: #0169cc;
   --color-control-active: #181818;
   --color-on-control: #ffffff;
+
+  --color-check-border: #cdcdcd;
+  --color-check-hover: #afafaf;
+  --color-check-disabled-border: #dfdfdf;
+  --color-check-disabled-fill: #fcfcfc;
+  --color-check-disabled-selected: #afafaf;
+  --color-check-ink: #ffffff;
+  --color-check-disabled-ink: #ffffff;
+  --color-check-ring: #339cff;
 
   --color-brand: #0d0d0d;
   --color-ok: #1e8a3e;
@@ -513,25 +541,27 @@
     flex: none;
     position: relative;
     width: 18px;
+    max-width: 18px;
     height: 18px;
-    /* A small control needs a distinct perimeter in either theme. */
-    border: 1px solid var(--color-faint);
-    border-radius: 4px;
+    border: 1px solid var(--color-check-border);
+    border-radius: var(--radius-checkbox);
     background-color: transparent;
+    cursor: pointer;
     transition:
       background-color var(--transition-duration-basic),
       border-color var(--transition-duration-basic);
   }
 
   /* Unchecked hover must not override selected or disabled colors. */
-  .check:hover:not(:checked, :indeterminate, :disabled) {
-    border-color: var(--color-muted);
+  @media (hover: hover) {
+    .check:hover:not(:checked, :indeterminate, :disabled) {
+      border-color: var(--color-check-hover);
+    }
   }
 
   .check:focus-visible {
-    outline: 2px solid var(--color-focus);
+    outline: 2px solid var(--color-check-ring);
     outline-offset: 2px;
-    border-radius: 4px;
   }
 
   .check:checked, .check:indeterminate {
@@ -539,55 +569,24 @@
     background-color: var(--color-control-active);
   }
 
-  /* Mix toward text so the checked hover remains visible in either palette. */
-  .check:checked:hover:not(:disabled) {
-    border-color: color-mix(in oklab, var(--color-control-active) 88%, var(--color-text));
-    background-color: color-mix(in oklab, var(--color-control-active) 88%, var(--color-text));
-  }
-
-  .check:active:not(:disabled) {
-    scale: 0.94;
-  }
-
-  /* Two borders of a box, rotated: a checkmark with no asset behind it, so it
-   * is the accent's own ink at every zoom level and in both palettes.
-   *
-   * It is centred by `position` and not by `margin`, which is the bug that made
-   * every one of these look wrong. `margin: 0 auto` on a block centres it across
-   * the inline axis and does nothing at all on the block axis, so the tick sat
-   * flush against the top of the box — element centre at y=4 in a box whose
-   * centre is y=8 — and the old `translate: 0 -1px` pushed it a further pixel
-   * into the corner it was already in. Three pixels high in a sixteen pixel box
-   * is not a subtle error; it is most of the reason a row of these read as
-   * cramped and slightly broken.
-   *
-   * `translate` is applied outside `rotate` and both resolve against the
-   * unrotated border box, so -50%/-50% puts the rotation centre exactly on the
-   * box centre. The extra pixel is optical rather than geometric: the ink of a
-   * checkmark is its bottom-right corner, whose centroid sits ~1px below the
-   * centre of the rectangle it was cut from once the whole thing is turned 45°.
-   * Centre the rectangle and the mark still hangs low; this puts the mark
-   * itself in the middle, which is what the eye is measuring. */
+  /* Proportional strokes keep the tick and mixed-state dash aligned to the
+     same inner box without an image asset or a second focusable element. */
   .check::after {
     content: '';
     position: absolute;
-    top: 50%;
-    left: 50%;
-    width: 4.5px;
-    height: 8.5px;
-    border: solid var(--color-on-control);
-    border-width: 0 2px 2px 0;
-    translate: -50% calc(-50% - 1px);
-    rotate: 45deg;
-    /* Drawn at every state and revealed on tick, so the mark scales up out of
-       the box instead of appearing fully formed one frame after the fill. The
-       fill is already animating; a tick that does not is the half of the
-       control that looks unfinished. */
+    top: 0;
+    left: 0;
+    width: 64%;
+    height: 32%;
+    border: solid var(--color-check-ink);
+    border-width: 0 0 2px 2px;
+    transform: rotate(-45deg) translate(-10%, 100%);
     scale: 0.6;
     opacity: 0;
     transition:
-      scale 0.12s var(--ease-out-soft),
-      opacity 0.09s var(--ease-out-soft);
+      scale var(--transition-duration-basic) var(--ease-out-soft),
+      opacity var(--transition-duration-basic) var(--ease-out-soft),
+      transform var(--transition-duration-basic) var(--ease-out-soft);
   }
 
   .check:checked::after {
@@ -596,23 +595,25 @@
   }
 
   .check:indeterminate::after {
-    width: 10px;
-    height: 0;
-    border-width: 2px 0 0;
-    translate: -50% -50%;
-    rotate: none;
+    border-width: 0 0 2px;
+    transform: translate(30%, 80%);
     scale: 1;
     opacity: 1;
   }
 
   .check:disabled {
-    border-color: var(--color-line-strong);
-    background-color: var(--color-surface-2);
+    border-color: var(--color-check-disabled-border);
+    background-color: var(--color-check-disabled-fill);
+    cursor: not-allowed;
   }
 
-  .check:disabled:checked, .check:disabled:indeterminate {
-    border-color: var(--color-faint);
-    background-color: var(--color-faint);
+  .check:disabled:checked {
+    border-color: var(--color-check-disabled-selected);
+    background-color: var(--color-check-disabled-selected);
+  }
+
+  .check:disabled::after {
+    border-color: var(--color-check-disabled-ink);
   }
 
   .dialog-panel {

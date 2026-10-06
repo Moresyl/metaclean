@@ -5,6 +5,18 @@ All notable changes to MetaClean are documented here. The project follows
 
 ## [Unreleased]
 
+### Changed
+
+- Align checkbox borders, disabled fills, pointer feedback and focus rings with
+  the current desktop theme rules. Keep selected colors stable on hover, scale
+  the 4px base corner to 5px in supported renderers and use proportional tick
+  and mixed-state strokes while retaining native input semantics.
+
+### Tests
+
+- Add a native light/dark regression for unchecked, checked, mixed, disabled,
+  and focus-visible states without changing saved cleanup preferences.
+
 ## [0.12.1] - 2026-10-06
 
 ### Fixed

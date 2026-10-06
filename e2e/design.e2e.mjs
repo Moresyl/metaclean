@@ -123,6 +123,7 @@ describe("Desktop visual controls", () => {
           check.focus();
           return {
             width: style.width, height: style.height, radius: style.borderRadius,
+            scaledCorners: CSS.supports("corner-shape", "superellipse(1.5)"),
             background: style.backgroundColor,
             checked: check.checked,
             reduced: matchMedia("(prefers-reduced-motion: reduce)").matches,
@@ -134,7 +135,7 @@ describe("Desktop visual controls", () => {
         });
         assert.equal(state.width, "18px");
         assert.equal(state.height, "18px");
-        assert.equal(state.radius, "4px");
+        assert.equal(state.radius, state.scaledCorners ? "5px" : "4px");
         assert.equal(state.actionHeight, "36px");
         assert.equal(state.focus, true);
         assert.equal(state.outline, "2px");
@@ -150,6 +151,99 @@ describe("Desktop visual controls", () => {
       }, previous);
       await browser.refresh();
       await $(".app-shell").waitForDisplayed();
+    }
+  });
+
+  it("matches neutral checkbox borders, disabled states and focus in both themes", async () => {
+    const previousTheme = await browser.tauri.execute(() => document.documentElement.dataset.theme);
+    const colors = {
+      light: { border: [205, 205, 205, 255], selected: [24, 24, 24, 255],
+        disabledBorder: [223, 223, 223, 255], disabledFill: [252, 252, 252, 255], disabledSelected: [175, 175, 175, 255], ring: [51, 156, 255, 255] },
+      dark: { border: [93, 93, 93, 255], selected: [237, 237, 237, 255],
+        disabledBorder: [48, 48, 48, 255], disabledFill: [33, 33, 33, 255], disabledSelected: [33, 33, 33, 255], ring: [51, 156, 255, 179] },
+    };
+    const readStyle = async () => browser.tauri.execute(() => {
+      const check = document.querySelector("#checkbox-state-regression");
+      const style = getComputedStyle(check);
+      const canvas = document.createElement("canvas");
+      canvas.width = canvas.height = 1;
+      const context = canvas.getContext("2d");
+      const color = value => {
+        context.clearRect(0, 0, 1, 1);
+        context.fillStyle = value;
+        context.fillRect(0, 0, 1, 1);
+        return [...context.getImageData(0, 0, 1, 1).data];
+      };
+      return { border: color(style.borderTopColor), fill: color(style.backgroundColor), ring: color(style.outlineColor),
+        width: style.width, height: style.height, radius: style.borderRadius, borderWidth: style.borderTopWidth,
+        cursor: style.cursor, outline: style.outlineWidth, offset: style.outlineOffset,
+        focus: check.matches(":focus-visible"),
+        scaledCorners: CSS.supports("corner-shape", "superellipse(1.5)") };
+    });
+    const sameColor = (actual, expected) => actual.every((channel, index) => Math.abs(channel - expected[index]) <= 1);
+    const expectColors = async (border, fill, message) => {
+      await browser.waitUntil(async () => {
+        const actual = await readStyle();
+        return sameColor(actual.border, border) && sameColor(actual.fill, fill);
+      }, { timeoutMsg: message });
+    };
+    try {
+      await browser.tauri.execute(() => {
+        window.dispatchEvent(new KeyboardEvent("keydown", { key: "1", ctrlKey: true }));
+      });
+      await $(".clean-options .check").waitForDisplayed();
+      // Exercise the actual native renderer's stylesheet without changing saved
+      // cleanup preferences or React's controlled checkbox state.
+      await browser.tauri.execute(() => {
+        const fixture = document.querySelector(".clean-options .check").cloneNode();
+        fixture.id = "checkbox-state-regression";
+        fixture.setAttribute("aria-label", "Checkbox visual regression");
+        // The embedded driver's pointer actions dispatch synthetic MouseEvents;
+        // they cannot activate CSS :hover. Browser qualification covers hover.
+        // Keep the physical cursor from altering these native state samples.
+        fixture.style.cssText = "position:fixed;left:100px;top:100px;z-index:9999;pointer-events:none";
+        document.body.append(fixture);
+      });
+      for (const theme of ["light", "dark"]) {
+        const palette = colors[theme];
+        await browser.tauri.execute((_, theme) => { document.documentElement.dataset.theme = theme; }, theme);
+        for (const state of ["unchecked", "checked", "indeterminate", "disabled-unchecked", "disabled-checked", "disabled-indeterminate"]) {
+          await browser.tauri.execute((_, state) => {
+            const check = document.querySelector("#checkbox-state-regression");
+            check.blur();
+            check.checked = state.endsWith("checked") && !state.endsWith("unchecked");
+            check.indeterminate = state.endsWith("indeterminate");
+            check.disabled = state.startsWith("disabled");
+          }, state);
+          const disabled = state.startsWith("disabled");
+          const checked = state.endsWith("checked") && !state.endsWith("unchecked");
+          const selected = checked || state.endsWith("indeterminate");
+          const border = disabled ? checked ? palette.disabledSelected : palette.disabledBorder : selected ? palette.selected : palette.border;
+          const fill = disabled ? checked ? palette.disabledSelected : palette.disabledFill : selected ? palette.selected : [0, 0, 0, 0];
+          await expectColors(border, fill, `${theme}/${state} checkbox colors did not settle`);
+          const actual = await readStyle();
+          assert.equal(actual.width, "18px");
+          assert.equal(actual.height, "18px");
+          assert.equal(actual.borderWidth, "1px");
+          assert.equal(actual.radius, actual.scaledCorners ? "5px" : "4px");
+          assert.equal(actual.cursor, disabled ? "not-allowed" : "pointer");
+        }
+        await browser.tauri.execute(() => {
+          const check = document.querySelector("#checkbox-state-regression");
+          check.disabled = check.checked = check.indeterminate = false;
+          check.focus();
+        });
+        const focused = await readStyle();
+        assert.equal(focused.focus, true);
+        assert.equal(focused.outline, "2px");
+        assert.equal(focused.offset, "2px");
+        assert.ok(sameColor(focused.ring, palette.ring), `${theme} focus ring differs from its theme`);
+      }
+    } finally {
+      await browser.tauri.execute((_, previousTheme) => {
+        document.querySelector("#checkbox-state-regression")?.remove();
+        if (previousTheme) document.documentElement.dataset.theme = previousTheme;
+      }, previousTheme);
     }
   });
 });

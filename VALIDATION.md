@@ -4,6 +4,37 @@ Last audited: 2026-10-06
 
 This file records evidence, not intent. A row is complete only when the named artifact or runtime check exists.
 
+## Unreleased checkbox state alignment — 2026-10-06
+
+A direct browser comparison loads the supplied current theme and checkbox CSS
+in an isolated frame, retaining the layer order from its original HTML entry.
+The live application's stylesheet renders a native checkbox fixture cloned
+from its actual control. This exercises extracted CSS, not the original
+installed application's runtime or native file-processing IPC. Browser
+pseudo-states are selected through CDP for computed-style comparison;
+these results do not establish trusted pointer interaction.
+
+The preceding implementation differs in unchecked borders, disabled fills,
+focus-ring colors and a fixed 4px radius. The current rules use dedicated
+state tokens, preserve selected colors on hover and scale the 4px base corner
+to 5px where the renderer supports the shared corner-scaling rule. All eighteen
+compared light/dark state combinations match border/fill colors, dimensions
+and radius; focus cases also match outline width, offset and color.
+
+A native regression fails on the preceding binary at the light unchecked
+border. The first updated desktop run passes the original nineteen cases but
+the new test fails when its synthetic pointer move does not activate CSS hover.
+The embedded driver's inspected implementation dispatches a JavaScript
+`MouseEvent`, so native hover coverage cannot be claimed from that action.
+Hover remains covered by the direct browser comparison. The native regression
+checks the six selection/disabled combinations and focus in both themes.
+The corrected Windows run passed all twenty desktop cases: four design
+regressions and sixteen workflow cases. Frontend verification passed all
+428 tests with 93.58% line coverage; documentation/116-extension/CSP checks,
+44 release-automation cases and the documentation build also passed.
+Cross-platform qualification is pending. These changes are not yet included
+in published v0.12.1 packages.
+
 ## Published v0.12.1 About layout correction — 2026-10-06
 
 The published [v0.12.1](https://github.com/Moresyl/metaclean/releases/tag/v0.12.1)
