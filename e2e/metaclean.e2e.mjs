@@ -96,13 +96,18 @@ describe("MetaClean desktop application", () => {
       await properties.waitForDisplayed();
       await $('[data-scroll-edge="bottom"]').waitForExist();
       await browser.tauri.execute(() => document.querySelector('[role="region"][aria-label="Document property values"]').focus());
-      await browser.keys("End");
+      // Embedded WebDriver dispatches untrusted keys without native scroll defaults.
+      assert.equal(await browser.tauri.execute(() => document.activeElement?.getAttribute("aria-label")), "Document property values");
+      await browser.tauri.execute(() => {
+        const region = document.querySelector('[role="region"][aria-label="Document property values"]');
+        region.scrollTop = region.scrollHeight;
+      });
       await browser.waitUntil(async () => browser.tauri.execute(() => {
         const region = document.querySelector('[role="region"][aria-label="Document property values"]');
         return region.scrollTop > 0 && !document.querySelector('[data-scroll-edge="bottom"]');
       }));
       await $('[data-scroll-edge="top"]').waitForExist();
-      await browser.keys("Home");
+      await browser.tauri.execute(() => { document.querySelector('[role="region"][aria-label="Document property values"]').scrollTop = 0; });
       await browser.waitUntil(async () => !(await $('[data-scroll-edge="top"]').isExisting()));
       assert.equal(await browser.tauri.execute(() => JSON.stringify(localStorage).includes("Preview Author Seven")), false);
       await $("button=Hide document properties").click();
