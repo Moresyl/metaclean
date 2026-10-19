@@ -9,6 +9,7 @@ All notable changes to MetaClean are documented here. The project follows
 
 ### Fixed
 
+- Clear cached release bundles before packaging to prevent old installers from contaminating new release assets; retain compilation caches and strict uniqueness checks.
 - Restore keyboard focus to the main workspace when an update dialog closes
   without an available opener, including automatic prompts and controls that
   were removed or disabled. Preserve focus return to a usable original control.

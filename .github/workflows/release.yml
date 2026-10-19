@@ -203,6 +203,8 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - name: Validate bilingual release notes
         run: node scripts/load-release-notes.mjs
+      - name: Remove cached release bundles
+        run: node scripts/prepare-release-bundle.mjs "${{ matrix.bundlePath }}"
       - name: Build release packages
         run: pnpm tauri build --config src-tauri/tauri.release.conf.json ${{ matrix.args }}
         env:
