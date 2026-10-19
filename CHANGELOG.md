@@ -19,7 +19,8 @@ All notable changes to MetaClean are documented here. The project follows
 
 - Update the TLS stack to rustls 0.23.46 and ZIP processing to 9.0.5. Pin the
   updater to the reviewed upstream ZIP 9 fix and align its JavaScript client;
-  reject malformed archive member names instead of silently decoding them.
+  align the Tauri JavaScript API and CLI with the native runtime. Reject invalid
+  UTF-8 archive names when declared as UTF-8 while preserving legacy CP437 names.
 - Remove private and unrecognized WebP application chunks at the container level
   and inside animation frames. Keep compressed image/alpha data, frame geometry,
   timing, blend/disposal controls and the existing ICC retention choice.
