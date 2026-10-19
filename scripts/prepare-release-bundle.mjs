@@ -5,7 +5,7 @@ import { pathToFileURL } from "node:url";
 export async function prepareReleaseBundle(bundleDirectory, workspace = process.cwd()) {
   // Only generated release bundles may be removed; retain compiled dependencies.
   const relative = bundleDirectory.replaceAll("\\", "/");
-  if (!/^src-tauri\/target\/(?:[a-z0-9]+(?:-[a-z0-9]+)+\/)?release\/bundle$/u.test(relative)) {
+  if (!/^src-tauri\/target\/(?:[a-z0-9_]+(?:-[a-z0-9]+)+\/)?release\/bundle$/u.test(relative)) {
     throw new Error("Expected a generated src-tauri/target release bundle directory");
   }
   let current = path.resolve(workspace);

@@ -16,7 +16,7 @@ test("release workflow clears restored bundles before packaging", async () => {
 test("cached old packages cannot contaminate a new native or cross-target release", async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), "metaclean-bundle-"));
   try {
-    for (const target of ["", "i686-pc-windows-msvc/", "aarch64-apple-darwin/"]) {
+    for (const target of ["", "i686-pc-windows-msvc/", "aarch64-apple-darwin/", "x86_64-apple-darwin/"]) {
       const relative = `src-tauri/target/${target}release/bundle`;
       const bundle = path.join(root, relative);
       const dependencies = path.join(bundle, "..", "deps");
