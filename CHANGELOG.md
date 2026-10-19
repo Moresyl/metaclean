@@ -5,11 +5,18 @@ All notable changes to MetaClean are documented here. The project follows
 
 ## [Unreleased]
 
+## [0.12.6] - 2026-10-19
+
 ### Fixed
 
 - Restore keyboard focus to the main workspace when an update dialog closes
   without an available opener, including automatic prompts and controls that
   were removed or disabled. Preserve focus return to a usable original control.
+
+### Tests
+
+- Cover unavailable update-dialog openers and record document identities in
+  crash-recovery verification to distinguish restarted pages from stale targets.
 
 ## [0.12.5] - 2026-10-19
 
