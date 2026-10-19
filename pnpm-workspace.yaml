@@ -20,4 +20,4 @@ overrides:
   mocha>chokidar: 4.0.3
 
 patchedDependencies:
-  '@wdio/tauri-service@1.4.0': patches/@wdio__tauri-service@1.4.0.patch
+  '@wdio/tauri-service@1.5.0': patches/@wdio__tauri-service@1.5.0.patch
