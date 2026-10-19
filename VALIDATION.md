@@ -4,6 +4,48 @@ Last audited: 2026-10-19
 
 This file records evidence, not intent. A row is complete only when the named artifact or runtime check exists.
 
+## v0.12.6 published qualification — 2026-10-19
+
+Stable [v0.12.6](https://github.com/Moresyl/metaclean/releases/tag/v0.12.6)
+was published through the actual browser at source
+`eee8d3595f5fd6bf58442f31dbe7c77aa0b6621e`.
+[Release 39243049973](https://github.com/Moresyl/metaclean/actions/runs/39243049973)
+passes all seven jobs, with 20 public assets and a five-target 0.12.6 updater feed.
+
+- [Final CI](https://github.com/Moresyl/metaclean/actions/runs/39240059479)
+  passes 466 frontend tests, 47 release checks and 292 Rust tests (12 explicitly
+  ignored), with 92.73% Rust line coverage on Windows. Windows, macOS and Linux
+  each pass 15 design and 18 workflow cases. The release's Ubuntu validation
+  separately passes 286 Rust tests (13 ignored), 92.38% line coverage and the
+  independent Office, PDF, HEIF/AVIF, JPEG, PNG, WebP and Ogg fidelity gates.
+- [Public assets](https://github.com/Moresyl/metaclean/actions/runs/39245012283)
+  verifies 19 payload assets against the checksum manifest, plus signatures and
+  tamper rejection for all five updater packages.
+- Public 0.12.5 → 0.12.6 → 0.12.5 transitions pass for
+  [Windows x64/x86](https://github.com/Moresyl/metaclean/actions/runs/39245017578),
+  using the released application's Install update button, signed update/restart,
+  storage preservation and truncated-installer rejection;
+  [MSI](https://github.com/Moresyl/metaclean/actions/runs/39245022566), including
+  executable repair; [macOS Apple Silicon/Intel](https://github.com/Moresyl/metaclean/actions/runs/39245030334),
+  with both package architectures tested on arm64 hosts; and
+  [Linux DEB](https://github.com/Moresyl/metaclean/actions/runs/39245036790).
+  Downloaded JSON/TSV evidence records the expected installed versions and
+  successful launch windows. Linux's recorded exit code 124 is the expected
+  eight-second smoke-test timeout, not an application failure.
+- [Documentation and update feed](https://github.com/Moresyl/metaclean/actions/runs/39244849348)
+  deployment succeeds.
+
+The first release attempt failed because cached bundles contained older
+installers. The published source removes only the generated bundle directory
+before packaging, retains compilation caches and preserves strict asset
+uniqueness checks. Regression coverage includes native and cross-target paths,
+including Intel macOS, and rejects paths outside generated bundles or linked
+ancestors. All platform smoke checks and asset collection then passed.
+
+The memory and crash-recovery evidence below remains scoped to v0.12.5; it is
+not presented as a new v0.12.6 run. These package checks do not establish Apple
+notarization, arbitrary historical-data migration or every installation failure.
+
 ## v0.12.5 published qualification — 2026-10-19
 
 Stable [v0.12.5](https://github.com/Moresyl/metaclean/releases/tag/v0.12.5)
