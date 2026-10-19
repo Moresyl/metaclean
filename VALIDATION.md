@@ -1,8 +1,64 @@
 # MetaClean validation status
 
-Last audited: 2026-10-07
+Last audited: 2026-10-19
 
 This file records evidence, not intent. A row is complete only when the named artifact or runtime check exists.
+
+## v0.12.5 published qualification — 2026-10-19
+
+Stable [v0.12.5](https://github.com/Moresyl/metaclean/releases/tag/v0.12.5)
+was published through the actual browser at source
+`b0272998692580b1c455d258478562bd69b4b8ac`.
+[Release 39223220624](https://github.com/Moresyl/metaclean/actions/runs/39223220624)
+passes source validation, five platform builds and finalization, with 20 assets.
+The online updater feed was checked at version 0.12.5 for all five targets.
+
+- [Final CI](https://github.com/Moresyl/metaclean/actions/runs/39219511525):
+  463 frontend tests, 94.12% frontend line coverage; 292 Rust tests with 12
+  explicitly ignored, 92.73% Rust line coverage in the recorded Windows scope;
+  each of Windows, macOS and Linux passes 15 design and 18 workflow cases.
+  Release-source validation repeats desktop, native, coverage, security and
+  independent format gates. Rust audit passes with its recorded allowed warnings.
+- Independent [Office](https://github.com/Moresyl/metaclean/actions/runs/39218677325),
+  [image](https://github.com/Moresyl/metaclean/actions/runs/39218681879) and
+  [PDF](https://github.com/Moresyl/metaclean/actions/runs/39218687569) runs at
+  production-equivalent source `8e9b328` pass 126 cases. Downloaded artifacts were
+  rechecked for actual logs, hashes, retained media and package references:
+  Office 42, JPEG 40, PNG 8, HEIF/AVIF 6, PDF 6 and WebP 24. Subsequent changes
+  before the release affect test tooling and assertions only. Cross-host HDR
+  floating-point hashes are not claimed identical; each host preserves its
+  before/after rendering.
+- [Public assets](https://github.com/Moresyl/metaclean/actions/runs/39226356818):
+  19 payload assets verified against the checksum manifest, plus signature and
+  tamper-rejection checks for all five updater packages.
+- Public 0.12.4 → 0.12.5 → 0.12.4 checks pass for
+  [Windows x64/x86](https://github.com/Moresyl/metaclean/actions/runs/39226362881)
+  using the real application update button and storage verification,
+  [MSI](https://github.com/Moresyl/metaclean/actions/runs/39226367641),
+  [macOS Apple Silicon/Intel](https://github.com/Moresyl/metaclean/actions/runs/39226373377)
+  and [Linux](https://github.com/Moresyl/metaclean/actions/runs/39226377555).
+- [Memory measurement](https://github.com/Moresyl/metaclean/actions/runs/39226386517)
+  passes three iterations each at 64 and 256 MiB; these are sampled application
+  and WebView process totals, not a guaranteed memory ceiling.
+  [Isolated storage failure checks](https://github.com/Moresyl/metaclean/actions/runs/39220336923)
+  also pass.
+
+[Crash recovery](https://github.com/Moresyl/metaclean/actions/runs/39226381864)
+first failed because the recovery notice remained on the second forced restart;
+source and committed-output integrity still passed. An unchanged retry passed.
+Diagnostic source `4965bdd` then records document nonces, time origins and target
+identifiers without weakening the assertions. Three independent public-package
+runs ([one](https://github.com/Moresyl/metaclean/actions/runs/39227705241),
+[two](https://github.com/Moresyl/metaclean/actions/runs/39227710036),
+[three](https://github.com/Moresyl/metaclean/actions/runs/39227715591)) pass with
+three distinct, chronologically ordered documents each, 64 intact sources,
+one complete committed output, no automatic resume and a cleared second notice.
+The intermittent initial cause remains unproved. The third diagnostic run leaves
+one temporary file whose bytes match the cleaned output; force termination can
+bypass temporary-file cleanup, and no zero-residue guarantee is made.
+
+The dated sections below preserve earlier candidate and release evidence;
+their pending-publication statements describe those historical checkpoints.
 
 ## v0.12.5 candidate qualification — 2026-10-07
 
