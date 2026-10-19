@@ -15,6 +15,30 @@ use crate::{
 
 mod properties;
 
+pub fn preview(data: &[u8], extension: &str) -> Result<crate::preview::MetadataPreview> {
+    validate_container(data, extension)?;
+    let mut archive = read_archive(data)?;
+    let parts = properties::discover(&mut archive, extension)?;
+    let mut output = crate::preview::MetadataPreview::default();
+    let mut remaining = MAX_MANIFEST_BYTES;
+    for index in 0..archive.len() {
+        let mut file = archive.by_index(index)?;
+        let name = file.name().replace('\\', "/");
+        let normalized = name.to_ascii_lowercase();
+        let kind = parts.get(&normalized);
+        if kind.is_none() && !(is_odf_extension(extension) && normalized == "meta.xml") {
+            continue;
+        }
+        let xml = read_utf8_bounded(&mut file, remaining, "Metadata preview")?;
+        remaining = remaining.saturating_sub(xml.len() as u64);
+        if let Some(kind) = kind {
+            properties::scrub(&xml, *kind)?;
+        }
+        output.xml(&name, &xml)?;
+    }
+    Ok(output)
+}
+
 const MAX_ENTRIES: usize = 10_000;
 const MAX_UNCOMPRESSED: u64 = 512 * 1024 * 1024;
 const MAX_XML_BYTES: u64 = 64 * 1024 * 1024;

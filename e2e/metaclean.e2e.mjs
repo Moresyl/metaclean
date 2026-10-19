@@ -63,6 +63,50 @@ async function dropNativePaths(paths) {
 }
 
 describe("MetaClean desktop application", () => {
+  it("previews document values on demand and clears them after cleaning", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "metaclean-preview-test-"));
+    const source = join(directory, "properties.pdf");
+    const objects = [
+      "<< /Type /Catalog /Pages 2 0 R >>",
+      "<< /Type /Pages /Count 0 /Kids [] >>",
+      "<< /Author (Preview Author Seven) /Title (Preview Title Seven) >>",
+    ];
+    let pdf = "%PDF-1.4\n";
+    const offsets = [];
+    for (let i = 0; i < objects.length; i++) {
+      offsets.push(Buffer.byteLength(pdf));
+      pdf += `${i + 1} 0 obj\n${objects[i]}\nendobj\n`;
+    }
+    const xref = Buffer.byteLength(pdf);
+    pdf += `xref\n0 4\n0000000000 65535 f \n${offsets.map(offset => `${String(offset).padStart(10, "0")} 00000 n \n`).join("")}trailer\n<< /Size 4 /Root 1 0 R /Info 3 0 R >>\nstartxref\n${xref}\n%%EOF\n`;
+    try {
+      await writeFile(source, pdf);
+      await browser.tauri.execute(() => localStorage.setItem("metaclean.outputMode", "copy"));
+      await browser.refresh();
+      await dropNativePaths([source]);
+      await $(".file-item").waitForDisplayed();
+      await $(".scan-button").click();
+      await browser.waitUntil(async () => (await $(".scan-button").getText()).includes("Confirm"));
+      await $('button[aria-label="Details"]').click();
+      assert.ok(!(await $(".file-detail").getText()).includes("Preview Author Seven"));
+      await $("button=View document property values").click();
+      await browser.waitUntil(async () => (await $(".file-detail").getText()).includes("Preview Author Seven"));
+      assert.ok((await $(".file-detail").getText()).includes("Preview Title Seven"));
+      assert.equal(await browser.tauri.execute(() => JSON.stringify(localStorage).includes("Preview Author Seven")), false);
+      await $("button=Hide document properties").click();
+      assert.ok(!(await $(".file-detail").getText()).includes("Preview Author Seven"));
+      await $(".scan-button").click();
+      await browser.waitUntil(async () => (await $(".file-item").getText()).includes("Cleaned"));
+      await $("button=View document property values").click();
+      await browser.waitUntil(async () => (await $(".file-detail").getText()).includes("No previewable document properties"));
+      assert.equal(await readFile(source, "utf8"), pdf);
+      assert.equal(await browser.tauri.execute(() => JSON.stringify(localStorage).includes("Preview Author Seven")), false);
+    } finally {
+      await browser.refresh();
+      await $(".app-shell").waitForDisplayed();
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
   it("searches a native intake and creates a verified safe copy through the UI", async () => {
     const directory = await mkdtemp(join(tmpdir(), "metaclean-ui-test-"));
     const source = join(directory, "sample.txt");

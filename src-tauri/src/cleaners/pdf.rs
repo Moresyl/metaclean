@@ -12,6 +12,46 @@ use super::image;
 const MAX_PDF_DECOMPRESSED_STREAM_BYTES: usize = 64 * 1024 * 1024;
 const MAX_PDF_OBJECT_DEPTH: usize = 64;
 
+pub fn preview(data: &[u8]) -> Result<crate::preview::MetadataPreview> {
+    let document = load_document(data)?;
+    if document.is_encrypted() {
+        return Err(crate::error::CleanError::InvalidFormat(
+            "Encrypted PDF cannot be previewed".into(),
+        ));
+    }
+    let mut output = crate::preview::MetadataPreview::default();
+    let mut remaining = 8 * 1024 * 1024;
+    if let Ok(info) = document.trailer.get(b"Info") {
+        let (_, info) = document.dereference(info)?;
+        for (name, value) in info.as_dict()? {
+            let (_, value) = document.dereference(value)?;
+            if let Ok(text) = lopdf::decode_text_string(value) {
+                output.push("PDF Info", &String::from_utf8_lossy(name), &text);
+            }
+        }
+    }
+    for object in document.objects.values() {
+        if let Object::Stream(stream) = object {
+            if name_is(&stream.dict, b"Type", b"Metadata") {
+                let data = stream.get_plain_content_with_limit(remaining)?;
+                if data.len() > remaining {
+                    return Err(crate::error::CleanError::InvalidFormat(
+                        "Metadata preview is too large".into(),
+                    ));
+                }
+                remaining -= data.len();
+                let xml = std::str::from_utf8(&data).map_err(|_| {
+                    crate::error::CleanError::InvalidFormat(
+                        "Metadata preview XML is not UTF-8".into(),
+                    )
+                })?;
+                output.xml("PDF XMP", xml)?;
+            }
+        }
+    }
+    Ok(output)
+}
+
 fn load_document(data: &[u8]) -> Result<Document> {
     Ok(Document::load_mem_with_options(
         data,

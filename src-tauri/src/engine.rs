@@ -849,6 +849,17 @@ pub fn scan_paths(paths: &[String]) -> Vec<ScanReport> {
     scan_paths_with_cancellation(paths, None, None)
 }
 
+pub fn preview_metadata(path: &Path) -> Result<crate::preview::MetadataPreview> {
+    let (_, data) = read_validated_input(path)?;
+    match detect(path, &data) {
+        Format::Office => office::preview(&data, &extension(path)),
+        Format::Pdf => pdf::preview(&data),
+        _ => Err(CleanError::Unsupported(
+            "Metadata preview supports Office documents and PDF".into(),
+        )),
+    }
+}
+
 #[cfg(test)]
 pub fn scan_paths_cancellable(paths: &[String], cancellation: &AtomicBool) -> Vec<ScanReport> {
     scan_paths_with_cancellation(paths, Some(cancellation), None)

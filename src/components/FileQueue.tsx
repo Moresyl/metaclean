@@ -3,6 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { ArrowDownWideNarrow, ArrowUpNarrowWide, ChevronRight, Copy, FileDown, FileImage, FileSearch, FileText, FileType2, FileVideo2, FolderOpen, Music2, Search, Tag, Trash2, X } from "lucide-react";
 import Button, { IconButton } from "./Button";
 import ConfirmDialog from "./ConfirmDialog";
+import MetadataPreview from "./MetadataPreview";
 import Select from "./Select";
 import ContextMenu, { useContextMenu, type MenuEntry } from "./ContextMenu";
 import type { FileEntry, Finding } from "../types";
@@ -506,6 +507,9 @@ export default function FileQueue({ entries, preserveColorProfile, preserveOrien
                       {outputPath ? <Field label={text("输出", "Output")} selectable>{outputPath}</Field> : null}
                       {entry.result?.backupPath ? <Field label={text("备份", "Backup")} selectable>{entry.result.backupPath}</Field> : null}
                     </dl>
+                    {entry.path && entry.report?.supported && /\.(docx|xlsx|pptx|odt|ods|odp|odg|odf|odb|odm|ott|ots|otp|otg|pdf)$/i.test(entry.path) ? (
+                      <MetadataPreview key={`${entry.id}:${entry.status}:${outputPath ?? entry.path}`} path={outputPath ?? entry.path} disabled={busy} />
+                    ) : null}
                     {entry.result?.integrity ? (
                       <details className="rounded-md border border-line px-2.5 py-2 text-xs">
                         <summary className="cursor-pointer text-muted">SHA-256</summary>

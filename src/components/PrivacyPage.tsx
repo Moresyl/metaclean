@@ -31,6 +31,9 @@ export default function PrivacyPage() {
             not do that. The hairline says it is a separate thought; that is
             enough. */}
         <p className="border-t border-line pt-2 text-sm leading-relaxed text-muted">
+          {text("扫描默认仅显示类别和数量。文档详情中的属性预览需要主动打开，值仅临时显示在本机，关闭后清除，不保存到历史或审计报告。", "Scans show categories and counts by default. Document property previews open only on request; values are displayed temporarily on this device, cleared on dismissal, and excluded from history and audit reports.")}
+        </p>
+        <p className="border-t border-line pt-2 text-sm leading-relaxed text-muted">
           {text("统计型文本水印、像素域水印和传统二进制 Office 格式不在处理范围内。", "Statistical text watermarks, pixel-domain watermarks and legacy binary Office formats are out of scope.")}
         </p>
       </div>

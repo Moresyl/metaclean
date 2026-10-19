@@ -17,6 +17,7 @@ flowchart LR
   A[Native picker, drag/drop, shell launch] --> B[Bounded intake]
   B --> C[Read-only native scan]
   C -->|categories and counts only| D[React review queue]
+  D -->|explicit read-only request| P[Bounded document-property preview]
   D -->|explicit confirmation| E[Native cleaner]
   E --> F[Re-detect and re-inspect candidate]
   F -->|verified| G{Output mode}
@@ -40,7 +41,7 @@ or history record.
 | Replacement is recoverable | A unique backup is created before guarded atomic replacement; metadata is prepared before commit and Windows readonly sync is best effort after commit | `src-tauri/src/safe_io.rs` |
 | Linked paths fail closed | Final files and every existing parent component are rejected when they are symlinks or Windows reparse points, before reads, copies or replacements | link/reparse tests in `safe_io.rs` and `intake.rs` |
 | Source races fail closed | Bytes, modification time, permissions and extended attributes are checked twice | guarded-write tests in `safe_io.rs` |
-| UI never receives raw metadata values | IPC models contain finding categories and counts only | `src-tauri/src/models.rs`, `src/types.ts` |
+| Raw values are opt-in and ephemeral | Scan/history/report models contain categories and counts; a separate bounded read-only command serves the open document-property preview | `src-tauri/src/preview.rs`, `src/components/MetadataPreview.tsx` |
 | One physical Windows path is one batch item | Native and frontend use the same slash/case/device/UNC identity | `lib.rs::path_key`, `files.ts::pathIdentity` |
 | Long work remains interruptible | Cleanup observes cancellation between files; recursive intake and scanning hold a shared read-task guard; close is blocked during native work | batch and close-guard tests |
 

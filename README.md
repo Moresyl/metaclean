@@ -143,10 +143,14 @@ MetaClean uses a deliberately narrow pipeline: intake rejects symlinks, reparse
 points, oversized trees and unsupported folder entries; scanning reads a bounded
 snapshot without writing; cleaning produces an in-memory candidate; the native
 engine detects and inspects that exact candidate again; only then does it create
-a unique copy or a backup followed by an atomic replacement. The UI receives
-categories and counts, not raw GPS, author, device or comment values. This keeps
-sensitive values out of the React state tree, history, clipboard and audit
-exports while still giving every file an explicit outcome.
+a unique copy or a backup followed by an atomic replacement. Normal scan results
+contain categories and counts. After scanning, open a file's details and choose
+**View document property values** to read current DOCX/XLSX/PPTX, ODF or PDF
+properties locally, including authors and titles. This optional read-only panel
+holds values only while open; history and audit exports never include them.
+It shows up to 128 fields with 2048 characters per value, indicates truncation,
+and does not select individual properties for deletion or cover every cleanup
+category. After cleaning, the panel reads the output file's current properties.
 
 The application is intentionally fail-closed. Unknown binary formats, legacy
 binary Office files and pixel/statistical watermark removal are refused instead

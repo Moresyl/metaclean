@@ -4,6 +4,7 @@ mod engine;
 mod error;
 mod intake;
 mod models;
+mod preview;
 mod recovery;
 mod safe_io;
 mod shell_integration;
@@ -348,6 +349,19 @@ impl Drop for ActiveCleanBatchGuard {
         }
         ACTIVE_CLEAN_TASKS.fetch_sub(1, Ordering::SeqCst);
     }
+}
+
+#[tauri::command]
+async fn preview_metadata(path: BoundedAuditPath) -> Result<preview::MetadataPreview, String> {
+    let path = path.into_inner();
+    let active_read = ActiveReadGuard::start();
+    tauri::async_runtime::spawn_blocking(move || {
+        let _active_read = active_read;
+        engine::preview_metadata(std::path::Path::new(&path))
+            .map_err(|_| "无法读取文档属性；文件可能不受支持、损坏或无法访问。 / Cannot read document properties; the file may be unsupported, damaged or unavailable.".to_owned())
+    })
+    .await
+    .map_err(|_| "Metadata preview could not finish".to_owned())?
 }
 
 #[tauri::command]
@@ -822,6 +836,7 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             scan_files,
+            preview_metadata,
             expand_paths,
             clean_files,
             take_interrupted_cleanup,

@@ -7,6 +7,14 @@ All notable changes to MetaClean are documented here. The project follows
 
 ## [0.12.5] - 2026-10-07
 
+### Added
+
+- Add an explicit, read-only document-property preview after scanning Office
+  documents and PDFs, including author/title values, relocated OOXML properties
+  and PDF XMP. Values are cleared when dismissed and excluded from history and
+  audit exports. Bound previews to 128 fields and 2048 characters per value,
+  indicate truncation, and read current output properties after cleaning.
+
 ### Security
 
 - Remove private and unrecognized WebP application chunks at the container level
