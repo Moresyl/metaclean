@@ -1,6 +1,22 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
+// Chromium snaps nonzero strokes down to whole physical pixels, with a
+// one-pixel minimum. At 125% DPI, a specified 2 CSS px stroke resolves to 1.6.
+async function assertStrokeWidth(actual, specified) {
+  const ratio = await browser.tauri.execute(() => devicePixelRatio);
+  const expected = Math.max(1, Math.floor(specified * ratio)) / ratio;
+  assert.ok(Math.abs(parseFloat(actual) - expected) < 0.00001,
+    `Stroke ${actual} does not match ${specified}px at pixel ratio ${ratio}`);
+}
+
+async function assertOutlineOffset(actual, specified) {
+  const ratio = await browser.tauri.execute(() => devicePixelRatio);
+  const expected = Math.trunc(specified * ratio) / ratio;
+  assert.ok(Math.abs(parseFloat(actual) - expected) < 0.00001,
+    `Outline offset ${actual} does not match ${specified}px at pixel ratio ${ratio}`);
+}
+
 const LOCALE_DEFINITIONS = [...readFileSync(new URL("../src/lib/locales.ts", import.meta.url), "utf8")
   .matchAll(/\{ code: "([^"]+)", nativeName: "[^"]+", htmlLang: "([^"]+)"/gu)]
   .map(([, code, htmlLang]) => ({ code, htmlLang }));
@@ -294,8 +310,11 @@ describe("Desktop visual controls", () => {
                 id: tip.id, focused: document.activeElement === host, font: style.fontSize, weight: style.fontWeight,
                 line: parseFloat(style.lineHeight), padding: style.padding, radius: style.borderRadius, border: style.borderTopWidth,
                 scaled: CSS.supports("corner-shape", "superellipse(1.5)"), background: [...context.getImageData(0, 0, 1, 1).data],
-                contained: bounds.left >= 15 && bounds.top >= 15 && bounds.right <= innerWidth - 15 && bounds.bottom <= innerHeight - 15,
-                width: bounds.width, viewport: innerWidth };
+                // DOMRect arithmetic can differ by a few float32 ULPs at
+                // fractional DPI; this is much less than a layout pixel.
+                contained: bounds.left >= 14.999 && bounds.top >= 14.999 && bounds.right <= innerWidth - 14.999 && bounds.bottom <= innerHeight - 14.999,
+                width: bounds.width, viewport: innerWidth, viewportHeight: innerHeight,
+                bounds: bounds.toJSON(), pixelRatio: devicePixelRatio };
             });
             console.log(`Tooltip state: ${JSON.stringify(state.probe)}`);
             assert.equal(state.rootMounted, true);
@@ -311,7 +330,7 @@ describe("Desktop visual controls", () => {
             const expectedBackground = theme === "light" ? [255, 255, 255, 179] : [33, 33, 33, 245];
             state.background.forEach((channel, index) => assert.ok(Math.abs(channel - expectedBackground[index]) <= 1,
               `${theme} tooltip background: ${JSON.stringify(state.background)}`));
-            assert.equal(state.contained, true, `${theme}/${direction}/${corner} tooltip leaves the viewport`);
+            assert.equal(state.contained, true, `${theme}/${direction}/${corner} tooltip leaves the viewport: ${JSON.stringify(state)}`);
             assert.ok(state.width <= Math.min(300, state.viewport - 30) + 1);
             await browser.keys("Escape");
             await $("[role=tooltip]").waitForDisplayed({ reverse: true });
@@ -602,7 +621,7 @@ describe("Desktop visual controls", () => {
           const button = document.querySelectorAll(".settings-nav button")[1];
           return button.matches(":focus-visible") && getComputedStyle(button).color === getComputedStyle(document.querySelector(".settings-nav button")).color;
         }), { timeoutMsg: `${theme} focused segment ink did not settle` });
-        assert.equal(await browser.tauri.execute(() => getComputedStyle(document.querySelectorAll(".settings-nav button")[1]).outlineWidth), "2px");
+        await assertStrokeWidth(await browser.tauri.execute(() => getComputedStyle(document.querySelectorAll(".settings-nav button")[1]).outlineWidth), 2);
         await browser.tauri.execute(() => { document.querySelector("main > .animate-rise").style.inlineSize = "220px"; });
         await $(".settings-nav button:nth-of-type(4)").click();
         await browser.waitUntil(async () => browser.tauri.execute(() => {
@@ -818,7 +837,8 @@ describe("Desktop visual controls", () => {
           }, invalid);
           await browser.waitUntil(async () => browser.tauri.execute(() => {
             const select = document.querySelector("#select-regression select");
-            return select.matches(":focus-visible") && getComputedStyle(select).outlineWidth === "2px";
+            const expected = Math.max(1, Math.floor(2 * devicePixelRatio)) / devicePixelRatio;
+            return select.matches(":focus-visible") && Math.abs(parseFloat(getComputedStyle(select).outlineWidth) - expected) < 0.00001;
           }), { timeoutMsg: `${theme}/${invalid} select focus did not settle` });
           const ring = await browser.tauri.execute((_, theme, invalid) => {
             const style = getComputedStyle(document.querySelector("#select-regression select"));
@@ -830,7 +850,7 @@ describe("Desktop visual controls", () => {
             return result;
           }, theme, invalid);
           assertResolvedColor(ring.color, ring.expected, `${theme}/${invalid} select ring`);
-          assert.equal(ring.offset, "-1px");
+          await assertOutlineOffset(ring.offset, -1);
         }
       }
     } finally {
@@ -1022,7 +1042,8 @@ describe("Desktop visual controls", () => {
           await browser.tauri.execute((_, variant) => document.querySelector(`#action-regression [data-variant=${variant}]`).focus(), variant);
           await browser.waitUntil(async () => browser.tauri.execute((_, variant) => {
             const action = document.querySelector(`#action-regression [data-variant=${variant}]`);
-            return action.matches(":focus-visible") && getComputedStyle(action, "::after").outlineWidth === "2px";
+            const expected = Math.max(1, Math.floor(2 * devicePixelRatio)) / devicePixelRatio;
+            return action.matches(":focus-visible") && Math.abs(parseFloat(getComputedStyle(action, "::after").outlineWidth) - expected) < 0.00001;
           }, variant), { timeoutMsg: `${theme}/${variant} action focus ring did not settle` });
           const focus = await browser.tauri.execute((_, variant) => {
             const action = document.querySelector(`#action-regression [data-variant=${variant}]`);
@@ -1036,8 +1057,8 @@ describe("Desktop visual controls", () => {
             return { visible: action.matches(":focus-visible"), width: ring.outlineWidth, offset: ring.outlineOffset, color: ring.outlineColor, expected };
           }, variant);
           assert.equal(focus.visible, true);
-          assert.equal(focus.width, "2px");
-          assert.equal(focus.offset, ["primary", "danger"].includes(variant) ? "2px" : "-1px");
+          await assertStrokeWidth(focus.width, 2);
+          await assertOutlineOffset(focus.offset, ["primary", "danger"].includes(variant) ? 2 : -1);
           assertResolvedColor(focus.color, focus.expected, `${theme}/${variant} focus color`);
         }
       }
@@ -1192,7 +1213,7 @@ describe("Desktop visual controls", () => {
         assert.equal(state.radius, state.scaledCorners ? "5px" : "4px");
         assert.equal(state.actionHeight, "36px");
         assert.equal(state.focus, true);
-        assert.equal(state.outline, "2px");
+        await assertStrokeWidth(state.outline, 2);
         assert.ok(state.transition.split(", ").every(value => Number.parseFloat(value) === (state.reduced ? 0 : 0.15)));
         assert.equal(state.background, !state.checked ? "rgba(0, 0, 0, 0)"
           : theme === "light" ? "rgb(24, 24, 24)" : "rgb(237, 237, 237)");
@@ -1302,7 +1323,7 @@ describe("Desktop visual controls", () => {
           }
           assert.equal(actual.width, "18px");
           assert.equal(actual.height, "18px");
-          assert.equal(actual.borderWidth, "1px");
+          await assertStrokeWidth(actual.borderWidth, 1);
           assert.equal(actual.radius, actual.scaledCorners ? "5px" : "4px");
           assert.equal(actual.cursor, disabled ? "not-allowed" : "pointer");
         }
@@ -1313,8 +1334,8 @@ describe("Desktop visual controls", () => {
         });
         const focused = await readStyle();
         assert.equal(focused.focus, true);
-        assert.equal(focused.outline, "2px");
-        assert.equal(focused.offset, "2px");
+        await assertStrokeWidth(focused.outline, 2);
+        await assertOutlineOffset(focused.offset, 2);
         assert.ok(sameColor(focused.ring, palette.ring), `${theme} focus ring differs from its theme`);
       }
     } finally {
