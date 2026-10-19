@@ -5,7 +5,7 @@ All notable changes to MetaClean are documented here. The project follows
 
 ## [Unreleased]
 
-## [0.12.5] - 2026-10-07
+## [0.12.5] - 2026-10-19
 
 ### Added
 
@@ -28,6 +28,9 @@ All notable changes to MetaClean are documented here. The project follows
 
 ### Tests
 
+- Respect physical-pixel quantization for desktop focus and border assertions
+  at fractional display scaling, with a sub-layout-pixel tolerance for tooltip
+  boundary arithmetic. Preserve the specified control geometry and focus rules.
 - Add 24 independent WebP copy/replacement cases across lossy/lossless images,
   transparency, animation with full and offset frames and both ICC settings,
   with decoded and compressed media comparisons, source/backup integrity and
