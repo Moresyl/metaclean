@@ -19,7 +19,7 @@ for (let attempt = 0; attempt < 120; attempt++) {
   } catch (error) { lastConnectionError = String(error).slice(0, 1000); }
   await delay(250);
 }
-await writeFile(path.join(evidenceDirectory, `${mode}-connection.json`), JSON.stringify({ targets: lastTargets.map(({ type, url }) => ({ type, url })), error: lastConnectionError }, null, 2));
+await writeFile(path.join(evidenceDirectory, `${mode}-connection.json`), JSON.stringify({ targets: lastTargets.map(({ id, type, url }) => ({ id, type, url })), error: lastConnectionError }, null, 2));
 assert.ok(target?.webSocketDebuggerUrl, "Released WebView debug endpoint unavailable");
 const socket = new WebSocket(target.webSocketDebuggerUrl);
 await new Promise((resolve, reject) => {
@@ -50,6 +50,16 @@ async function until(expression) {
   }
   throw new Error(`Released UI did not reach expected state: ${expression}`);
 }
+async function recordSession() {
+  const document = await evaluate(`({ nonce: window.__metacleanRecoveryProbe ??= crypto.randomUUID(), timeOrigin: performance.timeOrigin })`);
+  await writeFile(path.join(evidenceDirectory, `${mode}-session.json`), JSON.stringify({ targetId: target.id, ...document }, null, 2));
+  const previousMode = mode === "recover" ? "start" : mode === "cleared" ? "recover" : undefined;
+  if (previousMode) {
+    const previous = JSON.parse(await readFile(path.join(evidenceDirectory, `${previousMode}-session.json`), "utf8"));
+    assert.notEqual(document.nonce, previous.nonce, "Restart probe reconnected to the previous document");
+    assert.ok(document.timeOrigin > previous.timeOrigin, "Restart did not create a newer document");
+  }
+}
 try {
   await until("Boolean(document.querySelector('.app-shell'))");
   if (mode === "start" || mode === "complete") {
@@ -57,6 +67,7 @@ try {
     await evaluate("location.reload(); true");
     await delay(1000);
     await until("Boolean(document.querySelector('.drop-zone'))");
+    await recordSession();
     // Observe the native hover response before sending the one-shot drop.
     for (let attempt = 0; attempt < 240; attempt++) {
       await evaluate(`window.__TAURI_INTERNALS__.invoke('plugin:event|emit_to', {target: {kind: 'Webview', label: 'main'}, event: 'tauri://drag-enter', payload: {paths: [], position: {x: 400, y: 300}}})`);
@@ -104,6 +115,7 @@ try {
     }
   } else {
     await delay(1000);
+    await recordSession();
     const state = await evaluate(`({ marker: localStorage.getItem('metaclean.activeBatch'), locale: localStorage.getItem('metaclean.locale'), visibleText: document.body.innerText.slice(0, 4000), message: /The previous cleanup may have (?:stopped after|been interrupted)/.test(document.body.innerText), safeNotice: document.body.innerText.includes('file operations are not resumed automatically'), entries: document.querySelectorAll('.file-item').length, actionDisabled: document.querySelector('.scan-button')?.disabled })`);
     await writeFile(path.join(evidenceDirectory, `${mode}.json`), JSON.stringify(state, null, 2));
     assert.equal(state.marker, null, "Restart did not clear the recovery marker");
