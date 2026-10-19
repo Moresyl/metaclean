@@ -921,6 +921,24 @@ describe("desktop components", () => {
     expect(trigger).toHaveFocus();
   });
 
+  it.each(["removed", "disabled", "body"])("returns update focus to the workspace when the opener is %s", async (state) => {
+    checkForUpdateMock.mockResolvedValue({
+      status: "available",
+      info: { currentVersion: "0.4.1", availableVersion: "0.5.0", name: "MetaClean v0.5.0", releaseUrl: "https://github.com/Moresyl/metaclean/releases/tag/v0.5.0" },
+    });
+    wrap(<><main tabIndex={-1} aria-label="Workspace" /><UpdateDialogHarness /></>);
+    const trigger = screen.getByRole("button", { name: "trigger update" });
+    if (state !== "body") trigger.focus();
+    fireEvent.click(trigger);
+    await screen.findByRole("dialog", { name: "v0.5.0" });
+    const parent = trigger.parentNode!;
+    if (state === "removed") trigger.remove();
+    if (state === "disabled") trigger.setAttribute("disabled", "");
+    fireEvent.click(screen.getByRole("button", { name: "稍后提醒" }));
+    if (state === "removed") parent.appendChild(trigger);
+    expect(screen.getByRole("main", { name: "Workspace" })).toHaveFocus();
+  });
+
   it("persists the selected interface theme", async () => {
     invokeMock.mockResolvedValue({ available: false, enabled: false, detail: "仅 Windows" });
     wrap(<SettingsPage mode="copy" onModeChange={vi.fn()} preserveTimestamps onPreserveTimestampsChange={vi.fn()} preserveOrientation onPreserveOrientationChange={vi.fn()} preserveColorProfile onPreserveColorProfileChange={vi.fn()} removeExtendedAttributes={false} onRemoveExtendedAttributesChange={vi.fn()} closeToTray={false} onCloseToTrayChange={vi.fn()} />);
