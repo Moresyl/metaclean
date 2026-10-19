@@ -69,7 +69,7 @@ describe("MetaClean desktop application", () => {
     const objects = [
       "<< /Type /Catalog /Pages 2 0 R >>",
       "<< /Type /Pages /Count 0 /Kids [] >>",
-      "<< /Author (Preview Author Seven) /Title (Preview Title Seven) >>",
+      `<< /Author (Preview Author Seven) /Title (Preview Title Seven) ${Array.from({ length: 24 }, (_, index) => `/Property${index} (Sample value ${index})`).join(" ")} >>`,
     ];
     let pdf = "%PDF-1.4\n";
     const offsets = [];
@@ -92,6 +92,18 @@ describe("MetaClean desktop application", () => {
       await $("button=View document property values").click();
       await browser.waitUntil(async () => (await $(".file-detail").getText()).includes("Preview Author Seven"));
       assert.ok((await $(".file-detail").getText()).includes("Preview Title Seven"));
+      const properties = $('[role="region"][aria-label="Document property values"]');
+      await properties.waitForDisplayed();
+      await $('[data-scroll-edge="bottom"]').waitForExist();
+      await browser.tauri.execute(() => document.querySelector('[role="region"][aria-label="Document property values"]').focus());
+      await browser.keys("End");
+      await browser.waitUntil(async () => browser.tauri.execute(() => {
+        const region = document.querySelector('[role="region"][aria-label="Document property values"]');
+        return region.scrollTop > 0 && !document.querySelector('[data-scroll-edge="bottom"]');
+      }));
+      await $('[data-scroll-edge="top"]').waitForExist();
+      await browser.keys("Home");
+      await browser.waitUntil(async () => !(await $('[data-scroll-edge="top"]').isExisting()));
       assert.equal(await browser.tauri.execute(() => JSON.stringify(localStorage).includes("Preview Author Seven")), false);
       await $("button=Hide document properties").click();
       assert.ok(!(await $(".file-detail").getText()).includes("Preview Author Seven"));
@@ -106,6 +118,20 @@ describe("MetaClean desktop application", () => {
       await $(".app-shell").waitForDisplayed();
       await rm(directory, { recursive: true, force: true });
     }
+  });
+  it("keeps composing text from executing or dismissing desktop commands", async () => {
+    await browser.tauri.execute(() => window.dispatchEvent(new KeyboardEvent("keydown", { key: "k", ctrlKey: true })));
+    await $('.palette-panel input[role="combobox"]').waitForDisplayed();
+    const before = await $('.palette-panel input').getAttribute("aria-activedescendant");
+    await browser.tauri.execute(() => {
+      const input = document.querySelector('.palette-panel input');
+      input.dispatchEvent(new CompositionEvent("compositionstart", { bubbles: true }));
+      for (const key of ["ArrowDown", "Enter", "Escape"]) input.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true }));
+    });
+    assert.equal(await $('.palette-panel input').getAttribute("aria-activedescendant"), before);
+    await browser.tauri.execute(() => document.querySelector('.palette-panel input').dispatchEvent(new CompositionEvent("compositionend", { bubbles: true })));
+    await browser.keys("Escape");
+    await $('.palette-panel').waitForDisplayed({ reverse: true });
   });
   it("searches a native intake and creates a verified safe copy through the UI", async () => {
     const directory = await mkdtemp(join(tmpdir(), "metaclean-ui-test-"));

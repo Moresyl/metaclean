@@ -30,9 +30,9 @@ quick-xml = "0.41"
 regex = "1"
 tempfile = "3"
 thiserror = "2"
-zip = { version = "4", default-features = false, features = ["deflate"] }
+zip = { version = "9.0.5", default-features = false, features = ["deflate"] }
 filetime = "0.2"
-tauri-plugin-updater = "2"
+tauri-plugin-updater = { git = "https://github.com/tauri-apps/plugins-workspace", rev = "ba98bfadc4c868c9a7e1a226c83af528e1f11b89" }
 
 [target.'cfg(windows)'.dependencies]
 winreg = "0.55"

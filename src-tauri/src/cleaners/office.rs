@@ -23,7 +23,7 @@ pub fn preview(data: &[u8], extension: &str) -> Result<crate::preview::MetadataP
     let mut remaining = MAX_MANIFEST_BYTES;
     for index in 0..archive.len() {
         let mut file = archive.by_index(index)?;
-        let name = file.name().replace('\\', "/");
+        let name = file.name()?.replace('\\', "/");
         let normalized = name.to_ascii_lowercase();
         let kind = parts.get(&normalized);
         if kind.is_none() && !(is_odf_extension(extension) && normalized == "meta.xml") {
@@ -82,7 +82,13 @@ fn read_archive(data: &[u8]) -> Result<ZipArchive<Cursor<&[u8]>>> {
     let mut unique = HashSet::with_capacity(archive.len());
     for index in 0..archive.len() {
         let file = archive.by_index(index)?;
-        let name = file.name();
+        // ZIP language encoding flag requires UTF-8; legacy names may use CP437.
+        if file.flags().as_u16() & 0x0800 != 0 && std::str::from_utf8(file.name_raw()).is_err() {
+            return Err(CleanError::InvalidFormat(
+                "文档 ZIP 条目声明 UTF-8 但文件名编码无效".into(),
+            ));
+        }
+        let name = file.name()?;
         let normalized = name.replace('\\', "/");
         let unsafe_name = normalized.starts_with('/')
             || normalized.split('/').any(|part| part == "..")
@@ -161,10 +167,11 @@ fn is_odf_extension(extension: &str) -> bool {
 }
 
 fn reject_encrypted_odf(archive: &mut ZipArchive<Cursor<&[u8]>>) -> Result<()> {
-    if !archive
-        .file_names()
-        .any(|name| name.eq_ignore_ascii_case("META-INF/manifest.xml"))
-    {
+    let mut has_manifest = false;
+    for name in archive.file_names() {
+        has_manifest |= name?.eq_ignore_ascii_case("META-INF/manifest.xml");
+    }
+    if !has_manifest {
         return Ok(());
     }
     let mut entry = archive.by_name("META-INF/manifest.xml")?;
@@ -184,7 +191,7 @@ fn validate_mimetype(
 ) -> Result<()> {
     let first_is_valid = if must_be_first_and_stored {
         let first = archive.by_index(0)?;
-        first.name() == "mimetype" && first.compression() == zip::CompressionMethod::Stored
+        first.name()? == "mimetype" && first.compression() == zip::CompressionMethod::Stored
     } else {
         true
     };
@@ -747,7 +754,7 @@ pub fn inspect(data: &[u8], extension: &str) -> Result<Vec<Finding>> {
         if expanded > MAX_UNCOMPRESSED {
             return Err(CleanError::InvalidFormat("Office 文件解压后过大".into()));
         }
-        let name = file.name().to_owned();
+        let name = file.name()?.into_owned();
         let lower = name.replace('\\', "/").to_ascii_lowercase();
         let property_kind = property_parts.get(&lower).copied();
         if property_kind.is_none() && is_comment_part(&lower) {
@@ -829,7 +836,9 @@ pub fn clean(data: &[u8], extension: &str) -> Result<(Vec<u8>, Vec<Finding>)> {
     let stored = SimpleFileOptions::default().compression_method(zip::CompressionMethod::Stored);
     let removed_parts: HashSet<String> = archive
         .file_names()
-        .map(|name| name.replace('\\', "/").to_ascii_lowercase())
+        .map(|name| name.map(|name| name.replace('\\', "/").to_ascii_lowercase()))
+        .collect::<std::result::Result<HashSet<_>, _>>()?
+        .into_iter()
         .filter(|name| {
             !property_parts.contains_key(name) && (is_comment_part(name) || is_reader_part(name))
         })
@@ -838,7 +847,7 @@ pub fn clean(data: &[u8], extension: &str) -> Result<(Vec<u8>, Vec<Finding>)> {
     let mut expanded = 0u64;
     for index in 0..archive.len() {
         let mut file = archive.by_index(index)?;
-        let name = file.name().to_owned();
+        let name = file.name()?.into_owned();
         let lower = name.replace('\\', "/").to_ascii_lowercase();
         if removed_parts.contains(&lower) {
             continue;
@@ -1422,6 +1431,50 @@ mod tests {
     }
 
     #[test]
+    fn zip_names_preserve_unicode_and_reject_invalid_utf8() {
+        let mut writer = ZipWriter::new(Cursor::new(Vec::new()));
+        writer.start_file("资料.xml", stored_options()).unwrap();
+        writer.write_all(b"<document/>").unwrap();
+        let mut data = writer.finish().unwrap().into_inner();
+        let mut archive = read_archive(&data).unwrap();
+        assert_eq!(archive.file_names().next().unwrap().unwrap(), "资料.xml");
+        assert_ne!(archive.by_index(0).unwrap().flags().as_u16() & 0x0800, 0);
+        drop(archive);
+        let filename = "资料.xml".as_bytes();
+        let positions: Vec<_> = data
+            .windows(filename.len())
+            .enumerate()
+            .filter_map(|(index, bytes)| (bytes == filename).then_some(index))
+            .collect();
+        assert_eq!(positions.len(), 2);
+        for position in positions {
+            data[position] = 0xff;
+        }
+        assert!(read_archive(&data).is_err());
+
+        let mut writer = ZipWriter::new(Cursor::new(Vec::new()));
+        writer.start_file("a.xml", stored_options()).unwrap();
+        writer.write_all(b"<document/>").unwrap();
+        let mut legacy = writer.finish().unwrap().into_inner();
+        let positions: Vec<_> = legacy
+            .windows(5)
+            .enumerate()
+            .filter_map(|(index, bytes)| (bytes == b"a.xml").then_some(index))
+            .collect();
+        assert_eq!(positions.len(), 2);
+        for position in positions {
+            legacy[position] = 0x82; // CP437 e with acute accent.
+        }
+        let mut archive = read_archive(&legacy).unwrap();
+        let mut file = archive.by_index(0).unwrap();
+        assert_eq!(file.flags().as_u16() & 0x0800, 0);
+        assert_eq!(file.name().unwrap(), "é.xml");
+        let mut content = String::new();
+        file.read_to_string(&mut content).unwrap();
+        assert_eq!(content, "<document/>");
+    }
+
+    #[test]
     fn rejects_encrypted_odf_metadata_instead_of_claiming_it_is_clean() {
         let mut writer = ZipWriter::new(Cursor::new(Vec::new()));
         let options = SimpleFileOptions::default();
@@ -1460,7 +1513,7 @@ mod tests {
         let (cleaned, _) = clean(&source, "epub").unwrap();
         let mut archive = ZipArchive::new(Cursor::new(cleaned)).unwrap();
         let first = archive.by_index(0).unwrap();
-        assert_eq!(first.name(), "mimetype");
+        assert_eq!(first.name().unwrap(), "mimetype");
         assert_eq!(first.compression(), zip::CompressionMethod::Stored);
     }
 

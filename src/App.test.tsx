@@ -42,6 +42,15 @@ describe("App", () => {
     expect(screen.queryByRole("heading", { name: "待处理文件" })).not.toBeInTheDocument();
   });
 
+  it("does not toggle the command palette for input-method keystrokes", () => {
+    renderApp();
+    fireEvent.keyDown(window, { key: "k", ctrlKey: true, isComposing: true });
+    fireEvent.keyDown(window, { key: "k", ctrlKey: true, keyCode: 229 });
+    expect(screen.queryByRole("dialog", { name: "命令" })).not.toBeInTheDocument();
+    fireEvent.keyDown(window, { key: "k", ctrlKey: true });
+    expect(screen.getByRole("dialog", { name: "命令" })).toBeInTheDocument();
+  });
+
   it("fails closed when the native launch-path response is malformed", async () => {
     invokeMock.mockImplementation((command?: string) => command === "get_launch_paths"
       ? Promise.resolve({ paths: ["C:\\work\\notes.txt"] })

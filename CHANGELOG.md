@@ -17,6 +17,9 @@ All notable changes to MetaClean are documented here. The project follows
 
 ### Security
 
+- Update the TLS stack to rustls 0.23.46 and ZIP processing to 9.0.5. Pin the
+  updater to the reviewed upstream ZIP 9 fix and align its JavaScript client;
+  reject malformed archive member names instead of silently decoding them.
 - Remove private and unrecognized WebP application chunks at the container level
   and inside animation frames. Keep compressed image/alpha data, frame geometry,
   timing, blend/disposal controls and the existing ICC retention choice.
@@ -38,6 +41,13 @@ All notable changes to MetaClean are documented here. The project follows
 - Add seven evidence-checker regressions that reject residual private chunks,
   changed media/control bytes, missing frames, wrong profile policy and malformed
   container sizes or padding. Run these checks in image and release source gates.
+
+### Fixed
+
+- Keep command selection, execution, queue filters and global shortcuts from
+  consuming input-method composition keys, including the legacy 229 signal.
+- Add keyboard-accessible scrolling and overflow-aware edge cues to long
+  document-property previews. Hide decorative cues in forced-color mode.
 
 ## [0.12.4] - 2026-10-07
 

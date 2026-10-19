@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import Button from "./Button";
+import ScrollArea from "./ScrollArea";
 import { useI18n } from "../lib/i18n";
 
 interface Preview { fields: { source: string; name: string; value: string }[]; truncated: boolean }
@@ -45,12 +46,14 @@ export default function MetadataPreview({ path, disabled }: { path: string; disa
         : !preview ? <p role="status">{text("正在读取属性…", "Reading properties…")}</p>
         : <>
           {!preview.fields.length ? <p role="status">{text("当前文件未发现可预览的文档属性。这不代表不存在其他隐私痕迹。", "No previewable document properties found in the current file. Other privacy traces may still exist.")}</p> : null}
-          <dl className="grid max-h-72 gap-2 overflow-auto text-xs">
-            {preview.fields.map((field, index) => <div key={index} className="min-w-0 border-b border-line pb-2">
-              <dt className="break-all font-medium">{propertyName(field.name)} <span className="font-normal text-muted">· {field.source}</span></dt>
-              <dd className="selectable whitespace-pre-wrap break-all" dir="auto">{field.value}</dd>
-            </div>)}
-          </dl>
+          {preview.fields.length ? <ScrollArea label={text("文档属性内容", "Document property values")} className="max-h-72">
+            <dl className="grid gap-2 text-xs">
+              {preview.fields.map((field, index) => <div key={index} className="min-w-0 border-b border-line pb-2">
+                <dt className="break-all font-medium">{propertyName(field.name)} <span className="font-normal text-muted">· {field.source}</span></dt>
+                <dd className="selectable whitespace-pre-wrap break-all" dir="auto">{field.value}</dd>
+              </div>)}
+            </dl>
+          </ScrollArea> : null}
           {preview.truncated ? <p role="status" className="text-muted">{text("内容较多，仅预览前 128 项，每项最多 2048 个字符。", "Preview limited to 128 fields and 2048 characters per value.")}</p> : null}
         </>}
     </> : null}

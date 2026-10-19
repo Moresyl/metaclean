@@ -265,6 +265,25 @@ describe("command palette", () => {
     expect(score("clean", "Clean files")!).toBeGreaterThan(score("clean", "Clean files and folders")!);
   });
 
+  it("leaves composition keys to the input method before running commands", () => {
+    const run = vi.fn();
+    const onClose = vi.fn();
+    wrap(<CommandPalette commands={[{ ...commands[0], run }, commands[1]]} onClose={onClose} />);
+    const field = screen.getByRole("combobox");
+    fireEvent.compositionStart(field);
+    for (const key of ["ArrowDown", "End", "Enter", "Escape"]) fireEvent.keyDown(field, { key });
+    expect(field).toHaveAttribute("aria-activedescendant", "command-option-go-clean");
+    expect(run).not.toHaveBeenCalled();
+    expect(onClose).not.toHaveBeenCalled();
+    fireEvent.compositionEnd(field);
+    fireEvent.keyDown(field, { key: "Enter", isComposing: true });
+    fireEvent.keyDown(field, { key: "Enter", keyCode: 229 });
+    expect(run).not.toHaveBeenCalled();
+    fireEvent.keyDown(field, { key: "Enter" });
+    expect(run).toHaveBeenCalledOnce();
+    expect(onClose).toHaveBeenCalledOnce();
+  });
+
   it("groups the unfiltered list and drops the headings once ranked", () => {
     const { container } = wrap(<CommandPalette commands={commands} onClose={vi.fn()} />);
     expect([...container.querySelectorAll(".palette-group")].map((node) => node.textContent)).toEqual(["前往", "操作"]);
@@ -538,6 +557,21 @@ describe("queue row details", () => {
     expect(container.querySelectorAll(".file-detail")).toHaveLength(1);
     fireEvent.click(disclosures[1]);
     expect(container.querySelectorAll(".file-detail")).toHaveLength(0);
+  });
+
+  it("keeps the queue query when Escape belongs to an input method", () => {
+    queue([entry]);
+    const field = screen.getByRole("searchbox");
+    fireEvent.change(field, { target: { value: "photo" } });
+    fireEvent.compositionStart(field);
+    fireEvent.keyDown(field, { key: "Escape" });
+    expect(field).toHaveValue("photo");
+    fireEvent.compositionEnd(field);
+    fireEvent.keyDown(field, { key: "Escape", isComposing: true });
+    fireEvent.keyDown(field, { key: "Escape", keyCode: 229 });
+    expect(field).toHaveValue("photo");
+    fireEvent.keyDown(field, { key: "Escape" });
+    expect(field).toHaveValue("");
   });
 
   it("marks what a finished cleanup actually took out", () => {

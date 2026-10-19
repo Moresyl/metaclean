@@ -60,6 +60,7 @@ export default function FileQueue({ entries, preserveColorProfile, preserveOrien
   const [sortKey, setSortKey] = useState<SortKey>("name");
   const [descending, setDescending] = useState(false);
   const [query, setQuery] = useState("");
+  const composing = useRef(false);
   const [filter, setFilter] = useState("all");
   const labels = QUEUE_MESSAGES[locale];
   /** One row at a time: the window is short, and a list of open panels is a
@@ -324,7 +325,12 @@ export default function FileQueue({ entries, preserveColorProfile, preserveOrien
             <input type="search" value={query} maxLength={512} aria-label={labels[0]} placeholder={labels[0]}
               className="queue-search-input min-w-0 flex-1"
               onChange={(event) => setQuery(event.target.value)}
-              onKeyDown={(event) => { if (event.key === "Escape") { event.stopPropagation(); resetFilters(); } }} />
+              onCompositionStart={() => { composing.current = true; }}
+              onCompositionEnd={() => { composing.current = false; }}
+              onKeyDown={(event) => {
+                if (composing.current || event.nativeEvent.isComposing || event.nativeEvent.keyCode === 229) return;
+                if (event.key === "Escape") { event.stopPropagation(); resetFilters(); }
+              }} />
           </label>
           <Select aria-label={labels[6]} className="min-w-[128px] text-sm" value={filter} onChange={(event) => setFilter(event.target.value)}>
             <option value="all">{labels[1]}</option>

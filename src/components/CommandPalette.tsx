@@ -60,6 +60,7 @@ export default function CommandPalette({ commands, onClose }: { commands: Comman
   const restoreFocus = useRef<Element | null>(null);
   const activeIdRef = useRef<string | undefined>(undefined);
   const queryRef = useRef(query);
+  const composing = useRef(false);
 
   const matches = useMemo(() => {
     if (!query.trim()) return commands;
@@ -175,7 +176,10 @@ export default function CommandPalette({ commands, onClose }: { commands: Comman
             value={query}
             className="h-[42px] min-w-0 flex-1 bg-transparent text-md text-text outline-none placeholder:text-faint"
             onChange={(event) => setQuery(event.target.value)}
+            onCompositionStart={() => { composing.current = true; }}
+            onCompositionEnd={() => { composing.current = false; }}
             onKeyDown={(event) => {
+              if (composing.current || event.nativeEvent.isComposing || event.nativeEvent.keyCode === 229) return;
               if (event.key === "Escape") { event.preventDefault(); onClose(); return; }
               if (event.key === "ArrowDown") { event.preventDefault(); step(1); return; }
               if (event.key === "ArrowUp") { event.preventDefault(); step(-1); return; }

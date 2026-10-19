@@ -405,8 +405,8 @@ pub(super) fn discover(
     }
     let names: HashSet<String> = archive
         .file_names()
-        .map(|name| name.replace('\\', "/").to_ascii_lowercase())
-        .collect();
+        .map(|name| name.map(|name| name.replace('\\', "/").to_ascii_lowercase()))
+        .collect::<std::result::Result<_, _>>()?;
     let types = read_utf8_bounded(
         &mut archive.by_name("[Content_Types].xml")?,
         MAX_MANIFEST_BYTES,

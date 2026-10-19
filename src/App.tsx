@@ -317,6 +317,7 @@ export default function App() {
 
   useEffect(() => {
     const runShortcut = (event: KeyboardEvent) => {
+      if (event.isComposing || event.keyCode === 229) return;
       if (!(event.ctrlKey || event.metaKey) || event.altKey) return;
       if (event.key.toLowerCase() === "k") {
         event.preventDefault();
